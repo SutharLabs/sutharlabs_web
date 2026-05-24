@@ -1062,7 +1062,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
             </p>
             <div className="pt-2">
               <a 
-                href="mailto:developer@sutharlabs.io"
+                href="mailto:developer@sutharlabs.com"
                 className="inline-flex py-3 px-6 rounded-lg bg-[#00e476] text-[#002022] font-mono text-xs font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_15px_rgba(0,228,118,0.25)] transition-all"
               >
                 Contact SutharLabs Agency
@@ -1206,9 +1206,9 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   <p className="text-xs text-[#b9cacb] leading-relaxed">Looking to collaborate on our open-source MCP servers, request plugins, or report issues? Access our community channels.</p>
                 </div>
                 <div className="space-y-2.5 pt-2 font-mono text-xs">
-                  <a href="mailto:developer@sutharlabs.io" className="flex items-center gap-3 text-[#ebb2ff] hover:underline transition-all">
+                  <a href="mailto:developer@sutharlabs.com" className="flex items-center gap-3 text-[#ebb2ff] hover:underline transition-all">
                     <span className="material-symbols-outlined text-sm select-none">mail</span>
-                    developer@sutharlabs.io
+                    developer@sutharlabs.com
                   </a>
                   <a href="https://github.com" target="_blank" rel="noreferrer" className="flex items-center gap-3 text-[#74f5ff] hover:underline transition-all">
                     <span className="material-symbols-outlined text-sm select-none">code</span>

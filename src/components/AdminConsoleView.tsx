@@ -597,7 +597,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
               <input
                 id="email"
                 type="email"
-                placeholder="developer@sutharlabs.io"
+                placeholder="developer@sutharlabs.com"
                 value={newUser.email}
                 onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
                 className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2.5 text-[#e5e1e4] placeholder-gray-600 focus:outline-none focus:border-[#ce5dff] transition-colors"

@@ -154,7 +154,7 @@ async function seedDatabase() {
         },
         {
           name: "Suthar Developer",
-          email: "developer@sutharlabs.io",
+          email: "developer@sutharlabs.com",
           password: "developer123",
           role: "Admin",
           joinedAt: new Date("2026-05-21T08:30:15Z"),
@@ -272,7 +272,7 @@ async function startServer() {
       if (
         email.toLowerCase().includes("admin") ||
         email.toLowerCase() === "mr.sutharsuresh@gmail.com" ||
-        email.toLowerCase().endsWith("@sutharlabs.io")
+        email.toLowerCase().endsWith("@sutharlabs.com")
       ) {
         resolvedRole = "Admin";
       }

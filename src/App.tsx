@@ -21,7 +21,7 @@ const PROJECT_FILES: { name: WorkspaceTab; icon: string; size: string }[] = [
 
 export default function App() {
   const [user, setUser] = useState<UserProfile>({
-    email: 'developer@sutharlabs.io',
+    email: 'developer@sutharlabs.com',
     name: 'Suthar Developer',
     isLoggedIn: false // starts false to showcase the premium Landing Page first, then can launch or authenticate!
   });
@@ -44,7 +44,7 @@ export default function App() {
   // Shared application-wide telemetry logging logs index
   const [logs, setLogs] = useState<TerminalLog[]>([
     { timestamp: '14:32:01', type: 'INFO', message: 'Initializing market data stream...' },
-    { timestamp: '14:32:02', type: 'SUCCESS', message: 'Connected to WebSocket wss://data.sutharlabs.io/market' },
+    { timestamp: '14:32:02', type: 'SUCCESS', message: 'Connected to WebSocket wss://data.sutharlabs.com/market' },
     { timestamp: '14:32:05', type: 'AGENT', message: 'AGENT: Loaded models for predictive analytics.' }
   ]);
 

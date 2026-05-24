@@ -510,7 +510,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
             <div className="text-[#849495]">
               <div>&gt; Loading Webpack Bundle... COMPLETED</div>
               <div>&gt; Spawning Stock Tracker microservices... COMPLETED</div>
-              <div>&gt; Listening to wss://data.sutharlabs.io/market active threads</div>
+              <div>&gt; Listening to wss://data.sutharlabs.com/market active threads</div>
               <div className="text-[#00e476]">Status: System health stable. Core VM telemetry active.</div>
               <div ref={terminalEndRef} />
             </div>
