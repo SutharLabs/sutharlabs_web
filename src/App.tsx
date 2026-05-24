@@ -233,7 +233,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 {[...MANAGEMENT_TOOLS, ...(user.role === 'Admin' ? [
                   { name: 'Manage Plugins', icon: 'bolt', size: '' },
                   { name: 'Manage Apps', icon: 'apps', size: '' },
-                  { name: 'Manage Portfolios', icon: 'account_balance_wallet', size: '' }
+                  { name: 'Manage Portfolios', icon: 'web', size: '' }
                 ] : [])].map((file) => {
 
                   const isSelected = activeTab === file.name;
