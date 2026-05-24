@@ -39,11 +39,33 @@ interface PortfolioProject {
 }
 
 export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingPageProps) {
-  const [currentView, setCurrentView] = useState<'HOME' | 'STORE' | 'PORTFOLIO'>('HOME');
+  const [currentView, _setCurrentView] = useState<'HOME' | 'STORE' | 'PORTFOLIO' | 'CONTACT'>('HOME');
+  const setCurrentView = (view: 'HOME' | 'STORE' | 'PORTFOLIO' | 'CONTACT') => {
+    _setCurrentView(view);
+    const path = view === 'HOME' ? '/' : `/${view.toLowerCase()}`;
+    if (window.location.pathname !== path) {
+      window.history.pushState(null, '', path);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const path = window.location.pathname;
+      if (path === '/store') _setCurrentView('STORE');
+      else if (path === '/portfolio') _setCurrentView('PORTFOLIO');
+      else if (path === '/contact') _setCurrentView('CONTACT');
+      else _setCurrentView('HOME');
+    };
+    window.addEventListener('popstate', handlePopState);
+    handlePopState();
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [activeFilter, setActiveFilter] = useState<'All' | 'Web Dev' | 'Mobile Apps' | 'AI & Analytics'>('All');
   const [selectedProject, setSelectedProject] = useState<PortfolioProject | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [plugins, setPlugins] = useState<StorePlugin[]>([]);
+  const [contactSubmitted, setContactSubmitted] = useState(false);
 
   // Carousels active indexes
   const [activePluginIndex, setActivePluginIndex] = useState(0);
@@ -235,6 +257,17 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           >
             MCP Store
           </button>
+          <button 
+            onClick={() => {
+              setCurrentView('CONTACT');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={`px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer ${
+              currentView === 'CONTACT' ? 'text-[#00dbe7] bg-white/5 font-bold border-none' : 'text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 bg-transparent border-none'
+            }`}
+          >
+            Contact Us
+          </button>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
@@ -350,6 +383,16 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                 >
                   <span className="text-[#ebb2ff] text-xs">◆</span> MCP Store
                 </button>
+                <button 
+                  className="w-full text-left text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setCurrentView('CONTACT');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                >
+                  <span className="text-[#00dbe7] text-xs">◆</span> Contact Us
+                </button>
               </div>
             </div>
 
@@ -374,66 +417,66 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       {/* Main Content Area */}
       <main className="flex-grow z-10 pt-28 px-4 md:px-8 max-w-7xl mx-auto w-full flex flex-col gap-20 sm:gap-24 pb-24">
         
-        {/* Hero Section */}
-        <section id="features" className="flex flex-col items-center justify-center text-center py-10 sm:py-16 relative">
-          <div className="max-w-4xl space-y-6">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00dbe7]/10 border border-[#00dbe7]/30 text-[#74f5ff] font-mono text-[10px] uppercase tracking-widest leading-none mb-2 select-none">
-              R&amp;D Lab &amp; Engineering Studio
-            </div>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-[#e5e1e4] neon-text-primary px-2">
-              Synthesizing Next-Gen Tooling &amp; High-Performance Engineering.
-            </h1>
-            <p className="text-sm sm:text-base md:text-lg text-[#b9cacb] max-w-3xl mx-auto font-sans font-light leading-relaxed">
-              We are a hybrid software R&amp;D lab and engineering studio. We build freemium developer tools, MCP servers, and agentic workflows for the community, while partnering with organizations to engineer reliable web applications, mobile systems, and data pipelines.</p>
-            <div className="pt-6 sm:pt-8 flex flex-wrap gap-4 items-center justify-center font-mono">
-              <button 
-                onClick={onLaunch}
-                className="w-full sm:w-auto glass-panel px-6 py-3.5 rounded-xl text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#74f5ff] border border-[#00dbe7]/30 shadow-[0_0_20px_rgba(0,219,231,0.15)] hover:bg-[#00dbe7]/10 hover:shadow-[0_0_30px_rgba(0,219,231,0.35)] hover:border-[#00dbe7]/70 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
-              >
-                <span className="material-symbols-outlined select-none animate-pulse">rocket_launch</span>
-                {user.isLoggedIn ? 'Launch App Workspace' : 'Sign In to Workspace'}
-              </button>
-              
-              <button 
-                onClick={() => {
-                  setCurrentView('STORE');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#ce5dff]/30 bg-[#ce5dff]/5 text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#ebb2ff] hover:bg-[#ce5dff]/15 hover:border-[#ce5dff]/60 transition-all duration-300 cursor-pointer"
-              >
-                Browse MCP Store
-              </button>
-              
-              <button 
-                onClick={() => {
-                  setCurrentView('PORTFOLIO');
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                }}
-                className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#00e476]/30 bg-[#00e476]/5 text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#a8ffcc] hover:bg-[#00e476]/15 hover:border-[#00e476]/60 transition-all duration-300 cursor-pointer"
-              >
-                View Agency Cases
-              </button>
-            </div>
-          </div>
-
-          {/* Glowing Console fluid Image Panel */}
-          <div className="w-full mt-14 sm:mt-20 relative rounded-2xl overflow-hidden glass-panel border border-[#3a494b]/20 shadow-[0_15px_40px_rgba(0,0,0,0.6)] aspect-video md:h-[400px]">
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#131315]/90 z-10"></div>
-            <div className="w-full h-full bg-[#1c1b1d] flex items-center justify-center relative">
-              <img 
-                alt="SutharLabs Custom Solutions Monitor &amp; Real-time Dashboards" 
-                className="fluid-img w-full h-full object-cover opacity-65 transition-transform duration-1000 hover:scale-[1.02]" 
-                referrerPolicy="no-referrer"
-                src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80"
-              />
-              <div className="absolute inset-0 border border-[#00dbe7]/15 rounded-2xl"></div>
-            </div>
-          </div>
-        </section>
-
       {/* VIEW 1: HOME PANEL */}
       {currentView === 'HOME' && (
         <div className="flex flex-col gap-20 sm:gap-24 animate-[fadeIn_0.3s_ease-out]">
+
+          {/* Hero Section */}
+          <section id="features" className="flex flex-col items-center justify-center text-center py-10 sm:py-16 relative">
+            <div className="max-w-4xl space-y-6">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00dbe7]/10 border border-[#00dbe7]/30 text-[#74f5ff] font-mono text-[10px] uppercase tracking-widest leading-none mb-2 select-none">
+                R&amp;D Lab &amp; Engineering Studio
+              </div>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-[#e5e1e4] neon-text-primary px-2">
+                Synthesizing Next-Gen Tooling &amp; High-Performance Engineering.
+              </h1>
+              <p className="text-sm sm:text-base md:text-lg text-[#b9cacb] max-w-3xl mx-auto font-sans font-light leading-relaxed">
+                We are a hybrid software R&amp;D lab and engineering studio. We build freemium developer tools, MCP servers, and agentic workflows for the community, while partnering with organizations to engineer reliable web applications, mobile systems, and data pipelines.</p>
+              <div className="pt-6 sm:pt-8 flex flex-wrap gap-4 items-center justify-center font-mono">
+                <button 
+                  onClick={onLaunch}
+                  className="w-full sm:w-auto glass-panel px-6 py-3.5 rounded-xl text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#74f5ff] border border-[#00dbe7]/30 shadow-[0_0_20px_rgba(0,219,231,0.15)] hover:bg-[#00dbe7]/10 hover:shadow-[0_0_30px_rgba(0,219,231,0.35)] hover:border-[#00dbe7]/70 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined select-none animate-pulse">rocket_launch</span>
+                  {user.isLoggedIn ? 'Launch App Workspace' : 'Sign In to Workspace'}
+                </button>
+                
+                <button 
+                  onClick={() => {
+                    setCurrentView('STORE');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#ce5dff]/30 bg-[#ce5dff]/5 text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#ebb2ff] hover:bg-[#ce5dff]/15 hover:border-[#ce5dff]/60 transition-all duration-300 cursor-pointer"
+                >
+                  Browse MCP Store
+                </button>
+                
+                <button 
+                  onClick={() => {
+                    setCurrentView('PORTFOLIO');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#00e476]/30 bg-[#00e476]/5 text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#a8ffcc] hover:bg-[#00e476]/15 hover:border-[#00e476]/60 transition-all duration-300 cursor-pointer"
+                >
+                  View Agency Cases
+                </button>
+              </div>
+            </div>
+
+            {/* Glowing Console fluid Image Panel */}
+            <div className="w-full mt-14 sm:mt-20 relative rounded-2xl overflow-hidden glass-panel border border-[#3a494b]/20 shadow-[0_15px_40px_rgba(0,0,0,0.6)] aspect-video md:h-[400px]">
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#131315]/90 z-10"></div>
+              <div className="w-full h-full bg-[#1c1b1d] flex items-center justify-center relative">
+                <img 
+                  alt="SutharLabs Custom Solutions Monitor &amp; Real-time Dashboards" 
+                  className="fluid-img w-full h-full object-cover opacity-65 transition-transform duration-1000 hover:scale-[1.02]" 
+                  referrerPolicy="no-referrer"
+                  src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80"
+                />
+                <div className="absolute inset-0 border border-[#00dbe7]/15 rounded-2xl"></div>
+              </div>
+            </div>
+          </section>
           
           {/* Services Offered Section */}
           <section id="services" className="space-y-8 scroll-mt-24">
@@ -1025,6 +1068,186 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                 Contact SutharLabs Agency
               </a>
             </div>
+          </div>
+
+          {/* Back to Home CTA button */}
+          <div className="flex justify-center pt-8">
+            <button 
+              onClick={() => {
+                setCurrentView('HOME');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="px-6 py-3 rounded-lg border border-[#3a494b]/30 bg-transparent text-[#b9cacb] font-mono text-xs uppercase tracking-wider hover:text-white hover:border-white transition-all cursor-pointer"
+            >
+              Back to Home Page
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* VIEW 4: DEDICATED CONTACT PANEL */}
+      {currentView === 'CONTACT' && (
+        <div className="space-y-10 py-4 animate-[fadeIn_0.3s_ease-out] max-w-4xl mx-auto w-full">
+          
+          {/* Header Breadcrumbs */}
+          <div className="flex items-center gap-2 text-xs font-mono text-gray-500 select-none">
+            <button onClick={() => setCurrentView('HOME')} className="hover:text-white transition-all bg-transparent border-none cursor-pointer">HOME</button>
+            <span>/</span>
+            <span className="text-[#00dbe7]">CONTACT US</span>
+          </div>
+
+          {/* Header copy */}
+          <div className="space-y-3">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
+              <span className="material-symbols-outlined text-[#00dbe7] text-3xl sm:text-4xl">mail</span>
+              Contact SutharLabs
+            </h2>
+            <p className="text-sm sm:text-base text-[#b9cacb] font-sans font-light leading-relaxed">
+              Have a project in mind, or want to collaborate with our software research lab? Get in touch below. By partnering with our agency, you directly sponsor our freemium developer tools, MCP servers, and open-source workflows.
+            </p>
+          </div>
+
+          {/* Dual-Track Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
+            
+            {/* Track 1: Enterprise Consultation Form (Cols 7) */}
+            <div className="md:col-span-7 glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/50 flex flex-col justify-between space-y-6">
+              <div className="space-y-2">
+                <span className="px-2 py-0.5 rounded bg-[#00e476]/20 border border-[#00e476]/30 text-[#00e476] text-[9px] font-mono uppercase tracking-wider">Enterprise &amp; Agency Funnel</span>
+                <h3 className="text-lg font-bold text-white">Start a Project Consultation</h3>
+                <p className="text-xs text-[#b9cacb] font-sans">Submit your project parameters and our elite engineering studio will get back to you within 24 hours.</p>
+              </div>
+
+              {/* Form State */}
+              {contactSubmitted ? (
+                <div className="p-6 rounded-xl border border-[#00e476]/30 bg-[#00e476]/5 text-center space-y-4 py-12 animate-[fadeIn_0.3s_ease-out]">
+                  <span className="material-symbols-outlined text-4xl text-[#00e476] select-none">verified_user</span>
+                  <h4 className="text-base font-bold text-white">Consultation Request Dispatched!</h4>
+                  <p className="text-xs text-[#b9cacb] leading-relaxed max-w-sm mx-auto">
+                    Thank you! Your project specification parameters have been successfully registered under tracking ID <span className="font-mono text-[#00e476]">SR_{Math.floor(Math.random() * 90000) + 10000}</span>.
+                  </p>
+                  <button
+                    onClick={() => setContactSubmitted(false)}
+                    className="mt-2 text-xs font-mono text-[#00dbe7] hover:underline bg-transparent border-none cursor-pointer"
+                  >
+                    Send another inquiry
+                  </button>
+                </div>
+              ) : (
+                <form 
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setContactSubmitted(true);
+                  }}
+                  className="space-y-4 font-mono text-xs"
+                >
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-gray-500 block">YOUR NAME</label>
+                      <input 
+                        type="text" 
+                        required 
+                        placeholder="Elon Musk" 
+                        className="w-full bg-[#0c0c0e] border border-[#3a494b]/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-gray-500 block">EMAIL ADDRESS</label>
+                      <input 
+                        type="email" 
+                        required 
+                        placeholder="elon@spacex.com" 
+                        className="w-full bg-[#0c0c0e] border border-[#3a494b]/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <label className="text-gray-500 block">PROJECT TYPE</label>
+                      <select className="w-full bg-[#0c0c0e] border border-[#3a494b]/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs cursor-pointer">
+                        <option>Web Application Dev</option>
+                        <option>Mobile App Dev (React Native)</option>
+                        <option>Agentic AI Workflows</option>
+                        <option>MCP Server Integration</option>
+                        <option>Other Complex Systems</option>
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-gray-500 block">ESTIMATED BUDGET</label>
+                      <select className="w-full bg-[#0c0c0e] border border-[#3a494b]/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs cursor-pointer">
+                        <option>$5,000 - $10,000</option>
+                        <option>$10,000 - $25,000</option>
+                        <option>$25,000 - $50,000</option>
+                        <option>$50,000+</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-gray-500 block">PROJECT SPECIFICATION OVERVIEW</label>
+                    <textarea 
+                      rows={4} 
+                      required
+                      placeholder="Briefly describe the systems architectural target and features needed..." 
+                      className="w-full bg-[#0c0c0e] border border-[#3a494b]/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs resize-none"
+                    />
+                  </div>
+
+                  <button 
+                    type="submit"
+                    className="w-full py-3 bg-[#00dbe7] text-[#002022] font-mono text-xs font-bold uppercase rounded hover:brightness-110 tracking-wider shadow-[0_0_15px_rgba(0,219,231,0.25)] transition-all cursor-pointer border-none flex items-center justify-center gap-2"
+                  >
+                    <span className="material-symbols-outlined text-sm select-none">send</span>
+                    Submit Parameters Inquiry
+                  </button>
+                </form>
+              )}
+            </div>
+
+            {/* Track 2: Lab & Open Source Support (Cols 5) */}
+            <div className="md:col-span-5 flex flex-col gap-6">
+              
+              {/* Card 1: Open Source & Developer Channels */}
+              <div className="glass-panel p-6 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 space-y-4">
+                <div className="space-y-1.5">
+                  <span className="px-2 py-0.5 rounded bg-[#ce5dff]/20 border border-[#ce5dff]/30 text-[#ebb2ff] text-[9px] font-mono uppercase tracking-wider">Lab Support</span>
+                  <h3 className="text-base font-bold text-white">Developer Collaborations</h3>
+                  <p className="text-xs text-[#b9cacb] leading-relaxed">Looking to collaborate on our open-source MCP servers, request plugins, or report issues? Access our community channels.</p>
+                </div>
+                <div className="space-y-2.5 pt-2 font-mono text-xs">
+                  <a href="mailto:developer@sutharlabs.io" className="flex items-center gap-3 text-[#ebb2ff] hover:underline transition-all">
+                    <span className="material-symbols-outlined text-sm select-none">mail</span>
+                    developer@sutharlabs.io
+                  </a>
+                  <a href="https://github.com" target="_blank" rel="noreferrer" className="flex items-center gap-3 text-[#74f5ff] hover:underline transition-all">
+                    <span className="material-symbols-outlined text-sm select-none">code</span>
+                    GitHub Community Portal
+                  </a>
+                  <a href="https://google.com" target="_blank" rel="noreferrer" className="flex items-center gap-3 text-[#00e476] hover:underline transition-all">
+                    <span className="material-symbols-outlined text-sm select-none">share</span>
+                    MCP Server Registry
+                  </a>
+                </div>
+              </div>
+
+              {/* Card 2: HQ Coordinates */}
+              <div className="glass-panel p-6 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 space-y-3 font-mono text-xs leading-relaxed text-[#b9cacb]">
+                <h4 className="text-white font-bold uppercase tracking-wider text-[10px]">HQ Coordinates</h4>
+                <p className="text-xs">
+                  SutharLabs Research Hub &amp; Studios<br />
+                  Digital Innovation Cluster<br />
+                  India
+                </p>
+                <div className="pt-2 border-t border-[#3a494b]/10 flex justify-between text-[10px] text-gray-500">
+                  <span>TIMEZONE</span>
+                  <span>UTC+5:30 (IST)</span>
+                </div>
+              </div>
+
+            </div>
+
           </div>
 
           {/* Back to Home CTA button */}
