@@ -378,14 +378,13 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
         <section id="features" className="flex flex-col items-center justify-center text-center py-10 sm:py-16 relative">
           <div className="max-w-4xl space-y-6">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00dbe7]/10 border border-[#00dbe7]/30 text-[#74f5ff] font-mono text-[10px] uppercase tracking-widest leading-none mb-2 select-none">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00fb83] animate-pulse"></span>
               R&amp;D Lab &amp; Engineering Studio
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-[#e5e1e4] neon-text-primary px-2">
-              Synthesizing Next-Gen Tooling &amp; High-Fidelity Custom Codebases.
+              Synthesizing Next-Gen Tooling &amp; High-Performance Engineering.
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-[#b9cacb] max-w-3xl mx-auto font-sans font-light leading-relaxed">
-              We code what others deem impossible. Part bleeding-edge R&amp;D lab crafting open-source developer tooling and autonomous agentic pipelines; part elite engineering force building high-performance web, mobile, and custom systems. We fund our open-source research through pure engineering execution.</p>
+              We are a hybrid software R&amp;D lab and engineering studio. We build freemium developer tools, MCP servers, and agentic workflows for the community, while partnering with organizations to engineer reliable web applications, mobile systems, and data pipelines.</p>
             <div className="pt-6 sm:pt-8 flex flex-wrap gap-4 items-center justify-center font-mono">
               <button 
                 onClick={onLaunch}
