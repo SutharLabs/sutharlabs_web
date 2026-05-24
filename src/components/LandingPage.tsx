@@ -53,6 +53,19 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
   const [storeSearchQuery, setStoreSearchQuery] = useState('');
   const [storeActiveCategory, setStoreActiveCategory] = useState<'All' | 'DevOps' | 'Productivity' | 'AI' | 'Finance' | 'Plugin'>('All');
 
+  const getVisiblePlugins = () => {
+    if (plugins.length === 0) return [];
+    const items: StorePlugin[] = [];
+    const count = Math.min(4, plugins.length);
+    for (let i = 0; i < count; i++) {
+      const targetIdx = (activePluginIndex + i) % plugins.length;
+      if (!items.some(item => item.id === plugins[targetIdx].id)) {
+        items.push(plugins[targetIdx]);
+      }
+    }
+    return items;
+  };
+
   // Load store plugins from real backend REST API routes
   useEffect(() => {
     const fetchPlugins = async () => {
@@ -366,14 +379,13 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           <div className="max-w-4xl space-y-6">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00dbe7]/10 border border-[#00dbe7]/30 text-[#74f5ff] font-mono text-[10px] uppercase tracking-widest leading-none mb-2 select-none">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00fb83] animate-pulse"></span>
-              SutharLabs: Dual Software Research Lab &amp; Elite Agency
+              // INITIALIZING HYBRID R&amp;D LAB &amp; ELITE STUDIOS
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-[#e5e1e4] neon-text-primary px-2">
-              SOTA Developer Tools &amp; Premium Custom Engineering.
+              Synthesizing Next-Gen Tooling &amp; High-Fidelity Custom Codebases.
             </h1>
             <p className="text-sm sm:text-base md:text-lg text-[#b9cacb] max-w-3xl mx-auto font-sans font-light leading-relaxed">
-              We are a software research lab dedicated to building next-generation freemium developer tools, MCP servers, and agentic workflows for the global community. To sponsor our deep-tech open-source initiatives, we provide elite custom development services—engineering responsive web modules, high-fidelity mobile systems, and intelligent custom pipelines.
-            </p>
+              We code what others deem impossible. Part bleeding-edge R&amp;D lab crafting open-source developer tooling and autonomous agentic pipelines; part elite engineering force building high-performance web, mobile, and custom systems. We fund our open-source research through pure engineering execution.</p>
             <div className="pt-6 sm:pt-8 flex flex-wrap gap-4 items-center justify-center font-mono">
               <button 
                 onClick={onLaunch}
@@ -537,7 +549,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#3a494b]/20 pb-4 gap-4">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-[#ce5dff] text-2xl sm:text-3xl select-none">dynamic_feed</span>
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Featured MCP Servers &amp; Tools</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Popular Tools &amp; Plugins</h2>
               </div>
               
               <button 
@@ -552,60 +564,56 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
             </div>
 
             <div className="relative glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/30 overflow-hidden">
-              <div className="absolute top-0 right-0 p-3 bg-[#ce5dff]/10 border-l border-b border-[#ce5dff]/20 text-[#ebb2ff] font-mono text-[9px] uppercase tracking-wider rounded-bl-lg select-none">
-                Lab Contribution #{activePluginIndex + 1}
-              </div>
-
+              
               {/* Render Active Slide */}
               {plugins.length > 0 ? (
-                (() => {
-                  const plugin = plugins[activePluginIndex % plugins.length];
-                  if (!plugin) return null;
-                  return (
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[220px]">
-                      <div className="lg:col-span-8 space-y-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded bg-[#ce5dff]/10 flex items-center justify-center border border-[#ce5dff]/30 shrink-0 select-none">
-                            <span className="material-symbols-outlined text-[#ce5dff] select-none text-xl">{plugin.iconSymbol || 'smart_toy'}</span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  {getVisiblePlugins().map((plugin) => (
+                    <div 
+                      key={plugin.id} 
+                      className="glass-panel p-5 rounded-xl border border-[#3a494b]/15 flex flex-col justify-between h-full bg-[#131315]/50 hover:border-[#ce5dff]/50 transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.25)] group"
+                    >
+                      <div className="space-y-3 flex-grow">
+                        <div className="flex justify-between items-start">
+                          <div className="w-9 h-9 rounded bg-[#ce5dff]/10 flex items-center justify-center border border-[#ce5dff]/30 group-hover:border-[#ce5dff]/60 transition-all select-none">
+                            <span className="material-symbols-outlined text-[#ce5dff] select-none text-base">{plugin.iconSymbol || 'smart_toy'}</span>
                           </div>
-                          <div>
-                            <span className="px-2 py-0.5 rounded bg-[#ce5dff]/20 border border-[#ce5dff]/30 text-[#ebb2ff] text-[9px] font-mono uppercase tracking-wider">{plugin.category}</span>
-                            <h3 className="text-xl font-bold text-white mt-1">{plugin.name}</h3>
+                          <div className="flex flex-col items-end gap-0.5 font-mono text-[8px]">
+                            <span className="px-1.5 py-0.5 rounded bg-[#ce5dff]/20 border border-[#ce5dff]/30 text-[#ebb2ff]">{plugin.category}</span>
+                            <span className={plugin.type === 'Free' ? 'text-[#00e476]' : plugin.type === 'Premium' ? 'text-[#ce5dff]' : 'text-[#74f5ff]'}>{plugin.type}</span>
                           </div>
                         </div>
                         
-                        <p className="text-sm text-[#b9cacb] leading-relaxed">
-                          {plugin.description}
-                        </p>
-
-                        <div className="flex flex-wrap gap-1.5 pt-2">
-                          {(plugin.tags || []).map(t => (
-                            <span key={t} className="px-2 py-0.5 rounded bg-[#201f21] text-[#74f5ff] text-[10px] font-mono border border-white/5">#{t}</span>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div className="lg:col-span-4 flex flex-col gap-3 justify-center border-t lg:border-t-0 lg:border-l border-[#3a494b]/15 pt-6 lg:pt-0 lg:pl-8">
-                        <div className="text-center lg:text-left select-none">
-                          <span className="text-[10px] font-mono text-gray-500 block uppercase">Community Reception</span>
-                          <div className="flex items-center justify-center lg:justify-start gap-1 text-[#00e476] text-sm font-mono mt-1 font-bold">
-                            <span className="material-symbols-outlined text-base leading-none">star</span>
-                            <span>{plugin.rating}</span>
-                            <span className="text-gray-600">|</span>
-                            <span>{plugin.downloads} downloads</span>
+                        <div>
+                          <h4 className="text-sm font-bold text-white group-hover:text-[#ebb2ff] transition-colors">{plugin.name}</h4>
+                          <div className="flex items-center gap-1 text-[#ebb2ff] text-[9px] font-mono leading-none mt-1">
+                            <span className="material-symbols-outlined text-[10px] select-none text-[#ce5dff]">star</span>
+                            <span>{plugin.rating} ({plugin.downloads})</span>
                           </div>
                         </div>
+                        
+                        <p className="text-xs text-[#b9cacb] leading-relaxed line-clamp-3">
+                          {plugin.description}
+                        </p>
+                      </div>
 
+                      <div className="pt-4 border-t border-[#3a494b]/10 mt-4 flex items-center justify-between">
+                        <div className="flex flex-wrap gap-1 max-w-[70%]">
+                          {(plugin.tags || []).slice(0, 2).map(t => (
+                            <span key={t} className="px-1.5 py-0.5 rounded bg-[#201f21] text-[#74f5ff] text-[8px] font-mono border border-white/5 truncate">#{t}</span>
+                          ))}
+                        </div>
                         <button 
                           onClick={onLaunch}
-                          className="w-full py-3 rounded bg-[#ce5dff]/15 border border-[#ce5dff]/30 text-xs font-mono font-bold tracking-widest text-[#ebb2ff] hover:bg-[#ce5dff]/25 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer mt-2"
+                          className="p-2 rounded bg-[#ce5dff]/10 hover:bg-[#ce5dff]/25 border border-[#ce5dff]/30 text-[#ebb2ff] hover:text-white transition-all cursor-pointer border-none flex items-center justify-center"
+                          title="Install Plugin"
                         >
-                          <span className="material-symbols-outlined text-sm select-none">download</span> Install Freemium
+                          <span className="material-symbols-outlined text-sm select-none">download</span>
                         </button>
                       </div>
                     </div>
-                  );
-                })()
+                  ))}
+                </div>
               ) : (
                 <div className="text-center py-10 font-mono text-xs italic text-gray-500">Loading products registry...</div>
               )}
