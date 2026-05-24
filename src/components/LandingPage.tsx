@@ -590,7 +590,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           <section className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#3a494b]/20 pb-4 gap-4">
               <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-[#3b82f6] text-2xl sm:text-3xl select-none">dynamic_feed</span>
+                <span className="material-symbols-outlined text-[#00dbe7] text-2xl sm:text-3xl select-none">dynamic_feed</span>
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Popular Tools &amp; Plugins</h2>
               </div>
               
@@ -613,23 +613,23 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   {getVisiblePlugins().map((plugin) => (
                     <div 
                       key={plugin.id} 
-                      className="glass-panel p-5 rounded-xl border border-[#3a494b]/15 flex flex-col justify-between h-full bg-[#131315]/50 hover:border-[#3b82f6]/50 transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.25)] group"
+                      className="glass-panel p-5 rounded-xl border border-[#3a494b]/15 flex flex-col justify-between h-full bg-[#131315]/50 hover:border-[#00dbe7]/50 transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.25)] group"
                     >
                       <div className="space-y-3 flex-grow">
                         <div className="flex justify-between items-start">
-                          <div className="w-9 h-9 rounded bg-[#3b82f6]/10 flex items-center justify-center border border-[#3b82f6]/30 group-hover:border-[#3b82f6]/60 transition-all select-none">
-                            <span className="material-symbols-outlined text-[#3b82f6] select-none text-base">{plugin.iconSymbol || 'smart_toy'}</span>
+                          <div className="w-9 h-9 rounded bg-[#00dbe7]/10 flex items-center justify-center border border-[#00dbe7]/30 group-hover:border-[#00dbe7]/60 transition-all select-none">
+                            <span className="material-symbols-outlined text-[#00dbe7] select-none text-base">{plugin.iconSymbol || 'smart_toy'}</span>
                           </div>
                           <div className="flex flex-col items-end gap-0.5 font-mono text-[8px]">
-                            <span className="px-1.5 py-0.5 rounded bg-[#3b82f6]/20 border border-[#3b82f6]/30 text-[#93c5fd]">{plugin.category}</span>
-                            <span className={plugin.type === 'Free' ? 'text-[#00e476]' : plugin.type === 'Premium' ? 'text-[#3b82f6]' : 'text-[#74f5ff]'}>{plugin.type}</span>
+                            <span className="px-1.5 py-0.5 rounded bg-[#00dbe7]/20 border border-[#00dbe7]/30 text-[#74f5ff]">{plugin.category}</span>
+                            <span className={plugin.type === 'Free' ? 'text-[#00e476]' : plugin.type === 'Premium' ? 'text-[#00dbe7]' : 'text-[#74f5ff]'}>{plugin.type}</span>
                           </div>
                         </div>
                         
                         <div>
-                          <h4 className="text-sm font-bold text-white group-hover:text-[#93c5fd] transition-colors">{plugin.name}</h4>
-                          <div className="flex items-center gap-1 text-[#93c5fd] text-[9px] font-mono leading-none mt-1">
-                            <span className="material-symbols-outlined text-[10px] select-none text-[#3b82f6]">star</span>
+                          <h4 className="text-sm font-bold text-white group-hover:text-[#74f5ff] transition-colors">{plugin.name}</h4>
+                          <div className="flex items-center gap-1 text-[#74f5ff] text-[9px] font-mono leading-none mt-1">
+                            <span className="material-symbols-outlined text-[10px] select-none text-[#00dbe7]">star</span>
                             <span>{plugin.rating} ({plugin.downloads})</span>
                           </div>
                         </div>
@@ -647,7 +647,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                         </div>
                         <button 
                           onClick={onLaunch}
-                          className="p-2 rounded bg-[#3b82f6]/10 hover:bg-[#3b82f6]/25 border border-[#3b82f6]/30 text-[#93c5fd] hover:text-white transition-all cursor-pointer border-none flex items-center justify-center"
+                          className="p-2 rounded bg-[#00dbe7]/10 hover:bg-[#00dbe7]/25 border border-[#00dbe7]/30 text-[#74f5ff] hover:text-white transition-all cursor-pointer border-none flex items-center justify-center"
                           title="Install Plugin"
                         >
                           <span className="material-symbols-outlined text-sm select-none">download</span>
@@ -668,7 +668,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                       key={idx}
                       onClick={() => setActivePluginIndex(idx)}
                       className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer border-none ${
-                        activePluginIndex === idx ? 'bg-[#3b82f6] w-6' : 'bg-[#3a494b]/40 hover:bg-gray-600'
+                        activePluginIndex === idx ? 'bg-[#00dbe7] w-6' : 'bg-[#3a494b]/40 hover:bg-gray-600'
                       }`}
                       aria-label={`Slide ${idx + 1}`}
                     />
@@ -678,13 +678,13 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                 <div className="flex gap-2">
                   <button
                     onClick={() => setActivePluginIndex((prev) => (prev === 0 ? plugins.length - 1 : prev - 1))}
-                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#3b82f6]/50 hover:bg-[#3b82f6]/10 text-white flex items-center justify-center transition-all cursor-pointer animate-[press_0.2s_ease]"
+                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#00dbe7]/50 hover:bg-[#00dbe7]/10 text-white flex items-center justify-center transition-all cursor-pointer animate-[press_0.2s_ease]"
                   >
                     <span className="material-symbols-outlined text-base">arrow_back</span>
                   </button>
                   <button
                     onClick={() => setActivePluginIndex((prev) => (prev === plugins.length - 1 ? 0 : prev + 1))}
-                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#3b82f6]/50 hover:bg-[#3b82f6]/10 text-white flex items-center justify-center transition-all cursor-pointer animate-[press_0.2s_ease]"
+                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#00dbe7]/50 hover:bg-[#00dbe7]/10 text-white flex items-center justify-center transition-all cursor-pointer animate-[press_0.2s_ease]"
                   >
                     <span className="material-symbols-outlined text-base">arrow_forward</span>
                   </button>
@@ -823,13 +823,13 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           <div className="flex items-center gap-2 text-xs font-mono text-gray-500 select-none">
             <button onClick={() => setCurrentView('HOME')} className="hover:text-white transition-all bg-transparent border-none cursor-pointer">HOME</button>
             <span>/</span>
-            <span className="text-[#3b82f6]">APP STORE</span>
+            <span className="text-[#00dbe7]">APP STORE</span>
           </div>
 
           {/* Header copy */}
           <div className="space-y-3">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
-              <span className="material-symbols-outlined text-[#3b82f6] text-3xl sm:text-4xl">storefront</span>
+              <span className="material-symbols-outlined text-[#00dbe7] text-3xl sm:text-4xl">storefront</span>
               SutharLabs App Store
             </h2>
             <p className="text-sm sm:text-base text-[#b9cacb] max-w-3xl font-sans font-light leading-relaxed">
@@ -864,7 +864,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   onClick={() => setStoreActiveCategory(cat)}
                   className={`px-3 py-1.5 rounded transition-all cursor-pointer border-none font-mono ${
                     storeActiveCategory === cat 
-                      ? 'bg-[#3b82f6]/15 text-[#93c5fd] font-bold border border-[#3b82f6]/25 shadow-sm'
+                      ? 'bg-[#00dbe7]/15 text-[#74f5ff] font-bold border border-[#00dbe7]/25 shadow-sm'
                       : 'text-[#b9cacb] hover:text-white bg-transparent hover:bg-white/[0.02]'
                   }`}
                 >
@@ -903,17 +903,17 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                 {searchedPlugins.map((plugin) => (
                   <div 
                     key={plugin.id} 
-                    className="glass-panel p-6 rounded-xl border border-[#3a494b]/15 flex flex-col h-full bg-[#131315]/60 hover:border-[#3b82f6]/40 transition-all duration-300 hover:shadow-[0_4px_25px_rgba(59,130,246,0.08)]"
+                    className="glass-panel p-6 rounded-xl border border-[#3a494b]/15 flex flex-col h-full bg-[#131315]/60 hover:border-[#00dbe7]/40 transition-all duration-300 hover:shadow-[0_4px_25px_rgba(0,219,231,0.08)]"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-[#3b82f6]/10 flex items-center justify-center border border-[#3b82f6]/30 shrink-0 select-none">
-                          <span className="material-symbols-outlined text-[#3b82f6] select-none text-base">{plugin.iconSymbol || 'smart_toy'}</span>
+                        <div className="w-10 h-10 rounded bg-[#00dbe7]/10 flex items-center justify-center border border-[#00dbe7]/30 shrink-0 select-none">
+                          <span className="material-symbols-outlined text-[#00dbe7] select-none text-base">{plugin.iconSymbol || 'smart_toy'}</span>
                         </div>
                         <div>
                           <h4 className="text-base font-bold text-[#e5e1e4]">{plugin.name}</h4>
-                          <div className="flex items-center gap-1 text-[#3b82f6] text-[10px] font-mono leading-none mt-0.5">
-                            <span className="material-symbols-outlined text-[10px] select-none text-[#3b82f6]">star</span>
+                          <div className="flex items-center gap-1 text-[#00dbe7] text-[10px] font-mono leading-none mt-0.5">
+                            <span className="material-symbols-outlined text-[10px] select-none text-[#00dbe7]">star</span>
                             <span>{plugin.rating} ({plugin.downloads} downloads)</span>
                           </div>
                         </div>
@@ -928,12 +928,12 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                     </p>
                     <div className="flex flex-wrap gap-1 md:gap-1.5 mb-6">
                       {(plugin.tags || []).map(t => (
-                        <span key={t} className="px-1.5 py-0.5 rounded bg-[#3b82f6]/10 text-[#93c5fd] text-[9px] font-mono border border-[#3b82f6]/20">#{t}</span>
+                        <span key={t} className="px-1.5 py-0.5 rounded bg-[#00dbe7]/10 text-[#74f5ff] text-[9px] font-mono border border-[#00dbe7]/20">#{t}</span>
                       ))}
                     </div>
                     <button 
                       onClick={onLaunch}
-                      className="w-full py-2.5 rounded bg-[#3b82f6]/10 border border-[#3b82f6]/30 text-xs font-mono font-bold tracking-widest text-[#93c5fd] hover:bg-[#3b82f6]/20 hover:border-[#3b82f6]/60 hover:text-white transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer mt-auto"
+                      className="w-full py-2.5 rounded bg-[#00dbe7]/10 border border-[#00dbe7]/30 text-xs font-mono font-bold tracking-widest text-[#74f5ff] hover:bg-[#00dbe7]/20 hover:border-[#00dbe7]/60 hover:text-white transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer mt-auto"
                     >
                       <span className="material-symbols-outlined text-sm select-none">download</span> Install Plugin
                     </button>
