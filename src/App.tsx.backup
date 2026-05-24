@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { UserProfile, WorkspaceTab, TerminalLog } from './types';
 import LandingPage from './components/LandingPage';
 import AuthPage from './components/AuthPage';
@@ -8,49 +7,21 @@ import FlowDesignerView from './components/FlowDesignerView';
 import AccountingView from './components/AccountingView';
 import MutedMarkdownView from './components/MutedMarkdownView';
 import AdminConsoleView from './components/AdminConsoleView';
-import ManageAppsView from './components/ManageAppsView';
-import ManagePluginsView from './components/ManagePluginsView';
-import ManagePortfoliosView from './components/ManagePortfoliosView';
 import DocNexusView from './components/DocNexusView';
 import WorkspacePluginStore from './components/WorkspacePluginStore';
 
-const MANAGEMENT_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
-  { name: 'Admin Console', icon: 'security', size: '9.3 KB' },
-  { name: 'Plugin Store', icon: 'extension', size: '3.1 KB' },
-  { name: 'README', icon: 'description', size: '2.1 KB' }
+// Preset directories matching the IDE mockup
+const PROJECT_FILES: { name: WorkspaceTab; icon: string; size: string }[] = [
+  { name: 'Stock_Tracker.jsx', icon: 'monitoring', size: '12.4 KB' },
+  { name: 'Custom_Flow.flow', icon: 'account_tree', size: '4.8 KB' },
+  { name: 'Accounting.module', icon: 'currency_exchange', size: '18.2 KB' },
+  { name: 'Admin_Console.module', icon: 'security', size: '9.3 KB' },
+  { name: 'Doc_Nexus.jsx', icon: 'menu_book', size: '15.6 KB' },
+  { name: 'Workspace_Plugins.store', icon: 'extension', size: '3.1 KB' },
+  { name: 'README.md', icon: 'description', size: '2.1 KB' }
 ];
-
-const INSTALLED_PLUGINS: { name: WorkspaceTab; icon: string; size: string }[] = [
-  { name: 'Stock Tracker', icon: 'monitoring', size: '12.4 KB' },
-  { name: 'Custom Flow', icon: 'account_tree', size: '4.8 KB' },
-  { name: 'Accounting', icon: 'currency_exchange', size: '18.2 KB' },
-  { name: 'Doc Nexus', icon: 'menu_book', size: '15.6 KB' }
-];
-
-const ALL_TABS = [...MANAGEMENT_TOOLS, ...INSTALLED_PLUGINS];
-
-
-const ROUTE_MAP: Record<WorkspaceTab, string> = {
-  'Stock Tracker': '/workspace/stock-tracker',
-  'Custom Flow': '/workspace/flow',
-  'Accounting': '/workspace/accounting',
-  'Admin Console': '/admin',
-'Doc Nexus': '/workspace/docnexus',
-  'Manage Plugins': '/admin/manage-plugins',
-  'Manage Apps': '/admin/manage-apps',
-  'Manage Portfolios': '/admin/manage-portfolios',
-  'Plugin Store': '/workspace/plugins',
-  'README': '/workspace/readme'
-};
-
-const URL_TO_TAB: Record<string, WorkspaceTab> = Object.entries(ROUTE_MAP).reduce((acc, [tab, url]) => {
-  acc[url] = tab as WorkspaceTab;
-  return acc;
-}, {} as Record<string, WorkspaceTab>);
 
 export default function App() {
-  const navigate = useNavigate();
-  const location = useLocation();
   const [user, setUser] = useState<UserProfile>({
     email: 'developer@sutharlabs.com',
     name: 'Suthar Developer',
@@ -70,8 +41,7 @@ export default function App() {
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'signin' | 'signup'>('signin');
-  const activeTab = URL_TO_TAB[location.pathname] || 'Stock Tracker';
-  const setActiveTab = (tab: WorkspaceTab) => navigate(ROUTE_MAP[tab]);
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('Stock_Tracker.jsx');
 
   // Shared application-wide telemetry logging logs index
   const [logs, setLogs] = useState<TerminalLog[]>([
@@ -86,22 +56,22 @@ export default function App() {
 
   const handleLaunchWorkspace = () => {
     if (user.isLoggedIn) {
-      navigate('/workspace/stock-tracker');
+      setIsAuthOpen(false);
     } else {
       setAuthTab('signin');
-      navigate('/auth');
+      setIsAuthOpen(true);
     }
   };
 
   const handleAuthNavigate = (tab: 'signin' | 'signup') => {
     setAuthTab(tab);
-    navigate('/auth');
+    setIsAuthOpen(true);
   };
 
   const handleLoginSuccess = (profile: UserProfile) => {
     setUser(profile);
     localStorage.setItem('sutharlabs_active_user', JSON.stringify(profile));
-    navigate('/workspace/stock-tracker');
+    setIsAuthOpen(false);
     addLog({
       timestamp: new Date().toLocaleTimeString(),
       type: 'SUCCESS',
@@ -119,41 +89,40 @@ export default function App() {
     });
   };
 
-  // Application Top Level Routes
-  return (
-    <Routes>
-      <Route path="/" element={
-        user.isLoggedIn ? <Navigate to="/workspace/stock-tracker" /> : 
-        <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} />
-      } />
-      <Route path="/auth" element={
-        <AuthPage initialTab={authTab} onLoginSuccess={handleLoginSuccess} onBackToHome={() => navigate('/')} />
-      } />
-      <Route path="/admin/*" element={
-        <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} />
-      } />
-      <Route path="/workspace/*" element={
-        <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} />
-      } />
-    </Routes>
-  );
-}
+  // Route: Auth interface
+  if (isAuthOpen) {
+    return (
+      <AuthPage 
+        initialTab={authTab}
+        onLoginSuccess={handleLoginSuccess}
+        onBackToHome={() => setIsAuthOpen(false)}
+      />
+    );
+  }
 
-function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab, handleLogout }: any) {
-  const [isManagementOpen, setIsManagementOpen] = React.useState(true);
-  const [isPluginsOpen, setIsPluginsOpen] = React.useState(true);
-  const navigate = useNavigate();
-  
-  if (!user.isLoggedIn) return <Navigate to="/auth" />;
+  // Route: Home landing page (if guest viewing)
+  if (!user.isLoggedIn) {
+    return (
+      <LandingPage 
+        user={user}
+        onLaunch={handleLaunchWorkspace}
+        onNavigateAuth={handleAuthNavigate}
+      />
+    );
+  }
 
+  // Route: Full Interactive App Workspace Console (if authenticated)
   return (
     <div className="min-h-screen bg-[#050505] text-[#e5e1e4] flex flex-col font-sans overflow-hidden">
+      
       {/* SutharLabs App Workspace Top Navigation Header */}
       <header className="h-14 bg-[#131315] border-b border-[#3a494b]/10 px-6 flex items-center justify-between z-10 select-none">
         <div className="flex items-center gap-4">
           {/* Logo brand home return */}
           <div 
-            onClick={() => navigate('/')}
+            onClick={() => {
+              setIsAuthOpen(false);
+            }}
             className="flex items-center gap-2 cursor-pointer group"
           >
             <svg className="w-5.5 h-5.5 transition-transform duration-300 group-hover:rotate-12" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -213,91 +182,38 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
         <aside className="w-64 bg-[#131315]/95 border-r border-[#3a494b]/10 flex flex-col justify-between select-none shrink-0 hidden md:flex">
           
           {/* Main folder tree structure */}
-          <div className="flex-1 py-4 flex flex-col overflow-y-auto custom-scrollbar">
-            
-            {/* MANAGEMENT SECTION */}
-            <div 
-              className="flex items-center px-4 mt-2 mb-2 text-[10px] font-mono text-[#849495] tracking-widest uppercase justify-between cursor-pointer hover:text-white transition-colors group select-none"
-              onClick={() => setIsManagementOpen(!isManagementOpen)}
-            >
-              <div className="flex items-center gap-1.5">
-                <span className={`material-symbols-outlined text-sm transition-transform duration-200 ${isManagementOpen ? 'rotate-90' : ''}`}>chevron_right</span>
-                <span>MANAGEMENT</span>
-              </div>
-              <span className="material-symbols-outlined text-sm text-gray-500 group-hover:text-[#74f5ff]">admin_panel_settings</span>
+          <div className="flex-1 py-4 flex flex-col">
+            <div className="flex items-center px-4 mb-3 text-[10px] font-mono text-[#849495] tracking-widest uppercase justify-between">
+              <span>EXPLORER - APPLET_ROOT</span>
+              <span className="material-symbols-outlined text-sm text-gray-500 hover:text-[#74f5ff] cursor-pointer">folder_open</span>
             </div>
             
-            {isManagementOpen && (
-              <div className="space-y-[2px] px-2 mb-6">
-                
-                {[...MANAGEMENT_TOOLS, ...(user.role === 'Admin' ? [
-                  { name: 'Manage Plugins', icon: 'bolt', size: '' },
-                  { name: 'Manage Apps', icon: 'apps', size: '' },
-                  { name: 'Manage Portfolios', icon: 'account_balance_wallet', size: '' }
-                ] : [])].map((file) => {
-
-                  const isSelected = activeTab === file.name;
-                  return (
-                    <button
-                      key={file.name}
-                      type="button"
-                      onClick={() => setActiveTab(file.name)}
-                      className={`w-full flex items-center justify-between p-2.5 rounded font-mono text-xs text-left transition-all cursor-pointer ${
-                        isSelected 
-                          ? 'bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/20 font-bold shadow-[inset_0_0_8px_rgba(0,219,231,0.05)]' 
-                          : 'text-[#b9cacb]/95 hover:text-[#e5e1e4] hover:bg-white/[0.02]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className={`material-symbols-outlined text-base ${isSelected ? 'text-[#00dbe7]' : 'text-gray-500'}`}>
-                          {file.icon}
-                        </span>
-                        <span className="truncate">{file.name}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* PLUGINS SECTION */}
-            <div 
-              className="flex items-center px-4 mb-2 text-[10px] font-mono text-[#849495] tracking-widest uppercase justify-between cursor-pointer hover:text-white transition-colors group select-none"
-              onClick={() => setIsPluginsOpen(!isPluginsOpen)}
-            >
-              <div className="flex items-center gap-1.5">
-                <span className={`material-symbols-outlined text-sm transition-transform duration-200 ${isPluginsOpen ? 'rotate-90' : ''}`}>chevron_right</span>
-                <span>INSTALLED PLUGINS</span>
-              </div>
-              <span className="material-symbols-outlined text-sm text-gray-500 group-hover:text-[#74f5ff]">extension</span>
+            {/* Project files mapping list items */}
+            <div className="space-y-[2px] px-2 flex-grow overflow-y-auto">
+              {PROJECT_FILES.map((file) => {
+                const isSelected = activeTab === file.name;
+                return (
+                  <button
+                    key={file.name}
+                    type="button"
+                    onClick={() => setActiveTab(file.name)}
+                    className={`w-full flex items-center justify-between p-2.5 rounded font-mono text-xs text-left transition-all cursor-pointer ${
+                      isSelected 
+                        ? 'bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/20 font-bold shadow-[inset_0_0_8px_rgba(0,219,231,0.05)]' 
+                        : 'text-[#b9cacb]/95 hover:text-[#e5e1e4] hover:bg-white/[0.02]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <span className={`material-symbols-outlined text-base ${isSelected ? 'text-[#00dbe7]' : 'text-gray-500'}`}>
+                        {file.icon}
+                      </span>
+                      <span className="truncate">{file.name}</span>
+                    </div>
+                    <span className="text-[9px] text-[#849495] font-light hidden lg:inline">{file.size}</span>
+                  </button>
+                );
+              })}
             </div>
-            
-            {isPluginsOpen && (
-              <div className="space-y-[2px] px-2 flex-grow">
-                {INSTALLED_PLUGINS.map((file) => {
-                  const isSelected = activeTab === file.name;
-                  return (
-                    <button
-                      key={file.name}
-                      type="button"
-                      onClick={() => setActiveTab(file.name)}
-                      className={`w-full flex items-center justify-between p-2.5 rounded font-mono text-xs text-left transition-all cursor-pointer ${
-                        isSelected 
-                          ? 'bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/20 font-bold shadow-[inset_0_0_8px_rgba(0,219,231,0.05)]' 
-                          : 'text-[#b9cacb]/95 hover:text-[#e5e1e4] hover:bg-white/[0.02]'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5">
-                        <span className={`material-symbols-outlined text-base ${isSelected ? 'text-[#00dbe7]' : 'text-gray-500'}`}>
-                          {file.icon}
-                        </span>
-                        <span className="truncate">{file.name}</span>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
           </div>
 
           {/* User authenticated credentials footer card */}
@@ -318,7 +234,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
           
           {/* Top responsive filename tabs drawer for touch/mobile devices */}
           <div className="flex md:hidden gap-1 mb-4 overflow-x-auto scrollbar-hide shrink-0">
-            {ALL_TABS.map((file) => (
+            {PROJECT_FILES.map((file) => (
               <button
                 key={file.name}
                 type="button"
@@ -340,7 +256,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
           {/* Render Active Component File Workspace Panel */}
           <div className="flex-grow flex flex-col">
             
-            {activeTab === 'Stock Tracker' && (
+            {activeTab === 'Stock_Tracker.jsx' && (
               <StockTrackerView 
                 logs={logs} 
                 onAddLog={addLog} 
@@ -349,24 +265,32 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               />
             )}
 
-            {activeTab === 'Custom Flow' && (
+            {activeTab === 'Custom_Flow.flow' && (
               <FlowDesignerView 
                 onAddLog={addLog} 
                 userToken={user.token || ''}
               />
             )}
 
-            {activeTab === 'Accounting' && (
+            {activeTab === 'Accounting.module' && (
               <AccountingView 
                 onAddLog={addLog} 
                 userToken={user.token || ''}
               />
             )}
 
-            {activeTab === 'Doc Nexus' && <DocNexusView onAddLog={addLog} userToken={user.token || ''} />}
-            {activeTab === 'Plugin Store' && <WorkspacePluginStore logs={logs} onAddLog={addLog} userEmail={user.email} userToken={user.token || ''} />}
+            {activeTab === 'Doc_Nexus.jsx' && <DocNexusView onAddLog={addLog} userToken={user.token || ''} />}
+            {activeTab === 'Workspace_Plugins.store' && <WorkspacePluginStore logs={logs} onAddLog={addLog} userEmail={user.email} userToken={user.token || ''} />}
 
-            {(activeTab === 'Admin Console' || activeTab === 'Manage Plugins' || activeTab === 'Manage Apps' || activeTab === 'Manage Portfolios') && user.role !== 'Admin' && (
+            {activeTab === 'Admin_Console.module' && (
+              user.role === 'Admin' ? (
+                <AdminConsoleView 
+                  logs={logs} 
+                  onAddLog={addLog} 
+                  currentUserEmail={user.email} 
+                  userToken={user.token || ''}
+                />
+              ) : (
                 <div className="glass-panel p-8 rounded-xl border border-red-900/20 bg-red-950/5 flex flex-col items-center justify-center text-center max-w-lg mx-auto my-12 space-y-4">
                   <div className="w-16 h-16 rounded-full bg-red-950/20 border border-red-900 flex items-center justify-center mb-2">
                     <span className="material-symbols-outlined text-3xl text-[#ffb4ab]">security</span>
@@ -383,29 +307,21 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                         localStorage.setItem('sutharlabs_active_user', JSON.stringify(next));
                         return next;
                       });
-                      addLog({ timestamp: new Date().toLocaleTimeString(), type: 'SUCCESS', message: 'ADMIN: Session credential override activated.' });
+                      addLog({
+                        timestamp: new Date().toLocaleTimeString(),
+                        type: 'SUCCESS',
+                        message: 'ADMIN: Session credential override activated. Role mutated to Administrator.'
+                      });
                     }}
                     className="mt-2 px-6 py-2.5 rounded bg-red-900/40 border border-[#ffb4ab]/30 text-[#ffb4ab] text-xs font-mono font-bold uppercase transition-all hover:bg-red-900/60 cursor-pointer"
                   >
                     Bypass / Elevate to Administrator
                   </button>
                 </div>
-            )}
-            
-            {activeTab === 'Admin Console' && user.role === 'Admin' && (
-              <AdminConsoleView logs={logs} onAddLog={addLog} currentUserEmail={user.email} userToken={user.token || ''} />
-            )}
-            {activeTab === 'Manage Apps' && user.role === 'Admin' && (
-              <ManageAppsView logs={logs} onAddLog={addLog} userToken={user.token || ''} />
-            )}
-            {activeTab === 'Manage Plugins' && user.role === 'Admin' && (
-              <ManagePluginsView logs={logs} onAddLog={addLog} userToken={user.token || ''} />
-            )}
-            {activeTab === 'Manage Portfolios' && user.role === 'Admin' && (
-              <ManagePortfoliosView logs={logs} onAddLog={addLog} userToken={user.token || ''} />
+              )
             )}
 
-            {activeTab === 'README' && (
+            {activeTab === 'README.md' && (
               <MutedMarkdownView />
             )}
 

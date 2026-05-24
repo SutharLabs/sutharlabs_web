@@ -3,7 +3,7 @@ import { RSI, MACD, BollingerBands, ATR, ADX, SMA, EMA } from 'technicalindicato
 
 export async function getQuote(symbol: string) {
   try {
-    const quote = await yahooFinance.quote(symbol);
+    const quote: any = await yahooFinance.quote(symbol);
     return {
       symbol,
       name: quote.longName || quote.shortName || symbol,
@@ -33,7 +33,7 @@ export async function getHistory(symbol: string, period: string = '5d', interval
     
     const queryOpts = pMap[period] || pMap['1W'];
     
-    const result = await yahooFinance.chart(symbol, queryOpts);
+    const result: any = await yahooFinance.chart(symbol, queryOpts);
     const candles = result.quotes.map(q => ({
       time: q.date.toISOString(),
       open: q.open,
@@ -51,7 +51,7 @@ export async function getHistory(symbol: string, period: string = '5d', interval
 
 export async function getAnalysis(symbol: string) {
   try {
-    const result = await yahooFinance.chart(symbol, {
+    const result: any = await yahooFinance.chart(symbol, {
       period1: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
       interval: '1d'
     });

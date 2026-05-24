@@ -6,7 +6,7 @@ export interface UserProfile {
   token?: string;
 }
 
-export type WorkspaceTab = 'Stock_Tracker.jsx' | 'Custom_Flow.flow' | 'Accounting.module' | 'Admin_Console.module' | 'Doc_Nexus.jsx' | 'README.md' | 'Workspace_Plugins.store';
+export type WorkspaceTab = 'Stock Tracker' | 'Custom Flow' | 'Accounting' | 'Admin Console' | 'Manage Plugins' | 'Manage Apps' | 'Manage Portfolios' | 'Doc Nexus' | 'README' | 'Plugin Store';
 
 export interface RegisteredUser {
   id: string;
