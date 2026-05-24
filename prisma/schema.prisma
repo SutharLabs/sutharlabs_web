@@ -106,3 +106,19 @@ model Document {
   content   String
   updatedAt DateTime @updatedAt
 }
+
+// 8. Development Projects Showcase
+model DevelopmentProject {
+  id              String   @id @default(uuid())
+  title           String
+  segment         String
+  description     String
+  detailedCase    String
+  stat            String
+  statLabel       String
+  techs           String   // Serialized JSON array of tags
+  client          String
+  clientTitle     String
+  blueprintSymbol String   @default("globe")
+  imageSrc        String
+}

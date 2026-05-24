@@ -203,14 +203,7 @@ async function seedDatabase() {
             passwordHash: hashPassword(u.password),
             role: u.role,
             joinedAt: u.joinedAt,
-            activityCount: u.activityCount,
-            portfolio: {
-              create: {
-                cash: 10000.0,
-                shares: 0,
-                buyPrice: 0.0
-              }
-            }
+            activityCount: u.activityCount
           }
         });
       }
@@ -252,6 +245,30 @@ async function seedDatabase() {
     }
 
     console.log("[Seeding] SQLite database initialization completed successfully.");
+    // 6. Seed portfolios if none exist
+    const portfolioCount = await prisma.developmentProject.count();
+    if (portfolioCount === 0 && fs.existsSync('./data/portfolios.json')) {
+      console.log("[Seeding] Populating default portfolios...");
+      const data = JSON.parse(fs.readFileSync('./data/portfolios.json', 'utf8'));
+      for (const p of data) {
+        await prisma.developmentProject.create({
+          data: {
+            id: p.id,
+            title: p.title || '',
+            segment: p.segment || '',
+            description: p.description || '',
+            detailedCase: p.detailedCase || '',
+            stat: p.stat || '',
+            statLabel: p.statLabel || '',
+            techs: JSON.stringify(p.techs || []),
+            client: p.client || '',
+            clientTitle: p.clientTitle || '',
+            blueprintSymbol: p.blueprintSymbol || 'globe',
+            imageSrc: p.imageSrc || ''
+          }
+        });
+      }
+    }
   } catch (error) {
     console.error("Failed to seed SQLite database:", error);
   }
