@@ -4,12 +4,14 @@ import { TerminalLog, UserPortfolio } from '../types';
 interface StockTrackerViewProps {
   logs: TerminalLog[];
   onAddLog: (log: TerminalLog) => void;
+  userEmail: string;
+  userToken: string;
 }
 
 // Initial 1W prices for drawing
 const initialPrices = [858.20, 869.50, 862.10, 873.40, 868.90, 875.28];
 
-export default function StockTrackerView({ logs, onAddLog }: StockTrackerViewProps) {
+export default function StockTrackerView({ logs, onAddLog, userEmail, userToken }: StockTrackerViewProps) {
   const [currentPrice, setCurrentPrice] = useState(875.28);
   const [priceChange, setPriceChange] = useState(24.50);
   const [pricePercent, setPricePercent] = useState(2.88);
@@ -23,6 +25,24 @@ export default function StockTrackerView({ logs, onAddLog }: StockTrackerViewPro
     shares: 0,
     buyPrice: 0
   });
+
+  // Load portfolio state from database on mount or when user changes
+  useEffect(() => {
+    const fetchPortfolio = async () => {
+      try {
+        const response = await fetch(`/api/portfolio?email=${encodeURIComponent(userEmail)}`, {
+          headers: { 'Authorization': `Bearer ${userToken}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setPortfolio(data);
+        }
+      } catch (err) {
+        console.error('Failed to load portfolio state:', err);
+      }
+    };
+    fetchPortfolio();
+  }, [userEmail, userToken]);
 
   const [notification, setNotification] = useState<string>('');
   const [selectedAction, setSelectedAction] = useState<'BUY' | 'SELL' | null>(null);
@@ -44,7 +64,7 @@ export default function StockTrackerView({ logs, onAddLog }: StockTrackerViewPro
           const updated = [...prevSeries.slice(1), next];
           return updated;
         });
-
+ 
         // Trigger log
         onAddLog({
           timestamp: new Date().toLocaleTimeString(),
@@ -79,64 +99,80 @@ export default function StockTrackerView({ logs, onAddLog }: StockTrackerViewPro
   }, [onAddLog]);
 
   // Handle buy/sell execution
-  const executeBuy = () => {
+  const executeBuy = async () => {
     if (actionQuantity <= 0) return;
-    const cost = parseFloat((currentPrice * actionQuantity).toFixed(2));
-    if (cost > portfolio.cash) {
-      setNotification('INSUFFICIENT CAPITAL: Order rejected.');
-      return;
+    try {
+      const response = await fetch('/api/portfolio/trade', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          action: 'BUY',
+          quantity: actionQuantity,
+          price: currentPrice
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setNotification(data.error || 'INSUFFICIENT CAPITAL: Order rejected.');
+        return;
+      }
+
+      setPortfolio(data);
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'SUCCESS',
+        message: `SUCCESS: Bought ${actionQuantity} NVDA at $${currentPrice}. Total cost: $${(currentPrice * actionQuantity).toFixed(2)}`
+      });
+
+      setNotification(`Successfully purchased ${actionQuantity} shares of NVDA!`);
+      setSelectedAction(null);
+      setTimeout(() => setNotification(''), 4000);
+    } catch (err) {
+      setNotification('Failed to execute order due to server error.');
     }
-
-    const currentCash = parseFloat((portfolio.cash - cost).toFixed(2));
-    const totalShares = portfolio.shares + actionQuantity;
-    const averageBuy = parseFloat(
-      ((portfolio.buyPrice * portfolio.shares + cost) / totalShares).toFixed(2)
-    );
-
-    setPortfolio({
-      cash: currentCash,
-      shares: totalShares,
-      buyPrice: averageBuy
-    });
-
-    onAddLog({
-      timestamp: new Date().toLocaleTimeString(),
-      type: 'SUCCESS',
-      message: `SUCCESS: Bought ${actionQuantity} NVDA at $${currentPrice}. Total cost: $${cost}`
-    });
-
-    setNotification(`Successfully purchased ${actionQuantity} shares of NVDA!`);
-    setSelectedAction(null);
-    setTimeout(() => setNotification(''), 4000);
   };
 
-  const executeSell = () => {
+  const executeSell = async () => {
     if (actionQuantity <= 0) return;
-    if (actionQuantity > portfolio.shares) {
-      setNotification('INSUFFICIENT POSITION: Limit exceeded.');
-      return;
+    try {
+      const response = await fetch('/api/portfolio/trade', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify({
+          email: userEmail,
+          action: 'SELL',
+          quantity: actionQuantity,
+          price: currentPrice
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setNotification(data.error || 'INSUFFICIENT POSITION: Limit exceeded.');
+        return;
+      }
+
+      setPortfolio(data);
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'SUCCESS',
+        message: `SUCCESS: Sold ${actionQuantity} NVDA at $${currentPrice}. Realized value: $${(currentPrice * actionQuantity).toFixed(2)}`
+      });
+
+      setNotification(`Successfully liquidated ${actionQuantity} shares of NVDA!`);
+      setSelectedAction(null);
+      setTimeout(() => setNotification(''), 4000);
+    } catch (err) {
+      setNotification('Failed to execute order due to server error.');
     }
-
-    const value = parseFloat((currentPrice * actionQuantity).toFixed(2));
-    const currentCash = parseFloat((portfolio.cash + value).toFixed(2));
-    const totalShares = portfolio.shares - actionQuantity;
-    const avgBuy = totalShares === 0 ? 0 : portfolio.buyPrice;
-
-    setPortfolio({
-      cash: currentCash,
-      shares: totalShares,
-      buyPrice: avgBuy
-    });
-
-    onAddLog({
-      timestamp: new Date().toLocaleTimeString(),
-      type: 'SUCCESS',
-      message: `SUCCESS: Sold ${actionQuantity} NVDA at $${currentPrice}. Realized value: $${value}`
-    });
-
-    setNotification(`Successfully liquidated ${actionQuantity} shares of NVDA!`);
-    setSelectedAction(null);
-    setTimeout(() => setNotification(''), 4000);
   };
 
   // Keep terminal scrolled

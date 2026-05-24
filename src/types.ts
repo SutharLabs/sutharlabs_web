@@ -3,9 +3,10 @@ export interface UserProfile {
   name: string;
   isLoggedIn: boolean;
   role?: 'Admin' | 'Developer' | 'Banned';
+  token?: string;
 }
 
-export type WorkspaceTab = 'Stock_Tracker.jsx' | 'Custom_Flow.flow' | 'Accounting.module' | 'Admin_Console.module' | 'README.md';
+export type WorkspaceTab = 'Stock_Tracker.jsx' | 'Custom_Flow.flow' | 'Accounting.module' | 'Admin_Console.module' | 'Doc_Nexus.jsx' | 'README.md';
 
 export interface RegisteredUser {
   id: string;

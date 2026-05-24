@@ -25,9 +25,10 @@ interface AdminConsoleProps {
   logs: TerminalLog[];
   onAddLog: (log: TerminalLog) => void;
   currentUserEmail: string;
+  userToken: string;
 }
 
-export default function AdminConsoleView({ logs, onAddLog, currentUserEmail }: AdminConsoleProps) {
+export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, userToken }: AdminConsoleProps) {
   // Load or initialize registered users from localStorage
   const [users, setUsers] = useState<RegisteredUser[]>([]);
   const [newUser, setNewUser] = useState({ name: '', email: '', role: 'Developer' as const });
@@ -79,7 +80,10 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail }: A
     try {
       const response = await fetch('/api/plugins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
         body: JSON.stringify({
           name: newPlugin.name,
           category: newPlugin.category,
@@ -126,7 +130,8 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail }: A
     if (confirm(`Unpublish and purge the plugin listing for "${name}"?`)) {
       try {
         const response = await fetch(`/api/plugins/${id}`, {
-          method: 'DELETE'
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${userToken}` }
         });
 
         if (!response.ok) {
@@ -157,55 +162,25 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail }: A
   // Simulation state
   const [multiplier, setMultiplier] = useState(1);
 
-  useEffect(() => {
-    const rawUsers = localStorage.getItem('sutharlabs_registered_users');
-    if (rawUsers) {
-      setUsers(JSON.parse(rawUsers));
-    } else {
-      const defaultUsers: RegisteredUser[] = [
-        {
-          id: 'usr_1',
-          name: 'Suthar Suresh',
-          email: 'mr.sutharsuresh@gmail.com',
-          role: 'Admin',
-          joinedAt: '2026-05-20T10:14:00Z',
-          activityCount: 842
-        },
-        {
-          id: 'usr_2',
-          name: 'Suthar Developer',
-          email: 'developer@sutharlabs.io',
-          role: 'Admin',
-          joinedAt: '2026-05-21T08:30:15Z',
-          activityCount: 452
-        },
-        {
-          id: 'usr_3',
-          name: 'Johan Decker',
-          email: 'johan.decker@consensys.net',
-          role: 'Developer',
-          joinedAt: '2026-05-22T14:45:00Z',
-          activityCount: 118
-        },
-        {
-          id: 'usr_4',
-          name: 'Rogue Spammer',
-          email: 'spammer99@rogue.io',
-          role: 'Banned',
-          joinedAt: '2026-05-23T05:12:00Z',
-          activityCount: 12
-        }
-      ];
-      localStorage.setItem('sutharlabs_registered_users', JSON.stringify(defaultUsers));
-      setUsers(defaultUsers);
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/users', {
+        headers: { 'Authorization': `Bearer ${userToken}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch corporate users registry:', err);
     }
-  }, []);
-
-  // Sync users with localStorage when updated
-  const saveUsers = (updated: RegisteredUser[]) => {
-    localStorage.setItem('sutharlabs_registered_users', JSON.stringify(updated));
-    setUsers(updated);
   };
+
+  useEffect(() => {
+    fetchUsers();
+    const interval = setInterval(fetchUsers, 5000);
+    return () => clearInterval(interval);
+  }, [userToken]);
 
   // Telemetry fluctuation simulation
   useEffect(() => {
@@ -228,7 +203,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail }: A
   }, [multiplier]);
 
   // Handle User Registration manually inside admin cockpit
-  const handleAddUserSubmit = (e: React.FormEvent) => {
+  const handleAddUserSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
@@ -238,34 +213,42 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail }: A
       return;
     }
 
-    if (users.some((u) => u.email.toLowerCase() === newUser.email.toLowerCase())) {
-      setErrorMsg('A user with this email coordinates is already index registered.');
-      return;
+    try {
+      const response = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify({
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setErrorMsg(data.error || 'Failed to provision account.');
+        return;
+      }
+
+      setUsers(prev => [...prev, data]);
+      setNewUser({ name: '', email: '', role: 'Developer' });
+      setSuccessMsg(`User ${data.name} provisioned successfully!`);
+
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'SUCCESS',
+        message: `ADMIN: Manual account initialization completed for ${data.email} under role ${data.role}.`
+      });
+    } catch (err) {
+      setErrorMsg('Server database connection error.');
     }
-
-    const created: RegisteredUser = {
-      id: `usr_${Date.now()}`,
-      name: newUser.name,
-      email: newUser.email,
-      role: newUser.role,
-      joinedAt: new Date().toISOString(),
-      activityCount: 0
-    };
-
-    const nextUsers = [...users, created];
-    saveUsers(nextUsers);
-    setNewUser({ name: '', email: '', role: 'Developer' });
-    setSuccessMsg(`User ${created.name} provisioned successfully!`);
-
-    onAddLog({
-      timestamp: new Date().toLocaleTimeString(),
-      type: 'SUCCESS',
-      message: `ADMIN: Manual account initialization completed for ${created.email} under role ${created.role}.`
-    });
   };
 
   // Change user authorization rank/role
-  const handleRoleChange = (userId: string, targetRole: 'Admin' | 'Developer' | 'Banned') => {
+  const handleRoleChange = async (userId: string, targetRole: 'Admin' | 'Developer' | 'Banned') => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
 
@@ -274,20 +257,35 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail }: A
       return;
     }
 
-    const nextUsers = users.map((u) => 
-      u.id === userId ? { ...u, role: targetRole } : u
-    );
-    saveUsers(nextUsers);
+    try {
+      const response = await fetch(`/api/users/${userId}/role`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify({ role: targetRole })
+      });
 
-    onAddLog({
-      timestamp: new Date().toLocaleTimeString(),
-      type: 'ALERT',
-      message: `ADMIN: User role for ${targetUser.email} mutated to [${targetRole}].`
-    });
+      if (!response.ok) {
+        const errData = await response.json();
+        alert(errData.error || 'Failed to update role.');
+        return;
+      }
+
+      setUsers(prev => prev.map(u => u.id === userId ? { ...u, role: targetRole } : u));
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'ALERT',
+        message: `ADMIN: User role for ${targetUser.email} mutated to [${targetRole}].`
+      });
+    } catch (err) {
+      console.error('Failed to change user role:', err);
+    }
   };
 
   // Purge User record from memory store
-  const handleDeleteUser = (userId: string) => {
+  const handleDeleteUser = async (userId: string) => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
 
@@ -297,14 +295,27 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail }: A
     }
 
     if (confirm(`Are you sure you want to permanently delete user record for ${targetUser.name}?`)) {
-      const nextUsers = users.filter((u) => u.id !== userId);
-      saveUsers(nextUsers);
+      try {
+        const response = await fetch(`/api/users/${userId}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${userToken}` }
+        });
 
-      onAddLog({
-        timestamp: new Date().toLocaleTimeString(),
-        type: 'ERROR',
-        message: `ADMIN: User index permanently deleted: ${targetUser.email}. Security tokens cleared.`
-      });
+        if (!response.ok) {
+          const errData = await response.json();
+          alert(errData.error || 'Failed to purge user.');
+          return;
+        }
+
+        setUsers(prev => prev.filter(u => u.id !== userId));
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'ERROR',
+          message: `ADMIN: User index permanently deleted: ${targetUser.email}. Security tokens cleared.`
+        });
+      } catch (err) {
+        console.error('Failed to delete user:', err);
+      }
     }
   };
 

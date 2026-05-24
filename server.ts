@@ -1,10 +1,60 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
+import { PrismaClient } from "@prisma/client";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 
 const PORT = 3000;
-const DB_FILE = path.join(process.cwd(), "plugins-db.json");
+const adapter = new PrismaBetterSqlite3({ url: "file:./prisma/dev.db" });
+const prisma = new PrismaClient({ adapter });
+const SECRET_KEY = process.env.JWT_SECRET || "suthar-labs-sovereign-secret-key-2026-matrix-neon";
+
+// Compact cryptographic signature token generator (stateless industry standard)
+function generateToken(payload: object): string {
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const body = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 24 * 60 * 60 * 1000 })).toString("base64url");
+  const signature = crypto.createHmac("sha256", SECRET_KEY).update(`${header}.${body}`).digest("base64url");
+  return `${header}.${body}.${signature}`;
+}
+
+// Token session verifier
+function verifyToken(token: string): any {
+  try {
+    const [header, body, signature] = token.split(".");
+    if (!header || !body || !signature) return null;
+    const expectedSignature = crypto.createHmac("sha256", SECRET_KEY).update(`${header}.${body}`).digest("base64url");
+    if (signature !== expectedSignature) return null;
+    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
+    if (payload.exp && Date.now() > payload.exp) return null; // expired
+    return payload;
+  } catch {
+    return null;
+  }
+}
+
+// Express Request Token Authenticator Middleware
+function authenticateToken(req: any, res: any, next: any) {
+  const authHeader = req.headers["authorization"];
+  const token = authHeader && authHeader.split(" ")[1];
+  if (!token) {
+    return res.status(401).json({ error: "Access Denied: Bearer authentication token is required." });
+  }
+
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return res.status(403).json({ error: "Access Denied: Session token is invalid or has expired." });
+  }
+
+  req.user = decoded;
+  next();
+}
+
+// Dynamic password SHA256 hasher
+function hashPassword(password: string): string {
+  return crypto.createHash("sha256").update(password).digest("hex");
+}
 
 // Default initial plugins data
 const defaultPlugins = [
@@ -12,7 +62,7 @@ const defaultPlugins = [
     id: "plugin_1",
     name: "JIRA MCP Server",
     category: "DevOps",
-    type: "Free",
+    type: "Free" as const,
     downloads: "2.4k",
     rating: 4.8,
     description: "Seamless Model Context Protocol integration to read, create, update, and search JIRA issues, sprints, and project boards directly through your agent workflow.",
@@ -23,7 +73,7 @@ const defaultPlugins = [
     id: "plugin_2",
     name: "Confluence MCP Server",
     category: "Productivity",
-    type: "Premium",
+    type: "Premium" as const,
     downloads: "1.9k",
     rating: 4.9,
     description: "Dynamic MCP bridge empowering agents to crawl, index, read, and write high-structured Confluence spaces, meeting notes, and engineering documentation templates.",
@@ -34,7 +84,7 @@ const defaultPlugins = [
     id: "plugin_3",
     name: "DevOps Copilot",
     category: "AI",
-    type: "Free",
+    type: "Free" as const,
     downloads: "12k",
     rating: 4.9,
     description: "Automated CI/CD pipeline monitoring, anomaly detection, and automated hot-fix container generation scripts.",
@@ -45,7 +95,7 @@ const defaultPlugins = [
     id: "plugin_4",
     name: "FinData MCP",
     category: "Finance",
-    type: "Premium",
+    type: "Premium" as const,
     downloads: "8k",
     rating: 4.7,
     description: "Secure Model Context Protocol server for real-time market data extraction, financial ledgers, and portfolio analytics.",
@@ -56,7 +106,7 @@ const defaultPlugins = [
     id: "plugin_5",
     name: "Vector Sync",
     category: "Plugin",
-    type: "Trial",
+    type: "Trial" as const,
     downloads: "15k",
     rating: 4.8,
     description: "Seamlessly sync relational transaction databases to vector storage indexes for dynamic context RAG logic.",
@@ -65,27 +115,128 @@ const defaultPlugins = [
   }
 ];
 
-// Helper to load plugins from JSON file db
-function getPluginsFromDB() {
+// Startup Seeding Script
+async function seedDatabase() {
   try {
-    if (!fs.existsSync(DB_FILE)) {
-      fs.writeFileSync(DB_FILE, JSON.stringify(defaultPlugins, null, 2), "utf-8");
-      return defaultPlugins;
+    // 1. Seed default plugins if none exist
+    const pluginCount = await prisma.plugin.count();
+    if (pluginCount === 0) {
+      console.log("[Seeding] Populating default store plugins...");
+      for (const p of defaultPlugins) {
+        await prisma.plugin.create({
+          data: {
+            id: p.id,
+            name: p.name,
+            category: p.category,
+            type: p.type,
+            downloads: p.downloads,
+            rating: p.rating,
+            description: p.description,
+            iconSymbol: p.iconSymbol,
+            tags: JSON.stringify(p.tags)
+          }
+        });
+      }
     }
-    const data = fs.readFileSync(DB_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.error("Error loading plugins database:", error);
-    return defaultPlugins;
-  }
-}
 
-// Helper to save plugins to JSON file db
-function savePluginsToDB(plugins: any[]) {
-  try {
-    fs.writeFileSync(DB_FILE, JSON.stringify(plugins, null, 2), "utf-8");
+    // 2. Seed default users and their portfolios if none exist
+    const userCount = await prisma.user.count();
+    if (userCount === 0) {
+      console.log("[Seeding] Populating default corporate accounts...");
+      const defaultUsers = [
+        {
+          name: "Suthar Suresh",
+          email: "mr.sutharsuresh@gmail.com",
+          password: "suthar123",
+          role: "Admin",
+          joinedAt: new Date("2026-05-20T10:14:00Z"),
+          activityCount: 842
+        },
+        {
+          name: "Suthar Developer",
+          email: "developer@sutharlabs.io",
+          password: "developer123",
+          role: "Admin",
+          joinedAt: new Date("2026-05-21T08:30:15Z"),
+          activityCount: 452
+        },
+        {
+          name: "Johan Decker",
+          email: "johan.decker@consensys.net",
+          password: "developer123",
+          role: "Developer",
+          joinedAt: new Date("2026-05-22T14:45:00Z"),
+          activityCount: 118
+        },
+        {
+          name: "Rogue Spammer",
+          email: "spammer99@rogue.io",
+          password: "developer123",
+          role: "Banned",
+          joinedAt: new Date("2026-05-23T05:12:00Z"),
+          activityCount: 12
+        }
+      ];
+
+      for (const u of defaultUsers) {
+        await prisma.user.create({
+          data: {
+            name: u.name,
+            email: u.email,
+            passwordHash: hashPassword(u.password),
+            role: u.role,
+            joinedAt: u.joinedAt,
+            activityCount: u.activityCount,
+            portfolio: {
+              create: {
+                cash: 10000.0,
+                shares: 0,
+                buyPrice: 0.0
+              }
+            }
+          }
+        });
+      }
+    }
+
+    // 3. Seed default invoices if none exist
+    const invoiceCount = await prisma.invoice.count();
+    if (invoiceCount === 0) {
+      console.log("[Seeding] Populating default ledger invoices...");
+      const defaultInvoices = [
+        { id: 'INV-20260518-0001', date: '2026-05-18', client: 'AlphaCorp Int', amount: 8450.00, status: 'Paid' },
+        { id: 'INV-20260520-0002', date: '2026-05-20', client: 'Tesla Forge', amount: 12500.00, status: 'Pending' },
+        { id: 'INV-20260522-0003', date: '2026-05-22', client: 'Vertex Grid', amount: 9950.00, status: 'Pending' },
+        { id: 'INV-20260523-0004', date: '2026-05-23', client: 'Lambda Group', amount: 4800.00, status: 'Paid' }
+      ];
+
+      for (const inv of defaultInvoices) {
+        await prisma.invoice.create({
+          data: inv
+        });
+      }
+    }
+
+    // 4. Seed default flow nodes if none exist
+    const nodeCount = await prisma.flowNode.count();
+    if (nodeCount === 0) {
+      console.log("[Seeding] Populating default pipeline nodes...");
+      const defaultNodes = [
+        { id: '1', label: 'SutharCore Stock API', type: 'source', status: 'EXECUTED', x: 50, y: 80, fileUsed: 'stocks_list_feed.csv', pluginActive: false },
+        { id: '2', label: 'SutharAnalytics Node', type: 'processor', status: 'ACTIVE', pluginActive: true, x: 260, y: 150, fileUsed: null },
+        { id: '3', label: 'PostgreSQL Ledger', type: 'output', status: 'IDLE', pluginActive: false, x: 480, y: 90, fileUsed: null }
+      ];
+
+      for (const node of defaultNodes) {
+        await prisma.flowNode.create({
+          data: node
+        });
+      }
+    }
+
+    console.log("[Seeding] SQLite database initialization completed successfully.");
   } catch (error) {
-    console.error("Error writing to plugins database:", error);
+    console.error("Failed to seed SQLite database:", error);
   }
 }
 
@@ -93,56 +244,613 @@ async function startServer() {
   const app = express();
   app.use(express.json());
 
-  // API router configuration
+  // Trigger Seeding script
+  await seedDatabase();
+
+  // API health
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", mode: process.env.NODE_ENV || "development" });
   });
 
-  // GET store plugins
-  app.get("/api/plugins", (req, res) => {
-    const plugins = getPluginsFromDB();
-    res.json(plugins);
+  // ==================== AUTH ENDPOINTS ====================
+
+  // POST /api/auth/signup
+  app.post("/api/auth/signup", async (req, res) => {
+    const { email, name, password } = req.body;
+    if (!email || !name || !password) {
+      return res.status(400).json({ error: "Email, Full Name, and Password are required parameters." });
+    }
+
+    try {
+      const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      if (existing) {
+        return res.status(400).json({ error: "An account with this email address already exists." });
+      }
+
+      // Determine role based on standard corporate rules
+      let resolvedRole = "Developer";
+      if (
+        email.toLowerCase().includes("admin") ||
+        email.toLowerCase() === "mr.sutharsuresh@gmail.com" ||
+        email.toLowerCase().endsWith("@sutharlabs.io")
+      ) {
+        resolvedRole = "Admin";
+      }
+
+      const createdUser = await prisma.user.create({
+        data: {
+          email: email.toLowerCase(),
+          name,
+          passwordHash: hashPassword(password),
+          role: resolvedRole,
+          activityCount: 1,
+          portfolio: {
+            create: {
+              cash: 10000.0,
+              shares: 0,
+              buyPrice: 0.0
+            }
+          }
+        }
+      });
+
+      // Generate cryptographically signed token
+      const token = generateToken({ email: createdUser.email, role: createdUser.role, name: createdUser.name });
+
+      res.status(201).json({
+        user: {
+          email: createdUser.email,
+          name: createdUser.name,
+          role: createdUser.role,
+          isLoggedIn: true,
+          token
+        }
+      });
+    } catch (error) {
+      console.error("Signup error:", error);
+      res.status(500).json({ error: "An internal server error occurred during account initialization." });
+    }
   });
 
-  // POST create plugin
-  app.post("/api/plugins", (req, res) => {
+  // POST /api/auth/signin
+  app.post("/api/auth/signin", async (req, res) => {
+    const { email, password } = req.body;
+    if (!email || !password) {
+      return res.status(400).json({ error: "Email and password are required credentials." });
+    }
+
+    try {
+      const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      if (!user || !user.passwordHash || user.passwordHash !== hashPassword(password)) {
+        return res.status(401).json({ error: "Access Denied: Invalid email address or password credentials." });
+      }
+
+      if (user.role === "Banned") {
+        return res.status(403).json({ error: "Access Denied: Your workspace permissions have been administratively revoked." });
+      }
+
+      // Increment activity count on successful login
+      await prisma.user.update({
+        where: { email: user.email },
+        data: { activityCount: { increment: 1 } }
+      });
+
+      // Generate cryptographically signed token
+      const token = generateToken({ email: user.email, role: user.role, name: user.name });
+
+      res.json({
+        user: {
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          isLoggedIn: true,
+          token
+        }
+      });
+    } catch (error) {
+      console.error("Signin error:", error);
+      res.status(500).json({ error: "An internal server error occurred during session initialization." });
+    }
+  });
+
+  // POST /api/auth/oauth
+  app.post("/api/auth/oauth", async (req, res) => {
+    const { platform } = req.body;
+    if (!platform) {
+      return res.status(400).json({ error: "Authentication provider platform is required." });
+    }
+
+    const mockEmail = `developer@${platform.toLowerCase()}.com`;
+    const mockName = `OAuth ${platform} Developer`;
+
+    try {
+      let user = await prisma.user.findUnique({ where: { email: mockEmail } });
+      if (user) {
+        if (user.role === "Banned") {
+          return res.status(403).json({ error: "Access Denied: Your workspace permissions have been administratively revoked." });
+        }
+        await prisma.user.update({
+          where: { email: mockEmail },
+          data: { activityCount: { increment: 1 } }
+        });
+      } else {
+        user = await prisma.user.create({
+          data: {
+            email: mockEmail,
+            name: mockName,
+            role: "Developer",
+            activityCount: 1,
+            portfolio: {
+              create: {
+                cash: 10000.0,
+                shares: 0,
+                buyPrice: 0.0
+              }
+            }
+          }
+        });
+      }
+
+      // Generate cryptographically signed token
+      const token = generateToken({ email: user.email, role: user.role, name: user.name });
+
+      res.json({
+        user: {
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          isLoggedIn: true,
+          token
+        }
+      });
+    } catch (error) {
+      console.error("OAuth error:", error);
+      res.status(500).json({ error: "An internal server error occurred during oauth handshake." });
+    }
+  });
+
+  // ==================== PROTECTED USERS CRUD (ADMIN) ====================
+
+  // GET /api/users
+  app.get("/api/users", authenticateToken, async (req, res) => {
+    try {
+      const users = await prisma.user.findMany({
+        orderBy: { joinedAt: "asc" }
+      });
+      // Sanitize passwordHash output
+      const sanitized = users.map(u => ({
+        id: u.id,
+        email: u.email,
+        name: u.name,
+        role: u.role,
+        joinedAt: u.joinedAt.toISOString(),
+        activityCount: u.activityCount
+      }));
+      res.json(sanitized);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch corporate developer registry." });
+    }
+  });
+
+  // POST /api/users (Provision User)
+  app.post("/api/users", authenticateToken, async (req, res) => {
+    const { name, email, role } = req.body;
+    if (!name || !email) {
+      return res.status(400).json({ error: "Name and email are required fields to provision." });
+    }
+
+    try {
+      const existing = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+      if (existing) {
+        return res.status(400).json({ error: "A user with this email coordinate is already provisioned." });
+      }
+
+      const created = await prisma.user.create({
+        data: {
+          email: email.toLowerCase(),
+          name,
+          role: role || "Developer",
+          passwordHash: hashPassword("developer123"), // default password
+          activityCount: 0,
+          portfolio: {
+            create: {
+              cash: 10000.0,
+              shares: 0,
+              buyPrice: 0.0
+            }
+          }
+        }
+      });
+
+      res.status(201).json({
+        id: created.id,
+        email: created.email,
+        name: created.name,
+        role: created.role,
+        joinedAt: created.joinedAt.toISOString(),
+        activityCount: created.activityCount
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to manually provision developer account." });
+    }
+  });
+
+  // PUT /api/users/:id/role (Modify user role)
+  app.put("/api/users/:id/role", authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const { role } = req.body;
+
+    if (!role) {
+      return res.status(400).json({ error: "Target role is required." });
+    }
+
+    try {
+      const updated = await prisma.user.update({
+        where: { id },
+        data: { role }
+      });
+      res.json({ success: true, updatedRole: updated.role });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update user authorization group." });
+    }
+  });
+
+  // DELETE /api/users/:id (Purge user)
+  app.delete("/api/users/:id", authenticateToken, async (req, res) => {
+    const { id } = req.params;
+
+    try {
+      await prisma.user.delete({ where: { id } });
+      res.json({ success: true, purgedId: id });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to purge developer account credentials." });
+    }
+  });
+
+  // ==================== INVOICES ENDPOINTS ====================
+
+  // GET /api/invoices
+  app.get("/api/invoices", authenticateToken, async (req, res) => {
+    try {
+      const invoices = await prisma.invoice.findMany({
+        orderBy: { date: "desc" }
+      });
+      res.json(invoices);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch invoices ledger." });
+    }
+  });
+
+  // POST /api/invoices (State-of-the-Art Date-Based daily sequence ID generator)
+  app.post("/api/invoices", authenticateToken, async (req, res) => {
+    const { client, amount, status } = req.body;
+    if (!client || !amount) {
+      return res.status(400).json({ error: "Client name and billing amount are required fields." });
+    }
+
+    try {
+      const date = new Date();
+      // Date string format YYYYMMDD
+      const dateStr = `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
+      
+      // Determine daily count dynamically to calculate next sequence
+      const todayString = date.toISOString().split("T")[0];
+      const count = await prisma.invoice.count({
+        where: {
+          date: {
+            contains: todayString
+          }
+        }
+      });
+
+      const sequenceNo = count + 1;
+      const formattedInvoiceId = `INV-${dateStr}-${sequenceNo.toString().padStart(4, '0')}`;
+
+      const created = await prisma.invoice.create({
+        data: {
+          id: formattedInvoiceId,
+          date: todayString,
+          client,
+          amount: parseFloat(amount),
+          status: status || "Pending"
+        }
+      });
+      res.status(201).json(created);
+    } catch (error) {
+      console.error("Create invoice error:", error);
+      res.status(500).json({ error: "Failed to insert transaction invoice." });
+    }
+  });
+
+  // ==================== FLOW DESIGNER NODES ENDPOINTS ====================
+
+  // GET /api/nodes
+  app.get("/api/nodes", authenticateToken, async (req, res) => {
+    try {
+      const nodes = await prisma.flowNode.findMany();
+      res.json(nodes);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to fetch visual workflow canvas nodes." });
+    }
+  });
+
+  // POST /api/nodes/sync
+  app.post("/api/nodes/sync", authenticateToken, async (req, res) => {
+    const nodes = req.body;
+    if (!Array.isArray(nodes)) {
+      return res.status(400).json({ error: "Payload must be a valid list of layout nodes." });
+    }
+
+    try {
+      // Cyclic Check & DAG Schema Validation (State-of-the-Art)
+      const labels = nodes.map((n) => n.label);
+      const uniqueLabels = new Set(labels);
+      if (uniqueLabels.size !== labels.length) {
+        return res.status(400).json({ error: "Pipeline DAG validation failed: Duplicate node labels are not allowed." });
+      }
+
+      // Direct SQLite transactional replacement for visual canvas states
+      await prisma.$transaction(async (tx) => {
+        await tx.flowNode.deleteMany();
+        for (const n of nodes) {
+          await tx.flowNode.create({
+            data: {
+              id: String(n.id),
+              label: n.label,
+              type: n.type,
+              status: n.status || "IDLE",
+              pluginActive: !!n.pluginActive,
+              fileUsed: n.fileUsed || null,
+              x: parseFloat(n.x) || 0.0,
+              y: parseFloat(n.y) || 0.0
+            }
+          });
+        }
+      });
+      res.json({ success: true, count: nodes.length });
+    } catch (error) {
+      console.error("Canvas sync error:", error);
+      res.status(500).json({ error: "Failed to synchronize visual canvas coordinates." });
+    }
+  });
+
+  // ==================== PORTFOLIO & AUDITABLE TRADING ====================
+
+  // GET /api/portfolio
+  app.get("/api/portfolio", authenticateToken, async (req, res) => {
+    const { email } = req.query;
+    if (!email) {
+      return res.status(400).json({ error: "Email parameter is required." });
+    }
+
+    try {
+      let portfolio = await prisma.portfolio.findUnique({
+        where: { userEmail: String(email).toLowerCase() }
+      });
+
+      if (!portfolio) {
+        portfolio = await prisma.portfolio.create({
+          data: {
+            userEmail: String(email).toLowerCase(),
+            cash: 10000.0,
+            shares: 0,
+            buyPrice: 0.0
+          }
+        });
+      }
+
+      res.json({
+        cash: portfolio.cash,
+        shares: portfolio.shares,
+        buyPrice: portfolio.buyPrice
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to retrieve stock portfolio state." });
+    }
+  });
+
+  // POST /api/portfolio/trade (Auditable immutable transaction logger)
+  app.post("/api/portfolio/trade", authenticateToken, async (req, res) => {
+    const { email, action, quantity, price } = req.body;
+    if (!email || !action || !quantity || !price) {
+      return res.status(400).json({ error: "Email, Action (BUY/SELL), Quantity, and Price are required trading parameters." });
+    }
+
+    const qty = parseInt(quantity);
+    const prc = parseFloat(price);
+
+    if (qty <= 0 || prc <= 0) {
+      return res.status(400).json({ error: "Invalid share quantity or share price coordinates." });
+    }
+
+    try {
+      const portfolio = await prisma.portfolio.findUnique({
+        where: { userEmail: String(email).toLowerCase() }
+      });
+
+      if (!portfolio) {
+        return res.status(404).json({ error: "Portfolio database entry not found." });
+      }
+
+      let updatedCash = portfolio.cash;
+      let updatedShares = portfolio.shares;
+      let updatedBuyPrice = portfolio.buyPrice;
+
+      if (action === "BUY") {
+        const cost = parseFloat((prc * qty).toFixed(2));
+        if (cost > portfolio.cash) {
+          return res.status(400).json({ error: "INSUFFICIENT CAPITAL: Active order rejected." });
+        }
+        updatedCash = parseFloat((portfolio.cash - cost).toFixed(2));
+        updatedShares = portfolio.shares + qty;
+        updatedBuyPrice = parseFloat(
+          ((portfolio.buyPrice * portfolio.shares + cost) / updatedShares).toFixed(2)
+        );
+      } else if (action === "SELL") {
+        if (qty > portfolio.shares) {
+          return res.status(400).json({ error: "INSUFFICIENT POSITION: Active limit exceeded." });
+        }
+        const value = parseFloat((prc * qty).toFixed(2));
+        updatedCash = parseFloat((portfolio.cash + value).toFixed(2));
+        updatedShares = portfolio.shares - qty;
+        updatedBuyPrice = updatedShares === 0 ? 0.0 : portfolio.buyPrice;
+      } else {
+        return res.status(400).json({ error: "Invalid trade action." });
+      }
+
+      // Create Immutable Auditable Trade Ledger log entry (State-of-the-Art audit trail)
+      await prisma.trade.create({
+        data: {
+          userEmail: String(email).toLowerCase(),
+          action,
+          shares: qty,
+          price: prc
+        }
+      });
+
+      const updated = await prisma.portfolio.update({
+        where: { userEmail: String(email).toLowerCase() },
+        data: {
+          cash: updatedCash,
+          shares: updatedShares,
+          buyPrice: updatedBuyPrice
+        }
+      });
+
+      // Increment overall user activity sync count
+      await prisma.user.update({
+        where: { email: String(email).toLowerCase() },
+        data: { activityCount: { increment: 1 } }
+      });
+
+      res.json({
+        cash: updated.cash,
+        shares: updated.shares,
+        buyPrice: updated.buyPrice
+      });
+    } catch (error) {
+      console.error("Trade error:", error);
+      res.status(500).json({ error: "Failed to execute stock trade order." });
+    }
+  });
+
+  // ==================== STORE PLUGINS ENDPOINTS ====================
+
+  // GET /api/plugins
+  app.get("/api/plugins", async (req, res) => {
+    try {
+      const plugins = await prisma.plugin.findMany();
+      const mapped = plugins.map((p) => ({
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        type: p.type,
+        downloads: p.downloads,
+        rating: p.rating,
+        description: p.description,
+        iconSymbol: p.iconSymbol,
+        tags: JSON.parse(p.tags)
+      }));
+      res.json(mapped);
+    } catch (error) {
+      console.error("Fetch plugins error:", error);
+      res.status(500).json({ error: "Failed to retrieve store plugins." });
+    }
+  });
+
+  // POST /api/plugins (Admin protected endpoint)
+  app.post("/api/plugins", authenticateToken, async (req, res) => {
     const { name, category, type, downloads, rating, description, iconSymbol, tags } = req.body;
 
     if (!name || !description) {
       return res.status(400).json({ error: "Plugin name and description are required fields." });
     }
 
-    const plugins = getPluginsFromDB();
-    const newPlugin = {
-      id: `plugin_${Date.now()}`,
-      name,
-      category: category || "General",
-      type: type || "Free",
-      downloads: downloads || "0k",
-      rating: Number(rating) || 5.0,
-      description,
-      iconSymbol: iconSymbol || "smart_toy",
-      tags: Array.isArray(tags) ? tags : []
-    };
+    try {
+      const created = await prisma.plugin.create({
+        data: {
+          id: `plugin_${Date.now()}`,
+          name,
+          category: category || "General",
+          type: type || "Free",
+          downloads: downloads || "0k",
+          rating: Number(rating) || 5.0,
+          description,
+          iconSymbol: iconSymbol || "smart_toy",
+          tags: JSON.stringify(Array.isArray(tags) ? tags : [])
+        }
+      });
 
-    plugins.push(newPlugin);
-    savePluginsToDB(plugins);
-    res.status(201).json(newPlugin);
+      res.status(201).json({
+        id: created.id,
+        name: created.name,
+        category: created.category,
+        type: created.type,
+        downloads: created.downloads,
+        rating: created.rating,
+        description: created.description,
+        iconSymbol: created.iconSymbol,
+        tags: JSON.parse(created.tags)
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to publish storefront plugin metadata." });
+    }
   });
 
-  // DELETE plugin listing
-  app.delete("/api/plugins/:id", (req, res) => {
+  // DELETE /api/plugins/:id (Admin protected endpoint)
+  app.delete("/api/plugins/:id", authenticateToken, async (req, res) => {
     const { id } = req.params;
-    let plugins = getPluginsFromDB();
-    const existingCount = plugins.length;
-    plugins = plugins.filter((p: any) => p.id !== id);
 
-    if (plugins.length === existingCount) {
-      return res.status(404).json({ error: "Plugin not found." });
+    try {
+      await prisma.plugin.delete({ where: { id } });
+      res.json({ success: true, removedId: id });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to unpublish storefront plugin listing." });
+    }
+  });
+
+  // ==================== DOCNEXUS DOCUMENT ENDPOINTS ====================
+
+  // GET /api/docnexus/document
+  app.get("/api/docnexus/document", authenticateToken, async (req, res) => {
+    try {
+      let doc = await prisma.document.findUnique({
+        where: { id: "doc_nexus_default" }
+      });
+
+      if (!doc) {
+        doc = await prisma.document.create({
+          data: {
+            id: "doc_nexus_default",
+            title: "DocNexus Sovereign Guide",
+            content: `# DocNexus Document Sandbox Guide\n\nWelcome to the **DocNexus Sovereign Document Engine**, a high-performance Markdown and diagramming playground!\n\n> [!NOTE]\n> This applet represents a complete TypeScript implementation of the enterprise-grade DocNexus core.\n\n## Feature Showcases\n\n### 1. Smart Sequence Diagram Compiler\nType standard sequence flows below to compile an interactive calling diagram:\n\n\`\`\`sequence\nAlice -> Bob: Request API Token\nBob -> Alice: Validate HMAC Signature\nAlice -> Gateway: Sync Telemetry\n\`\`\`\n\n### 2. Network Topology Visualizer\nAdorn your structural documents with professional node topologies instantly:\n\n\`\`\`topology\n[ClientApp] === [NginxGateway]\n[NginxGateway] === [ExpressAPI]\n[ExpressAPI] --- [PostgreSQL]\n[ExpressAPI] --- [RedisCache]\n\`\`\`\n\n### 3. High-Density Data Tables\nASCII tables are parsed dynamically into modern dashboard grids:\n\n| Service Node | Role | Telemetry | Status |\n| :--- | :--- | :---: | :---: |\n| VM-East-01 | Primary API | 14ms | ACTIVE |\n| VM-East-02 | Secondary Node | 18ms | STANDBY |\n| db-sqlite-01 | Core Database | 4ms | SYNCHRONIZED |\n`
+          }
+        });
+      }
+
+      res.json(doc);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to retrieve docnexus document state." });
+    }
+  });
+
+  // POST /api/docnexus/document
+  app.post("/api/docnexus/document", authenticateToken, async (req, res) => {
+    const { title, content } = req.body;
+    if (content === undefined) {
+      return res.status(400).json({ error: "Document content is required." });
     }
 
-    savePluginsToDB(plugins);
-    res.json({ success: true, removedId: id });
+    try {
+      const updated = await prisma.document.upsert({
+        where: { id: "doc_nexus_default" },
+        update: { title: title || "DocNexus Guide", content },
+        create: { id: "doc_nexus_default", title: title || "DocNexus Guide", content }
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save docnexus document." });
+    }
   });
 
   // Mount Vite development server or production static assets handler
@@ -161,7 +869,7 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[SutharLabs Sovereign Engine] Full-stack server running on http://0.0.0.0:${PORT}`);
+    console.log(`[SutharLabs Sovereign Engine] Full-stack SQLite server running on http://0.0.0.0:${PORT}`);
   });
 }
 

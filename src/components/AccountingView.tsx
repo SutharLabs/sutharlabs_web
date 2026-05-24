@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Invoice, TerminalLog } from '../types';
 
 interface AccountingViewProps {
   onAddLog: (log: TerminalLog) => void;
+  userToken: string;
 }
 
 const initialInvoices: Invoice[] = [
@@ -12,9 +13,27 @@ const initialInvoices: Invoice[] = [
   { id: 'ST-00244', date: '2026-05-23', client: 'Lambda Group', amount: 4800.00, status: 'Paid' }
 ];
 
-export default function AccountingView({ onAddLog }: AccountingViewProps) {
+export default function AccountingView({ onAddLog, userToken }: AccountingViewProps) {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Fetch invoices on mount
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      try {
+        const response = await fetch('/api/invoices', {
+          headers: { 'Authorization': `Bearer ${userToken}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setInvoices(data);
+        }
+      } catch (err) {
+        console.error('Failed to fetch invoices:', err);
+      }
+    };
+    fetchInvoices();
+  }, [userToken]);
   
   // New invoice form input states
   const [client, setClient] = useState('');
@@ -33,7 +52,7 @@ export default function AccountingView({ onAddLog }: AccountingViewProps) {
     .filter(i => i.status === 'Paid')
     .reduce((sum, curr) => sum + curr.amount, 0);
 
-  const handleCreateInvoice = (e: React.FormEvent) => {
+  const handleCreateInvoice = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!client || !amount) return;
     
@@ -41,23 +60,35 @@ export default function AccountingView({ onAddLog }: AccountingViewProps) {
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) return;
 
-    const codeId = `ST-00${240 + invoices.length + 1}`;
-    const newInvoice: Invoice = {
-      id: codeId,
-      date: new Date().toISOString().split('T')[0],
+    const newInvoice = {
       client: client,
       amount: parsedAmount,
       status: status
     };
 
-    setInvoices(prev => [newInvoice, ...prev]);
+    try {
+      const response = await fetch('/api/invoices', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify(newInvoice)
+      });
 
-    // Track visual indicators
-    onAddLog({
-      timestamp: new Date().toLocaleTimeString(),
-      type: 'SUCCESS',
-      message: `ACCOUNTING: Formed invoice ${codeId} representing client [${client}] for $${parsedAmount.toFixed(2)}.`
-    });
+      if (response.ok) {
+        const created = await response.json();
+        setInvoices(prev => [created, ...prev]);
+
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'SUCCESS',
+          message: `ACCOUNTING: Formed invoice ${created.id} representing client [${client}] for $${parsedAmount.toFixed(2)}.`
+        });
+      }
+    } catch (err) {
+      console.error('Failed to create backend invoice entry:', err);
+    }
 
     // Reset fields
     setClient('');

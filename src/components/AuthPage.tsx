@@ -14,8 +14,11 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const [loading, setLoading] = useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg('');
     if (!email) {
       setErrorMsg('Please specify a valid email address.');
       return;
@@ -29,114 +32,55 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
       return;
     }
 
-    // Load registered users database to check if banned or sync profile
-    const rawUsers = localStorage.getItem('sutharlabs_registered_users');
-    let userList = [];
-    if (rawUsers) {
-      userList = JSON.parse(rawUsers);
-    } else {
-      userList = [
-        {
-          id: 'usr_1',
-          name: 'Suthar Suresh',
-          email: 'mr.sutharsuresh@gmail.com',
-          role: 'Admin',
-          joinedAt: '2026-05-20T10:14:00Z',
-          activityCount: 842
-        },
-        {
-          id: 'usr_2',
-          name: 'Suthar Developer',
-          email: 'developer@sutharlabs.io',
-          role: 'Admin',
-          joinedAt: '2026-05-21T08:30:15Z',
-          activityCount: 452
-        }
-      ];
-      localStorage.setItem('sutharlabs_registered_users', JSON.stringify(userList));
-    }
+    setLoading(true);
+    try {
+      const endpoint = activeTab === 'signup' ? '/api/auth/signup' : '/api/auth/signin';
+      const body = activeTab === 'signup' 
+        ? { email, name: fullname, password } 
+        : { email, password };
 
-    // Check if the user is banned
-    const existingUser = userList.find((u: any) => u.email.toLowerCase() === email.toLowerCase());
-    if (existingUser && existingUser.role === 'Banned') {
-      setErrorMsg('Access Denied: Your workspace permissions have been administratively revoked.');
-      return;
-    }
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
 
-    // Success login mapping
-    const userName = activeTab === 'signup' ? fullname : (existingUser ? existingUser.name : email.split('@')[0]);
-    
-    // Determine role: Any email with admin, or gmail matching, or sutharlabs.io domain
-    let resolvedRole: 'Admin' | 'Developer' = 'Developer';
-    if (
-      email.toLowerCase().includes('admin') || 
-      email.toLowerCase() === 'mr.sutharsuresh@gmail.com' ||
-      email.toLowerCase().endsWith('@sutharlabs.io')
-    ) {
-      resolvedRole = 'Admin';
-    }
+      const data = await response.json();
+      if (!response.ok) {
+        setErrorMsg(data.error || 'Failed to authenticate.');
+        return;
+      }
 
-    // If new user, insert into registration list
-    if (!existingUser) {
-      const newUserRecord = {
-        id: `usr_${Date.now()}`,
-        name: userName.charAt(0).toUpperCase() + userName.slice(1),
-        email: email,
-        role: resolvedRole,
-        joinedAt: new Date().toISOString(),
-        activityCount: 1
-      };
-      userList.push(newUserRecord);
-      localStorage.setItem('sutharlabs_registered_users', JSON.stringify(userList));
-    } else if (existingUser.role !== resolvedRole) {
-      // Use role stored in DB if it is already there and active
-      resolvedRole = existingUser.role;
+      onLoginSuccess(data.user);
+    } catch (err) {
+      setErrorMsg('Failed to connect to the authentication server.');
+    } finally {
+      setLoading(false);
     }
-
-    onLoginSuccess({
-      email: email,
-      name: userName.charAt(0).toUpperCase() + userName.slice(1),
-      isLoggedIn: true,
-      role: resolvedRole
-    });
   };
 
-  const handleSocialLogin = (platform: 'GitHub' | 'Google') => {
-    const mockEmail = `developer@${platform.toLowerCase()}.com`;
-    
-    // Load database & inspect ban status
-    const rawUsers = localStorage.getItem('sutharlabs_registered_users');
-    let userList = rawUsers ? JSON.parse(rawUsers) : [];
-    const existing = userList.find((u: any) => u.email.toLowerCase() === mockEmail.toLowerCase());
-    
-    if (existing && existing.role === 'Banned') {
-      setErrorMsg('Access Denied: Your workspace permissions have been administratively revoked.');
-      return;
-    }
+  const handleSocialLogin = async (platform: 'GitHub' | 'Google') => {
+    setErrorMsg('');
+    setLoading(true);
+    try {
+      const response = await fetch('/api/auth/oauth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform })
+      });
 
-    let resolvedRole: 'Admin' | 'Developer' = 'Developer';
-    if (!existing) {
-      const mockRecord = {
-        id: `usr_${Date.now()}`,
-        name: `OAuth ${platform} Developer`,
-        email: mockEmail,
-        role: resolvedRole,
-        joinedAt: new Date().toISOString(),
-        activityCount: 1
-      };
-      userList.push(mockRecord);
-      localStorage.setItem('sutharlabs_registered_users', JSON.stringify(userList));
-    } else {
-      resolvedRole = existing.role;
-    }
+      const data = await response.json();
+      if (!response.ok) {
+        setErrorMsg(data.error || 'Failed to authenticate via OAuth.');
+        return;
+      }
 
-    // Generate mock active credentials for smooth user onboarding
-    onLoginSuccess({
-      email: mockEmail,
-      name: `OAuth ${platform} Developer`,
-      isLoggedIn: true,
-      role: resolvedRole
-    });
+      onLoginSuccess(data.user);
+    } catch (err) {
+      setErrorMsg('Failed to connect to the authentication server.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

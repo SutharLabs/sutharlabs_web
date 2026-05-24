@@ -3,6 +3,7 @@ import { FlowNode, TerminalLog } from '../types';
 
 interface FlowDesignerViewProps {
   onAddLog: (log: TerminalLog) => void;
+  userToken: string;
 }
 
 const initialNodes: FlowNode[] = [
@@ -11,8 +12,51 @@ const initialNodes: FlowNode[] = [
   { id: '3', label: 'PostgreSQL Ledger', type: 'output', status: 'IDLE', x: 480, y: 90 }
 ];
 
-export default function FlowDesignerView({ onAddLog }: FlowDesignerViewProps) {
+export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerViewProps) {
   const [nodes, setNodes] = useState<FlowNode[]>(initialNodes);
+
+  // Load layout nodes on mount
+  useEffect(() => {
+    const fetchNodes = async () => {
+      try {
+        const response = await fetch('/api/nodes', {
+          headers: { 'Authorization': `Bearer ${userToken}` }
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setNodes(data);
+        }
+      } catch (err) {
+        console.error('Failed to load nodes:', err);
+      }
+    };
+    fetchNodes();
+  }, [userToken]);
+
+  // Sync canvas nodes layout to backend SQLite
+  const syncNodesWithBackend = async (updatedNodes: FlowNode[]) => {
+    try {
+      const response = await fetch('/api/nodes/sync', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify(updatedNodes)
+      });
+      if (!response.ok) {
+        const errData = await response.json();
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'ERROR',
+          message: `DAG Error: ${errData.error || 'Failed to sync visual workflow canvas.'}`
+        });
+      }
+    } catch (err) {
+      console.error('Failed to sync canvas nodes:', err);
+    }
+  };
+
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>('2');
   const [isDraggingNodeId, setIsDraggingNodeId] = useState<string | null>(null);
   
@@ -70,6 +114,7 @@ export default function FlowDesignerView({ onAddLog }: FlowDesignerViewProps) {
         message: `Node [${nodes.find(n => n.id === isDraggingNodeId)?.label}] coordinate positions updated.`
       });
       setIsDraggingNodeId(null);
+      syncNodesWithBackend(nodes);
     }
   };
 
@@ -90,8 +135,10 @@ export default function FlowDesignerView({ onAddLog }: FlowDesignerViewProps) {
       y: 100 + Math.random() * 80
     };
 
-    setNodes(prev => [...prev, newNode]);
+    const nextNodes = [...nodes, newNode];
+    setNodes(nextNodes);
     setSelectedNodeId(newNode.id);
+    syncNodesWithBackend(nextNodes);
     
     onAddLog({
       timestamp: new Date().toLocaleTimeString(),
@@ -103,7 +150,9 @@ export default function FlowDesignerView({ onAddLog }: FlowDesignerViewProps) {
   // Node property update helpers
   const updateSelectedNode = (updates: Partial<FlowNode>) => {
     if (!selectedNodeId) return;
-    setNodes(prev => prev.map(n => n.id === selectedNodeId ? { ...n, ...updates } : n));
+    const nextNodes = nodes.map(n => n.id === selectedNodeId ? { ...n, ...updates } : n);
+    setNodes(nextNodes);
+    syncNodesWithBackend(nextNodes);
   };
 
   // SVG Bezier Curves drawing calculation helpers
@@ -136,6 +185,7 @@ export default function FlowDesignerView({ onAddLog }: FlowDesignerViewProps) {
           <button 
             onClick={() => {
               setNodes(initialNodes);
+              syncNodesWithBackend(initialNodes);
               onAddLog({
                 timestamp: new Date().toLocaleTimeString(),
                 type: 'ALERT',

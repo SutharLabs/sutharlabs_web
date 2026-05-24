@@ -1,0 +1,81 @@
+datasource db {
+  provider = "sqlite"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// 1. Corporate Accounts
+model User {
+  id            String      @id @default(uuid())
+  email         String      @unique
+  name          String
+  passwordHash  String?
+  role          String      @default("Developer") // Admin, Developer, Banned
+  joinedAt      DateTime    @default(now())
+  activityCount Int         @default(0)
+  portfolio     Portfolio?
+}
+
+// 2. Financial Ledgers
+model Invoice {
+  id      String   @id // e.g. ST-00241
+  date    String
+  client  String
+  amount  Float
+  status  String   // Paid, Pending
+}
+
+// 3. Workflow Layout Nodes
+model FlowNode {
+  id           String   @id
+  label        String
+  type         String   // source, processor, output
+  status       String   @default("IDLE") // IDLE, ACTIVE, EXECUTED
+  pluginActive Boolean  @default(false)
+  fileUsed     String?
+  x            Float
+  y            Float
+}
+
+// 4. Stock Market Portfolios
+model Portfolio {
+  id        String   @id @default(uuid())
+  userEmail String   @unique
+  cash      Float    @default(10000.0)
+  shares    Int      @default(0)
+  buyPrice  Float    @default(0.0)
+  user      User     @relation(fields: [userEmail], references: [email], onDelete: Cascade)
+}
+
+// 5. MCP Store registry
+model Plugin {
+  id          String   @id @default(uuid())
+  name        String
+  category    String
+  type        String   // Free, Premium, Trial
+  downloads   String   @default("0k")
+  rating      Float    @default(5.0)
+  description String
+  iconSymbol  String   @default("smart_toy")
+  tags        String   // Serialized JSON array of tags
+}
+
+// 6. Immutable Auditable Trade Logs
+model Trade {
+  id        String   @id @default(uuid())
+  userEmail String
+  action    String   // BUY, SELL
+  shares    Int
+  price     Float
+  timestamp DateTime @default(now())
+}
+
+// 7. DocNexus Document Store
+model Document {
+  id        String   @id @default("doc_nexus_default")
+  title     String
+  content   String
+  updatedAt DateTime @updatedAt
+}

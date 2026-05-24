@@ -7,6 +7,7 @@ import FlowDesignerView from './components/FlowDesignerView';
 import AccountingView from './components/AccountingView';
 import MutedMarkdownView from './components/MutedMarkdownView';
 import AdminConsoleView from './components/AdminConsoleView';
+import DocNexusView from './components/DocNexusView';
 
 // Preset directories matching the IDE mockup
 const PROJECT_FILES: { name: WorkspaceTab; icon: string; size: string }[] = [
@@ -14,16 +15,27 @@ const PROJECT_FILES: { name: WorkspaceTab; icon: string; size: string }[] = [
   { name: 'Custom_Flow.flow', icon: 'account_tree', size: '4.8 KB' },
   { name: 'Accounting.module', icon: 'currency_exchange', size: '18.2 KB' },
   { name: 'Admin_Console.module', icon: 'security', size: '9.3 KB' },
+  { name: 'Doc_Nexus.jsx', icon: 'menu_book', size: '15.6 KB' },
   { name: 'README.md', icon: 'description', size: '2.1 KB' }
 ];
 
 export default function App() {
-  // Navigation Routing states
   const [user, setUser] = useState<UserProfile>({
     email: 'developer@sutharlabs.io',
     name: 'Suthar Developer',
     isLoggedIn: false // starts false to showcase the premium Landing Page first, then can launch or authenticate!
   });
+
+  useEffect(() => {
+    const saved = localStorage.getItem('sutharlabs_active_user');
+    if (saved) {
+      try {
+        setUser(JSON.parse(saved));
+      } catch (err) {
+        console.error('Failed to load saved session:', err);
+      }
+    }
+  }, []);
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'signin' | 'signup'>('signin');
@@ -56,6 +68,7 @@ export default function App() {
 
   const handleLoginSuccess = (profile: UserProfile) => {
     setUser(profile);
+    localStorage.setItem('sutharlabs_active_user', JSON.stringify(profile));
     setIsAuthOpen(false);
     addLog({
       timestamp: new Date().toLocaleTimeString(),
@@ -66,6 +79,7 @@ export default function App() {
 
   const handleLogout = () => {
     setUser({ email: '', name: '', isLoggedIn: false });
+    localStorage.removeItem('sutharlabs_active_user');
     addLog({
       timestamp: new Date().toLocaleTimeString(),
       type: 'ALERT',
@@ -244,18 +258,29 @@ export default function App() {
               <StockTrackerView 
                 logs={logs} 
                 onAddLog={addLog} 
+                userEmail={user.email}
+                userToken={user.token || ''}
               />
             )}
 
             {activeTab === 'Custom_Flow.flow' && (
               <FlowDesignerView 
                 onAddLog={addLog} 
+                userToken={user.token || ''}
               />
             )}
 
             {activeTab === 'Accounting.module' && (
               <AccountingView 
                 onAddLog={addLog} 
+                userToken={user.token || ''}
+              />
+            )}
+
+            {activeTab === 'Doc_Nexus.jsx' && (
+              <DocNexusView 
+                onAddLog={addLog} 
+                userToken={user.token || ''}
               />
             )}
 
@@ -265,6 +290,7 @@ export default function App() {
                   logs={logs} 
                   onAddLog={addLog} 
                   currentUserEmail={user.email} 
+                  userToken={user.token || ''}
                 />
               ) : (
                 <div className="glass-panel p-8 rounded-xl border border-red-900/20 bg-red-950/5 flex flex-col items-center justify-center text-center max-w-lg mx-auto my-12 space-y-4">
@@ -278,7 +304,11 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => {
-                      setUser(prev => ({ ...prev, role: 'Admin' }));
+                      setUser(prev => {
+                        const next = { ...prev, role: 'Admin' as const };
+                        localStorage.setItem('sutharlabs_active_user', JSON.stringify(next));
+                        return next;
+                      });
                       addLog({
                         timestamp: new Date().toLocaleTimeString(),
                         type: 'SUCCESS',

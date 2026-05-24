@@ -70,4 +70,4 @@ npm start
 
 ---
 
-*Copyright &copy; 2026 SutharLabs Systems Corp. All rights reserved.*
+*Copyright &copy; 2026 SutharLabs. All rights reserved.*
