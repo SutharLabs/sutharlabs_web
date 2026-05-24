@@ -139,6 +139,25 @@ async function seedDatabase() {
       }
     }
 
+    }
+
+    // 1b. Seed Workspace Plugins
+    const wsPluginCount = await prisma.workspacePlugin.count();
+    if (wsPluginCount === 0) {
+      console.log("[Seeding] Populating workspace plugins...");
+      await prisma.workspacePlugin.create({
+        data: {
+          id: "wp_stock_analyzer",
+          name: "Stock Market Analyzer",
+          category: "Finance",
+          type: "Native",
+          description: "Real-time stock data fetching, technical indicators (RSI, MACD, Bollinger), and algorithmic trading suggestions via native Node.js and Yahoo Finance.",
+          iconSymbol: "candlestick_chart",
+          version: "2.0.0"
+        }
+      });
+    }
+
     // 2. Seed default users and their portfolios if none exist
     const userCount = await prisma.user.count();
     if (userCount === 0) {
@@ -563,6 +582,139 @@ async function startServer() {
   });
 
   // ==================== FLOW DESIGNER NODES ENDPOINTS ====================
+
+    console.error("Failed to delete App Store plugin:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// ==========================================
+// WORKSPACE PLUGIN STORE API
+// ==========================================
+
+app.get("/api/workspace-plugins", async (req, res) => {
+  try {
+    const plugins = await prisma.workspacePlugin.findMany();
+    res.json(plugins);
+  } catch (error) {
+    console.error("Failed to fetch workspace plugins:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// Install a plugin for the current user
+app.post("/api/workspace-plugins/install", authenticateToken, async (req: any, res: any) => {
+  try {
+    const { pluginId } = req.body;
+    if (!pluginId) return res.status(400).json({ error: "Missing pluginId" });
+
+    const install = await prisma.userWorkspacePlugin.create({
+      data: {
+        userEmail: req.user.email,
+        pluginId: pluginId
+      }
+    });
+    res.json(install);
+  } catch (error: any) {
+    if (error.code === 'P2002') return res.status(400).json({ error: "Plugin already installed" });
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+app.delete("/api/workspace-plugins/install/:pluginId", authenticateToken, async (req: any, res: any) => {
+  try {
+    const pluginId = req.params.pluginId;
+    await prisma.userWorkspacePlugin.delete({
+      where: {
+        userEmail_pluginId: {
+          userEmail: req.user.email,
+          pluginId: pluginId
+        }
+      }
+    });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to uninstall plugin" });
+  }
+});
+
+app.get("/api/workspace-plugins/installed", authenticateToken, async (req: any, res: any) => {
+  try {
+    const installs = await prisma.userWorkspacePlugin.findMany({
+      where: { userEmail: req.user.email },
+      include: { plugin: true }
+    });
+    res.json(installs.map(i => i.plugin));
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch installed plugins" });
+  }
+});
+
+// ==========================================
+// NATIVE TS STOCK ANALYZER API
+// ==========================================
+// Using dynamic imports so we don't crash if yahoo-finance2 is missing during build
+app.get("/api/workspace/stock-analyzer/quote", async (req: any, res: any) => {
+  try {
+    const { getQuote } = await import("./src/plugins/StockAnalyzer/index.ts");
+    const data = await getQuote(req.query.symbol as string);
+    res.json(data);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/workspace/stock-analyzer/history", async (req: any, res: any) => {
+  try {
+    const { getHistory } = await import("./src/plugins/StockAnalyzer/index.ts");
+    const data = await getHistory(req.query.symbol as string, req.query.period as string, req.query.interval as string);
+    res.json(data);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/workspace/stock-analyzer/analysis", async (req: any, res: any) => {
+  try {
+    const { getAnalysis } = await import("./src/plugins/StockAnalyzer/index.ts");
+    const data = await getAnalysis(req.query.symbol as string);
+    res.json(data);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/workspace/stock-analyzer/suggestion", async (req: any, res: any) => {
+  try {
+    const { getSuggestion } = await import("./src/plugins/StockAnalyzer/index.ts");
+    const data = await getSuggestion(req.query.symbol as string);
+    res.json(data);
+  } catch (e: any) { res.status(500).json({ error: e.message }); }
+});
+
+app.get("/api/workspace/stock-analyzer/nifty50", (req, res) => {
+  res.json([
+    {"symbol": "RELIANCE.NS",   "name": "Reliance Industries"},
+    {"symbol": "TCS.NS",        "name": "Tata Consultancy Services"},
+    {"symbol": "HDFCBANK.NS",   "name": "HDFC Bank"},
+    {"symbol": "INFY.NS",       "name": "Infosys"},
+    {"symbol": "ICICIBANK.NS",  "name": "ICICI Bank"},
+    {"symbol": "HINDUNILVR.NS", "name": "Hindustan Unilever"}
+  ]);
+});
+
+// ==========================================
+// ADMIN PORTFOLIO API
+// ==========================================
+
+app.get("/api/admin/portfolios", authenticateToken, async (req: any, res: any) => {
+  if (req.user.role !== 'Admin') return res.status(403).json({ error: "Admins only" });
+  try {
+    const portfolios = await prisma.portfolio.findMany({ include: { user: true } });
+    res.json(portfolios);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch portfolios" });
+  }
+});
+
+
+// ==========================================
+// DOCNEXUS API (Document Management)
+// ==========================================
 
   // GET /api/nodes
   app.get("/api/nodes", authenticateToken, async (req, res) => {

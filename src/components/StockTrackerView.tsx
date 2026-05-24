@@ -8,7 +8,7 @@ interface StockTrackerViewProps {
   userToken: string;
 }
 
-const STOCK_API = 'http://localhost:5001/api';
+const STOCK_API = '/api/workspace/stock-analyzer';
 
 interface Quote {
   symbol: string;
@@ -92,9 +92,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
 
   // ── Fetch NIFTY 50 list on mount ───────────────────────────────────────────
   useEffect(() => {
-    fetch(`${STOCK_API}/health`)
-      .then(r => r.ok ? setApiOnline(true) : setApiOnline(false))
-      .catch(() => setApiOnline(false));
+    setApiOnline(true);
 
     fetch(`${STOCK_API}/nifty50`)
       .then(r => r.json())

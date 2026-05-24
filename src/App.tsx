@@ -8,6 +8,7 @@ import AccountingView from './components/AccountingView';
 import MutedMarkdownView from './components/MutedMarkdownView';
 import AdminConsoleView from './components/AdminConsoleView';
 import DocNexusView from './components/DocNexusView';
+import WorkspacePluginStore from './components/WorkspacePluginStore';
 
 // Preset directories matching the IDE mockup
 const PROJECT_FILES: { name: WorkspaceTab; icon: string; size: string }[] = [
@@ -16,6 +17,7 @@ const PROJECT_FILES: { name: WorkspaceTab; icon: string; size: string }[] = [
   { name: 'Accounting.module', icon: 'currency_exchange', size: '18.2 KB' },
   { name: 'Admin_Console.module', icon: 'security', size: '9.3 KB' },
   { name: 'Doc_Nexus.jsx', icon: 'menu_book', size: '15.6 KB' },
+  { name: 'Workspace_Plugins.store', icon: 'extension', size: '3.1 KB' },
   { name: 'README.md', icon: 'description', size: '2.1 KB' }
 ];
 
@@ -277,12 +279,8 @@ export default function App() {
               />
             )}
 
-            {activeTab === 'Doc_Nexus.jsx' && (
-              <DocNexusView 
-                onAddLog={addLog} 
-                userToken={user.token || ''}
-              />
-            )}
+            {activeTab === 'Doc_Nexus.jsx' && <DocNexusView logs={logs} onAddLog={addLog} userEmail={user.email} userToken={user.token || ''} />}
+            {activeTab === 'Workspace_Plugins.store' && <WorkspacePluginStore logs={logs} onAddLog={addLog} userEmail={user.email} userToken={user.token || ''} />}
 
             {activeTab === 'Admin_Console.module' && (
               user.role === 'Admin' ? (

@@ -32,6 +32,9 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
   // Load or initialize registered users from localStorage
   const [users, setUsers] = useState<RegisteredUser[]>([]);
   const [newUser, setNewUser] = useState({ name: '', email: '', role: 'Developer' as const });
+  const [activeAdminTab, setActiveAdminTab] = useState<'DASHBOARD' | 'APP_STORE' | 'WORKSPACE_PLUGINS' | 'PORTFOLIOS'>('DASHBOARD');
+  const [portfolios, setPortfolios] = useState<any[]>([]);
+  const [workspacePlugins, setWorkspacePlugins] = useState<any[]>([]);
 
   // Store management states
   const [plugins, setPlugins] = useState<StorePlugin[]>([]);
@@ -61,11 +64,26 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
     }
   };
 
+  const fetchAdminData = async () => {
+    try {
+      const pRes = await fetch('/api/admin/portfolios', { headers: { 'Authorization': `Bearer ${userToken}` } });
+      if (pRes.ok) setPortfolios(await pRes.json());
+      const wpRes = await fetch('/api/workspace-plugins');
+      if (wpRes.ok) setWorkspacePlugins(await wpRes.json());
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchPlugins();
-    const interval = setInterval(fetchPlugins, 3000);
+    fetchAdminData();
+    const interval = setInterval(() => {
+      fetchPlugins();
+      fetchAdminData();
+    }, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [userToken]);
 
   const handleAddPluginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -393,325 +411,264 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
             onClick={initiateUsageSpike}
             className="px-3 py-1.5 rounded text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border bg-[#1a2c31] text-[#74f5ff] border-[#00dbe7]/30 hover:bg-[#00dbe7]/20 transition-all flex items-center gap-2"
           >
-            <Zap className="w-3.5 h-3.5 text-[#00dbe7] animate-pulse" />
-            Stress Test Payload
+            <span className="material-symbols-outlined text-sm">{systemActive ? 'CheckCircle' : 'ShieldAlert'}</span>
+            {systemActive ? 'ACTIVE' : 'MAINTENANCE'}
           </button>
         </div>
       </div>
 
-      {/* Aggregate Telemetry Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        
-        {/* Core CPU Utilization */}
-        <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
-          <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-            <span className="flex items-center gap-1.5 text-gray-400">
-              <Cpu className="w-4 h-4 text-[#00e476]" />
-              Edge CPU Usage
-            </span>
-            <span className={`${cpuUsage > 80 ? 'text-[#ffb4ab] font-bold' : 'text-[#00e476]'}`}>{cpuUsage}%</span>
-          </div>
-          <div className="w-full bg-[#1b1b1f] h-2 rounded-full overflow-hidden">
-            <div 
-              style={{ width: `${cpuUsage}%` }} 
-              className={`h-full transition-all duration-700 ${
-                cpuUsage > 80 ? 'bg-[#ffb4ab]' : cpuUsage > 60 ? 'bg-[#ce5dff]' : 'bg-[#00e476]'
-              }`}
-            ></div>
-          </div>
-          <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Allocated: 12 Cores / Xeon E-2388</span>
-        </div>
-
-        {/* JVM/Memory Pool */}
-        <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
-          <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-            <span className="flex items-center gap-1.5 text-gray-400">
-              <HardDrive className="w-4 h-4 text-[#74f5ff]" />
-              Memory Pool (RAM)
-            </span>
-            <span className="text-[#00dbe7]">{memoryUsage}%</span>
-          </div>
-          <div className="w-full bg-[#1b1b1f] h-2 rounded-full overflow-hidden">
-            <div 
-              style={{ width: `${memoryUsage}%` }} 
-              className="h-full bg-[#00dbe7] transition-all duration-700"
-            ></div>
-          </div>
-          <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Used: {(16 * memoryUsage / 100).toFixed(1)} GB / 16.0 GB</span>
-        </div>
-
-        {/* Global Request Rate */}
-        <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
-          <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-            <span className="flex items-center gap-1.5 text-gray-400">
-              <TrendingUp className="w-4 h-4 text-[#ce5dff]" />
-              API Requests/s
-            </span>
-            <span className="text-[#ce5dff] font-bold">{requestRate} r/s</span>
-          </div>
-          <div className="w-full bg-[#1b1b1f] h-2 rounded-full overflow-hidden">
-            <div 
-              style={{ width: `${Math.min(100, (requestRate / 500) * 100)}%` }} 
-              className="h-full bg-[#ce5dff] transition-all duration-700"
-            ></div>
-          </div>
-          <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Avg Response Latency: 12.8ms</span>
-        </div>
-
-        {/* WebSocket Sync Nodes */}
-        <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
-          <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-            <span className="flex items-center gap-1.5 text-gray-400">
-              <Globe className="w-4 h-4 text-amber-400" />
-              Gateway Peers
-            </span>
-            <span className="text-[#ebb2ff]">99.99%</span>
-          </div>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xl font-bold font-mono text-[#e5e1e4]">24 Active</span>
-            <span className="px-1.5 py-0.5 rounded bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 text-[9px] font-mono">GMT TLS</span>
-          </div>
-          <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Data Replication Target: US-East-H</span>
-        </div>
+      {/* Tab Selector */}
+      <div className="flex gap-2 border-b border-[#3a494b]/20 pb-0">
+        {(['DASHBOARD', 'APP_STORE', 'WORKSPACE_PLUGINS', 'PORTFOLIOS'] as const).map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveAdminTab(tab)}
+            className={`px-4 py-2 font-mono text-xs uppercase font-bold tracking-wider transition-all border-b-2 ${
+              activeAdminTab === tab 
+                ? 'text-[#00dbe7] border-[#00dbe7]' 
+                : 'text-[#849495] border-transparent hover:text-[#b9cacb]'
+            }`}
+          >
+            {tab.replace('_', ' ')}
+          </button>
+        ))}
       </div>
 
-      {/* Main Panel Content (Split User List + Add User Form) */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-        
-        {/* User Management List Directory Block */}
-        <div className="lg:col-span-2 glass-panel p-5 rounded-xl border border-[#3a494b]/15 bg-[#131315]/20 flex flex-col space-y-4">
-          <div className="flex justify-between items-center pb-2 border-b border-[#3a494b]/10">
-            <h3 className="font-sans font-bold text-sm text-[#e5e1e4] flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#00dbe7]" />
-              Authorized Corporate Accounts ({users.length})
-            </h3>
-            <span className="text-[10px] font-mono text-gray-500 bg-[#1b1b1f] px-2 py-0.5 rounded border border-[#3a494b]/20">
-              Local DB Indexed
-            </span>
+      {activeAdminTab === 'DASHBOARD' && (
+        <>
+          {/* Aggregate Telemetry Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            {/* Core CPU Utilization */}
+            <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
+              <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
+                <span className="flex items-center gap-1.5 text-gray-400">
+                  <Cpu className="w-4 h-4 text-[#00e476]" />
+                  Edge CPU Usage
+                </span>
+                <span className={`${cpuUsage > 80 ? 'text-[#ffb4ab] font-bold' : 'text-[#00e476]'}`}>{cpuUsage}%</span>
+              </div>
+              <div className="w-full bg-[#1b1b1f] h-2 rounded-full overflow-hidden">
+                <div 
+                  style={{ width: `${cpuUsage}%` }} 
+                  className={`h-full transition-all duration-700 ${
+                    cpuUsage > 80 ? 'bg-[#ffb4ab]' : cpuUsage > 60 ? 'bg-[#ce5dff]' : 'bg-[#00e476]'
+                  }`}
+                ></div>
+              </div>
+              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Allocated: 12 Cores / Xeon E-2388</span>
+            </div>
+
+            {/* JVM/Memory Pool */}
+            <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
+              <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
+                <span className="flex items-center gap-1.5 text-gray-400">
+                  <HardDrive className="w-4 h-4 text-[#74f5ff]" />
+                  Memory Pool (RAM)
+                </span>
+                <span className="text-[#00dbe7]">{memoryUsage}%</span>
+              </div>
+              <div className="w-full bg-[#1b1b1f] h-2 rounded-full overflow-hidden">
+                <div 
+                  style={{ width: `${memoryUsage}%` }} 
+                  className="h-full bg-[#00dbe7] transition-all duration-700"
+                ></div>
+              </div>
+              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Used: {(16 * memoryUsage / 100).toFixed(1)} GB / 16.0 GB</span>
+            </div>
+
+            {/* Global Request Rate */}
+            <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
+              <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
+                <span className="flex items-center gap-1.5 text-gray-400">
+                  <TrendingUp className="w-4 h-4 text-[#ce5dff]" />
+                  API Requests/s
+                </span>
+                <span className="text-[#ce5dff] font-bold">{requestRate} r/s</span>
+              </div>
+              <div className="w-full bg-[#1b1b1f] h-2 rounded-full overflow-hidden">
+                <div 
+                  style={{ width: `${Math.min(100, (requestRate / 500) * 100)}%` }} 
+                  className="h-full bg-[#ce5dff] transition-all duration-700"
+                ></div>
+              </div>
+              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Avg Response Latency: 12.8ms</span>
+            </div>
+
+            {/* WebSocket Sync Nodes */}
+            <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
+              <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
+                <span className="flex items-center gap-1.5 text-gray-400">
+                  <Globe className="w-4 h-4 text-amber-400" />
+                  Gateway Peers
+                </span>
+                <span className="text-[#ebb2ff]">99.99%</span>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <span className="text-xl font-bold font-mono text-[#e5e1e4]">24 Active</span>
+                <span className="px-1.5 py-0.5 rounded bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 text-[9px] font-mono">GMT TLS</span>
+              </div>
+              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Data Replication Target: US-East-H</span>
+            </div>
           </div>
 
-          {/* Users Table */}
-          <div className="overflow-x-auto min-w-full">
-            <table className="w-full text-left font-mono text-xs text-[#b9cacb]">
-              <thead>
-                <tr className="border-b border-[#3a494b]/10 text-gray-500 select-none pb-2 text-[10px] uppercase tracking-wider">
-                  <th className="py-2.5 font-semibold">User Details</th>
-                  <th className="py-2.5 font-semibold">Access Privilege</th>
-                  <th className="py-2.5 font-semibold hidden md:table-cell">Usage Track</th>
-                  <th className="py-2.5 font-semibold text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#3a494b]/10 text-[11px]">
-                {users.map((item) => (
-                  <tr 
-                    key={item.id} 
-                    className={`hover:bg-white/[0.01] transition-all ${
-                      item.role === 'Banned' ? 'opacity-50 line-through bg-red-950/5' : ''
-                    }`}
-                  >
-                    <td className="py-3">
-                      <div className="font-sans font-bold text-[#e5e1e4] text-xs">{item.name}</div>
-                      <div className="text-[10px] text-gray-400 select-all">{item.email}</div>
-                      <div className="text-[9px] text-gray-500 mt-0.5">Joined: {new Date(item.joinedAt).toLocaleDateString()}</div>
-                    </td>
-                    <td className="py-3">
-                      <select
-                        aria-label="Access privilege role selection"
-                        value={item.role}
-                        onChange={(e) => handleRoleChange(item.id, e.target.value as any)}
-                        disabled={item.email === currentUserEmail}
-                        className={`bg-[#201f21] border text-xs rounded px-2 py-1 font-mono transition-all outline-none cursor-pointer focus:ring-1 focus:ring-[#00dbe7] ${
-                          item.role === 'Admin' 
-                            ? 'border-[#ce5dff]/50 text-[#ebb2ff] font-bold' 
-                            : item.role === 'Banned' 
-                            ? 'border-red-900 text-red-400' 
-                            : 'border-[#3a494b]/40 text-[#00dbe7]'
+          {/* Main Panel Content (Split User List + Add User Form) */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+            
+            {/* User Management List Directory Block */}
+            <div className="lg:col-span-2 glass-panel p-5 rounded-xl border border-[#3a494b]/15 bg-[#131315]/20 flex flex-col space-y-4">
+              <div className="flex justify-between items-center pb-2 border-b border-[#3a494b]/10">
+                <h3 className="font-sans font-bold text-sm text-[#e5e1e4] flex items-center gap-2">
+                  <Users className="w-4 h-4 text-[#00dbe7]" />
+                  Authorized Corporate Accounts ({users.length})
+                </h3>
+                <span className="text-[10px] font-mono text-gray-500 bg-[#1b1b1f] px-2 py-0.5 rounded border border-[#3a494b]/20">
+                  Local DB Indexed
+                </span>
+              </div>
+
+              {/* Users Table */}
+              <div className="overflow-x-auto min-w-full">
+                <table className="w-full text-left font-mono text-xs text-[#b9cacb]">
+                  <thead>
+                    <tr className="border-b border-[#3a494b]/10 text-gray-500 select-none pb-2 text-[10px] uppercase tracking-wider">
+                      <th className="py-2.5 font-semibold">User Details</th>
+                      <th className="py-2.5 font-semibold">Access Privilege</th>
+                      <th className="py-2.5 font-semibold hidden md:table-cell">Usage Track</th>
+                      <th className="py-2.5 font-semibold text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#3a494b]/10 text-[11px]">
+                    {users.map((item) => (
+                      <tr 
+                        key={item.id} 
+                        className={`hover:bg-white/[0.01] transition-all ${
+                          item.role === 'Banned' ? 'opacity-50 line-through bg-red-950/5' : ''
                         }`}
                       >
-                        <option value="Admin">Administrator</option>
-                        <option value="Developer">Developer</option>
-                        <option value="Banned">Banned</option>
-                      </select>
-                    </td>
-                    <td className="py-3 hidden md:table-cell">
-                      <div className="text-[12px] font-bold text-white">{item.activityCount + (item.role !== 'Banned' ? Math.round(multiplier * Math.random() * 4) : 0)} syncs</div>
-                      <span className="text-[9px] text-gray-500">API Gateway Calls</span>
-                    </td>
-                    <td className="py-3 text-right">
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteUser(item.id)}
-                        disabled={item.email === currentUserEmail}
-                        className="p-1.5 hover:bg-[#ffb4ab]/10 text-gray-400 hover:text-[#ffb4ab] rounded transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
-                        title="Delete User Record"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                        <td className="py-3">
+                          <div className="font-sans font-bold text-[#e5e1e4] text-xs">{item.name}</div>
+                          <div className="text-[10px] text-gray-400 select-all">{item.email}</div>
+                          <div className="text-[9px] text-gray-500 mt-0.5">Joined: {new Date(item.joinedAt).toLocaleDateString()}</div>
+                        </td>
+                        <td className="py-3">
+                          <select
+                            aria-label="Access privilege role selection"
+                            value={item.role}
+                            onChange={(e) => handleRoleChange(item.id, e.target.value as any)}
+                            disabled={item.email === currentUserEmail}
+                            className={`bg-[#201f21] border text-xs rounded px-2 py-1 font-mono transition-all outline-none cursor-pointer focus:ring-1 focus:ring-[#00dbe7] ${
+                              item.role === 'Admin' 
+                                ? 'border-[#ce5dff]/50 text-[#ebb2ff] font-bold' 
+                                : item.role === 'Banned' 
+                                ? 'border-red-900 text-red-400' 
+                                : 'border-[#3a494b]/40 text-[#00dbe7]'
+                            }`}
+                          >
+                            <option value="Admin">Administrator</option>
+                            <option value="Developer">Developer</option>
+                            <option value="Banned">Banned</option>
+                          </select>
+                        </td>
+                        <td className="py-3 hidden md:table-cell">
+                          <div className="text-[12px] font-bold text-white">{item.activityCount + (item.role !== 'Banned' ? Math.round(multiplier * Math.random() * 4) : 0)} syncs</div>
+                          <span className="text-[9px] text-gray-500">API Gateway Calls</span>
+                        </td>
+                        <td className="py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteUser(item.id)}
+                            disabled={item.email === currentUserEmail}
+                            className="p-1.5 hover:bg-[#ffb4ab]/10 text-gray-400 hover:text-[#ffb4ab] rounded transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+                            title="Delete User Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Add New User Account Column Panel */}
+            <div className="glass-panel p-5 rounded-xl border border-[#3a494b]/15 bg-[#131315]/30 flex flex-col space-y-4">
+              <div className="pb-2 border-b border-[#3a494b]/10">
+                <h3 className="font-sans font-bold text-sm text-[#e5e1e4] flex items-center gap-2">
+                  <UserPlus className="w-4 h-4 text-[#ebb2ff]" />
+                  Provision Account
+                </h3>
+                <p className="text-[10px] text-gray-400 font-mono mt-0.5">Initialize developer workspace permissions manual override.</p>
+              </div>
+
+              {errorMsg && (
+                <div className="p-3 rounded-lg bg-red-950/40 border border-red-900 text-[#ffb4ab] text-[10px] font-mono flex items-center gap-2">
+                  <ShieldAlert className="w-4 h-4 shrink-0" />
+                  <span>{errorMsg}</span>
+                </div>
+              )}
+
+              {successMsg && (
+                <div className="p-3 rounded-lg bg-green-950/40 border border-green-900 text-[#61ff97] text-[10px] font-mono flex items-center gap-2">
+                  <CheckCircle className="w-4 h-4 shrink-0" />
+                  <span>{successMsg}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleAddUserSubmit} className="space-y-4 font-mono text-xs">
+                <div>
+                  <label htmlFor="fullname" className="block text-gray-400 mb-1">Corporate Full Name</label>
+                  <input
+                    id="fullname"
+                    type="text"
+                    placeholder="e.g. Satoshi Nakamoto"
+                    value={newUser.name}
+                    onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
+                    className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2.5 text-[#e5e1e4] placeholder-gray-600 focus:outline-none focus:border-[#ce5dff] transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="email" className="block text-gray-400 mb-1">Authorizing Email Coordinate</label>
+                  <input
+                    id="email"
+                    type="email"
+                    placeholder="developer@sutharlabs.com"
+                    value={newUser.email}
+                    onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                    className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2.5 text-[#e5e1e4] placeholder-gray-600 focus:outline-none focus:border-[#ce5dff] transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="authgroup" className="block text-gray-400 mb-1">User Authorization Group</label>
+                  <select
+                    id="authgroup"
+                    value={newUser.role}
+                    onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
+                    className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2.5 text-[#e5e1e4] focus:outline-none focus:border-[#ce5dff] transition-colors"
+                  >
+                    <option value="Developer">Developer Profile</option>
+                    <option value="Admin">System Administrator</option>
+                  </select>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full py-2.5 rounded bg-[#ce5dff] text-black font-semibold hover:brightness-110 tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs"
+                >
+                  <UserPlus className="w-4 h-4" />
+                  PROVISION CREDENTIALS
+                </button>
+              </form>
+            </div>
           </div>
-        </div>
+        </>
+      )}
 
-        {/* Add New User Account Column Panel */}
-        <div className="glass-panel p-5 rounded-xl border border-[#3a494b]/15 bg-[#131315]/30 flex flex-col space-y-4">
-          <div className="pb-2 border-b border-[#3a494b]/10">
-            <h3 className="font-sans font-bold text-sm text-[#e5e1e4] flex items-center gap-2">
-              <UserPlus className="w-4 h-4 text-[#ebb2ff]" />
-              Provision Account
-            </h3>
-            <p className="text-[10px] text-gray-400 font-mono mt-0.5">Initialize developer workspace permissions manual override.</p>
-          </div>
-
-          {errorMsg && (
-            <div className="p-3 rounded-lg bg-red-950/40 border border-red-900 text-[#ffb4ab] text-[10px] font-mono flex items-center gap-2">
-              <ShieldAlert className="w-4 h-4 shrink-0" />
-              <span>{errorMsg}</span>
-            </div>
-          )}
-
-          {successMsg && (
-            <div className="p-3 rounded-lg bg-green-950/40 border border-green-900 text-[#61ff97] text-[10px] font-mono flex items-center gap-2">
-              <CheckCircle className="w-4 h-4 shrink-0" />
-              <span>{successMsg}</span>
-            </div>
-          )}
-
-          <form onSubmit={handleAddUserSubmit} className="space-y-4 font-mono text-xs">
-            <div>
-              <label htmlFor="fullname" className="block text-gray-400 mb-1">Corporate Full Name</label>
-              <input
-                id="fullname"
-                type="text"
-                placeholder="e.g. Satoshi Nakamoto"
-                value={newUser.name}
-                onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2.5 text-[#e5e1e4] placeholder-gray-600 focus:outline-none focus:border-[#ce5dff] transition-colors"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="email" className="block text-gray-400 mb-1">Authorizing Email Coordinate</label>
-              <input
-                id="email"
-                type="email"
-                placeholder="developer@sutharlabs.com"
-                value={newUser.email}
-                onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2.5 text-[#e5e1e4] placeholder-gray-600 focus:outline-none focus:border-[#ce5dff] transition-colors"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="authgroup" className="block text-gray-400 mb-1">User Authorization Group</label>
-              <select
-                id="authgroup"
-                value={newUser.role}
-                onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
-                className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2.5 text-[#e5e1e4] focus:outline-none focus:border-[#ce5dff] transition-colors"
-              >
-                <option value="Developer">Developer Profile</option>
-                <option value="Admin">System Administrator</option>
-              </select>
-            </div>
-
-            <button
-              type="submit"
-              className="w-full py-2.5 rounded bg-[#ce5dff] text-black font-semibold hover:brightness-110 tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs"
-            >
-              <UserPlus className="w-4 h-4" />
-              PROVISION CREDENTIALS
-            </button>
-          </form>
-        </div>
-      </div>
-
-      {/* MCP Storefront Metadata Register & Management Panel */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start mt-6">
-        
-        {/* Plugin Catalog list directory */}
-        <div className="lg:col-span-2 glass-panel p-5 rounded-xl border border-[#3a494b]/15 bg-[#131315]/20 flex flex-col space-y-4">
-          <div className="flex justify-between items-center pb-2 border-b border-[#3a494b]/10">
-            <h3 className="font-sans font-bold text-sm text-[#e5e1e4] flex items-center gap-2">
-              <Server className="w-4 h-4 text-[#ce5dff]" />
-              Active Store plugins &amp; MCP Servers ({plugins.length})
-            </h3>
-            <span className="text-[10px] font-mono text-gray-500 bg-[#1b1b1f] px-2 py-0.5 rounded border border-[#3a494b]/20">
-              SutharLabs Registry
-            </span>
-          </div>
-
-          <div className="overflow-x-auto">
-            <table className="w-full text-left font-mono text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-[#3a494b]/10 text-gray-400">
-                  <th className="py-2.5 font-bold">Plugin/Server Module Details</th>
-                  <th className="py-2.5 font-bold">Category</th>
-                  <th className="py-2.5 font-bold text-center">Type</th>
-                  <th className="py-2.5 font-bold text-right text-[#00dbe7]">Downloads</th>
-                  <th className="py-2.5 font-bold text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#3a494b]/5">
-                {plugins.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="py-8 text-center text-gray-500 text-xs italic">
-                      No plugins registered in local SutharLabs catalog.
-                    </td>
-                  </tr>
-                ) : (
-                  plugins.map((plugin) => (
-                    <tr key={plugin.id} className="hover:bg-white/[0.01] transition-all">
-                      <td className="py-3 pr-2 max-w-[280px]">
-                        <div className="flex items-start gap-2.5">
-                          <span className="material-symbols-outlined text-[#74f5ff] text-[18px] bg-[#00dbe7]/10 p-1.5 rounded mt-0.5 select-none shrink-0">
-                            {plugin.iconSymbol || 'smart_toy'}
-                          </span>
-                          <div className="space-y-1">
-                            <div className="font-bold text-[#e5e1e4]">{plugin.name}</div>
-                            <div className="text-[10px] text-[#b9cacb]/80 leading-normal line-clamp-2">{plugin.description}</div>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {(plugin.tags || []).map(t => (
-                                <span key={t} className="px-1 text-[#00dbe7] bg-[#00f2ff]/5 border border-[#00dbe7]/10 rounded text-[9px]">#{t}</span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3 text-gray-300 align-top">{plugin.category}</td>
-                      <td className="py-3 align-top text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                          plugin.type === 'Free' 
-                            ? 'bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/20' 
-                            : plugin.type === 'Premium' 
-                              ? 'bg-[#ce5dff]/10 text-[#ce5dff] border border-[#ce5dff]/20' 
-                              : 'bg-[#74f5ff]/10 text-[#74f5ff] border border-[#74f5ff]/20'
-                        }`}>
-                          {plugin.type}
-                        </span>
-                      </td>
-                      <td className="py-3 align-top text-right text-gray-300 font-bold">{plugin.downloads}</td>
-                      <td className="py-3 align-top text-center">
-                        <button
-                          onClick={() => handleDeletePlugin(plugin.id, plugin.name)}
-                          className="p-1 px-1.5 rounded bg-red-950/20 text-[#ffb4ab] border border-red-950 hover:bg-red-900/40 hover:text-white transition-colors cursor-pointer"
-                          title="Unpublish Listing"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 inline" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Publish/Register Form panel */}
-        <div className="glass-panel p-5 rounded-xl border border-[#3a494b]/15 bg-[#131315]/20 space-y-4">
+      {activeAdminTab === 'APP_STORE' && (
+        <div className="glass-panel p-6 rounded-lg border border-[#3a494b]/20 bg-[#131315]/20 space-y-4">
           <div className="pb-2 border-b border-[#3a494b]/10">
             <h3 className="font-sans font-bold text-sm text-[#e5e1e4] flex items-center gap-2">
               <PlusCircle className="w-4 h-4 text-[#74f5ff]" />
@@ -851,7 +808,75 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
             </button>
           </form>
         </div>
-      </div>
+      )}
+
+      {activeAdminTab === 'WORKSPACE_PLUGINS' && (
+        <div className="glass-panel p-6 rounded-lg border border-[#3a494b]/20 flex flex-col gap-4">
+          <div className="flex items-center gap-3 border-b border-[#3a494b]/20 pb-3">
+            <span className="material-symbols-outlined text-[#00dbe7] text-2xl">extension</span>
+            <div>
+              <h3 className="text-[#e5e1e4] font-bold">Workspace Plugins Inventory</h3>
+              <p className="text-[10px] font-mono text-[#849495]">Manage internal workspace extensions</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {workspacePlugins.map(wp => (
+              <div key={wp.id} className="p-4 bg-[#131315] border border-[#3a494b]/30 rounded">
+                <div className="flex justify-between items-start">
+                  <div className="flex gap-3">
+                    <span className="material-symbols-outlined text-[#00dbe7]">{wp.iconSymbol}</span>
+                    <div>
+                      <div className="text-[#e5e1e4] font-bold text-sm">{wp.name}</div>
+                      <div className="text-[#849495] font-mono text-[9px]">v{wp.version} | {wp.category}</div>
+                    </div>
+                  </div>
+                  <button className="text-[#ffb4ab] hover:bg-[#ffb4ab]/10 p-1 rounded transition-colors">
+                    <span className="material-symbols-outlined text-sm">delete</span>
+                  </button>
+                </div>
+                <p className="text-xs text-[#b9cacb] mt-2 line-clamp-2">{wp.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {activeAdminTab === 'PORTFOLIOS' && (
+        <div className="glass-panel p-6 rounded-lg border border-[#3a494b]/20 flex flex-col gap-4">
+           <div className="flex items-center gap-3 border-b border-[#3a494b]/20 pb-3">
+            <span className="material-symbols-outlined text-[#ce5dff] text-2xl">account_balance_wallet</span>
+            <div>
+              <h3 className="text-[#e5e1e4] font-bold">User Portfolios</h3>
+              <p className="text-[10px] font-mono text-[#849495]">View all active user trading portfolios</p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left font-mono text-xs">
+              <thead className="text-[#849495] uppercase tracking-wider border-b border-[#3a494b]/20 bg-[#131315]">
+                <tr>
+                  <th className="py-2 px-3">User</th>
+                  <th className="py-2 px-3">Cash Balance</th>
+                  <th className="py-2 px-3">Positions</th>
+                  <th className="py-2 px-3">Avg Buy</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#3a494b]/10">
+                {portfolios.map(p => (
+                  <tr key={p.id} className="hover:bg-white/5 transition-colors">
+                    <td className="py-3 px-3">
+                      <div className="text-[#e5e1e4]">{p.user?.name}</div>
+                      <div className="text-[9px] text-[#849495]">{p.userEmail}</div>
+                    </td>
+                    <td className="py-3 px-3 text-[#00e476]">${p.cash.toFixed(2)}</td>
+                    <td className="py-3 px-3 text-[#ebb2ff]">{p.shares} shares</td>
+                    <td className="py-3 px-3 text-[#b9cacb]">${p.buyPrice.toFixed(2)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* System simulation logs drawer */}
       <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-black/40 overflow-hidden flex flex-col h-48">

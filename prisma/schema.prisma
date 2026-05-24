@@ -8,14 +8,15 @@ generator client {
 
 // 1. Corporate Accounts
 model User {
-  id            String      @id @default(uuid())
-  email         String      @unique
-  name          String
-  passwordHash  String?
-  role          String      @default("Developer") // Admin, Developer, Banned
-  joinedAt      DateTime    @default(now())
-  activityCount Int         @default(0)
-  portfolio     Portfolio?
+  id               String                @id @default(uuid())
+  email            String                @unique
+  name             String
+  passwordHash     String?
+  role             String                @default("Developer") // Admin, Developer, Banned
+  joinedAt         DateTime              @default(now())
+  activityCount    Int                   @default(0)
+  portfolio        Portfolio?
+  workspacePlugins UserWorkspacePlugin[]
 }
 
 // 2. Financial Ledgers
@@ -49,7 +50,7 @@ model Portfolio {
   user      User     @relation(fields: [userEmail], references: [email], onDelete: Cascade)
 }
 
-// 5. MCP Store registry
+// 5. MCP Store registry (App Store)
 model Plugin {
   id          String   @id @default(uuid())
   name        String
@@ -60,6 +61,32 @@ model Plugin {
   description String
   iconSymbol  String   @default("smart_toy")
   tags        String   // Serialized JSON array of tags
+}
+
+// 5b. Workspace Plugin Store registry
+model WorkspacePlugin {
+  id          String   @id @default(uuid())
+  name        String
+  category    String
+  type        String   // Native, Extension, Tool
+  description String
+  iconSymbol  String   @default("extension")
+  version     String   @default("1.0.0")
+  
+  installedBy UserWorkspacePlugin[]
+}
+
+// 5c. Join table for User installed Workspace Plugins
+model UserWorkspacePlugin {
+  id         String   @id @default(uuid())
+  userEmail  String
+  pluginId   String
+  installedAt DateTime @default(now())
+
+  user       User             @relation(fields: [userEmail], references: [email], onDelete: Cascade)
+  plugin     WorkspacePlugin  @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+  
+  @@unique([userEmail, pluginId])
 }
 
 // 6. Immutable Auditable Trade Logs
