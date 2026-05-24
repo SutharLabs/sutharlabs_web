@@ -123,7 +123,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       client: 'Driven Enterprise',
       clientTitle: 'Director of Digital Brand',
       blueprintSymbol: 'globe',
-      imageSrc: 'https://image.thum.io/get/width/1280/crop/800/https://drivenenterprise.in/'
+      imageSrc: '/driven_enterprise.png'
     },
     {
       id: 'proj_2',
@@ -137,7 +137,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       client: 'Trust Board',
       clientTitle: 'Lead Trustee, Aradhana Trust',
       blueprintSymbol: 'account_balance',
-      imageSrc: 'https://image.thum.io/get/width/1280/crop/800/https://aradhanadharmikatrust.org/'
+      imageSrc: '/aradhana_trust.png'
     },
     {
       id: 'proj_3',
@@ -151,7 +151,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       client: 'Tina Maria',
       clientTitle: 'Creator & Lead Author',
       blueprintSymbol: 'article',
-      imageSrc: 'https://image.thum.io/get/width/1280/crop/800/https://gotoxinfreewithtina.com/'
+      imageSrc: '/gotoxinfree_tina.png'
     },
     {
       id: 'proj_4',
@@ -165,7 +165,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       client: 'Internal Systems',
       clientTitle: 'Founder, SutharLabs',
       blueprintSymbol: 'deployed_code',
-      imageSrc: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&q=80'
+      imageSrc: '/sutharlabs_engine.png'
     }
   ];
 
@@ -724,7 +724,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                       <div className="lg:col-span-5 h-64 lg:h-auto min-h-[250px] relative select-none">
                         <img 
                           alt={proj.title} 
-                          className="fluid-img w-full h-full object-cover filter brightness-[0.7] mix-blend-luminosity opacity-40"
+                          className="fluid-img w-full h-full object-cover"
                           src={proj.imageSrc}
                         />
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#131315]/95 z-10 hidden lg:block"></div>
@@ -1015,7 +1015,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   <div className="h-44 bg-zinc-900 flex items-center justify-center relative select-none">
                     <img 
                       alt={proj.title} 
-                      className="fluid-img w-full h-full object-cover mix-blend-luminosity opacity-20 filter saturate-150 transition-all duration-500 group-hover:scale-102 group-hover:opacity-40"
+                      className="fluid-img w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
                       referrerPolicy="no-referrer"
                       src={proj.imageSrc}
                     />
@@ -1163,8 +1163,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-1">
+                  <div className="space-y-1">
                       <label className="text-gray-500 block">PROJECT TYPE</label>
                       <select className="w-full bg-[#0c0c0e] border border-[#3a494b]/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs cursor-pointer">
                         <option>Web Application Dev</option>
@@ -1174,16 +1173,6 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                         <option>Other Complex Systems</option>
                       </select>
                     </div>
-                    <div className="space-y-1">
-                      <label className="text-gray-500 block">ESTIMATED BUDGET</label>
-                      <select className="w-full bg-[#0c0c0e] border border-[#3a494b]/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs cursor-pointer">
-                        <option>$5,000 - $10,000</option>
-                        <option>$10,000 - $25,000</option>
-                        <option>$25,000 - $50,000</option>
-                        <option>$50,000+</option>
-                      </select>
-                    </div>
-                  </div>
 
                   <div className="space-y-1">
                     <label className="text-gray-500 block">PROJECT SPECIFICATION OVERVIEW</label>
