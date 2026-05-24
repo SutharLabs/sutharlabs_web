@@ -25,7 +25,7 @@ Welcome to the **SutharLabs Sovereign Engine Portal**, a high-performance comman
 
 ## 📂 Systems Documentation
 
-For a detailed walkthrough of file directories, coordinate SVG math formulas, regex parsing rules, backend REST API endpoint definitions, and CSS theme specifications, read the **[SutharLabs Systems Documentation](DOCUMENTATION.md)**.
+For a detailed walkthrough of file directories, coordinate SVG math formulas, regex parsing rules, backend REST API endpoint definitions, and CSS theme specifications, read the **[SutharLabs Systems Documentation](docs/DOCUMENTATION.md)**.
 
 ---
 
