@@ -139,8 +139,6 @@ async function seedDatabase() {
       }
     }
 
-    }
-
     // 1b. Seed Workspace Plugins
     const wsPluginCount = await prisma.workspacePlugin.count();
     if (wsPluginCount === 0) {
@@ -583,10 +581,6 @@ async function startServer() {
 
   // ==================== FLOW DESIGNER NODES ENDPOINTS ====================
 
-    console.error("Failed to delete App Store plugin:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
 
 // ==========================================
 // WORKSPACE PLUGIN STORE API
