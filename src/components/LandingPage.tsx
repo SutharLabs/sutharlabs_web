@@ -123,7 +123,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       client: 'Driven Enterprise',
       clientTitle: 'Director of Digital Brand',
       blueprintSymbol: 'globe',
-      imageSrc: 'https://images.unsplash.com/photo-1531403009284-440f080d1e12?auto=format&fit=crop&w=800&q=80'
+      imageSrc: 'https://image.thum.io/get/width/1280/crop/800/https://drivenenterprise.in/'
     },
     {
       id: 'proj_2',
@@ -137,7 +137,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       client: 'Trust Board',
       clientTitle: 'Lead Trustee, Aradhana Trust',
       blueprintSymbol: 'account_balance',
-      imageSrc: 'https://images.unsplash.com/photo-1602631985686-2bb0f0a8696e?auto=format&fit=crop&w=800&q=80'
+      imageSrc: 'https://image.thum.io/get/width/1280/crop/800/https://aradhanadharmikatrust.org/'
     },
     {
       id: 'proj_3',
@@ -151,7 +151,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       client: 'Tina Maria',
       clientTitle: 'Creator & Lead Author',
       blueprintSymbol: 'article',
-      imageSrc: 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=800&q=80'
+      imageSrc: 'https://image.thum.io/get/width/1280/crop/800/https://gotoxinfreewithtina.com/'
     },
     {
       id: 'proj_4',
@@ -255,7 +255,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               currentView === 'STORE' ? 'text-[#ce5dff] bg-white/5 font-bold border-none' : 'text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 bg-transparent border-none'
             }`}
           >
-            MCP Store
+            App Store
           </button>
           <button 
             onClick={() => {
@@ -381,7 +381,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                     window.scrollTo({ top: 0, behavior: 'smooth' });
                   }}
                 >
-                  <span className="text-[#ebb2ff] text-xs">◆</span> MCP Store
+                  <span className="text-[#ebb2ff] text-xs">◆</span> App Store
                 </button>
                 <button 
                   className="w-full text-left text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
@@ -448,7 +448,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   }}
                   className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#ce5dff]/30 bg-[#ce5dff]/5 text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#ebb2ff] hover:bg-[#ce5dff]/15 hover:border-[#ce5dff]/60 transition-all duration-300 cursor-pointer"
                 >
-                  Browse MCP Store
+                  Browse App Store
                 </button>
                 
                 <button 
@@ -823,17 +823,17 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           <div className="flex items-center gap-2 text-xs font-mono text-gray-500 select-none">
             <button onClick={() => setCurrentView('HOME')} className="hover:text-white transition-all bg-transparent border-none cursor-pointer">HOME</button>
             <span>/</span>
-            <span className="text-[#ce5dff]">MCP STORE</span>
+            <span className="text-[#ce5dff]">APP STORE</span>
           </div>
 
           {/* Header copy */}
           <div className="space-y-3">
             <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
               <span className="material-symbols-outlined text-[#ce5dff] text-3xl sm:text-4xl">storefront</span>
-              Model Context Protocol (MCP) Store
+              SutharLabs App Store
             </h2>
             <p className="text-sm sm:text-base text-[#b9cacb] max-w-3xl font-sans font-light leading-relaxed">
-              Explore our catalog of Model Context Protocol (MCP) servers and tools. Built with a freemium model, these plugins act as high-fidelity pipelines giving AI agents the context, data access, and API power to automate engineering workflows out of the box.
+              Explore our catalog of developer tools, intelligent workspaces, agentic plugins, and advanced engineering integrations. Built on a freemium model, these apps give developers and AI agents the ultimate toolbox to automate workflows out of the box.
             </p>
           </div>
 
