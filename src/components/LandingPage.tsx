@@ -39,10 +39,19 @@ interface PortfolioProject {
 }
 
 export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingPageProps) {
+  const [currentView, setCurrentView] = useState<'HOME' | 'STORE' | 'PORTFOLIO'>('HOME');
   const [activeFilter, setActiveFilter] = useState<'All' | 'Web Dev' | 'Mobile Apps' | 'AI & Analytics'>('All');
   const [selectedProject, setSelectedProject] = useState<PortfolioProject | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [plugins, setPlugins] = useState<StorePlugin[]>([]);
+
+  // Carousels active indexes
+  const [activePluginIndex, setActivePluginIndex] = useState(0);
+  const [activePortfolioIndex, setActivePortfolioIndex] = useState(0);
+
+  // Store View search and filter
+  const [storeSearchQuery, setStoreSearchQuery] = useState('');
+  const [storeActiveCategory, setStoreActiveCategory] = useState<'All' | 'DevOps' | 'Productivity' | 'AI' | 'Finance' | 'Plugin'>('All');
 
   // Load store plugins from real backend REST API routes
   useEffect(() => {
@@ -141,7 +150,10 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       {/* Responsive Top Navigation Bar */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 py-3 bg-[#131315]/80 backdrop-blur-xl rounded-full mt-4 mx-auto w-[92%] sm:w-[95%] max-w-7xl border border-[#3a494b]/10 shadow-[0_0_15px_rgba(0,219,231,0.08)] transition-all duration-300 ease-out">
         <div 
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} 
+          onClick={() => {
+            setCurrentView('HOME');
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }} 
           className="flex items-center gap-2.5 cursor-pointer group"
         >
           <svg className="w-6 h-6 sm:w-7 sm:h-7 transition-transform duration-300 group-hover:rotate-12" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -162,10 +174,54 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
 
         {/* Desktop Navigation links */}
         <div className="hidden lg:flex items-center gap-6 xl:gap-8 font-mono text-xs">
-          <a className="text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-2.5 py-1.5 rounded transition-all duration-200" href="#features">Features</a>
-          <a className="text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-2.5 py-1.5 rounded transition-all duration-200" href="#services">Services offered</a>
-          <a className="text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-2.5 py-1.5 rounded transition-all duration-200" href="#portfolio">Our Portfolio</a>
-          <a className="text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-2.5 py-1.5 rounded transition-all duration-200" href="#store">MCP Store</a>
+          <button 
+            onClick={() => {
+              setCurrentView('HOME');
+              setTimeout(() => {
+                const el = document.getElementById('features');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }, 50);
+            }}
+            className={`px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer ${
+              currentView === 'HOME' ? 'text-[#74f5ff] bg-white/5 font-bold' : 'text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5'
+            }`}
+          >
+            Features
+          </button>
+          <button 
+            onClick={() => {
+              setCurrentView('HOME');
+              setTimeout(() => {
+                const el = document.getElementById('services');
+                if (el) el.scrollIntoView({ behavior: 'smooth' });
+              }, 50);
+            }}
+            className="text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer bg-transparent border-none"
+          >
+            Services offered
+          </button>
+          <button 
+            onClick={() => {
+              setCurrentView('PORTFOLIO');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={`px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer ${
+              currentView === 'PORTFOLIO' ? 'text-[#00e476] bg-white/5 font-bold border-none' : 'text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 bg-transparent border-none'
+            }`}
+          >
+            Our Portfolio
+          </button>
+          <button 
+            onClick={() => {
+              setCurrentView('STORE');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+            className={`px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer ${
+              currentView === 'STORE' ? 'text-[#ce5dff] bg-white/5 font-bold border-none' : 'text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 bg-transparent border-none'
+            }`}
+          >
+            MCP Store
+          </button>
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
@@ -235,34 +291,52 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
 
               {/* Stack of navigation page anchors */}
               <div className="flex flex-col gap-4 text-sm mt-4">
-                <a 
-                  className="text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2" 
-                  href="#features"
-                  onClick={() => setIsMobileMenuOpen(false)}
+                <button 
+                  className="w-full text-left text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setCurrentView('HOME');
+                    setTimeout(() => {
+                      const el = document.getElementById('features');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }, 50);
+                  }}
                 >
                   <span className="text-[#ce5dff] text-xs">◆</span> Features
-                </a>
-                <a 
-                  className="text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2" 
-                  href="#services"
-                  onClick={() => setIsMobileMenuOpen(false)}
+                </button>
+                <button 
+                  className="w-full text-left text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setCurrentView('HOME');
+                    setTimeout(() => {
+                      const el = document.getElementById('services');
+                      if (el) el.scrollIntoView({ behavior: 'smooth' });
+                    }, 50);
+                  }}
                 >
                   <span className="text-[#00e476] text-xs">◆</span> Services Offered
-                </a>
-                <a 
-                  className="text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2" 
-                  href="#portfolio"
-                  onClick={() => setIsMobileMenuOpen(false)}
+                </button>
+                <button 
+                  className="w-full text-left text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setCurrentView('PORTFOLIO');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                 >
                   <span className="text-[#00dbe7] text-xs">◆</span> Our Portfolio
-                </a>
-                <a 
-                  className="text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2" 
-                  href="#store"
-                  onClick={() => setIsMobileMenuOpen(false)}
+                </button>
+                <button 
+                  className="w-full text-left text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setCurrentView('STORE');
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
                 >
                   <span className="text-[#ebb2ff] text-xs">◆</span> MCP Store
-                </a>
+                </button>
               </div>
             </div>
 
@@ -290,31 +364,44 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
         {/* Hero Section */}
         <section id="features" className="flex flex-col items-center justify-center text-center py-10 sm:py-16 relative">
           <div className="max-w-4xl space-y-6">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#ce5dff]/10 border border-[#ce5dff]/30 text-[#ebb2ff] font-mono text-[10px] uppercase tracking-widest leading-none mb-2">
-              <Star className="w-3 h-3 text-[#ebb2ff]" />
-              SutharLabs Solutions
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00dbe7]/10 border border-[#00dbe7]/30 text-[#74f5ff] font-mono text-[10px] uppercase tracking-widest leading-none mb-2 select-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#00fb83] animate-pulse"></span>
+              SutharLabs: Dual Software Research Lab &amp; Elite Agency
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-[#e5e1e4] neon-text-primary px-2">
-              SutharLabs: Deploy Next-Gen Web, Agents &amp; Modular Workflows.
+              SOTA Developer Tools &amp; Premium Custom Engineering.
             </h1>
-            <p className="text-sm sm:text-base md:text-lg text-[#b9cacb] max-w-2xl mx-auto font-sans font-light">
-              A high-performance command center for modern developers. Build, scale, and orchestrate complex AI integrations, fluid cross-platform designs, and microservices with uncompromising speed and precision.
+            <p className="text-sm sm:text-base md:text-lg text-[#b9cacb] max-w-3xl mx-auto font-sans font-light leading-relaxed">
+              We are a software research lab dedicated to building next-generation freemium developer tools, MCP servers, and agentic workflows for the global community. To sponsor our deep-tech open-source initiatives, we provide elite custom development services—engineering responsive web modules, high-fidelity mobile systems, and intelligent custom pipelines.
             </p>
-            <div className="pt-6 sm:pt-8 flex flex-col sm:flex-row gap-4 items-center justify-center">
+            <div className="pt-6 sm:pt-8 flex flex-wrap gap-4 items-center justify-center font-mono">
               <button 
                 onClick={onLaunch}
-                className="w-full sm:w-auto glass-panel px-8 py-4 rounded-xl font-mono text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#74f5ff] border border-[#00dbe7]/30 shadow-[0_0_20px_rgba(0,219,231,0.15)] hover:bg-[#00dbe7]/10 hover:shadow-[0_0_30px_rgba(0,219,231,0.35)] hover:border-[#00dbe7]/70 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full sm:w-auto glass-panel px-6 py-3.5 rounded-xl text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#74f5ff] border border-[#00dbe7]/30 shadow-[0_0_20px_rgba(0,219,231,0.15)] hover:bg-[#00dbe7]/10 hover:shadow-[0_0_30px_rgba(0,219,231,0.35)] hover:border-[#00dbe7]/70 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span className="material-symbols-outlined select-none animate-pulse">rocket_launch</span>
-                {user.isLoggedIn ? 'Go to App Workspace' : 'Login to Workspace'}
+                {user.isLoggedIn ? 'Launch App Workspace' : 'Sign In to Workspace'}
               </button>
               
-              <a 
-                href="#portfolio"
-                className="w-full sm:w-auto px-8 py-4 font-mono text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#b9cacb] hover:text-white transition-all text-center"
+              <button 
+                onClick={() => {
+                  setCurrentView('STORE');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#ce5dff]/30 bg-[#ce5dff]/5 text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#ebb2ff] hover:bg-[#ce5dff]/15 hover:border-[#ce5dff]/60 transition-all duration-300 cursor-pointer"
               >
-                View Credibility Portfolio
-              </a>
+                Browse MCP Store
+              </button>
+              
+              <button 
+                onClick={() => {
+                  setCurrentView('PORTFOLIO');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#00e476]/30 bg-[#00e476]/5 text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#a8ffcc] hover:bg-[#00e476]/15 hover:border-[#00e476]/60 transition-all duration-300 cursor-pointer"
+              >
+                View Agency Cases
+              </button>
             </div>
           </div>
 
@@ -333,133 +420,530 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           </div>
         </section>
 
-        {/* Services Offered Section */}
-        <section id="services" className="space-y-8 scroll-mt-24">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#3a494b]/20 pb-4 gap-2">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-[#ce5dff] text-2xl sm:text-3xl select-none">home_repair_service</span>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Services Offered</h2>
+      {/* VIEW 1: HOME PANEL */}
+      {currentView === 'HOME' && (
+        <div className="flex flex-col gap-20 sm:gap-24 animate-[fadeIn_0.3s_ease-out]">
+          
+          {/* Services Offered Section */}
+          <section id="services" className="space-y-8 scroll-mt-24">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#3a494b]/20 pb-4 gap-2">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-[#ce5dff] text-2xl sm:text-3xl select-none">home_repair_service</span>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Services Offered</h2>
+              </div>
+              <p className="text-xs sm:text-sm text-[#b9cacb]/80 font-mono">Precision coding &amp; architecture packages.</p>
             </div>
-            <p className="text-xs sm:text-sm text-[#b9cacb]/80 font-mono">Precision coding &amp; architecture packages.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              
+              {/* Service Package 1: Custom Web Development */}
+              <div className="glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#00dbe7]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#00dbe7]/50 transition-all">
+                    <Code className="text-[#00dbe7] w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-[#e5e1e4]">Custom Web Dev</h3>
+                  <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed">
+                    Tailored React, Vite, and Next.js frontends engineered with strict compliance, layout consistency, and sub-millisecond edge load speeds.
+                  </p>
+                  <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-[#b9cacb]/80">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-[#00dbe7]" />
+                      Fluid responsive CSS designs
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-[#00dbe7]" />
+                      Optimized lighthouse profiles
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-[#00dbe7]" />
+                      State sync &amp; Secure edge API integration
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex justify-between items-center text-xs">
+                  <span className="font-mono text-gray-500">Pricing Model</span>
+                  <span className="font-mono text-[#00dbe7] font-bold">Custom quote based on scope</span>
+                </div>
+              </div>
+
+              {/* Service Package 2: Mobile App Development */}
+              <div className="glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#ce5dff]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#ce5dff]/50 transition-all">
+                    <Smartphone className="text-[#ce5dff] w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-[#e5e1e4]">Mobile App Dev</h3>
+                  <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed">
+                    High-fidelity React Native applications designed with fluent navigation, responsive gestures, and reliable local SQLite storage vaults.
+                  </p>
+                  <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-[#b9cacb]/80">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-[#ce5dff]" />
+                      iOS and Android unified targets
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-[#ce5dff]" />
+                      Local encryption and biometrics
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-[#ce5dff]" />
+                      Dynamic background socket services
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex justify-between items-center text-xs">
+                  <span className="font-mono text-gray-500">Pricing Model</span>
+                  <span className="font-mono text-[#ce5dff] font-bold">Custom quote based on scope</span>
+                </div>
+              </div>
+
+              {/* Service Package 3: Intelligent Agent Systems */}
+              <div className="glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#ebb2ff]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#ebb2ff]/50 transition-all">
+                    <Brain className="text-[#ebb2ff] w-6 h-6" />
+                  </div>
+                  <h3 className="text-lg sm:text-xl font-bold text-[#e5e1e4]">Agent &amp; AI Setup</h3>
+                  <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed">
+                    Structured Model Context Protocol (MCP) bridges and pipelines syncing databases with secure local AI intelligence.
+                  </p>
+                  <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-[#b9cacb]/80">
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-[#ebb2ff]" />
+                      Custom MCP server configurations
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-[#ebb2ff]" />
+                      Gemini Pro parameter calibration
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-[#ebb2ff]" />
+                      Vector-backed context indexing
+                    </li>
+                  </ul>
+                </div>
+                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex justify-between items-center text-xs">
+                  <span className="font-mono text-gray-500">Pricing Model</span>
+                  <span className="font-mono text-[#ebb2ff] font-bold">Custom quote based on scope</span>
+                </div>
+              </div>
+
+            </div>
+          </section>
+
+          {/* Featured Plugins Slider Section */}
+          <section className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#3a494b]/20 pb-4 gap-4">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-[#ce5dff] text-2xl sm:text-3xl select-none">dynamic_feed</span>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Featured MCP Servers &amp; Tools</h2>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  setCurrentView('STORE');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="text-[#00dbe7] hover:text-[#74f5ff] text-[12px] font-mono uppercase tracking-wider flex items-center gap-1 cursor-pointer bg-transparent border-none"
+              >
+                Browse Full Store <span className="material-symbols-outlined text-sm select-none">arrow_forward</span>
+              </button>
+            </div>
+
+            <div className="relative glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/30 overflow-hidden">
+              <div className="absolute top-0 right-0 p-3 bg-[#ce5dff]/10 border-l border-b border-[#ce5dff]/20 text-[#ebb2ff] font-mono text-[9px] uppercase tracking-wider rounded-bl-lg select-none">
+                Lab Contribution #{activePluginIndex + 1}
+              </div>
+
+              {/* Render Active Slide */}
+              {plugins.length > 0 ? (
+                (() => {
+                  const plugin = plugins[activePluginIndex % plugins.length];
+                  if (!plugin) return null;
+                  return (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center min-h-[220px]">
+                      <div className="lg:col-span-8 space-y-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded bg-[#ce5dff]/10 flex items-center justify-center border border-[#ce5dff]/30 shrink-0 select-none">
+                            <span className="material-symbols-outlined text-[#ce5dff] select-none text-xl">{plugin.iconSymbol || 'smart_toy'}</span>
+                          </div>
+                          <div>
+                            <span className="px-2 py-0.5 rounded bg-[#ce5dff]/20 border border-[#ce5dff]/30 text-[#ebb2ff] text-[9px] font-mono uppercase tracking-wider">{plugin.category}</span>
+                            <h3 className="text-xl font-bold text-white mt-1">{plugin.name}</h3>
+                          </div>
+                        </div>
+                        
+                        <p className="text-sm text-[#b9cacb] leading-relaxed">
+                          {plugin.description}
+                        </p>
+
+                        <div className="flex flex-wrap gap-1.5 pt-2">
+                          {(plugin.tags || []).map(t => (
+                            <span key={t} className="px-2 py-0.5 rounded bg-[#201f21] text-[#74f5ff] text-[10px] font-mono border border-white/5">#{t}</span>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="lg:col-span-4 flex flex-col gap-3 justify-center border-t lg:border-t-0 lg:border-l border-[#3a494b]/15 pt-6 lg:pt-0 lg:pl-8">
+                        <div className="text-center lg:text-left select-none">
+                          <span className="text-[10px] font-mono text-gray-500 block uppercase">Community Reception</span>
+                          <div className="flex items-center justify-center lg:justify-start gap-1 text-[#00e476] text-sm font-mono mt-1 font-bold">
+                            <span className="material-symbols-outlined text-base leading-none">star</span>
+                            <span>{plugin.rating}</span>
+                            <span className="text-gray-600">|</span>
+                            <span>{plugin.downloads} downloads</span>
+                          </div>
+                        </div>
+
+                        <button 
+                          onClick={onLaunch}
+                          className="w-full py-3 rounded bg-[#ce5dff]/15 border border-[#ce5dff]/30 text-xs font-mono font-bold tracking-widest text-[#ebb2ff] hover:bg-[#ce5dff]/25 transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer mt-2"
+                        >
+                          <span className="material-symbols-outlined text-sm select-none">download</span> Install Freemium
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : (
+                <div className="text-center py-10 font-mono text-xs italic text-gray-500">Loading products registry...</div>
+              )}
+
+              {/* Slider Dots & Arrow Navigation */}
+              <div className="flex justify-between items-center mt-8 pt-4 border-t border-[#3a494b]/10 select-none">
+                <div className="flex gap-1">
+                  {plugins.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActivePluginIndex(idx)}
+                      className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer border-none ${
+                        activePluginIndex === idx ? 'bg-[#ce5dff] w-6' : 'bg-[#3a494b]/40 hover:bg-gray-600'
+                      }`}
+                      aria-label={`Slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setActivePluginIndex((prev) => (prev === 0 ? plugins.length - 1 : prev - 1))}
+                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#ce5dff]/50 hover:bg-[#ce5dff]/10 text-white flex items-center justify-center transition-all cursor-pointer animate-[press_0.2s_ease]"
+                  >
+                    <span className="material-symbols-outlined text-base">arrow_back</span>
+                  </button>
+                  <button
+                    onClick={() => setActivePluginIndex((prev) => (prev === plugins.length - 1 ? 0 : prev + 1))}
+                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#ce5dff]/50 hover:bg-[#ce5dff]/10 text-white flex items-center justify-center transition-all cursor-pointer animate-[press_0.2s_ease]"
+                  >
+                    <span className="material-symbols-outlined text-base">arrow_forward</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Featured Portfolio Slider Section */}
+          <section id="portfolio" className="space-y-8 scroll-mt-24 animate-[fadeIn_0.3s_ease-out]">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#3a494b]/20 pb-4 gap-4">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-[#00e476] text-2xl sm:text-3xl select-none">cases</span>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Featured Development Cases</h2>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  setCurrentView('PORTFOLIO');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="text-[#00e476] hover:text-[#a8ffcc] text-[12px] font-mono uppercase tracking-wider flex items-center gap-1 cursor-pointer bg-transparent border-none"
+              >
+                Explore Complete Portfolio <span className="material-symbols-outlined text-sm select-none">arrow_forward</span>
+              </button>
+            </div>
+
+            <div className="relative glass-panel rounded-xl border border-[#3a494b]/15 bg-[#131315]/30 overflow-hidden">
+              
+              {portfolioProjects.length > 0 ? (
+                (() => {
+                  const proj = portfolioProjects[activePortfolioIndex % portfolioProjects.length];
+                  if (!proj) return null;
+                  return (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
+                      {/* Project Visual block */}
+                      <div className="lg:col-span-5 h-64 lg:h-auto min-h-[250px] relative select-none">
+                        <img 
+                          alt={proj.title} 
+                          className="fluid-img w-full h-full object-cover filter brightness-[0.7] mix-blend-luminosity opacity-40"
+                          src={proj.imageSrc}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#131315]/95 z-10 hidden lg:block"></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-[#131315]/95 via-transparent to-transparent z-10 lg:hidden"></div>
+                        <div className="absolute top-4 left-4 z-20 bg-black/60 backdrop-blur border border-white/5 rounded px-2.5 py-0.5 text-[9px] font-mono text-[#00e476] uppercase">
+                          Featured Case Study
+                        </div>
+                      </div>
+
+                      {/* Project Metadata block */}
+                      <div className="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between space-y-6">
+                        <div className="space-y-4">
+                          <div className="flex justify-between items-start gap-2">
+                            <div>
+                              <span className="text-[10px] font-mono text-[#ce5dff] uppercase tracking-wider">{proj.segment}</span>
+                              <h3 className="text-2xl font-bold text-white mt-0.5">{proj.title}</h3>
+                            </div>
+                            <span className="font-mono text-[9px] text-[#849495] bg-[#201f21] px-2 py-0.5 rounded border border-white/5">{proj.id}</span>
+                          </div>
+
+                          <p className="text-sm text-[#b9cacb] leading-relaxed">
+                            {proj.description}
+                          </p>
+
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {proj.techs.slice(0, 3).map(t => (
+                              <span key={t} className="px-2 py-0.5 rounded bg-[#201f21] text-[#ebb2ff] text-[10px] font-mono border border-white/5">{t}</span>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Project actions and indicators */}
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-6 border-t border-[#3a494b]/10 gap-4">
+                          <div>
+                            <span className="text-[9px] font-mono text-gray-500 block uppercase">Telemetry Target</span>
+                            <span className="text-xs font-mono text-[#00e476] font-bold block">{proj.stat}</span>
+                          </div>
+
+                          <div className="flex gap-2 w-full sm:w-auto">
+                            <button
+                              onClick={() => setSelectedProject(proj)}
+                              className="w-full sm:w-auto px-4 py-2 rounded bg-[#00e476]/10 border border-[#00e476]/30 text-xs font-mono font-bold uppercase tracking-wider text-[#a8ffcc] hover:bg-[#00e476]/20 transition-all cursor-pointer"
+                            >
+                              Inspect Spec Sheet
+                            </button>
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  );
+                })()
+              ) : null}
+
+              {/* Slider Dots & Arrow Navigation */}
+              <div className="flex justify-between items-center px-6 sm:px-8 py-4 border-t border-[#3a494b]/10 select-none bg-[#0c0c0e]/30">
+                <div className="flex gap-1">
+                  {portfolioProjects.map((_, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setActivePortfolioIndex(idx)}
+                      className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer border-none ${
+                        activePortfolioIndex === idx ? 'bg-[#00e476] w-6' : 'bg-[#3a494b]/40 hover:bg-gray-600'
+                      }`}
+                      aria-label={`Slide ${idx + 1}`}
+                    />
+                  ))}
+                </div>
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setActivePortfolioIndex((prev) => (prev === 0 ? portfolioProjects.length - 1 : prev - 1))}
+                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#00e476]/50 hover:bg-[#00e476]/10 text-white flex items-center justify-center transition-all cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">arrow_back</span>
+                  </button>
+                  <button
+                    onClick={() => setActivePortfolioIndex((prev) => (prev === portfolioProjects.length - 1 ? 0 : prev + 1))}
+                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#00e476]/50 hover:bg-[#00e476]/10 text-white flex items-center justify-center transition-all cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-base">arrow_forward</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+        </div>
+      )}
+
+      {/* VIEW 2: DEDICATED STORE PANEL */}
+      {currentView === 'STORE' && (
+        <div className="space-y-10 py-4 animate-[fadeIn_0.3s_ease-out]">
+          
+          {/* Header Breadcrumbs */}
+          <div className="flex items-center gap-2 text-xs font-mono text-gray-500 select-none">
+            <button onClick={() => setCurrentView('HOME')} className="hover:text-white transition-all bg-transparent border-none cursor-pointer">HOME</button>
+            <span>/</span>
+            <span className="text-[#ce5dff]">MCP STORE</span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            
-            {/* Service Package 1: Custom Web Development */}
-            <div className="glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#00dbe7]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#00dbe7]/50 transition-all">
-                  <Code className="text-[#00dbe7] w-6 h-6" />
-                </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#e5e1e4]">Custom Web Dev</h3>
-                <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed">
-                  Tailored React, Vite, and Next.js frontends engineered with strict compliance, layout consistency, and sub-millisecond edge load speeds.
-                </p>
-                <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-[#b9cacb]/80">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#00dbe7]" />
-                    Fluid responsive CSS designs
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#00dbe7]" />
-                    Optimized lighthouse profiles
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#00dbe7]" />
-                    State sync &amp; Secure edge API integration
-                  </li>
-                </ul>
-              </div>
-              <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex justify-between items-center text-xs">
-                <span className="font-mono text-gray-500">Pricing Model</span>
-                <span className="font-mono text-[#00dbe7] font-bold">Custom quote based on scope</span>
-              </div>
-            </div>
-
-            {/* Service Package 2: Mobile App Development */}
-            <div className="glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#ce5dff]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#ce5dff]/50 transition-all">
-                  <Smartphone className="text-[#ce5dff] w-6 h-6" />
-                </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#e5e1e4]">Mobile App Dev</h3>
-                <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed">
-                  High-fidelity React Native applications designed with fluent navigation, responsive gestures, and reliable local SQLite storage vaults.
-                </p>
-                <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-[#b9cacb]/80">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#ce5dff]" />
-                    iOS and Android unified targets
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#ce5dff]" />
-                    Local encryption and biometrics
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#ce5dff]" />
-                    Dynamic background socket services
-                  </li>
-                </ul>
-              </div>
-              <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex justify-between items-center text-xs">
-                <span className="font-mono text-gray-500">Pricing Model</span>
-                <span className="font-mono text-[#ce5dff] font-bold">Custom quote based on scope</span>
-              </div>
-            </div>
-
-            {/* Service Package 3: Intelligent Agent Systems */}
-            <div className="glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#ebb2ff]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
-              <div className="space-y-4">
-                <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#ebb2ff]/50 transition-all">
-                  <Brain className="text-[#ebb2ff] w-6 h-6" />
-                </div>
-                <h3 className="text-lg sm:text-xl font-bold text-[#e5e1e4]">Agent &amp; AI Setup</h3>
-                <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed">
-                  Structured Model Context Protocol (MCP) bridges and pipelines syncing databases with secure local AI intelligence.
-                </p>
-                <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-[#b9cacb]/80">
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#ebb2ff]" />
-                    Custom MCP server configurations
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#ebb2ff]" />
-                    Gemini Pro parameter calibration
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <CheckCircle className="w-3.5 h-3.5 text-[#ebb2ff]" />
-                    Vector-backed context indexing
-                  </li>
-                </ul>
-              </div>
-              <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex justify-between items-center text-xs">
-                <span className="font-mono text-gray-500">Pricing Model</span>
-                <span className="font-mono text-[#ebb2ff] font-bold">Custom quote based on scope</span>
-              </div>
-            </div>
-
+          {/* Header copy */}
+          <div className="space-y-3">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
+              <span className="material-symbols-outlined text-[#ce5dff] text-3xl sm:text-4xl">storefront</span>
+              Model Context Protocol (MCP) Store
+            </h2>
+            <p className="text-sm sm:text-base text-[#b9cacb] max-w-3xl font-sans font-light leading-relaxed">
+              Explore our catalog of Model Context Protocol (MCP) servers and tools. Built with a freemium model, these plugins act as high-fidelity pipelines giving AI agents the context, data access, and API power to automate engineering workflows out of the box.
+            </p>
           </div>
-        </section>
 
-        {/* Portfolio Showcase Grid Section */}
-        <section id="portfolio" className="space-y-8 scroll-mt-24">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#3a494b]/20 pb-4 gap-4">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-[#00e476] text-2xl sm:text-3xl select-none">cases</span>
-              <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Our Portfolio</h2>
+          {/* Filter Panel & Search bar */}
+          <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center bg-[#131315]/80 p-4 rounded-xl border border-[#3a494b]/15">
+            {/* Search input */}
+            <div className="flex-grow max-w-md relative flex items-center bg-[#0c0c0e] border border-[#3a494b]/20 rounded-lg px-3 py-2 text-xs text-white">
+              <span className="material-symbols-outlined text-gray-500 mr-2 text-sm select-none">search</span>
+              <input 
+                type="text" 
+                value={storeSearchQuery}
+                onChange={(e) => setStoreSearchQuery(e.target.value)}
+                placeholder="Search plugins by name, tags, or description..."
+                className="bg-transparent border-none focus:outline-none w-full text-xs text-white font-mono placeholder-gray-600"
+              />
+              {storeSearchQuery && (
+                <button onClick={() => setStoreSearchQuery('')} className="p-0.5 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition-all bg-transparent border-none cursor-pointer flex items-center justify-center">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
             </div>
-            
-            {/* Filter segments selectors */}
-            <div className="flex flex-wrap gap-1 bg-[#131315] p-1 rounded-lg border border-[#3a494b]/20 font-mono text-[10px]">
+
+            {/* Filters */}
+            <div className="flex flex-wrap gap-1 bg-[#0c0c0e] p-1 rounded-lg border border-[#3a494b]/10 font-mono text-[10px] items-center">
+              {(['All', 'DevOps', 'Productivity', 'AI', 'Finance', 'Plugin'] as const).map(cat => (
+                <button
+                  key={cat}
+                  onClick={() => setStoreActiveCategory(cat)}
+                  className={`px-3 py-1.5 rounded transition-all cursor-pointer border-none font-mono ${
+                    storeActiveCategory === cat 
+                      ? 'bg-[#ce5dff]/15 text-[#ebb2ff] font-bold border border-[#ce5dff]/25 shadow-sm'
+                      : 'text-[#b9cacb] hover:text-white bg-transparent hover:bg-white/[0.02]'
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Full-Page Catalog Grid */}
+          {(() => {
+            const searchedPlugins = plugins.filter(plugin => {
+              const query = storeSearchQuery.toLowerCase();
+              const nameMatch = plugin.name.toLowerCase().includes(query);
+              const descMatch = plugin.description.toLowerCase().includes(query);
+              const tagsMatch = (plugin.tags || []).some(t => t.toLowerCase().includes(query));
+              const categoryMatch = plugin.category.toLowerCase().includes(query);
+
+              const matchesSearch = storeSearchQuery === '' || nameMatch || descMatch || tagsMatch || categoryMatch;
+              const matchesCategory = storeActiveCategory === 'All' || plugin.category === storeActiveCategory;
+              
+              return matchesSearch && matchesCategory;
+            });
+
+            if (searchedPlugins.length === 0) {
+              return (
+                <div className="glass-panel text-center py-20 rounded-xl border border-[#3a494b]/15 bg-[#131315]/20 font-mono">
+                  <span className="material-symbols-outlined text-4xl text-gray-600 mb-2 select-none">search_off</span>
+                  <p className="text-xs text-gray-500 italic">No plugins found matching search criteria or category filter.</p>
+                </div>
+              );
+            }
+
+            return (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {searchedPlugins.map((plugin) => (
+                  <div 
+                    key={plugin.id} 
+                    className="glass-panel p-6 rounded-xl border border-[#3a494b]/15 flex flex-col h-full bg-[#131315]/60 hover:border-[#ce5dff]/40 transition-all duration-300 hover:shadow-[0_4px_25px_rgba(206,93,255,0.05)]"
+                  >
+                    <div className="flex justify-between items-start mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded bg-[#ce5dff]/10 flex items-center justify-center border border-[#ce5dff]/30 shrink-0 select-none">
+                          <span className="material-symbols-outlined text-[#ce5dff] select-none text-base">{plugin.iconSymbol || 'smart_toy'}</span>
+                        </div>
+                        <div>
+                          <h4 className="text-base font-bold text-[#e5e1e4]">{plugin.name}</h4>
+                          <div className="flex items-center gap-1 text-[#ce5dff] text-[10px] font-mono leading-none mt-0.5">
+                            <span className="material-symbols-outlined text-[10px] select-none text-[#ce5dff]">star</span>
+                            <span>{plugin.rating} ({plugin.downloads} downloads)</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-1 font-mono text-[10px]">
+                        <span className="px-2 py-0.5 rounded bg-[#ce5dff]/20 border border-[#ce5dff]/30 text-[#ebb2ff]">{plugin.category}</span>
+                        <span className={plugin.type === 'Free' ? 'text-[#00e476]' : plugin.type === 'Premium' ? 'text-[#ce5dff]' : 'text-[#74f5ff]'}>{plugin.type}</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-[#b9cacb] leading-relaxed flex-grow mb-6">
+                      {plugin.description}
+                    </p>
+                    <div className="flex flex-wrap gap-1 md:gap-1.5 mb-6">
+                      {(plugin.tags || []).map(t => (
+                        <span key={t} className="px-1.5 py-0.5 rounded bg-[#201f21] text-[#ebb2ff] text-[9px] font-mono border border-white/5">#{t}</span>
+                      ))}
+                    </div>
+                    <button 
+                      onClick={onLaunch}
+                      className="w-full py-2.5 rounded bg-[#201f21] border border-[#3a494b]/50 text-xs font-mono font-bold tracking-widest text-[#e5e1e4] hover:bg-[#ce5dff]/10 hover:border-[#ce5dff]/50 hover:text-[#ebb2ff] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer mt-auto"
+                    >
+                      <span className="material-symbols-outlined text-sm select-none">download</span> Install Plugin
+                    </button>
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
+          {/* Back to Home CTA button */}
+          <div className="flex justify-center pt-8">
+            <button 
+              onClick={() => {
+                setCurrentView('HOME');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="px-6 py-3 rounded-lg border border-[#3a494b]/30 bg-transparent text-[#b9cacb] font-mono text-xs uppercase tracking-wider hover:text-white hover:border-white transition-all cursor-pointer"
+            >
+              Back to Home Page
+            </button>
+          </div>
+
+        </div>
+      )}
+
+      {/* VIEW 3: DEDICATED PORTFOLIO PANEL */}
+      {currentView === 'PORTFOLIO' && (
+        <div className="space-y-10 py-4 animate-[fadeIn_0.3s_ease-out]">
+          
+          {/* Header Breadcrumbs */}
+          <div className="flex items-center gap-2 text-xs font-mono text-gray-500 select-none">
+            <button onClick={() => setCurrentView('HOME')} className="hover:text-white transition-all bg-transparent border-none cursor-pointer">HOME</button>
+            <span>/</span>
+            <span className="text-[#00e476]">DEVELOPMENT AGENCY CASES</span>
+          </div>
+
+          {/* Header copy */}
+          <div className="space-y-3">
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
+              <span className="material-symbols-outlined text-[#00e476] text-3xl sm:text-4xl">cases</span>
+              Custom Development Services Portfolio
+            </h2>
+            <p className="text-sm sm:text-base text-[#b9cacb] max-w-3xl font-sans font-light leading-relaxed">
+              Review our operating case studies and custom structural projects. As an elite development agency, we craft responsive architectures, high-performance visual dashboards, secure cross-platform frameworks, and intelligent local database syncs with complete type-safety.
+            </p>
+          </div>
+
+          {/* Segment filter panel */}
+          <div className="flex justify-between items-center bg-[#131315]/80 p-4 rounded-xl border border-[#3a494b]/15 select-none">
+            <span className="text-xs font-mono text-[#849495] uppercase hidden sm:inline">Active Case Filters</span>
+            <div className="flex flex-wrap gap-1 bg-[#0c0c0e] p-1 rounded-lg border border-[#3a494b]/10 font-mono text-[10px]">
               {(['All', 'Web Dev', 'Mobile Apps', 'AI & Analytics'] as const).map((filter) => (
                 <button
                   key={filter}
                   type="button"
                   onClick={() => setActiveFilter(filter)}
-                  className={`px-3 py-1 rounded transition-all cursor-pointer ${
+                  className={`px-3 py-1.5 rounded transition-all cursor-pointer border-none font-mono ${
                     activeFilter === filter 
                       ? 'bg-[#00e476]/10 text-[#00e476] font-bold border border-[#00e476]/25 shadow-sm'
-                      : 'text-[#b9cacb] hover:text-white hover:bg-white/[0.02]'
+                      : 'text-[#b9cacb] hover:text-white bg-transparent hover:bg-white/[0.02]'
                   }`}
                 >
                   {filter}
@@ -468,7 +952,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
             </div>
           </div>
 
-          {/* Portfolio Grid Layout */}
+          {/* Full-Page Projects Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {filteredProjects.map((proj) => (
               <div 
@@ -478,7 +962,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               >
                 <div>
                   {/* Decorative glowing project banner */}
-                  <div className="h-40 bg-zinc-900 flex items-center justify-center relative select-none">
+                  <div className="h-44 bg-zinc-900 flex items-center justify-center relative select-none">
                     <img 
                       alt={proj.title} 
                       className="fluid-img w-full h-full object-cover mix-blend-luminosity opacity-20 filter saturate-150 transition-all duration-500 group-hover:scale-102 group-hover:opacity-40"
@@ -512,186 +996,147 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                     ))}
                   </div>
                   <span className="text-[#00e476] flex items-center group-hover:translate-x-1 transition-transform">
-                    Spec Sheet <ChevronRight className="w-3 h-3 ml-0.5" />
+                    Inspect Spec Sheet <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
                   </span>
                 </div>
               </div>
             ))}
           </div>
-        </section>
 
-        {/* Dynamic Project Spec Sheet Overlay Drawer/Modal */}
-        {selectedProject && (
-          <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="glass-panel border border-[#00e476]/30 max-w-2xl w-full rounded-2xl bg-[#131315]/95 shadow-[0_15px_50px_rgba(0,0,0,0.85)] max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col justify-between">
-              
-              {/* Drawer Header */}
-              <div className="p-6 border-b border-[#3a494b]/20 flex justify-between items-start">
-                <div className="space-y-1.5">
-                  <div className="flex items-center gap-2">
-                    <span className="p-1 rounded bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 text-[10px] font-mono">
-                      {selectedProject.segment}
-                    </span>
-                    <span className="font-mono text-[10px] text-gray-500 uppercase">{selectedProject.id}</span>
-                  </div>
-                  <h3 className="text-xl font-bold font-sans text-white flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[#74f5ff]">{selectedProject.blueprintSymbol}</span>
-                    {selectedProject.title}
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setSelectedProject(null)}
-                  className="p-1.5 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition-all cursor-pointer"
-                  aria-label="Close details"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-
-              {/* Case Details Body */}
-              <div className="p-6 space-y-6">
-                
-                {/* Visual case stats board */}
-                <div className="p-4 rounded-xl border border-dashed border-[#00e476]/25 bg-[#0e0e10]/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                  <div>
-                    <span className="text-[10px] uppercase font-mono text-[#ebb2ff] tracking-widest block mb-1">Impact Telemetry Metric</span>
-                    <span className="text-xl font-bold font-mono text-[#00e476] block tracking-wide">{selectedProject.stat}</span>
-                    <span className="text-[10px] text-gray-500 font-mono block">{selectedProject.statLabel}</span>
-                  </div>
-                  <div className="p-2 sm:p-3 bg-[#131315] rounded border border-white/5 text-[10px] font-mono max-w-xs text-right hidden sm:block">
-                    <span className="text-gray-500 block truncate">AUTHORIZED GATEWAY ID</span>
-                    <span className="text-[#ce5dff] font-bold block truncate">GW_SECURE_{selectedProject.id.toUpperCase()}</span>
-                  </div>
-                </div>
-
-                {/* Problem & Refinement text */}
-                <div className="space-y-2">
-                  <h4 className="font-mono text-xs uppercase text-gray-500 tracking-wider">Solution Implementation Details</h4>
-                  <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed select-text font-light">
-                    {selectedProject.detailedCase}
-                  </p>
-                </div>
-
-                {/* Technologies Grid */}
-                <div className="space-y-2">
-                  <h4 className="font-mono text-xs uppercase text-gray-500 tracking-wider">Project Tech Stack Specifications</h4>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedProject.techs.map((t) => (
-                      <span key={t} className="px-2.5 py-1 rounded bg-[#201f21] border border-[#3a494b]/30 text-xs text-[#b9cacb] font-mono">
-                        {t}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Corporate Partner Feedback */}
-                <div className="p-4 rounded-xl border border-[#3a494b]/15 bg-[#1a191b]/50 relative italic font-light text-xs text-[#b9cacb] leading-relaxed">
-                  <span className="absolute top-2 left-3 font-sans text-xl font-bold text-gray-700 select-none leading-none">“</span>
-                  <p className="pl-4 pr-2">
-                    SutharLabs transformed our execution framework. The responsive mechanics of this platform are flawless on every mobile tablet and desktop screen size we deployed to.
-                  </p>
-                  <div className="mt-2 pl-4 text-[10px] font-mono not-italic text-[#ebb2ff] flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#ce5dff]"></span>
-                    <span>{selectedProject.client}, <span className="text-gray-500 font-normal">{selectedProject.clientTitle}</span></span>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Specs Footer Drawer Actions */}
-              <div className="p-4 border-t border-[#3a494b]/20 bg-[#161618] flex items-center justify-between">
-                <span className="text-[10px] font-mono text-gray-500 flex items-center gap-1.5">
-                  <ShieldCheck className="w-3.5 h-3.5 text-gray-500" />
-                  Credentials Authenticated
-                </span>
-                
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedProject(null);
-                    onLaunch();
-                  }}
-                  className="px-5 py-2 rounded bg-white text-black font-semibold hover:bg-white/90 text-xs transition-all flex items-center gap-1 cursor-pointer"
-                >
-                  Inspect Platform Infrastructure <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
+          {/* Corporate Agency Consultation Inquiry block */}
+          <div className="glass-panel p-6 sm:p-8 rounded-xl border border-[#00e476]/20 bg-[#00e476]/5 mt-10 space-y-4 max-w-3xl mx-auto text-center animate-[fadeIn_0.3s_ease-out]">
+            <span className="material-symbols-outlined text-4xl text-[#00e476] select-none">chat_bubble_outline</span>
+            <h3 className="text-xl font-bold text-white font-sans">Ready to Build Your Project?</h3>
+            <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed font-light">
+              We deliver high-end bespoke products ranging from enterprise-grade corporate portals to custom AI workflows. Sponsor our lab’s open-source tools by partnering with our expert engineering team.
+            </p>
+            <div className="pt-2">
+              <a 
+                href="mailto:developer@sutharlabs.io"
+                className="inline-flex py-3 px-6 rounded-lg bg-[#00e476] text-[#002022] font-mono text-xs font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_15px_rgba(0,228,118,0.25)] transition-all"
+              >
+                Contact SutharLabs Agency
+              </a>
             </div>
           </div>
-        )}
 
-        {/* Interactive Workspace Store Catalog Section */}
-        <section id="store" className="space-y-8 scroll-mt-24">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#3a494b]/20 pb-4 gap-4">
-            <div className="space-y-1">
-              <div className="flex items-center gap-3">
-                <span className="material-symbols-outlined text-[#ebb2ff] text-2xl sm:text-3xl select-none">storefront</span>
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Agent &amp; MCP Store</h2>
-              </div>
-              {!user.isLoggedIn && (
-                <div className="flex items-center gap-2 text-xs text-[#b9cacb]">
-                  <span>Need to download or deploy?</span>
-                  <button 
-                    onClick={() => onNavigateAuth('signup')} 
-                    className="text-[#74f5ff] hover:underline hover:text-[#00dbe7] transition-all cursor-pointer bg-transparent border-none p-0 inline-flex"
-                  >
-                    Create Account
-                  </button>
-                </div>
-              )}
-            </div>
+          {/* Back to Home CTA button */}
+          <div className="flex justify-center pt-8">
             <button 
-              onClick={onLaunch}
-              className="text-[#00dbe7] hover:text-[#74f5ff] text-[12px] font-mono uppercase tracking-wider flex items-center gap-1 cursor-pointer"
+              onClick={() => {
+                setCurrentView('HOME');
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }}
+              className="px-6 py-3 rounded-lg border border-[#3a494b]/30 bg-transparent text-[#b9cacb] font-mono text-xs uppercase tracking-wider hover:text-white hover:border-white transition-all cursor-pointer"
             >
-              Launch catalog <span className="material-symbols-outlined text-sm select-none">arrow_forward</span>
+              Back to Home Page
             </button>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {plugins.map((plugin) => (
-              <div 
-                key={plugin.id} 
-                className="glass-panel p-6 rounded-xl border border-[#3a494b]/15 flex flex-col h-full bg-[#131315]/60 hover:border-[#00dbe7]/40 transition-all duration-300"
-              >
-                <div className="flex justify-between items-start mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded bg-[#00f2ff]/10 flex items-center justify-center border border-[#00dbe7]/30">
-                      <span className="material-symbols-outlined text-[#00dbe7] select-none text-base">{plugin.iconSymbol || 'smart_toy'}</span>
-                    </div>
-                    <div>
-                      <h4 className="text-base font-bold text-[#e5e1e4]">{plugin.name}</h4>
-                      <div className="flex items-center gap-1 text-[#00dbe7] text-[10px] font-mono leading-none mt-0.5">
-                        <span className="material-symbols-outlined text-[10px] select-none text-[#00dbe7]">star</span>
-                        <span>{plugin.rating} ({plugin.downloads} downloads)</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1 font-mono text-[10px]">
-                    <span className="px-2 py-0.5 rounded bg-[#ce5dff]/20 border border-[#ce5dff]/30 text-[#ebb2ff]">{plugin.category}</span>
-                    <span className={plugin.type === 'Free' ? 'text-[#00e476]' : plugin.type === 'Premium' ? 'text-[#ce5dff]' : 'text-[#74f5ff]'}>{plugin.type}</span>
-                  </div>
+        </div>
+      )}
+
+      {/* Dynamic Project Spec Sheet Overlay Drawer/Modal */}
+      {selectedProject && (
+        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="glass-panel border border-[#00e476]/30 max-w-2xl w-full rounded-2xl bg-[#131315]/95 shadow-[0_15px_50px_rgba(0,0,0,0.85)] max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col justify-between">
+            
+            {/* Drawer Header */}
+            <div className="p-6 border-b border-[#3a494b]/20 flex justify-between items-start">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="p-1 rounded bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 text-[10px] font-mono">
+                    {selectedProject.segment}
+                  </span>
+                  <span className="font-mono text-[10px] text-gray-500 uppercase">{selectedProject.id}</span>
                 </div>
-                <p className="text-xs text-[#b9cacb] leading-relaxed flex-grow mb-6">
-                  {plugin.description}
+                <h3 className="text-xl font-bold font-sans text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[#74f5ff]">{selectedProject.blueprintSymbol}</span>
+                  {selectedProject.title}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedProject(null)}
+                className="p-1.5 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition-all cursor-pointer flex items-center justify-center"
+                aria-label="Close details"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Case Details Body */}
+            <div className="p-6 space-y-6">
+              
+              {/* Visual case stats board */}
+              <div className="p-4 rounded-xl border border-dashed border-[#00e476]/25 bg-[#0e0e10]/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <span className="text-[10px] uppercase font-mono text-[#ebb2ff] tracking-widest block mb-1">Impact Telemetry Metric</span>
+                  <span className="text-xl font-bold font-mono text-[#00e476] block tracking-wide">{selectedProject.stat}</span>
+                  <span className="text-[10px] text-gray-500 font-mono block">{selectedProject.statLabel}</span>
+                </div>
+                <div className="p-2 sm:p-3 bg-[#131315] rounded border border-white/5 text-[10px] font-mono max-w-xs text-right hidden sm:block">
+                  <span className="text-gray-500 block truncate">AUTHORIZED GATEWAY ID</span>
+                  <span className="text-[#ce5dff] font-bold block truncate">GW_SECURE_{selectedProject.id.toUpperCase()}</span>
+                </div>
+              </div>
+
+              {/* Problem & Refinement text */}
+              <div className="space-y-2">
+                <h4 className="font-mono text-xs uppercase text-gray-500 tracking-wider">Solution Implementation Details</h4>
+                <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed select-text font-light">
+                  {selectedProject.detailedCase}
                 </p>
-                <div className="flex flex-wrap gap-1 md:gap-1.5 mb-6">
-                  {(plugin.tags || []).map(t => (
-                    <span key={t} className="px-1.5 py-0.5 rounded bg-[#201f21] text-[#74f5ff] text-[9px] font-mono border border-white/5">#{t}</span>
+              </div>
+
+              {/* Technologies Grid */}
+              <div className="space-y-2">
+                <h4 className="font-mono text-xs uppercase text-gray-500 tracking-wider">Project Tech Stack Specifications</h4>
+                <div className="flex flex-wrap gap-2">
+                  {selectedProject.techs.map((t) => (
+                    <span key={t} className="px-2.5 py-1 rounded bg-[#201f21] border border-[#3a494b]/30 text-xs text-[#b9cacb] font-mono">
+                      {t}
+                    </span>
                   ))}
                 </div>
-                <button 
-                  onClick={onLaunch}
-                  className="w-full py-2.5 rounded bg-[#201f21] border border-[#3a494b]/50 text-xs font-mono font-bold tracking-widest text-[#e5e1e4] hover:bg-[#00dbe7]/10 hover:border-[#00e476]/50 hover:text-[#00e476] transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-sm select-none">download</span> Install Plugin
-                </button>
               </div>
-            ))}
+
+              {/* Corporate Partner Feedback */}
+              <div className="p-4 rounded-xl border border-[#3a494b]/15 bg-[#1a191b]/50 relative italic font-light text-xs text-[#b9cacb] leading-relaxed">
+                <span className="absolute top-2 left-3 font-sans text-xl font-bold text-gray-700 select-none leading-none">“</span>
+                <p className="pl-4 pr-2">
+                  SutharLabs transformed our execution framework. The responsive mechanics of this platform are flawless on every mobile tablet and desktop screen size we deployed to.
+                </p>
+                <div className="mt-2 pl-4 text-[10px] font-mono not-italic text-[#ebb2ff] flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#ce5dff]"></span>
+                  <span>{selectedProject.client}, <span className="text-gray-500 font-normal">{selectedProject.clientTitle}</span></span>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Specs Footer Drawer Actions */}
+            <div className="p-4 border-t border-[#3a494b]/20 bg-[#161618] flex items-center justify-between">
+              <span className="text-[10px] font-mono text-gray-500 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-gray-500" />
+                Credentials Authenticated
+              </span>
+              
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedProject(null);
+                  onLaunch();
+                }}
+                className="px-5 py-2 rounded bg-white text-black font-semibold hover:bg-white/90 text-xs transition-all flex items-center gap-1 cursor-pointer font-sans border-none"
+              >
+                Inspect Platform Infrastructure <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
           </div>
-        </section>
+        </div>
+      )}
 
       </main>
 
