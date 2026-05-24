@@ -1,0 +1,79 @@
+[
+  {
+    "id": "plugin_1",
+    "name": "JIRA MCP Server",
+    "category": "DevOps",
+    "type": "Free",
+    "downloads": "2.4k",
+    "rating": 4.8,
+    "description": "Seamless Model Context Protocol integration to read, create, update, and search JIRA issues, sprints, and project boards directly through your agent workflow.",
+    "iconSymbol": "smart_toy",
+    "tags": [
+      "JIRA",
+      "Atlassian",
+      "MCP",
+      "Workspace"
+    ]
+  },
+  {
+    "id": "plugin_2",
+    "name": "Confluence MCP Server",
+    "category": "Productivity",
+    "type": "Premium",
+    "downloads": "1.9k",
+    "rating": 4.9,
+    "description": "Dynamic MCP bridge empowering agents to crawl, index, read, and write high-structured Confluence spaces, meeting notes, and engineering documentation templates.",
+    "iconSymbol": "database",
+    "tags": [
+      "Confluence",
+      "Atlassian",
+      "Knowledge",
+      "Data"
+    ]
+  },
+  {
+    "id": "plugin_3",
+    "name": "DevOps Copilot",
+    "category": "AI",
+    "type": "Free",
+    "downloads": "12k",
+    "rating": 4.9,
+    "description": "Automated CI/CD pipeline monitoring, anomaly detection, and automated hot-fix container generation scripts.",
+    "iconSymbol": "smart_toy",
+    "tags": [
+      "DevOps",
+      "AI",
+      "Kubernetes"
+    ]
+  },
+  {
+    "id": "plugin_4",
+    "name": "FinData MCP",
+    "category": "Finance",
+    "type": "Premium",
+    "downloads": "8k",
+    "rating": 4.7,
+    "description": "Secure Model Context Protocol server for real-time market data extraction, financial ledgers, and portfolio analytics.",
+    "iconSymbol": "account_balance",
+    "tags": [
+      "Finance",
+      "Ledger",
+      "API"
+    ]
+  },
+  {
+    "id": "plugin_5",
+    "name": "Vector Sync",
+    "category": "Plugin",
+    "type": "Trial",
+    "downloads": "15k",
+    "rating": 4.8,
+    "description": "Seamlessly sync relational transaction databases to vector storage indexes for dynamic context RAG logic.",
+    "iconSymbol": "database",
+    "tags": [
+      "Vector DB",
+      "RAG",
+      "Admin"
+    ]
+  }
+]

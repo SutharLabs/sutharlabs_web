@@ -1,0 +1,6 @@
+{
+  "name": "SutharLabs",
+  "description": "High-fidelity, next-gen cybernetic developer command center, system architecture canvas, real-time telemetry feed, and stock intelligence workspace.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
