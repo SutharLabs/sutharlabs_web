@@ -278,6 +278,54 @@ async function startServer() {
   const app = express();
   app.use(express.json());
 
+// -------------------------------------------------------------
+// Development Portfolios
+// -------------------------------------------------------------
+app.get('/api/portfolios', async (req, res) => {
+  try {
+    const data = await prisma.developmentProject.findMany();
+    // Parse techs back into array for frontend
+    const formatted = data.map(p => ({
+      ...p,
+      techs: JSON.parse(p.techs)
+    }));
+    res.json(formatted);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to read portfolios from database' });
+  }
+});
+
+app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
+  if (req.user.role !== 'Admin') return res.status(403).json({ error: 'Admin only' });
+  try {
+    const payload = req.body;
+    await prisma.developmentProject.deleteMany({});
+    
+    for (const p of payload) {
+      await prisma.developmentProject.create({
+        data: {
+          id: p.id,
+          title: p.title || '',
+          segment: p.segment || '',
+          description: p.description || '',
+          detailedCase: p.detailedCase || '',
+          stat: p.stat || '',
+          statLabel: p.statLabel || '',
+          techs: JSON.stringify(p.techs || []),
+          client: p.client || '',
+          clientTitle: p.clientTitle || '',
+          blueprintSymbol: p.blueprintSymbol || 'globe',
+          imageSrc: p.imageSrc || ''
+        }
+      });
+    }
+    res.json({ success: true });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ error: 'Failed to save portfolios to database' });
+  }
+});
   // Trigger Seeding script
   await seedDatabase();
 
