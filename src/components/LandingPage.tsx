@@ -379,7 +379,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           <div className="max-w-4xl space-y-6">
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00dbe7]/10 border border-[#00dbe7]/30 text-[#74f5ff] font-mono text-[10px] uppercase tracking-widest leading-none mb-2 select-none">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00fb83] animate-pulse"></span>
-              SutharLabs // R&amp;D &amp; Engineering
+              R&amp;D Lab &amp; Engineering Studio
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-[#e5e1e4] neon-text-primary px-2">
               Synthesizing Next-Gen Tooling &amp; High-Fidelity Custom Codebases.
