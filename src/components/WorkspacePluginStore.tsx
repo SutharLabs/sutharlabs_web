@@ -82,7 +82,7 @@ export default function WorkspacePluginStore({ logs, onAddLog, userEmail, userTo
   const installedIds = new Set(installed.map(i => i.id));
 
   return (
-    <div className="flex-grow flex flex-col gap-6 animate-fade-in p-2">
+    <div className="flex-grow flex flex-col gap-4 sm:gap-6 animate-fade-in p-2">
       {notification && (
         <div className="bg-[#00e476]/10 border border-[#00fb83]/30 text-[#00e476] p-3 rounded text-xs font-mono flex items-center gap-2">
           <span className="material-symbols-outlined text-sm select-none">check_circle</span>
@@ -90,15 +90,15 @@ export default function WorkspacePluginStore({ logs, onAddLog, userEmail, userTo
         </div>
       )}
 
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
         <div>
           <h2 className="text-2xl font-sans font-bold text-[#e5e1e4]">Workspace Plugin Store</h2>
           <p className="text-xs text-[#849495] mt-1">Install native extensions directly into your workspace.</p>
         </div>
-        <span className="material-symbols-outlined text-[#00dbe7] text-4xl">extension</span>
+        <span className="material-symbols-outlined text-[#00dbe7] text-3xl sm:text-4xl">extension</span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mt-4">
+      <div className="grid grid-cols-1 lg:grid-cols-1 sm:grid-cols-2 gap-4 mt-4">
         {plugins.map(p => {
           const isInstalled = installedIds.has(p.id);
           return (

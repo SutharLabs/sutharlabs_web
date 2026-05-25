@@ -110,9 +110,9 @@ export default function ManagePortfoliosView({ logs, onAddLog, userToken }: Mana
   };
 
   return (
-    <div className="flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar h-full">
-      <div className="glass-panel p-6 rounded-lg border border-[#3a494b]/20 flex flex-col gap-6">
-        <div className="flex justify-between items-center border-b border-[#3a494b]/20 pb-3">
+    <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto custom-scrollbar h-full">
+      <div className="glass-panel p-4 sm:p-6 rounded-lg border border-[#3a494b]/20 flex flex-col gap-4 sm:gap-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 border-b border-[#3a494b]/20 pb-3">
           <div className="flex items-center gap-3">
             <span className="material-symbols-outlined text-[#ce5dff] text-2xl">web</span>
             <div>
@@ -129,7 +129,7 @@ export default function ManagePortfoliosView({ logs, onAddLog, userToken }: Mana
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-1 sm:grid-cols-2 gap-4">
           {editData.map(p => {
             const isEditing = editingId === p.id;
             return (
@@ -215,7 +215,7 @@ export default function ManagePortfoliosView({ logs, onAddLog, userToken }: Mana
                   </div>
 
                   {isEditing && (
-                    <div className="grid grid-cols-2 gap-2 pt-2 border-t border-[#3a494b]/10">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-[#3a494b]/10">
                       <div>
                         <label className="text-[9px] text-[#849495] uppercase tracking-wider block mb-1">Client Name</label>
                         <input type="text" value={p.client || ''} onChange={e => handleChange(p.id, 'client', e.target.value)} className="bg-[#1b1b1f] border border-[#3a494b]/40 rounded px-2 py-1 text-[10px] text-white w-full" />

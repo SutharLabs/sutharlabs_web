@@ -94,7 +94,7 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
         
         {/* Back to Home Logo Header */}
         <div className="text-center mb-8 cursor-pointer" onClick={onBackToHome}>
-          <h1 className="text-4xl font-bold text-[#74f5ff] tracking-tight neon-text-glow select-none">SutharLabs</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-[#74f5ff] tracking-tight neon-text-glow select-none">SutharLabs</h1>
           <p className="font-mono text-xs text-[#b9cacb] tracking-widest mt-2 uppercase">Identity &amp; Access Control</p>
         </div>
 
@@ -133,7 +133,7 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
             </button>
           </div>
 
-          <div className="p-6 md:p-8">
+          <div className="p-4 sm:p-6 md:p-4 sm:p-8">
             {errorMsg && (
               <div className="p-3 mb-5 rounded bg-[#93000a]/30 border border-[#ffb4ab]/30 text-xs text-[#ffdad6] font-mono flex items-center gap-2">
                 <span className="material-symbols-outlined text-sm select-none">warning</span>
@@ -170,7 +170,7 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
               </div>
 
               <div className="rounded bg-[#2a2a2c]/40 border border-[#3a494b]/20 p-3 block focus-within:border-[#00dbe7] focus-within:shadow-[0_0_8px_rgba(0,219,231,0.2)] transition-all">
-                <div className="flex justify-between items-center mb-1">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-1">
                   <label className="block font-mono text-[10px] text-[#b9cacb] uppercase tracking-wider">Password</label>
                   <span className="font-mono text-[10px] text-[#00dbe7] hover:text-[#74f5ff] transition-colors cursor-pointer">Forgot?</span>
                 </div>
@@ -210,7 +210,7 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
             </div>
 
             {/* Social Authentication Widgets */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <button 
                 onClick={() => handleSocialLogin('GitHub')}
                 className="glow-button-secondary flex items-center justify-center gap-2 py-3 rounded bg-[#1c1b1d]/80 font-mono text-xs text-[#e5e1e4] hover:bg-white/[0.04] cursor-pointer"
@@ -232,7 +232,7 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
         </div>
 
         {/* Home option & details */}
-        <div className="mt-8 text-center flex justify-between items-center px-4">
+        <div className="mt-8 text-center flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 px-4">
           <button 
             onClick={onBackToHome}
             className="font-mono text-xs text-[#b9cacb] hover:text-[#74f5ff] transition-colors flex items-center gap-1 cursor-pointer bg-transparent border-none"

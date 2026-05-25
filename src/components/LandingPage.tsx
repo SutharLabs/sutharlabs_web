@@ -166,7 +166,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
         </div>
 
         {/* Desktop Navigation links */}
-        <div className="hidden lg:flex items-center gap-6 xl:gap-8 font-mono text-xs">
+        <div className="hidden lg:flex items-center gap-4 sm:gap-6 xl:gap-4 sm:gap-8 font-mono text-xs">
           <button 
             onClick={() => {
               setCurrentView('HOME');
@@ -266,7 +266,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           />
 
           {/* Right Sliding Drawer Panel */}
-          <div className="fixed right-0 top-0 bottom-0 z-50 h-full w-[85%] max-w-[340px] bg-[#0c0c0e] border-l border-[#3a494b]/20 shadow-[0_0_50px_rgba(0,0,0,0.85)] lg:hidden p-6 flex flex-col justify-between font-mono animate-[slideInRight_0.3s_ease-out] select-none">
+          <div className="fixed right-0 top-0 bottom-0 z-50 h-full w-[85%] max-w-[340px] bg-[#0c0c0e] border-l border-[#3a494b]/20 shadow-[0_0_50px_rgba(0,0,0,0.85)] lg:hidden p-4 sm:p-6 flex flex-col justify-between font-mono animate-[slideInRight_0.3s_ease-out] select-none">
             <div>
               {/* Header inside drawer */}
               <div className="flex items-center justify-between pb-6 border-b border-[#3a494b]/15 mb-8">
@@ -380,12 +380,12 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
         <div className="flex flex-col gap-20 sm:gap-24 animate-[fadeIn_0.3s_ease-out]">
 
           {/* Hero Section */}
-          <section id="features" className="flex flex-col items-center justify-center text-center py-10 sm:py-16 relative">
+          <section id="features" className="flex flex-col items-center justify-center text-center py-6 sm:py-10 sm:py-16 relative">
             <div className="max-w-4xl space-y-6">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00dbe7]/10 border border-[#00dbe7]/30 text-[#74f5ff] font-mono text-[10px] uppercase tracking-widest leading-none mb-2 select-none">
                 R&amp;D Lab &amp; Engineering Studio
               </div>
-              <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-tight text-[#e5e1e4] neon-text-primary px-2">
+              <h1 className="text-3xl sm:text-3xl sm:text-4xl md:text-3xl md:text-5xl lg:text-4xl md:text-6xl font-bold tracking-tight leading-tight text-[#e5e1e4] neon-text-primary px-2">
                 Synthesizing Next-Gen Tooling &amp; High-Performance Engineering.
               </h1>
               <p className="text-sm sm:text-base md:text-lg text-[#b9cacb] max-w-3xl mx-auto font-sans font-light leading-relaxed">
@@ -446,10 +446,10 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               <p className="text-xs sm:text-sm text-[#b9cacb]/80 font-mono">Precision coding &amp; architecture packages.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
               
               {/* Service Package 1: Custom Web Development */}
-              <div className="glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#00dbe7]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
+              <div className="glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#00dbe7]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
                 <div className="space-y-4">
                   <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#00dbe7]/50 transition-all">
                     <Code className="text-[#00dbe7] w-6 h-6" />
@@ -473,14 +473,14 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                     </li>
                   </ul>
                 </div>
-                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex justify-between items-center text-xs">
+                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 text-xs">
                   <span className="font-mono text-gray-500">Pricing Model</span>
                   <span className="font-mono text-[#00dbe7] font-bold">Custom quote based on scope</span>
                 </div>
               </div>
 
               {/* Service Package 2: Mobile App Development */}
-              <div className="glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#ce5dff]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
+              <div className="glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#ce5dff]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
                 <div className="space-y-4">
                   <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#ce5dff]/50 transition-all">
                     <Smartphone className="text-[#ce5dff] w-6 h-6" />
@@ -504,14 +504,14 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                     </li>
                   </ul>
                 </div>
-                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex justify-between items-center text-xs">
+                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 text-xs">
                   <span className="font-mono text-gray-500">Pricing Model</span>
                   <span className="font-mono text-[#ce5dff] font-bold">Custom quote based on scope</span>
                 </div>
               </div>
 
               {/* Service Package 3: Intelligent Agent Systems */}
-              <div className="glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#ebb2ff]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
+              <div className="glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#ebb2ff]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
                 <div className="space-y-4">
                   <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#ebb2ff]/50 transition-all">
                     <Brain className="text-[#ebb2ff] w-6 h-6" />
@@ -535,7 +535,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                     </li>
                   </ul>
                 </div>
-                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex justify-between items-center text-xs">
+                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 text-xs">
                   <span className="font-mono text-gray-500">Pricing Model</span>
                   <span className="font-mono text-[#ebb2ff] font-bold">Custom quote based on scope</span>
                 </div>
@@ -563,11 +563,11 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               </button>
             </div>
 
-            <div className="relative glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/30 overflow-hidden">
+            <div className="relative glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/30 overflow-hidden">
               
               {/* Render Active Slide */}
               {plugins.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 md:grid-cols-3 xl:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
                   {getVisiblePlugins().map((plugin) => (
                     <div 
                       key={plugin.id} 
@@ -615,11 +615,11 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   ))}
                 </div>
               ) : (
-                <div className="text-center py-10 font-mono text-xs italic text-gray-500">Loading products registry...</div>
+                <div className="text-center py-6 sm:py-10 font-mono text-xs italic text-gray-500">Loading products registry...</div>
               )}
 
               {/* Slider Dots & Arrow Navigation */}
-              <div className="flex justify-between items-center mt-8 pt-4 border-t border-[#3a494b]/10 select-none">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mt-8 pt-4 border-t border-[#3a494b]/10 select-none">
                 <div className="flex gap-1">
                   {plugins.map((_, idx) => (
                     <button
@@ -693,7 +693,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                       </div>
 
                       {/* Project Metadata block */}
-                      <div className="lg:col-span-7 p-6 sm:p-8 flex flex-col justify-between space-y-6">
+                      <div className="lg:col-span-7 p-4 sm:p-6 sm:p-4 sm:p-8 flex flex-col justify-between space-y-6">
                         <div className="space-y-4">
                           <div className="flex justify-between items-start gap-2">
                             <div>
@@ -738,7 +738,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               ) : null}
 
               {/* Slider Dots & Arrow Navigation */}
-              <div className="flex justify-between items-center px-6 sm:px-8 py-4 border-t border-[#3a494b]/10 select-none bg-[#0c0c0e]/30">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 px-6 sm:px-8 py-4 border-t border-[#3a494b]/10 select-none bg-[#0c0c0e]/30">
                 <div className="flex gap-1">
                   {portfolioProjects.map((_, idx) => (
                     <button
@@ -786,8 +786,8 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
 
           {/* Header copy */}
           <div className="space-y-3">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
-              <span className="material-symbols-outlined text-[#00dbe7] text-3xl sm:text-4xl">storefront</span>
+            <h2 className="text-3xl sm:text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
+              <span className="material-symbols-outlined text-[#00dbe7] text-3xl sm:text-3xl sm:text-4xl">storefront</span>
               SutharLabs App Store
             </h2>
             <p className="text-sm sm:text-base text-[#b9cacb] max-w-3xl font-sans font-light leading-relaxed">
@@ -850,18 +850,18 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
             if (searchedPlugins.length === 0) {
               return (
                 <div className="glass-panel text-center py-20 rounded-xl border border-[#3a494b]/15 bg-[#131315]/20 font-mono">
-                  <span className="material-symbols-outlined text-4xl text-gray-600 mb-2 select-none">search_off</span>
+                  <span className="material-symbols-outlined text-3xl sm:text-4xl text-gray-600 mb-2 select-none">search_off</span>
                   <p className="text-xs text-gray-500 italic">No plugins found matching search criteria or category filter.</p>
                 </div>
               );
             }
 
             return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
                 {searchedPlugins.map((plugin) => (
                   <div 
                     key={plugin.id} 
-                    className="glass-panel p-6 rounded-xl border border-[#3a494b]/15 flex flex-col h-full bg-[#131315]/60 hover:border-[#00dbe7]/40 transition-all duration-300 hover:shadow-[0_4px_25px_rgba(0,219,231,0.08)]"
+                    className="glass-panel p-4 sm:p-6 rounded-xl border border-[#3a494b]/15 flex flex-col h-full bg-[#131315]/60 hover:border-[#00dbe7]/40 transition-all duration-300 hover:shadow-[0_4px_25px_rgba(0,219,231,0.08)]"
                   >
                     <div className="flex justify-between items-start mb-4">
                       <div className="flex items-center gap-3">
@@ -930,8 +930,8 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
 
           {/* Header copy */}
           <div className="space-y-3">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
-              <span className="material-symbols-outlined text-[#00e476] text-3xl sm:text-4xl">cases</span>
+            <h2 className="text-3xl sm:text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
+              <span className="material-symbols-outlined text-[#00e476] text-3xl sm:text-3xl sm:text-4xl">cases</span>
               Custom Development Services Portfolio
             </h2>
             <p className="text-sm sm:text-base text-[#b9cacb] max-w-3xl font-sans font-light leading-relaxed">
@@ -940,7 +940,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           </div>
 
           {/* Segment filter panel */}
-          <div className="flex justify-between items-center bg-[#131315]/80 p-4 rounded-xl border border-[#3a494b]/15 select-none">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 bg-[#131315]/80 p-4 rounded-xl border border-[#3a494b]/15 select-none">
             <span className="text-xs font-mono text-[#849495] uppercase hidden sm:inline">Active Case Filters</span>
             <div className="flex flex-wrap gap-1 bg-[#0c0c0e] p-1 rounded-lg border border-[#3a494b]/10 font-mono text-[10px]">
               {(['All', 'Web Dev', 'Mobile Apps', 'AI & Analytics'] as const).map((filter) => (
@@ -961,7 +961,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           </div>
 
           {/* Full-Page Projects Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
             {filteredProjects.map((proj) => (
               <div 
                 key={proj.id}
@@ -991,7 +991,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                     </div>
                   </div>
 
-                  <div className="p-6 space-y-3">
+                  <div className="p-4 sm:p-6 space-y-3">
                     <h3 className="font-sans font-bold text-lg text-white group-hover:text-[#00e476] transition-colors">{proj.title}</h3>
                     <p className="text-xs text-[#b9cacb] leading-relaxed">{proj.description}</p>
                   </div>
@@ -1012,8 +1012,8 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           </div>
 
           {/* Corporate Agency Consultation Inquiry block */}
-          <div className="glass-panel p-6 sm:p-8 rounded-xl border border-[#00e476]/20 bg-[#00e476]/5 mt-10 space-y-4 max-w-3xl mx-auto text-center animate-[fadeIn_0.3s_ease-out]">
-            <span className="material-symbols-outlined text-4xl text-[#00e476] select-none">chat_bubble_outline</span>
+          <div className="glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#00e476]/20 bg-[#00e476]/5 mt-10 space-y-4 max-w-3xl mx-auto text-center animate-[fadeIn_0.3s_ease-out]">
+            <span className="material-symbols-outlined text-3xl sm:text-4xl text-[#00e476] select-none">chat_bubble_outline</span>
             <h3 className="text-xl font-bold text-white font-sans">Ready to Build Your Project?</h3>
             <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed font-light">
               We deliver high-end bespoke products ranging from enterprise-grade corporate portals to custom AI workflows. Sponsor our lab’s open-source tools by partnering with our expert engineering team.
@@ -1057,8 +1057,8 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
 
           {/* Header copy */}
           <div className="space-y-3">
-            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
-              <span className="material-symbols-outlined text-[#00dbe7] text-3xl sm:text-4xl">mail</span>
+            <h2 className="text-3xl sm:text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
+              <span className="material-symbols-outlined text-[#00dbe7] text-3xl sm:text-3xl sm:text-4xl">mail</span>
               Contact SutharLabs
             </h2>
             <p className="text-sm sm:text-base text-[#b9cacb] font-sans font-light leading-relaxed">
@@ -1067,10 +1067,10 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           </div>
 
           {/* Dual-Track Layout */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-8 items-stretch">
+          <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-8 items-stretch">
             
             {/* Track 1: Enterprise Consultation Form (Cols 7) */}
-            <div className="md:col-span-7 glass-panel p-6 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/50 flex flex-col justify-between space-y-6">
+            <div className="md:col-span-7 glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/50 flex flex-col justify-between space-y-6">
               <div className="space-y-2">
                 <span className="px-2 py-0.5 rounded bg-[#00e476]/20 border border-[#00e476]/30 text-[#00e476] text-[9px] font-mono uppercase tracking-wider">Enterprise &amp; Agency Funnel</span>
                 <h3 className="text-lg font-bold text-white">Start a Project Consultation</h3>
@@ -1079,8 +1079,8 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
 
               {/* Form State */}
               {contactSubmitted ? (
-                <div className="p-6 rounded-xl border border-[#00e476]/30 bg-[#00e476]/5 text-center space-y-4 py-12 animate-[fadeIn_0.3s_ease-out]">
-                  <span className="material-symbols-outlined text-4xl text-[#00e476] select-none">verified_user</span>
+                <div className="p-4 sm:p-6 rounded-xl border border-[#00e476]/30 bg-[#00e476]/5 text-center space-y-4 py-12 animate-[fadeIn_0.3s_ease-out]">
+                  <span className="material-symbols-outlined text-3xl sm:text-4xl text-[#00e476] select-none">verified_user</span>
                   <h4 className="text-base font-bold text-white">Consultation Request Dispatched!</h4>
                   <p className="text-xs text-[#b9cacb] leading-relaxed max-w-sm mx-auto">
                     Thank you! Your project specification parameters have been successfully registered under tracking ID <span className="font-mono text-[#00e476]">SR_{Math.floor(Math.random() * 90000) + 10000}</span>.
@@ -1100,7 +1100,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   }}
                   className="space-y-4 font-mono text-xs"
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-gray-500 block">YOUR NAME</label>
                       <input 
@@ -1154,10 +1154,10 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
             </div>
 
             {/* Track 2: Lab & Open Source Support (Cols 5) */}
-            <div className="md:col-span-5 flex flex-col gap-6">
+            <div className="md:col-span-5 flex flex-col gap-4 sm:gap-6">
               
               {/* Card 1: Open Source & Developer Channels */}
-              <div className="glass-panel p-6 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 space-y-4">
+              <div className="glass-panel p-4 sm:p-6 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 space-y-4">
                 <div className="space-y-1.5">
                   <span className="px-2 py-0.5 rounded bg-[#ce5dff]/20 border border-[#ce5dff]/30 text-[#ebb2ff] text-[9px] font-mono uppercase tracking-wider">Lab Support</span>
                   <h3 className="text-base font-bold text-white">Developer Collaborations</h3>
@@ -1180,7 +1180,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               </div>
 
               {/* Card 2: HQ Coordinates */}
-              <div className="glass-panel p-6 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 space-y-3 font-mono text-xs leading-relaxed text-[#b9cacb]">
+              <div className="glass-panel p-4 sm:p-6 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 space-y-3 font-mono text-xs leading-relaxed text-[#b9cacb]">
                 <h4 className="text-white font-bold uppercase tracking-wider text-[10px]">HQ Coordinates</h4>
                 <p className="text-xs">
                   SutharLabs Research Hub &amp; Studios<br />
@@ -1219,7 +1219,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
           <div className="glass-panel border border-[#00e476]/30 max-w-2xl w-full rounded-2xl bg-[#131315]/95 shadow-[0_15px_50px_rgba(0,0,0,0.85)] max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col justify-between">
             
             {/* Drawer Header */}
-            <div className="p-6 border-b border-[#3a494b]/20 flex justify-between items-start">
+            <div className="p-4 sm:p-6 border-b border-[#3a494b]/20 flex justify-between items-start">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
                   <span className="p-1 rounded bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 text-[10px] font-mono">
@@ -1243,7 +1243,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
             </div>
 
             {/* Case Details Body */}
-            <div className="p-6 space-y-6">
+            <div className="p-4 sm:p-6 space-y-6">
               
               {/* Visual case stats board */}
               <div className="p-4 rounded-xl border border-dashed border-[#00e476]/25 bg-[#0e0e10]/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -1318,14 +1318,14 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       </main>
 
       {/* Footer */}
-      <footer className="w-full py-8 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 bg-[#131315] border-t border-[#3a494b]/10 z-10 mt-auto">
+      <footer className="w-full py-4 sm:py-8 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 bg-[#131315] border-t border-[#3a494b]/10 z-10 mt-auto">
         <div className="text-md font-bold text-[#74f5ff] tracking-tight hover:brightness-110">
           SutharLabs
         </div>
         <div className="text-xs text-[#b9cacb]/80 text-center sm:text-left">
           &copy; 2026 SutharLabs Corp. All rights reserved.
         </div>
-        <div className="flex items-center gap-6 text-xs text-[#b9cacb] font-mono">
+        <div className="flex items-center gap-4 sm:gap-6 text-xs text-[#b9cacb] font-mono">
           <a className="hover:text-[#74f5ff] transition-colors" href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
           <a className="hover:text-[#ce5dff] transition-colors" href="https://google.com" target="_blank" rel="noopener noreferrer">Google</a>
         </div>

@@ -293,7 +293,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                 <button
                   key={s.symbol}
                   onMouseDown={() => { setSymbol(s.symbol); setSymbolInput(s.symbol); setShowDropdown(false); }}
-                  className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-[#00dbe7]/10 transition-colors flex justify-between items-center gap-2 border-none bg-transparent cursor-pointer"
+                  className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-[#00dbe7]/10 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 gap-2 border-none bg-transparent cursor-pointer"
                 >
                   <span className="text-[#00dbe7]">{s.symbol}</span>
                   <span className="text-[#849495] truncate text-right">{s.name}</span>
@@ -319,7 +319,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       {/* ── Quote + Stats ───────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         {/* Main price card */}
-        <div className="lg:col-span-8 glass-panel rounded-lg p-6 flex flex-col justify-between neon-border-active relative overflow-hidden">
+        <div className="lg:col-span-8 glass-panel rounded-lg p-4 sm:p-6 flex flex-col justify-between neon-border-active relative overflow-hidden">
           <div className="absolute -top-10 -right-10 w-40 h-40 bg-[#00dbe7]/5 rounded-full blur-3xl pointer-events-none" />
 
           <div className="flex justify-between items-start z-10">
@@ -389,7 +389,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
         </div>
 
         {/* Stats grid */}
-        <div className="lg:col-span-4 grid grid-cols-2 gap-3">
+        <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Volume */}
           <div className="glass-panel rounded-lg p-4 flex flex-col justify-center">
             <span className="font-mono text-[10px] uppercase text-[#849495] tracking-widest mb-1.5">Volume</span>
@@ -423,7 +423,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
 
       {/* ── Technical Indicators Row ────────────────────────────────────── */}
       {analysis && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="glass-panel rounded-lg p-4 space-y-1">
             <span className="font-mono text-[10px] text-[#849495] uppercase tracking-widest">MACD</span>
             <div className="text-xs font-mono">
@@ -469,7 +469,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       {/* ── Order Drawer ────────────────────────────────────────────────── */}
       {selectedAction && (
         <div className="glass-panel rounded-lg p-5 border border-[#00dbe7]/40 bg-[#131315] animate-fade-in">
-          <div className="flex justify-between items-center border-b border-[#3a494b]/20 pb-3 mb-4">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 border-b border-[#3a494b]/20 pb-3 mb-4">
             <h4 className="font-sans font-bold text-sm text-[#74f5ff] uppercase tracking-wider flex items-center gap-2">
               <span className="material-symbols-outlined text-[#00dbe7] text-base select-none">bolt</span>
               Order Terminal — {selectedAction} {quote?.symbol?.replace('.NS', '') ?? symbol}
@@ -478,7 +478,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
               <span className="material-symbols-outlined text-sm select-none">close</span>
             </button>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+          <div className="grid grid-cols-1 md:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
             <div className="bg-[#0e0e10]/80 p-3 rounded border border-[#3a494b]/30">
               <span className="block font-mono text-[10px] text-[#849495] uppercase">Market Price</span>
               <span className="font-mono text-sm text-[#e5e1e4] font-bold block mt-1">₹{quote?.current_price?.toFixed(2) ?? '—'}</span>
@@ -518,7 +518,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
 
       {/* ── Price Chart ─────────────────────────────────────────────────── */}
       <div className="glass-panel rounded-lg flex-1 min-h-[320px] flex flex-col p-1">
-        <div className="flex justify-between items-center p-3 border-b border-[#3a494b]/10 bg-[#1c1b1d]/40">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 p-3 border-b border-[#3a494b]/10 bg-[#1c1b1d]/40">
           <div className="flex gap-1">
             {(['1D', '1W', '1M', '1Y'] as const).map(p => (
               <button

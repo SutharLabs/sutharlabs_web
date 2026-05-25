@@ -75,8 +75,8 @@ export default function ManageAppsView({ logs, onAddLog, userToken }: ManageProp
   }, []);
 
   return (
-    <div className="flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar h-full">
-      <div className="glass-panel p-6 rounded-lg border border-[#3a494b]/20 flex flex-col gap-6">
+    <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto custom-scrollbar h-full">
+      <div className="glass-panel p-4 sm:p-6 rounded-lg border border-[#3a494b]/20 flex flex-col gap-4 sm:gap-6">
         <div className="flex items-center gap-3 border-b border-[#3a494b]/20 pb-3">
           <span className="material-symbols-outlined text-[#00e476] text-2xl">storefront</span>
           <div>
@@ -85,12 +85,12 @@ export default function ManageAppsView({ logs, onAddLog, userToken }: ManageProp
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div className="space-y-3">
             <h4 className="text-sm font-bold text-[#e5e1e4]">Live Store Inventory</h4>
             <div className="space-y-2">
               {plugins.map(p => (
-                <div key={p.id} className="p-3 bg-[#131315] border border-[#3a494b]/30 rounded flex justify-between items-center">
+                <div key={p.id} className="p-3 bg-[#131315] border border-[#3a494b]/30 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
                   <div className="flex items-center gap-3">
                     <span className="material-symbols-outlined text-[#00dbe7]">{p.iconSymbol}</span>
                     <div><div className="text-sm font-bold text-[#e5e1e4]">{p.name}</div><div className="text-[10px] text-gray-500">{p.category} | {p.type}</div></div>

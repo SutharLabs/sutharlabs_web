@@ -383,7 +383,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
             System coordinates, server orchestration, and secure credentials management.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0">
           <button
             type="button"
             onClick={toggleMaintenance}
@@ -418,12 +418,12 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       </div>
 
       {/* Tab Selector */}
-      <div className="flex gap-2 border-b border-[#3a494b]/20 pb-0">
+      <div className="flex overflow-x-auto whitespace-nowrap gap-2 border-b border-[#3a494b]/20 pb-0 w-full snap-x">
         {(['DASHBOARD', 'APP_STORE', 'WORKSPACE_PLUGINS', 'PORTFOLIOS'] as const).map(tab => (
           <button
             key={tab}
             onClick={() => setActiveAdminTab(tab)}
-            className={`px-4 py-2 font-mono text-xs uppercase font-bold tracking-wider transition-all border-b-2 ${
+            className={`px-4 py-2 font-mono text-xs uppercase font-bold tracking-wider transition-all border-b-2 shrink-0 snap-start ${
               activeAdminTab === tab 
                 ? 'text-[#00dbe7] border-[#00dbe7]' 
                 : 'text-[#849495] border-transparent hover:text-[#b9cacb]'
@@ -437,7 +437,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       {activeAdminTab === 'DASHBOARD' && (
         <>
           {/* Aggregate Telemetry Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* Core CPU Utilization */}
             <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
@@ -513,11 +513,11 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
           </div>
 
           {/* Main Panel Content (Split User List + Add User Form) */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 items-start">
             
             {/* User Management List Directory Block */}
             <div className="lg:col-span-2 glass-panel p-5 rounded-xl border border-[#3a494b]/15 bg-[#131315]/20 flex flex-col space-y-4">
-              <div className="flex justify-between items-center pb-2 border-b border-[#3a494b]/10">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 pb-2 border-b border-[#3a494b]/10">
                 <h3 className="font-sans font-bold text-sm text-[#e5e1e4] flex items-center gap-2">
                   <Users className="w-4 h-4 text-[#00dbe7]" />
                   Authorized Corporate Accounts ({users.length})

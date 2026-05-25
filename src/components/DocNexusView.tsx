@@ -436,12 +436,12 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
                     No matching sequence flows found. Wrap them inside a sequence block!
                   </div>
                 ) : (
-                  <div className="flex-grow glass-panel p-6 rounded-lg border border-[#3a494b]/15 bg-[#0e0e10]/40 overflow-x-auto relative flex flex-col items-center">
+                  <div className="flex-grow glass-panel p-4 sm:p-6 rounded-lg border border-[#3a494b]/15 bg-[#0e0e10]/40 overflow-x-auto relative flex flex-col items-center">
                     
                     {/* SVG Sequence diagram drawer */}
                     <div className="min-w-[450px] relative flex flex-col py-4">
                       {/* Actors Headers */}
-                      <div className="flex justify-around mb-8 w-full gap-10">
+                      <div className="flex justify-around mb-8 w-full gap-6 sm:gap-10">
                         {actors.map(actor => (
                           <div 
                             key={actor} 
@@ -500,7 +500,7 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
                       </div>
 
                       {/* Actors Lifelines dashed bounds behind flows */}
-                      <div className="absolute inset-0 flex justify-around pointer-events-none z-[-1] py-4 gap-10">
+                      <div className="absolute inset-0 flex justify-around pointer-events-none z-[-1] py-4 gap-6 sm:gap-10">
                         {actors.map(actor => (
                           <div 
                             key={actor} 
@@ -532,7 +532,7 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
                     No network nodes recognized. Specify structural nodes in raw panels.
                   </div>
                 ) : (
-                  <div className="flex-grow glass-panel rounded-lg border border-[#3a494b]/15 bg-[#0e0e10]/40 overflow-hidden relative min-h-[300px] p-6 flex flex-col">
+                  <div className="flex-grow glass-panel rounded-lg border border-[#3a494b]/15 bg-[#0e0e10]/40 overflow-hidden relative min-h-[300px] p-4 sm:p-6 flex flex-col">
                     
                     {/* SVG lines layer drawing connections */}
                     <div className="w-full flex-grow relative min-h-[250px] chart-grid rounded overflow-hidden">

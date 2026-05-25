@@ -167,7 +167,7 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
   return (
     <div className="flex-grow flex flex-col gap-4">
       {/* Designer Dashboard Header toolbar info */}
-      <div className="flex justify-between items-center bg-[#1c1b1d]/40 border border-[#3a494b]/20 p-3 rounded-lg">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 bg-[#1c1b1d]/40 border border-[#3a494b]/20 p-3 rounded-lg">
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-[#ce5dff] select-none text-md">account_tree</span>
           <div>

@@ -111,7 +111,7 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
     <div className="flex-grow flex flex-col gap-5">
       
       {/* Dynamic Summary Cards row */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Outstanding Card */}
         <div className="glass-panel p-5 rounded-lg border-l-4 border-[#00dbe7] flex flex-col justify-center">
           <span className="font-mono text-[9px] uppercase tracking-widest text-[#849495] mb-1 block">Total Value</span>
@@ -139,7 +139,7 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
 
       {/* Main Bar Chart Matrix displaying invoices visual proportions */}
       <div className="glass-panel rounded-lg p-5 flex flex-col gap-4">
-        <div className="flex justify-between items-center pb-2 border-b border-[#3a494b]/10">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 pb-2 border-b border-[#3a494b]/10">
           <h3 className="font-mono text-xs font-bold text-[#e5e1e4] uppercase tracking-wider flex items-center gap-2">
             <span className="material-symbols-outlined text-[#00dbe7] text-base select-none">currency_exchange</span>
             Payout Cycle Analysis (Active Invoices Proportional Graph)
@@ -209,7 +209,7 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
 
       {/* Interactive Creation invoice overlay or inline form */}
       <div className="glass-panel p-5 rounded-lg border border-[#3a494b]/15">
-        <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-4">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[#00e476] select-none text-md">receipt_long</span>
             <h3 className="font-mono text-xs font-bold text-[#e5e1e4] uppercase tracking-widest">Invoices Log Book</h3>
@@ -226,7 +226,7 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
         {/* Input Form Elements */}
         {isFormVisible && (
           <form onSubmit={handleCreateInvoice} className="bg-[#0e0e10]/60 p-4 rounded-md border border-[#3a494b]/20 mb-5 space-y-4 animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 md:grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1">
                 <label className="block font-mono text-[9px] text-[#849495] uppercase">Client Name</label>
                 <input 
@@ -328,7 +328,7 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
 
               {filteredInvoices.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center text-[#849495] font-light">
+                  <td colSpan={5} className="p-6 sm:p-12 text-center text-[#849495] font-light">
                     No records matches filter criteria.
                   </td>
                 </tr>
