@@ -2,7 +2,7 @@ export interface UserProfile {
   email: string;
   name: string;
   isLoggedIn: boolean;
-  role?: 'Admin' | 'Developer' | 'Banned';
+  role?: 'Admin' | 'Developer' | 'Banned' | 'Pending';
   token?: string;
 }
 
@@ -12,7 +12,7 @@ export interface RegisteredUser {
   id: string;
   email: string;
   name: string;
-  role: 'Admin' | 'Developer' | 'Banned';
+  role: 'Admin' | 'Developer' | 'Banned' | 'Pending';
   joinedAt: string;
   activityCount: number;
 }

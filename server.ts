@@ -51,6 +51,14 @@ function authenticateToken(req: any, res: any, next: any) {
   next();
 }
 
+// Admin-only authorization guard — must be chained after authenticateToken
+function requireAdmin(req: any, res: any, next: any) {
+  if (!req.user || req.user.role !== "Admin") {
+    return res.status(403).json({ error: "Access Denied: Administrator privileges are required for this operation." });
+  }
+  next();
+}
+
 // Dynamic password SHA256 hasher
 function hashPassword(password: string): string {
   return crypto.createHash("sha256").update(password).digest("hex");
@@ -368,7 +376,7 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
       }
 
       // Determine role based on standard corporate rules
-      let resolvedRole = "Developer";
+      let resolvedRole = "Pending";
       if (
         email.toLowerCase().includes("admin") ||
         email.toLowerCase() === "mr.sutharsuresh@gmail.com" ||
@@ -393,6 +401,12 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
           }
         }
       });
+
+      if (createdUser.role === "Pending") {
+        return res.status(403).json({
+          error: "Registration successful! Your account is pending administrator approval before you can access the workspace."
+        });
+      }
 
       // Generate cryptographically signed token
       const token = generateToken({ email: createdUser.email, role: createdUser.role, name: createdUser.name });
@@ -423,6 +437,10 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
       const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
       if (!user || !user.passwordHash || user.passwordHash !== hashPassword(password)) {
         return res.status(401).json({ error: "Access Denied: Invalid email address or password credentials." });
+      }
+
+      if (user.role === "Pending") {
+        return res.status(403).json({ error: "Access Denied: Your account is pending administrator approval before you can access the workspace." });
       }
 
       if (user.role === "Banned") {
@@ -466,6 +484,9 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
     try {
       let user = await prisma.user.findUnique({ where: { email: mockEmail } });
       if (user) {
+        if (user.role === "Pending") {
+          return res.status(403).json({ error: "Access Denied: Your account is pending administrator approval before you can access the workspace." });
+        }
         if (user.role === "Banned") {
           return res.status(403).json({ error: "Access Denied: Your workspace permissions have been administratively revoked." });
         }
@@ -478,7 +499,7 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
           data: {
             email: mockEmail,
             name: mockName,
-            role: "Developer",
+            role: "Pending",
             activityCount: 1,
             portfolio: {
               create: {
@@ -489,6 +510,7 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
             }
           }
         });
+        return res.status(403).json({ error: "Registration successful! Your account is pending administrator approval before you can access the workspace." });
       }
 
       // Generate cryptographically signed token
@@ -512,7 +534,7 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
   // ==================== PROTECTED USERS CRUD (ADMIN) ====================
 
   // GET /api/users
-  app.get("/api/users", authenticateToken, async (req, res) => {
+  app.get("/api/users", authenticateToken, requireAdmin, async (req, res) => {
     try {
       const users = await prisma.user.findMany({
         orderBy: { joinedAt: "asc" }
@@ -533,7 +555,7 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
   });
 
   // POST /api/users (Provision User)
-  app.post("/api/users", authenticateToken, async (req, res) => {
+  app.post("/api/users", authenticateToken, requireAdmin, async (req, res) => {
     const { name, email, role } = req.body;
     if (!name || !email) {
       return res.status(400).json({ error: "Name and email are required fields to provision." });
@@ -576,7 +598,7 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
   });
 
   // PUT /api/users/:id/role (Modify user role)
-  app.put("/api/users/:id/role", authenticateToken, async (req, res) => {
+  app.put("/api/users/:id/role", authenticateToken, requireAdmin, async (req, res) => {
     const { id } = req.params;
     const { role } = req.body;
 
@@ -596,7 +618,7 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
   });
 
   // DELETE /api/users/:id (Purge user)
-  app.delete("/api/users/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/users/:id", authenticateToken, requireAdmin, async (req, res) => {
     const { id } = req.params;
 
     try {
@@ -778,7 +800,7 @@ app.get("/api/workspace/stock-analyzer/nifty50", (req, res) => {
 // ADMIN PORTFOLIO API
 // ==========================================
 
-app.get("/api/admin/portfolios", authenticateToken, async (req: any, res: any) => {
+app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: any, res: any) => {
   if (req.user.role !== 'Admin') return res.status(403).json({ error: "Admins only" });
   try {
     const portfolios = await prisma.portfolio.findMany({ include: { user: true } });
@@ -988,7 +1010,7 @@ app.get("/api/admin/portfolios", authenticateToken, async (req: any, res: any) =
   });
 
   // POST /api/plugins (Admin protected endpoint)
-  app.post("/api/plugins", authenticateToken, async (req, res) => {
+  app.post("/api/plugins", authenticateToken, requireAdmin, async (req, res) => {
     const { name, category, type, downloads, rating, description, iconSymbol, tags } = req.body;
 
     if (!name || !description) {
@@ -1027,7 +1049,7 @@ app.get("/api/admin/portfolios", authenticateToken, async (req: any, res: any) =
   });
 
   // DELETE /api/plugins/:id (Admin protected endpoint)
-  app.delete("/api/plugins/:id", authenticateToken, async (req, res) => {
+  app.delete("/api/plugins/:id", authenticateToken, requireAdmin, async (req, res) => {
     const { id } = req.params;
 
     try {

@@ -21,6 +21,8 @@ interface LandingPageProps {
   user: UserProfile;
   onLaunch: () => void;
   onNavigateAuth: (tab: 'signin' | 'signup') => void;
+  theme?: 'light' | 'dark';
+  toggleTheme?: () => void;
 }
 
 interface PortfolioProject {
@@ -38,7 +40,7 @@ interface PortfolioProject {
   imageSrc: string;
 }
 
-export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingPageProps) {
+export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'light', toggleTheme }: LandingPageProps) {
   const [currentView, _setCurrentView] = useState<'HOME' | 'STORE' | 'PORTFOLIO' | 'CONTACT'>('HOME');
   const setCurrentView = (view: 'HOME' | 'STORE' | 'PORTFOLIO' | 'CONTACT') => {
     _setCurrentView(view);
@@ -176,7 +178,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               }, 50);
             }}
             className={`px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer ${
-              currentView === 'HOME' ? 'text-[#74f5ff] bg-white/5 font-bold' : 'text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5'
+              currentView === 'HOME' ? 'text-primary bg-primary/10 font-bold border-none' : 'text-on-surface-variant hover:text-primary hover:bg-primary/5 bg-transparent'
             }`}
           >
             Features
@@ -189,7 +191,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                 if (el) el.scrollIntoView({ behavior: 'smooth' });
               }, 50);
             }}
-            className="text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer bg-transparent border-none"
+            className="text-on-surface-variant hover:text-primary hover:bg-primary/5 px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer bg-transparent border-none"
           >
             Services offered
           </button>
@@ -199,7 +201,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer ${
-              currentView === 'PORTFOLIO' ? 'text-[#00e476] bg-white/5 font-bold border-none' : 'text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 bg-transparent border-none'
+              currentView === 'PORTFOLIO' ? 'text-tertiary bg-tertiary/10 font-bold border-none' : 'text-on-surface-variant hover:text-tertiary hover:bg-tertiary/5 bg-transparent border-none'
             }`}
           >
             Our Portfolio
@@ -210,7 +212,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer ${
-              currentView === 'STORE' ? 'text-[#ce5dff] bg-white/5 font-bold border-none' : 'text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 bg-transparent border-none'
+              currentView === 'STORE' ? 'text-secondary bg-secondary/10 font-bold border-none' : 'text-on-surface-variant hover:text-secondary hover:bg-secondary/5 bg-transparent border-none'
             }`}
           >
             App Store
@@ -221,7 +223,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }}
             className={`px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer ${
-              currentView === 'CONTACT' ? 'text-[#00dbe7] bg-white/5 font-bold border-none' : 'text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 bg-transparent border-none'
+              currentView === 'CONTACT' ? 'text-primary bg-primary/10 font-bold border-none' : 'text-on-surface-variant hover:text-primary hover:bg-primary/5 bg-transparent border-none'
             }`}
           >
             Contact Us
@@ -229,6 +231,32 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
         </div>
 
         <div className="flex items-center gap-3 sm:gap-4">
+          {/* Theme Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="p-2.5 bg-white/5 border border-white/10 rounded-full text-[#e5e1e4] hover:text-[#00dbe7] hover:border-[#00dbe7]/50 transition-all flex items-center justify-center cursor-pointer"
+            title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
+          >
+            {theme === 'light' ? (
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+              </svg>
+            ) : (
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="5" />
+                <line x1="12" y1="1" x2="12" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="23" />
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                <line x1="1" y1="12" x2="3" y2="12" />
+                <line x1="21" y1="12" x2="23" y2="12" />
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+              </svg>
+            )}
+          </button>
+
           {user.isLoggedIn ? (
             <button 
               onClick={onLaunch}
@@ -296,7 +324,9 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               {/* Stack of navigation page anchors */}
               <div className="flex flex-col gap-4 text-sm mt-4">
                 <button 
-                  className="w-full text-left text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
+                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 border-none cursor-pointer font-mono ${
+                    currentView === 'HOME' ? 'text-primary bg-primary/10 font-bold' : 'text-on-surface-variant hover:text-primary hover:bg-primary/5 bg-transparent'
+                  }`} 
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     setCurrentView('HOME');
@@ -309,7 +339,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   <span className="text-[#ce5dff] text-xs">◆</span> Features
                 </button>
                 <button 
-                  className="w-full text-left text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
+                  className="w-full text-left text-on-surface-variant hover:text-primary hover:bg-primary/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     setCurrentView('HOME');
@@ -322,7 +352,9 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   <span className="text-[#00e476] text-xs">◆</span> Services Offered
                 </button>
                 <button 
-                  className="w-full text-left text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
+                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 border-none cursor-pointer font-mono ${
+                    currentView === 'PORTFOLIO' ? 'text-tertiary bg-tertiary/10 font-bold' : 'text-on-surface-variant hover:text-tertiary hover:bg-tertiary/5 bg-transparent'
+                  }`} 
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     setCurrentView('PORTFOLIO');
@@ -332,7 +364,9 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   <span className="text-[#00dbe7] text-xs">◆</span> Our Portfolio
                 </button>
                 <button 
-                  className="w-full text-left text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
+                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 border-none cursor-pointer font-mono ${
+                    currentView === 'STORE' ? 'text-secondary bg-secondary/10 font-bold' : 'text-on-surface-variant hover:text-secondary hover:bg-secondary/5 bg-transparent'
+                  }`} 
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     setCurrentView('STORE');
@@ -342,7 +376,9 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   <span className="text-[#ebb2ff] text-xs">◆</span> App Store
                 </button>
                 <button 
-                  className="w-full text-left text-[#b9cacb] hover:text-[#74f5ff] hover:bg-white/5 px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 bg-transparent border-none cursor-pointer font-mono" 
+                  className={`w-full text-left px-3 py-2.5 rounded-lg transition-all duration-150 flex items-center gap-2 border-none cursor-pointer font-mono ${
+                    currentView === 'CONTACT' ? 'text-primary bg-primary/10 font-bold' : 'text-on-surface-variant hover:text-primary hover:bg-primary/5 bg-transparent'
+                  }`} 
                   onClick={() => {
                     setIsMobileMenuOpen(false);
                     setCurrentView('CONTACT');
@@ -356,6 +392,40 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
 
             {/* Launcher button at bottom */}
             <div className="pt-6 border-t border-[#3a494b]/15 space-y-3">
+              {/* Theme Toggle in Mobile Drawer */}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsMobileMenuOpen(false);
+                  toggleTheme?.();
+                }}
+                className="w-full py-2.5 bg-white/5 border border-white/10 rounded-lg text-[#e5e1e4] hover:text-[#00dbe7] hover:border-[#00dbe7]/50 transition-all font-mono text-[11px] font-bold uppercase cursor-pointer flex items-center justify-center gap-2"
+              >
+                {theme === 'light' ? (
+                  <>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                    </svg>
+                    DARK THEME
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <circle cx="12" cy="12" r="5" />
+                      <line x1="12" y1="1" x2="12" y2="3" />
+                      <line x1="12" y1="21" x2="12" y2="23" />
+                      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                      <line x1="1" y1="12" x2="3" y2="12" />
+                      <line x1="21" y1="12" x2="23" y2="12" />
+                      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                    </svg>
+                    LIGHT THEME
+                  </>
+                )}
+              </button>
+
               <button 
                 onClick={() => {
                   setIsMobileMenuOpen(false);
@@ -408,30 +478,20 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                 >
                   Browse App Store
                 </button>
-                
-                <button 
-                  onClick={() => {
-                    setCurrentView('PORTFOLIO');
-                    window.scrollTo({ top: 0, behavior: 'smooth' });
-                  }}
-                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-[#00e476]/30 bg-[#00e476]/5 text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#a8ffcc] hover:bg-[#00e476]/15 hover:border-[#00e476]/60 transition-all duration-300 cursor-pointer"
-                >
-                  View Agency Cases
-                </button>
               </div>
             </div>
 
             {/* Glowing Console fluid Image Panel */}
-            <div className="w-full mt-14 sm:mt-20 relative rounded-2xl overflow-hidden glass-panel border border-[#3a494b]/20 shadow-[0_15px_40px_rgba(0,0,0,0.6)] aspect-video md:h-[400px]">
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#131315]/90 z-10"></div>
-              <div className="w-full h-full bg-[#1c1b1d] flex items-center justify-center relative">
+            <div className="w-full mt-14 sm:mt-20 relative rounded-2xl overflow-hidden glass-panel border border-outline/25 shadow-[0_15px_40px_rgba(0,0,0,0.06)] dark:shadow-[0_15px_40px_rgba(0,0,0,0.5)] aspect-video md:h-[400px]">
+              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-surface/90 z-10"></div>
+              <div className="w-full h-full bg-surface-container flex items-center justify-center relative">
                 <img 
-                  alt="SutharLabs Custom Solutions Monitor &amp; Real-time Dashboards" 
-                  className="fluid-img w-full h-full object-cover opacity-65 transition-transform duration-1000 hover:scale-[1.02]" 
+                  alt="SutharLabs Web, Mobile, and AI Development Connectivity" 
+                  className="fluid-img w-full h-full object-cover opacity-90 dark:opacity-75 transition-transform duration-1000 hover:scale-[1.02]" 
                   referrerPolicy="no-referrer"
-                  src="https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80"
+                  src="/sutharlabs_connectivity.png"
                 />
-                <div className="absolute inset-0 border border-[#00dbe7]/15 rounded-2xl"></div>
+                <div className="absolute inset-0 border border-primary/10 rounded-2xl"></div>
               </div>
             </div>
           </section>
@@ -446,98 +506,98 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               <p className="text-xs sm:text-sm text-[#b9cacb]/80 font-mono">Precision coding &amp; architecture packages.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+            <div className="flex overflow-x-auto gap-4 py-2 pb-6 snap-x snap-mandatory scrollbar-hide md:grid md:grid-cols-3 md:gap-6 md:py-0 md:pb-0 md:overflow-visible">
               
               {/* Service Package 1: Custom Web Development */}
-              <div className="glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#00dbe7]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
+              <div className="glass-panel p-6 rounded-xl border border-outline/10 bg-surface dark:bg-surface/40 hover:border-primary/50 transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.25)] flex flex-col justify-between group w-[280px] sm:w-[320px] aspect-square shrink-0 snap-start md:w-auto md:aspect-auto">
                 <div className="space-y-4">
-                  <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#00dbe7]/50 transition-all">
-                    <Code className="text-[#00dbe7] w-6 h-6" />
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center border border-primary/20 group-hover:border-primary/50 transition-all">
+                    <Code className="text-primary w-6 h-6" />
                   </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-[#e5e1e4]">Custom Web Dev</h3>
-                  <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed">
+                  <h3 className="text-lg sm:text-xl font-bold text-on-surface">Custom Web Dev</h3>
+                  <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
                     Tailored React, Vite, and Next.js frontends engineered with strict compliance, layout consistency, and sub-millisecond edge load speeds.
                   </p>
-                  <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-[#b9cacb]/80">
+                  <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-on-surface-variant/80">
                     <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-[#00dbe7]" />
+                      <CheckCircle className="w-3.5 h-3.5 text-primary" />
                       Fluid responsive CSS designs
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-[#00dbe7]" />
+                      <CheckCircle className="w-3.5 h-3.5 text-primary" />
                       Optimized lighthouse profiles
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-[#00dbe7]" />
+                      <CheckCircle className="w-3.5 h-3.5 text-primary" />
                       State sync &amp; Secure edge API integration
                     </li>
                   </ul>
                 </div>
-                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 text-xs">
-                  <span className="font-mono text-gray-500">Pricing Model</span>
-                  <span className="font-mono text-[#00dbe7] font-bold">Custom quote based on scope</span>
+                <div className="mt-6 pt-4 border-t border-outline/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 text-xs text-on-surface-variant">
+                  <span className="font-mono text-on-surface-variant/60">Pricing Model</span>
+                  <span className="font-mono text-primary font-bold">Custom quote based on scope</span>
                 </div>
               </div>
 
               {/* Service Package 2: Mobile App Development */}
-              <div className="glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#ce5dff]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
+              <div className="glass-panel p-6 rounded-xl border border-outline/10 bg-surface dark:bg-surface/40 hover:border-secondary/50 transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.25)] flex flex-col justify-between group w-[280px] sm:w-[320px] aspect-square shrink-0 snap-start md:w-auto md:aspect-auto">
                 <div className="space-y-4">
-                  <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#ce5dff]/50 transition-all">
-                    <Smartphone className="text-[#ce5dff] w-6 h-6" />
+                  <div className="w-12 h-12 rounded-lg bg-secondary/10 dark:bg-secondary/20 flex items-center justify-center border border-secondary/20 group-hover:border-secondary/50 transition-all">
+                    <Smartphone className="text-secondary w-6 h-6" />
                   </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-[#e5e1e4]">Mobile App Dev</h3>
-                  <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed">
+                  <h3 className="text-lg sm:text-xl font-bold text-on-surface">Mobile App Dev</h3>
+                  <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
                     High-fidelity React Native applications designed with fluent navigation, responsive gestures, and reliable local SQLite storage vaults.
                   </p>
-                  <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-[#b9cacb]/80">
+                  <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-on-surface-variant/80">
                     <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-[#ce5dff]" />
+                      <CheckCircle className="w-3.5 h-3.5 text-secondary" />
                       iOS and Android unified targets
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-[#ce5dff]" />
+                      <CheckCircle className="w-3.5 h-3.5 text-secondary" />
                       Local encryption and biometrics
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-[#ce5dff]" />
+                      <CheckCircle className="w-3.5 h-3.5 text-secondary" />
                       Dynamic background socket services
                     </li>
                   </ul>
                 </div>
-                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 text-xs">
-                  <span className="font-mono text-gray-500">Pricing Model</span>
-                  <span className="font-mono text-[#ce5dff] font-bold">Custom quote based on scope</span>
+                <div className="mt-6 pt-4 border-t border-outline/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 text-xs text-on-surface-variant">
+                  <span className="font-mono text-on-surface-variant/60">Pricing Model</span>
+                  <span className="font-mono text-secondary font-bold">Custom quote based on scope</span>
                 </div>
               </div>
 
               {/* Service Package 3: Intelligent Agent Systems */}
-              <div className="glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 hover:border-[#ebb2ff]/50 transition-all shadow-[0_4px_25px_rgba(0,0,0,0.3)] flex flex-col justify-between group">
+              <div className="glass-panel p-6 rounded-xl border border-outline/10 bg-surface dark:bg-surface/40 hover:border-tertiary/50 transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.25)] flex flex-col justify-between group w-[280px] sm:w-[320px] aspect-square shrink-0 snap-start md:w-auto md:aspect-auto">
                 <div className="space-y-4">
-                  <div className="w-12 h-12 rounded-lg bg-[#201f21] flex items-center justify-center border border-[#3a494b]/20 group-hover:border-[#ebb2ff]/50 transition-all">
-                    <Brain className="text-[#ebb2ff] w-6 h-6" />
+                  <div className="w-12 h-12 rounded-lg bg-tertiary/10 dark:bg-tertiary/20 flex items-center justify-center border border-tertiary/20 group-hover:border-tertiary/50 transition-all">
+                    <Brain className="text-tertiary w-6 h-6" />
                   </div>
-                  <h3 className="text-lg sm:text-xl font-bold text-[#e5e1e4]">Agent &amp; AI Setup</h3>
-                  <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed">
+                  <h3 className="text-lg sm:text-xl font-bold text-on-surface">Agent &amp; AI Setup</h3>
+                  <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed">
                     Structured Model Context Protocol (MCP) bridges and pipelines syncing databases with secure local AI intelligence.
                   </p>
-                  <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-[#b9cacb]/80">
+                  <ul className="space-y-2 mt-4 text-[11px] sm:text-xs font-mono text-on-surface-variant/80">
                     <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-[#ebb2ff]" />
+                      <CheckCircle className="w-3.5 h-3.5 text-tertiary" />
                       Custom MCP server configurations
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-[#ebb2ff]" />
+                      <CheckCircle className="w-3.5 h-3.5 text-tertiary" />
                       Gemini Pro parameter calibration
                     </li>
                     <li className="flex items-center gap-2">
-                      <CheckCircle className="w-3.5 h-3.5 text-[#ebb2ff]" />
+                      <CheckCircle className="w-3.5 h-3.5 text-tertiary" />
                       Vector-backed context indexing
                     </li>
                   </ul>
                 </div>
-                <div className="mt-6 pt-4 border-t border-[#3a494b]/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 text-xs">
-                  <span className="font-mono text-gray-500">Pricing Model</span>
-                  <span className="font-mono text-[#ebb2ff] font-bold">Custom quote based on scope</span>
+                <div className="mt-6 pt-4 border-t border-outline/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 text-xs text-on-surface-variant">
+                  <span className="font-mono text-on-surface-variant/60">Pricing Model</span>
+                  <span className="font-mono text-tertiary font-bold">Custom quote based on scope</span>
                 </div>
               </div>
 
@@ -563,57 +623,57 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               </button>
             </div>
 
-            <div className="relative glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/30 overflow-hidden">
+            <div className="relative glass-panel p-4 sm:p-6 sm:p-8 rounded-xl border border-outline/10 bg-surface-container-low/40 overflow-hidden">
               
               {/* Render Active Slide */}
               {plugins.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 md:grid-cols-3 xl:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
+                <div className="flex overflow-x-auto gap-5 py-2 pb-6 snap-x snap-mandatory scrollbar-hide lg:grid lg:grid-cols-4 lg:gap-5 lg:pb-0 lg:overflow-visible">
                   {getVisiblePlugins().map((plugin) => (
                     <div 
                       key={plugin.id} 
-                      className="glass-panel p-5 rounded-xl border border-[#3a494b]/15 flex flex-col justify-between h-full bg-[#131315]/50 hover:border-[#00dbe7]/50 transition-all duration-300 shadow-[0_4px_20px_rgba(0,0,0,0.25)] group"
+                      className="glass-panel p-5 rounded-xl border border-outline/10 flex flex-col justify-between group bg-surface dark:bg-surface/50 hover:border-primary/50 transition-all duration-300 shadow-[0_10px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.25)] w-[250px] sm:w-[280px] aspect-square shrink-0 snap-start lg:w-auto lg:aspect-auto"
                     >
                       <div className="space-y-3 flex-grow">
-                        <div className="flex justify-between items-start">
-                          <div className="w-9 h-9 rounded bg-[#00dbe7]/10 flex items-center justify-center border border-[#00dbe7]/30 group-hover:border-[#00dbe7]/60 transition-all select-none">
-                            <span className="material-symbols-outlined text-[#00dbe7] select-none text-base">{plugin.iconSymbol || 'smart_toy'}</span>
-                          </div>
-                          <div className="flex flex-col items-end gap-0.5 font-mono text-[8px]">
-                            <span className="px-1.5 py-0.5 rounded bg-[#00dbe7]/20 border border-[#00dbe7]/30 text-[#74f5ff]">{plugin.category}</span>
-                            <span className={plugin.type === 'Free' ? 'text-[#00e476]' : plugin.type === 'Premium' ? 'text-[#00dbe7]' : 'text-[#74f5ff]'}>{plugin.type}</span>
-                          </div>
-                        </div>
-                        
-                        <div>
-                          <h4 className="text-sm font-bold text-white group-hover:text-[#74f5ff] transition-colors">{plugin.name}</h4>
-                          <div className="flex items-center gap-1 text-[#74f5ff] text-[9px] font-mono leading-none mt-1">
-                            <span className="material-symbols-outlined text-[10px] select-none text-[#00dbe7]">star</span>
-                            <span>{plugin.rating} ({plugin.downloads})</span>
-                          </div>
-                        </div>
-                        
-                        <p className="text-xs text-[#b9cacb] leading-relaxed line-clamp-3">
-                          {plugin.description}
-                        </p>
-                      </div>
-
-                      <div className="pt-4 border-t border-[#3a494b]/10 mt-4 flex items-center justify-between">
-                        <div className="flex flex-wrap gap-1 max-w-[70%]">
-                          {(plugin.tags || []).slice(0, 2).map(t => (
-                            <span key={t} className="px-1.5 py-0.5 rounded bg-[#201f21] text-[#74f5ff] text-[8px] font-mono border border-white/5 truncate">#{t}</span>
-                          ))}
-                        </div>
-                        <button 
-                          onClick={onLaunch}
-                          className="p-2 rounded bg-[#00dbe7]/10 hover:bg-[#00dbe7]/25 border border-[#00dbe7]/30 text-[#74f5ff] hover:text-white transition-all cursor-pointer border-none flex items-center justify-center"
-                          title="Install Plugin"
-                        >
-                          <span className="material-symbols-outlined text-sm select-none">download</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                         <div className="flex justify-between items-start">
+                           <div className="w-9 h-9 rounded bg-primary/10 dark:bg-primary/20 flex items-center justify-center border border-primary/20 group-hover:border-primary/50 transition-all select-none">
+                             <span className="material-symbols-outlined text-primary select-none text-base">{plugin.iconSymbol || 'smart_toy'}</span>
+                           </div>
+                           <div className="flex flex-col items-end gap-0.5 font-mono text-[8px]">
+                             <span className="px-1.5 py-0.5 rounded bg-primary/10 dark:bg-primary/20 border border-primary/20 text-primary">{plugin.category}</span>
+                             <span className={plugin.type === 'Free' ? 'text-tertiary font-bold' : plugin.type === 'Premium' ? 'text-primary font-bold' : 'text-secondary font-bold'}>{plugin.type}</span>
+                           </div>
+                         </div>
+                         
+                         <div>
+                           <h4 className="text-sm font-bold text-on-surface group-hover:text-primary transition-colors">{plugin.name}</h4>
+                           <div className="flex items-center gap-1 text-primary text-[9px] font-mono leading-none mt-1">
+                             <span className="material-symbols-outlined text-[10px] select-none text-primary">star</span>
+                             <span>{plugin.rating} ({plugin.downloads})</span>
+                           </div>
+                         </div>
+                         
+                         <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-3">
+                           {plugin.description}
+                         </p>
+                       </div>
+ 
+                       <div className="pt-4 border-t border-outline/10 mt-4 flex items-center justify-between">
+                         <div className="flex flex-wrap gap-1 max-w-[70%]">
+                           {(plugin.tags || []).slice(0, 2).map(t => (
+                             <span key={t} className="px-1.5 py-0.5 rounded bg-surface-container-low text-primary text-[8px] font-mono border border-outline/10 truncate">#{t}</span>
+                           ))}
+                         </div>
+                         <button 
+                           onClick={onLaunch}
+                           className="p-2 rounded bg-primary/10 hover:bg-primary/25 border border-primary/25 text-primary hover:text-white transition-all cursor-pointer border-none flex items-center justify-center"
+                           title="Install Plugin"
+                         >
+                           <span className="material-symbols-outlined text-sm select-none">download</span>
+                         </button>
+                       </div>
+                     </div>
+                   ))}
+                 </div>
               ) : (
                 <div className="text-center py-6 sm:py-10 font-mono text-xs italic text-gray-500">Loading products registry...</div>
               )}
@@ -670,7 +730,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               </button>
             </div>
 
-            <div className="relative glass-panel rounded-xl border border-[#3a494b]/15 bg-[#131315]/30 overflow-hidden">
+            <div className="relative glass-panel rounded-xl border border-outline/10 bg-surface dark:bg-[#131315]/30 overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
               
               {portfolioProjects.length > 0 ? (
                 (() => {
@@ -685,9 +745,9 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                           className="fluid-img w-full h-full object-cover"
                           src={proj.imageSrc}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-[#131315]/95 z-10 hidden lg:block"></div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-[#131315]/95 via-transparent to-transparent z-10 lg:hidden"></div>
-                        <div className="absolute top-4 left-4 z-20 bg-black/60 backdrop-blur border border-white/5 rounded px-2.5 py-0.5 text-[9px] font-mono text-[#00e476] uppercase">
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-surface/95 dark:to-[#131315]/95 z-10 hidden lg:block"></div>
+                        <div className="absolute inset-0 bg-gradient-to-t from-surface/95 dark:from-[#131315]/95 via-transparent to-transparent z-10 lg:hidden"></div>
+                        <div className="absolute top-4 left-4 z-20 bg-on-surface/10 dark:bg-black/60 backdrop-blur border border-outline/20 rounded px-2.5 py-0.5 text-[9px] font-mono text-tertiary uppercase">
                           Featured Case Study
                         </div>
                       </div>
@@ -697,34 +757,34 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                         <div className="space-y-4">
                           <div className="flex justify-between items-start gap-2">
                             <div>
-                              <span className="text-[10px] font-mono text-[#ce5dff] uppercase tracking-wider">{proj.segment}</span>
-                              <h3 className="text-2xl font-bold text-white mt-0.5">{proj.title}</h3>
+                              <span className="text-[10px] font-mono text-secondary uppercase tracking-wider">{proj.segment}</span>
+                              <h3 className="text-2xl font-bold text-on-surface mt-0.5">{proj.title}</h3>
                             </div>
-                            <span className="font-mono text-[9px] text-[#849495] bg-[#201f21] px-2 py-0.5 rounded border border-white/5">{proj.id}</span>
+                            <span className="font-mono text-[9px] text-on-surface-variant bg-surface-container px-2 py-0.5 rounded border border-outline/10">{proj.id}</span>
                           </div>
 
-                          <p className="text-sm text-[#b9cacb] leading-relaxed">
+                          <p className="text-sm text-on-surface-variant leading-relaxed">
                             {proj.description}
                           </p>
 
                           <div className="flex flex-wrap gap-1.5 pt-1">
                             {proj.techs.slice(0, 3).map(t => (
-                              <span key={t} className="px-2 py-0.5 rounded bg-[#201f21] text-[#ebb2ff] text-[10px] font-mono border border-white/5">{t}</span>
+                              <span key={t} className="px-2 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-mono border border-secondary/20">{t}</span>
                             ))}
                           </div>
                         </div>
 
                         {/* Project actions and indicators */}
-                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-6 border-t border-[#3a494b]/10 gap-4">
+                        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center pt-6 border-t border-outline/10 gap-4">
                           <div>
-                            <span className="text-[9px] font-mono text-gray-500 block uppercase">Telemetry Target</span>
-                            <span className="text-xs font-mono text-[#00e476] font-bold block">{proj.stat}</span>
+                            <span className="text-[9px] font-mono text-on-surface-variant/60 block uppercase">Telemetry Target</span>
+                            <span className="text-xs font-mono text-tertiary font-bold block">{proj.stat}</span>
                           </div>
 
                           <div className="flex gap-2 w-full sm:w-auto">
                             <button
                               onClick={() => setSelectedProject(proj)}
-                              className="w-full sm:w-auto px-4 py-2 rounded bg-[#00e476]/10 border border-[#00e476]/30 text-xs font-mono font-bold uppercase tracking-wider text-[#a8ffcc] hover:bg-[#00e476]/20 transition-all cursor-pointer"
+                              className="w-full sm:w-auto px-4 py-2 rounded bg-tertiary/10 border border-tertiary/30 text-xs font-mono font-bold uppercase tracking-wider text-tertiary hover:bg-tertiary/20 transition-all cursor-pointer"
                             >
                               Inspect Spec Sheet
                             </button>
@@ -738,14 +798,14 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               ) : null}
 
               {/* Slider Dots & Arrow Navigation */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 px-6 sm:px-8 py-4 border-t border-[#3a494b]/10 select-none bg-[#0c0c0e]/30">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 px-6 sm:px-8 py-4 border-t border-outline/10 select-none bg-surface-container-low/60 dark:bg-[#0c0c0e]/30">
                 <div className="flex gap-1">
                   {portfolioProjects.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={() => setActivePortfolioIndex(idx)}
                       className={`w-2.5 h-2.5 rounded-full transition-all cursor-pointer border-none ${
-                        activePortfolioIndex === idx ? 'bg-[#00e476] w-6' : 'bg-[#3a494b]/40 hover:bg-gray-600'
+                        activePortfolioIndex === idx ? 'bg-tertiary w-6' : 'bg-outline/30 hover:bg-outline/60'
                       }`}
                       aria-label={`Slide ${idx + 1}`}
                     />
@@ -755,13 +815,13 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                 <div className="flex gap-2">
                   <button
                     onClick={() => setActivePortfolioIndex((prev) => (prev === 0 ? portfolioProjects.length - 1 : prev - 1))}
-                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#00e476]/50 hover:bg-[#00e476]/10 text-white flex items-center justify-center transition-all cursor-pointer"
+                    className="w-8 h-8 rounded-full border border-outline/30 bg-transparent hover:border-tertiary/50 hover:bg-tertiary/10 text-on-surface flex items-center justify-center transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-base">arrow_back</span>
                   </button>
                   <button
                     onClick={() => setActivePortfolioIndex((prev) => (prev === portfolioProjects.length - 1 ? 0 : prev + 1))}
-                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#00e476]/50 hover:bg-[#00e476]/10 text-white flex items-center justify-center transition-all cursor-pointer"
+                    className="w-8 h-8 rounded-full border border-outline/30 bg-transparent hover:border-tertiary/50 hover:bg-tertiary/10 text-on-surface flex items-center justify-center transition-all cursor-pointer"
                   >
                     <span className="material-symbols-outlined text-base">arrow_forward</span>
                   </button>
@@ -778,52 +838,52 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
         <div className="space-y-10 py-4 animate-[fadeIn_0.3s_ease-out]">
           
           {/* Header Breadcrumbs */}
-          <div className="flex items-center gap-2 text-xs font-mono text-gray-500 select-none">
-            <button onClick={() => setCurrentView('HOME')} className="hover:text-white transition-all bg-transparent border-none cursor-pointer">HOME</button>
+          <div className="flex items-center gap-2 text-xs font-mono text-on-surface-variant select-none">
+            <button onClick={() => setCurrentView('HOME')} className="hover:text-primary transition-all bg-transparent border-none cursor-pointer">HOME</button>
             <span>/</span>
-            <span className="text-[#00dbe7]">APP STORE</span>
+            <span className="text-primary">APP STORE</span>
           </div>
 
           {/* Header copy */}
           <div className="space-y-3">
-            <h2 className="text-3xl sm:text-3xl sm:text-4xl font-bold tracking-tight text-white neon-text-glow flex items-center gap-3">
-              <span className="material-symbols-outlined text-[#00dbe7] text-3xl sm:text-3xl sm:text-4xl">storefront</span>
+            <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-on-surface flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary text-3xl sm:text-4xl">storefront</span>
               SutharLabs App Store
             </h2>
-            <p className="text-sm sm:text-base text-[#b9cacb] max-w-3xl font-sans font-light leading-relaxed">
+            <p className="text-sm sm:text-base text-on-surface-variant max-w-3xl font-sans font-light leading-relaxed">
               Explore our catalog of developer tools, intelligent workspaces, agentic plugins, and advanced engineering integrations. Built on a freemium model, these apps give developers and AI agents the ultimate toolbox to automate workflows out of the box.
             </p>
           </div>
 
           {/* Filter Panel & Search bar */}
-          <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center bg-[#131315]/80 p-4 rounded-xl border border-[#3a494b]/15">
+          <div className="flex flex-col md:flex-row gap-4 justify-between items-stretch md:items-center bg-surface-container p-4 rounded-xl border border-outline/15 shadow-sm">
             {/* Search input */}
-            <div className="flex-grow max-w-md relative flex items-center bg-[#0c0c0e] border border-[#3a494b]/20 rounded-lg px-3 py-2 text-xs text-white">
-              <span className="material-symbols-outlined text-gray-500 mr-2 text-sm select-none">search</span>
+            <div className="flex-grow max-w-md relative flex items-center bg-surface border border-outline/20 rounded-lg px-3 py-2 text-xs">
+              <span className="material-symbols-outlined text-on-surface-variant mr-2 text-sm select-none">search</span>
               <input 
                 type="text" 
                 value={storeSearchQuery}
                 onChange={(e) => setStoreSearchQuery(e.target.value)}
                 placeholder="Search plugins by name, tags, or description..."
-                className="bg-transparent border-none focus:outline-none w-full text-xs text-white font-mono placeholder-gray-600"
+                className="bg-transparent border-none focus:outline-none w-full text-xs text-on-surface font-mono placeholder:text-on-surface-variant/40"
               />
               {storeSearchQuery && (
-                <button onClick={() => setStoreSearchQuery('')} className="p-0.5 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition-all bg-transparent border-none cursor-pointer flex items-center justify-center">
+                <button onClick={() => setStoreSearchQuery('')} className="p-0.5 hover:bg-on-surface/5 rounded-full text-on-surface-variant hover:text-on-surface transition-all bg-transparent border-none cursor-pointer flex items-center justify-center">
                   <X className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
 
-            {/* Filters */}
-            <div className="flex flex-wrap gap-1 bg-[#0c0c0e] p-1 rounded-lg border border-[#3a494b]/10 font-mono text-[10px] items-center">
+            {/* Category Filters */}
+            <div className="flex flex-wrap gap-1 bg-surface p-1 rounded-lg border border-outline/10 font-mono text-[10px] items-center">
               {(['All', 'DevOps', 'Productivity', 'AI', 'Finance', 'Plugin'] as const).map(cat => (
                 <button
                   key={cat}
                   onClick={() => setStoreActiveCategory(cat)}
-                  className={`px-3 py-1.5 rounded transition-all cursor-pointer border-none font-mono ${
+                  className={`px-3 py-1.5 rounded transition-all cursor-pointer border font-mono ${
                     storeActiveCategory === cat 
-                      ? 'bg-[#00dbe7]/15 text-[#74f5ff] font-bold border border-[#00dbe7]/25 shadow-sm'
-                      : 'text-[#b9cacb] hover:text-white bg-transparent hover:bg-white/[0.02]'
+                      ? 'bg-primary/10 text-primary font-bold border-primary/25 shadow-sm'
+                      : 'text-on-surface-variant hover:text-on-surface bg-transparent border-transparent hover:bg-on-surface/5'
                   }`}
                 >
                   {cat}
@@ -849,51 +909,58 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
 
             if (searchedPlugins.length === 0) {
               return (
-                <div className="glass-panel text-center py-20 rounded-xl border border-[#3a494b]/15 bg-[#131315]/20 font-mono">
-                  <span className="material-symbols-outlined text-3xl sm:text-4xl text-gray-600 mb-2 select-none">search_off</span>
-                  <p className="text-xs text-gray-500 italic">No plugins found matching search criteria or category filter.</p>
+                <div className="text-center py-20 rounded-xl border border-outline/15 bg-surface-container font-mono">
+                  <span className="material-symbols-outlined text-3xl sm:text-4xl text-on-surface-variant/40 mb-2 select-none">search_off</span>
+                  <p className="text-xs text-on-surface-variant/60 italic">No plugins found matching search criteria or category filter.</p>
                 </div>
               );
             }
 
             return (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {searchedPlugins.map((plugin) => (
                   <div 
                     key={plugin.id} 
-                    className="glass-panel p-4 sm:p-6 rounded-xl border border-[#3a494b]/15 flex flex-col h-full bg-[#131315]/60 hover:border-[#00dbe7]/40 transition-all duration-300 hover:shadow-[0_4px_25px_rgba(0,219,231,0.08)]"
+                    className="group bg-surface border border-outline/15 rounded-2xl p-4 flex flex-col aspect-square hover:border-primary/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.08)] transition-all duration-300 cursor-default"
                   >
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded bg-[#00dbe7]/10 flex items-center justify-center border border-[#00dbe7]/30 shrink-0 select-none">
-                          <span className="material-symbols-outlined text-[#00dbe7] select-none text-base">{plugin.iconSymbol || 'smart_toy'}</span>
-                        </div>
-                        <div>
-                          <h4 className="text-base font-bold text-[#e5e1e4]">{plugin.name}</h4>
-                          <div className="flex items-center gap-1 text-[#00dbe7] text-[10px] font-mono leading-none mt-0.5">
-                            <span className="material-symbols-outlined text-[10px] select-none text-[#00dbe7]">star</span>
-                            <span>{plugin.rating} ({plugin.downloads} downloads)</span>
-                          </div>
-                        </div>
+                    {/* Tile Header: icon + badges */}
+                    <div className="flex justify-between items-start mb-3">
+                      <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 shrink-0 select-none group-hover:bg-primary/15 transition-colors">
+                        <span className="material-symbols-outlined text-primary select-none text-lg">{plugin.iconSymbol || 'smart_toy'}</span>
                       </div>
-                      <div className="flex flex-col items-end gap-1 font-mono text-[10px]">
-                        <span className="px-2 py-0.5 rounded bg-[#ce5dff]/20 border border-[#ce5dff]/30 text-[#ebb2ff]">{plugin.category}</span>
-                        <span className={plugin.type === 'Free' ? 'text-[#00e476]' : plugin.type === 'Premium' ? 'text-[#ce5dff]' : 'text-[#74f5ff]'}>{plugin.type}</span>
+                      <div className="flex flex-col items-end gap-1 font-mono text-[9px]">
+                        <span className="px-1.5 py-0.5 rounded-full bg-secondary/15 border border-secondary/25 text-secondary">{plugin.category}</span>
+                        <span className={plugin.type === 'Free' ? 'text-tertiary font-bold' : plugin.type === 'Premium' ? 'text-secondary font-bold' : 'text-primary font-bold'}>{plugin.type}</span>
                       </div>
                     </div>
-                    <p className="text-xs text-[#b9cacb] leading-relaxed flex-grow mb-6">
+
+                    {/* Plugin name + rating */}
+                    <div className="mb-2">
+                      <h4 className="text-sm font-bold text-on-surface leading-tight">{plugin.name}</h4>
+                      <div className="flex items-center gap-1 text-primary text-[9px] font-mono mt-0.5">
+                        <span className="material-symbols-outlined text-[10px] select-none">star</span>
+                        <span>{plugin.rating} · {plugin.downloads} installs</span>
+                      </div>
+                    </div>
+
+                    {/* Description — clamps to fill remaining space */}
+                    <p className="text-[10px] text-on-surface-variant leading-relaxed flex-grow line-clamp-3 mb-3">
                       {plugin.description}
                     </p>
-                    <div className="flex flex-wrap gap-1 md:gap-1.5 mb-6">
-                      {(plugin.tags || []).map(t => (
-                        <span key={t} className="px-1.5 py-0.5 rounded bg-[#00dbe7]/10 text-[#74f5ff] text-[9px] font-mono border border-[#00dbe7]/20">#{t}</span>
+
+                    {/* Tags row */}
+                    <div className="flex flex-wrap gap-1 mb-3">
+                      {(plugin.tags || []).slice(0, 2).map(t => (
+                        <span key={t} className="px-1.5 py-0.5 rounded-full bg-primary/8 text-primary text-[8px] font-mono border border-primary/15">#{t}</span>
                       ))}
                     </div>
+
+                    {/* Install button pinned to bottom */}
                     <button 
                       onClick={onLaunch}
-                      className="w-full py-2.5 rounded bg-[#00dbe7]/10 border border-[#00dbe7]/30 text-xs font-mono font-bold tracking-widest text-[#74f5ff] hover:bg-[#00dbe7]/20 hover:border-[#00dbe7]/60 hover:text-white transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer mt-auto"
+                      className="w-full py-2 rounded-lg bg-primary/10 border border-primary/25 text-[10px] font-mono font-bold tracking-wider text-primary hover:bg-primary/20 hover:border-primary/50 transition-all duration-200 flex items-center justify-center gap-1.5 cursor-pointer mt-auto"
                     >
-                      <span className="material-symbols-outlined text-sm select-none">download</span> Install Plugin
+                      <span className="material-symbols-outlined text-xs select-none">download</span> Install
                     </button>
                   </div>
                 ))}
@@ -908,7 +975,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                 setCurrentView('HOME');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="px-6 py-3 rounded-lg border border-[#3a494b]/30 bg-transparent text-[#b9cacb] font-mono text-xs uppercase tracking-wider hover:text-white hover:border-white transition-all cursor-pointer"
+              className="px-6 py-3 rounded-lg border border-outline/30 bg-transparent text-on-surface-variant font-mono text-xs uppercase tracking-wider hover:text-on-surface hover:border-outline transition-all cursor-pointer"
             >
               Back to Home Page
             </button>
@@ -1216,26 +1283,26 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       {/* Dynamic Project Spec Sheet Overlay Drawer/Modal */}
       {selectedProject && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-panel border border-[#00e476]/30 max-w-2xl w-full rounded-2xl bg-[#131315]/95 shadow-[0_15px_50px_rgba(0,0,0,0.85)] max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col justify-between">
+          <div className="glass-panel border border-tertiary/30 max-w-2xl w-full rounded-2xl bg-surface dark:bg-[#131315]/95 shadow-[0_15px_50px_rgba(0,0,0,0.85)] max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col justify-between">
             
             {/* Drawer Header */}
-            <div className="p-4 sm:p-6 border-b border-[#3a494b]/20 flex justify-between items-start">
+            <div className="p-4 sm:p-6 border-b border-outline/20 flex justify-between items-start">
               <div className="space-y-1.5">
                 <div className="flex items-center gap-2">
-                  <span className="p-1 rounded bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 text-[10px] font-mono">
+                  <span className="p-1 rounded bg-tertiary/10 text-tertiary border border-tertiary/25 text-[10px] font-mono">
                     {selectedProject.segment}
                   </span>
-                  <span className="font-mono text-[10px] text-gray-500 uppercase">{selectedProject.id}</span>
+                  <span className="font-mono text-[10px] text-on-surface-variant uppercase">{selectedProject.id}</span>
                 </div>
-                <h3 className="text-xl font-bold font-sans text-white flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[#74f5ff]">{selectedProject.blueprintSymbol}</span>
+                <h3 className="text-xl font-bold font-sans text-on-surface flex items-center gap-2">
+                  <span className="material-symbols-outlined text-primary">{selectedProject.blueprintSymbol}</span>
                   {selectedProject.title}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={() => setSelectedProject(null)}
-                className="p-1.5 hover:bg-white/5 rounded-full text-gray-400 hover:text-white transition-all cursor-pointer flex items-center justify-center"
+                className="p-1.5 hover:bg-on-surface/5 rounded-full text-on-surface-variant hover:text-on-surface transition-all cursor-pointer flex items-center justify-center"
                 aria-label="Close details"
               >
                 <X className="w-5 h-5" />
@@ -1246,32 +1313,32 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
             <div className="p-4 sm:p-6 space-y-6">
               
               {/* Visual case stats board */}
-              <div className="p-4 rounded-xl border border-dashed border-[#00e476]/25 bg-[#0e0e10]/60 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <div className="p-4 rounded-xl border border-dashed border-tertiary/25 bg-surface-container-low flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <span className="text-[10px] uppercase font-mono text-[#ebb2ff] tracking-widest block mb-1">Impact Telemetry Metric</span>
-                  <span className="text-xl font-bold font-mono text-[#00e476] block tracking-wide">{selectedProject.stat}</span>
-                  <span className="text-[10px] text-gray-500 font-mono block">{selectedProject.statLabel}</span>
+                  <span className="text-[10px] uppercase font-mono text-secondary tracking-widest block mb-1">Impact Telemetry Metric</span>
+                  <span className="text-xl font-bold font-mono text-tertiary block tracking-wide">{selectedProject.stat}</span>
+                  <span className="text-[10px] text-on-surface-variant/60 font-mono block">{selectedProject.statLabel}</span>
                 </div>
-                <div className="p-2 sm:p-3 bg-[#131315] rounded border border-white/5 text-[10px] font-mono max-w-xs text-right hidden sm:block">
-                  <span className="text-gray-500 block truncate">AUTHORIZED GATEWAY ID</span>
-                  <span className="text-[#ce5dff] font-bold block truncate">GW_SECURE_{selectedProject.id.toUpperCase()}</span>
+                <div className="p-2 sm:p-3 bg-surface-container rounded border border-outline/10 text-[10px] font-mono max-w-xs text-right hidden sm:block">
+                  <span className="text-on-surface-variant block truncate">AUTHORIZED GATEWAY ID</span>
+                  <span className="text-secondary font-bold block truncate">GW_SECURE_{selectedProject.id.toUpperCase()}</span>
                 </div>
               </div>
 
               {/* Problem & Refinement text */}
               <div className="space-y-2">
-                <h4 className="font-mono text-xs uppercase text-gray-500 tracking-wider">Solution Implementation Details</h4>
-                <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed select-text font-light">
+                <h4 className="font-mono text-xs uppercase text-on-surface-variant/60 tracking-wider">Solution Implementation Details</h4>
+                <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed select-text font-light">
                   {selectedProject.detailedCase}
                 </p>
               </div>
 
               {/* Technologies Grid */}
               <div className="space-y-2">
-                <h4 className="font-mono text-xs uppercase text-gray-500 tracking-wider">Project Tech Stack Specifications</h4>
+                <h4 className="font-mono text-xs uppercase text-on-surface-variant/60 tracking-wider">Project Tech Stack Specifications</h4>
                 <div className="flex flex-wrap gap-2">
                   {selectedProject.techs.map((t) => (
-                    <span key={t} className="px-2.5 py-1 rounded bg-[#201f21] border border-[#3a494b]/30 text-xs text-[#b9cacb] font-mono">
+                    <span key={t} className="px-2.5 py-1 rounded bg-secondary/10 border border-secondary/20 text-xs text-secondary font-mono">
                       {t}
                     </span>
                   ))}
@@ -1279,23 +1346,23 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
               </div>
 
               {/* Corporate Partner Feedback */}
-              <div className="p-4 rounded-xl border border-[#3a494b]/15 bg-[#1a191b]/50 relative italic font-light text-xs text-[#b9cacb] leading-relaxed">
-                <span className="absolute top-2 left-3 font-sans text-xl font-bold text-gray-700 select-none leading-none">“</span>
+              <div className="p-4 rounded-xl border border-outline/15 bg-surface-container-low relative italic font-light text-xs text-on-surface-variant leading-relaxed">
+                <span className="absolute top-2 left-3 font-sans text-xl font-bold text-on-surface-variant/40 select-none leading-none">“</span>
                 <p className="pl-4 pr-2">
                   SutharLabs transformed our execution framework. The responsive mechanics of this platform are flawless on every mobile tablet and desktop screen size we deployed to.
                 </p>
-                <div className="mt-2 pl-4 text-[10px] font-mono not-italic text-[#ebb2ff] flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#ce5dff]"></span>
-                  <span>{selectedProject.client}, <span className="text-gray-500 font-normal">{selectedProject.clientTitle}</span></span>
+                <div className="mt-2 pl-4 text-[10px] font-mono not-italic text-secondary flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                  <span>{selectedProject.client}, <span className="text-on-surface-variant/60 font-normal">{selectedProject.clientTitle}</span></span>
                 </div>
               </div>
 
             </div>
 
             {/* Specs Footer Drawer Actions */}
-            <div className="p-4 border-t border-[#3a494b]/20 bg-[#161618] flex items-center justify-between">
-              <span className="text-[10px] font-mono text-gray-500 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-gray-500" />
+            <div className="p-4 border-t border-outline/20 bg-surface-container-low flex items-center justify-between">
+              <span className="text-[10px] font-mono text-on-surface-variant/60 flex items-center gap-1.5">
+                <ShieldCheck className="w-3.5 h-3.5 text-on-surface-variant/60" />
                 Credentials Authenticated
               </span>
               
@@ -1305,7 +1372,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
                   setSelectedProject(null);
                   onLaunch();
                 }}
-                className="px-5 py-2 rounded bg-white text-black font-semibold hover:bg-white/90 text-xs transition-all flex items-center gap-1 cursor-pointer font-sans border-none"
+                className="px-5 py-2 rounded bg-primary text-on-primary font-semibold hover:brightness-110 text-xs transition-all flex items-center gap-1 cursor-pointer font-sans border-none"
               >
                 Inspect Platform Infrastructure <ChevronRight className="w-3.5 h-3.5" />
               </button>
@@ -1318,16 +1385,16 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth }: LandingP
       </main>
 
       {/* Footer */}
-      <footer className="w-full py-4 sm:py-8 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 bg-[#131315] border-t border-[#3a494b]/10 z-10 mt-auto">
-        <div className="text-md font-bold text-[#74f5ff] tracking-tight hover:brightness-110">
+      <footer className="w-full py-4 sm:py-8 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 bg-surface-container dark:bg-[#131315] border-t border-outline/10 z-10 mt-auto">
+        <div className="text-md font-bold text-primary tracking-tight hover:brightness-110">
           SutharLabs
         </div>
-        <div className="text-xs text-[#b9cacb]/80 text-center sm:text-left">
+        <div className="text-xs text-on-surface-variant text-center sm:text-left">
           &copy; 2026 SutharLabs Corp. All rights reserved.
         </div>
-        <div className="flex items-center gap-4 sm:gap-6 text-xs text-[#b9cacb] font-mono">
-          <a className="hover:text-[#74f5ff] transition-colors" href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a className="hover:text-[#ce5dff] transition-colors" href="https://google.com" target="_blank" rel="noopener noreferrer">Google</a>
+        <div className="flex items-center gap-4 sm:gap-6 text-xs text-on-surface-variant font-mono">
+          <a className="hover:text-primary transition-colors" href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
+          <a className="hover:text-secondary transition-colors" href="https://google.com" target="_blank" rel="noopener noreferrer">Google</a>
         </div>
       </footer>
     </div>

@@ -84,31 +84,31 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
   };
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto flex items-center justify-center relative bg-[#050505] p-4 font-sans chart-grid">
+    <div className="min-h-screen w-full overflow-y-auto flex items-center justify-center relative bg-surface dark:bg-[#050505] p-4 font-sans chart-grid">
       {/* Glow Ambient Circles */}
-      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-[#00dbe7]/5 blur-[120px] rounded-full pointer-events-none"></div>
-      <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-[#ce5dff]/5 blur-[100px] rounded-full pointer-events-none"></div>
+      <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
+      <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-secondary/5 blur-[100px] rounded-full pointer-events-none"></div>
 
       {/* Auth Card Center container */}
       <div className="w-full max-w-[480px] z-10 relative my-8">
         
         {/* Back to Home Logo Header */}
         <div className="text-center mb-8 cursor-pointer" onClick={onBackToHome}>
-          <h1 className="text-3xl sm:text-4xl font-bold text-[#74f5ff] tracking-tight neon-text-glow select-none">SutharLabs</h1>
-          <p className="font-mono text-xs text-[#b9cacb] tracking-widest mt-2 uppercase">Identity &amp; Access Control</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-primary tracking-tight neon-text-glow select-none">SutharLabs</h1>
+          <p className="font-mono text-xs text-on-surface-variant tracking-widest mt-2 uppercase">Identity &amp; Access Control</p>
         </div>
 
         {/* Auth Panel card */}
-        <div className="glass-panel rounded-xl shadow-[0_12px_45px_rgba(0,0,0,0.55)] overflow-hidden border border-[#3a494b]/20">
+        <div className="glass-panel rounded-xl shadow-[0_12px_45px_rgba(0,0,0,0.55)] overflow-hidden border border-outline/20">
           
           {/* Tabs header toggle */}
-          <div className="flex border-b border-[#3a494b]/30 bg-[#0e0e10]/40">
+          <div className="flex border-b border-outline/30 bg-surface-container-low">
             <button 
               type="button"
               className={`flex-1 py-4 font-mono text-sm tracking-wide transition-all cursor-pointer ${
                 activeTab === 'signin' 
-                  ? 'text-[#00dbe7] border-b-2 border-[#00dbe7] bg-white/[0.03]' 
-                  : 'text-[#b9cacb] hover:text-[#e5e1e4] hover:bg-white/[0.01]'
+                  ? 'text-primary border-b-2 border-primary bg-primary/5' 
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-on-surface/5'
               }`}
               onClick={() => {
                 setActiveTab('signin');
@@ -121,8 +121,8 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
               type="button"
               className={`flex-1 py-4 font-mono text-sm tracking-wide transition-all cursor-pointer ${
                 activeTab === 'signup' 
-                  ? 'text-[#ce5dff] border-b-2 border-[#ce5dff] bg-white/[0.03]' 
-                  : 'text-[#b9cacb] hover:text-[#e5e1e4] hover:bg-white/[0.01]'
+                  ? 'text-secondary border-b-2 border-secondary bg-secondary/5' 
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-on-surface/5'
               }`}
               onClick={() => {
                 setActiveTab('signup');
@@ -133,9 +133,9 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
             </button>
           </div>
 
-          <div className="p-4 sm:p-6 md:p-4 sm:p-8">
+          <div className="p-4 sm:p-6 md:p-4 sm:p-8 bg-surface">
             {errorMsg && (
-              <div className="p-3 mb-5 rounded bg-[#93000a]/30 border border-[#ffb4ab]/30 text-xs text-[#ffdad6] font-mono flex items-center gap-2">
+              <div className="p-3 mb-5 rounded bg-error/20 border border-error/30 text-error font-mono flex items-center gap-2 text-xs">
                 <span className="material-symbols-outlined text-sm select-none">warning</span>
                 <span>{errorMsg}</span>
               </div>
@@ -145,10 +145,10 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
             <form onSubmit={handleSubmit} className="space-y-5">
               
               {activeTab === 'signup' && (
-                <div className="rounded bg-[#2a2a2c]/40 border border-[#3a494b]/20 p-3 block focus-within:border-[#ce5dff] focus-within:shadow-[0_0_8px_rgba(206,93,255,0.2)] transition-all">
-                  <label className="block font-mono text-[10px] text-[#b9cacb] uppercase mb-1 tracking-wider">Full Name</label>
+                <div className="rounded bg-surface-container-high border border-outline/20 p-3 block focus-within:border-secondary focus-within:shadow-[0_0_8px_rgba(206,93,255,0.2)] transition-all">
+                  <label className="block font-mono text-[10px] text-on-surface-variant uppercase mb-1 tracking-wider">Full Name</label>
                   <input 
-                    className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-[#e5e1e4] placeholder-[#849495]/50 outline-none" 
+                    className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-on-surface placeholder-on-surface-variant/50 outline-none" 
                     placeholder="John Doe" 
                     type="text"
                     value={fullname}
@@ -157,10 +157,10 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
                 </div>
               )}
 
-              <div className="rounded bg-[#2a2a2c]/40 border border-[#3a494b]/20 p-3 block focus-within:border-[#00dbe7] focus-within:shadow-[0_0_8px_rgba(0,219,231,0.2)] transition-all">
-                <label className="block font-mono text-[10px] text-[#b9cacb] uppercase mb-1 tracking-wider">Email Address</label>
+              <div className="rounded bg-surface-container-high border border-outline/20 p-3 block focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(0,219,231,0.2)] transition-all">
+                <label className="block font-mono text-[10px] text-on-surface-variant uppercase mb-1 tracking-wider">Email Address</label>
                 <input 
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-[#e5e1e4] placeholder-[#849495]/50 outline-none" 
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-on-surface placeholder-on-surface-variant/50 outline-none" 
                   placeholder="user@domain.com" 
                   type="email"
                   required
@@ -169,13 +169,13 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
                 />
               </div>
 
-              <div className="rounded bg-[#2a2a2c]/40 border border-[#3a494b]/20 p-3 block focus-within:border-[#00dbe7] focus-within:shadow-[0_0_8px_rgba(0,219,231,0.2)] transition-all">
+              <div className="rounded bg-surface-container-high border border-outline/20 p-3 block focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(0,219,231,0.2)] transition-all">
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-1">
-                  <label className="block font-mono text-[10px] text-[#b9cacb] uppercase tracking-wider">Password</label>
-                  <span className="font-mono text-[10px] text-[#00dbe7] hover:text-[#74f5ff] transition-colors cursor-pointer">Forgot?</span>
+                  <label className="block font-mono text-[10px] text-on-surface-variant uppercase tracking-wider">Password</label>
+                  <span className="font-mono text-[10px] text-primary hover:brightness-110 transition-colors cursor-pointer">Forgot?</span>
                 </div>
                 <input 
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-[#e5e1e4] placeholder-none outline-none" 
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-on-surface outline-none" 
                   placeholder="••••••••" 
                   type="password"
                   required
@@ -187,14 +187,14 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
               {activeTab === 'signin' ? (
                 <button 
                   type="submit"
-                  className="w-full py-3 bg-[#00dbe7] text-[#002022] font-mono text-xs font-bold uppercase tracking-widest rounded hover:brightness-110 shadow-[0_3px_15px_rgba(0,219,231,0.18)] hover:shadow-[0_0_20px_rgba(0,219,231,0.4)] transition-all cursor-pointer mt-2"
+                  className="w-full py-3 bg-primary text-on-primary font-mono text-xs font-bold uppercase tracking-widest rounded hover:brightness-110 shadow-[0_3px_15px_rgba(0,219,231,0.18)] hover:shadow-[0_0_20px_rgba(0,219,231,0.4)] transition-all cursor-pointer mt-2"
                 >
                   Initialize Session
                 </button>
               ) : (
                 <button 
                   type="submit"
-                  className="w-full py-3 bg-[#ce5dff] text-[#480064] font-mono text-xs font-bold uppercase tracking-widest rounded hover:brightness-110 shadow-[0_3px_15px_rgba(206,93,255,0.18)] hover:shadow-[0_0_20px_rgba(206,93,255,0.4)] transition-all cursor-pointer mt-2"
+                  className="w-full py-3 bg-secondary text-on-secondary font-mono text-xs font-bold uppercase tracking-widest rounded hover:brightness-110 shadow-[0_3px_15px_rgba(206,93,255,0.18)] hover:shadow-[0_0_20px_rgba(206,93,255,0.4)] transition-all cursor-pointer mt-2"
                 >
                   Create Workspace
                 </button>
@@ -204,27 +204,24 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
 
             {/* Divider lines */}
             <div className="flex items-center my-6">
-              <div className="flex-grow border-t border-[#3a494b]/30"></div>
-              <span className="px-4 font-mono text-[9px] text-[#b9cacb]/80 uppercase tracking-widest">or connect with</span>
-              <div className="flex-grow border-t border-[#3a494b]/30"></div>
+              <div className="flex-grow border-t border-outline/30"></div>
+              <span className="px-4 font-mono text-[9px] text-on-surface-variant/80 uppercase tracking-widest">or connect with</span>
+              <div className="flex-grow border-t border-outline/30"></div>
             </div>
 
             {/* Social Authentication Widgets */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button 
-                onClick={() => handleSocialLogin('GitHub')}
-                className="glow-button-secondary flex items-center justify-center gap-2 py-3 rounded bg-[#1c1b1d]/80 font-mono text-xs text-[#e5e1e4] hover:bg-white/[0.04] cursor-pointer"
-              >
-                <span className="material-symbols-outlined text-[18px] select-none text-[#ebb2ff]">code</span>
-                GitHub
-              </button>
-
+            <div className="flex flex-col gap-4">
               <button 
                 onClick={() => handleSocialLogin('Google')}
-                className="glow-button-secondary flex items-center justify-center gap-2 py-3 rounded bg-[#1c1b1d]/80 font-mono text-xs text-[#e5e1e4] hover:bg-white/[0.04] cursor-pointer"
+                className="flex items-center justify-center gap-3 py-2.5 px-4 rounded-lg bg-surface border border-outline/25 dark:border-outline/10 font-sans text-sm font-medium text-on-surface hover:bg-on-surface/5 transition-all duration-200 cursor-pointer w-full shadow-sm"
               >
-                <span className="material-symbols-outlined text-[18px] select-none text-[#74f5ff]">mail</span>
-                Google
+                <svg className="w-5 h-5" viewBox="0 0 24 24">
+                  <path fill="#EA4335" d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.354 0-6.077-2.723-6.077-6.077 0-3.354 2.723-6.077 6.077-6.077 1.488 0 2.843.541 3.896 1.436l3.057-3.057C17.202 2.062 14.867 1 12.24 1 6.033 1 1 6.033 1 12.24s5.033 11.24 11.24 11.24c6.208 0 11.24-5.032 11.24-11.24 0-.79-.09-1.554-.26-2.285h-10.98z"/>
+                  <path fill="#FBBC05" d="M1 12.24c0-1.898.472-3.682 1.3-5.253l-3.057-3.057A11.16 11.16 0 0 0 0 12.24c0 2.213.645 4.277 1.757 6.012l3.057-3.057A7.16 7.16 0 0 1 1 12.24z" transform="translate(0, 0)"/>
+                  <path fill="#34A853" d="M12.24 23.48c3.284 0 6.275-1.077 8.59-2.915l-3.057-3.057c-1.442.97-3.29 1.553-5.533 1.553-4.184 0-7.728-2.827-8.991-6.634L1.757 18.252a11.21 11.21 0 0 0 10.483 6.228z" transform="translate(0, 0)"/>
+                  <path fill="#4285F4" d="M23.23 10.285H12.24v4.115h6.887c-.288 1.074-.91 1.986-1.745 2.684l3.057 3.057c2.355-2.17 3.738-5.362 3.738-9.57 0-.79-.09-1.554-.26-2.286z" transform="translate(0, 0)"/>
+                </svg>
+                <span className="font-sans font-medium">Continue with Google</span>
               </button>
             </div>
 
@@ -235,15 +232,15 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
         <div className="mt-8 text-center flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 px-4">
           <button 
             onClick={onBackToHome}
-            className="font-mono text-xs text-[#b9cacb] hover:text-[#74f5ff] transition-colors flex items-center gap-1 cursor-pointer bg-transparent border-none"
+            className="font-mono text-xs text-on-surface-variant hover:text-primary transition-colors flex items-center gap-1 cursor-pointer bg-transparent border-none"
           >
             <span className="material-symbols-outlined text-sm select-none">arrow_back</span>
             Back to Home
           </button>
           
           <div className="flex gap-4">
-            <span className="text-xs text-[#b9cacb]/60 hover:text-[#b9cacb] transition-colors cursor-pointer">Terms</span>
-            <span className="text-xs text-[#b9cacb]/60 hover:text-[#b9cacb] transition-colors cursor-pointer">Privacy</span>
+            <span className="text-xs text-on-surface-variant/60 hover:text-on-surface-variant transition-colors cursor-pointer">Terms</span>
+            <span className="text-xs text-on-surface-variant/60 hover:text-on-surface-variant transition-colors cursor-pointer">Privacy</span>
           </div>
         </div>
 

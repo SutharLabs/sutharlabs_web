@@ -15,7 +15,6 @@ import DocNexusView from './components/DocNexusView';
 import WorkspacePluginStore from './components/WorkspacePluginStore';
 
 const MANAGEMENT_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
-  { name: 'Admin Console', icon: 'security', size: '9.3 KB' },
   { name: 'Plugin Store', icon: 'extension', size: '3.1 KB' },
   { name: 'README', icon: 'description', size: '2.1 KB' }
 ];
@@ -56,6 +55,23 @@ export default function App() {
     name: 'Suthar Developer',
     isLoggedIn: false // starts false to showcase the premium Landing Page first, then can launch or authenticate!
   });
+
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    const saved = localStorage.getItem('sutharlabs_theme');
+    if (saved === 'dark' || saved === 'light') return saved;
+    return 'light';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('sutharlabs_theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [theme]);
+
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
   useEffect(() => {
     const saved = localStorage.getItem('sutharlabs_active_user');
@@ -124,22 +140,22 @@ export default function App() {
     <Routes>
       <Route path="/" element={
         user.isLoggedIn ? <Navigate to="/workspace/stock-tracker" /> : 
-        <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} />
+        <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} theme={theme} toggleTheme={toggleTheme} />
       } />
       <Route path="/auth" element={
         <AuthPage initialTab={authTab} onLoginSuccess={handleLoginSuccess} onBackToHome={() => navigate('/')} />
       } />
       <Route path="/admin/*" element={
-        <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} />
+        <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
       } />
       <Route path="/workspace/*" element={
-        <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} />
+        <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
       } />
     </Routes>
   );
 }
 
-function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab, handleLogout }: any) {
+function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab, handleLogout, theme, toggleTheme }: any) {
   const [isManagementOpen, setIsManagementOpen] = React.useState(true);
   const [isPluginsOpen, setIsPluginsOpen] = React.useState(true);
   const navigate = useNavigate();
@@ -196,6 +212,18 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             </div>
           </div>
           
+          {/* Theme Toggle Button */}
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="py-1 px-2 bg-[#201f21] border border-[#3a494b]/30 rounded text-[#e5e1e4] hover:text-[#00dbe7] hover:border-[#00dbe7]/50 transition-all flex items-center justify-center cursor-pointer"
+            title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
+          >
+            <span className="material-symbols-outlined text-sm select-none leading-none">
+              {theme === 'light' ? 'dark_mode' : 'light_mode'}
+            </span>
+          </button>
+
           <button 
             type="button"
             onClick={handleLogout}
@@ -230,11 +258,15 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             {isManagementOpen && (
               <div className="space-y-[2px] px-2 mb-6">
                 
-                {[...MANAGEMENT_TOOLS, ...(user.role === 'Admin' ? [
-                  { name: 'Manage Plugins', icon: 'bolt', size: '' },
-                  { name: 'Manage Apps', icon: 'apps', size: '' },
-                  { name: 'Manage Portfolios', icon: 'web', size: '' }
-                ] : [])].map((file) => {
+                {[
+                  ...(user.role === 'Admin' ? [{ name: 'Admin Console' as const, icon: 'security', size: '9.3 KB' }] : []),
+                  ...MANAGEMENT_TOOLS,
+                  ...(user.role === 'Admin' ? [
+                    { name: 'Manage Plugins' as const, icon: 'bolt', size: '' },
+                    { name: 'Manage Apps' as const, icon: 'apps', size: '' },
+                    { name: 'Manage Portfolios' as const, icon: 'web', size: '' }
+                  ] : [])
+                ].map((file) => {
 
                   const isSelected = activeTab === file.name;
                   return (
@@ -375,20 +407,6 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                   <p className="text-xs text-[#b9cacb] leading-relaxed">
                     This module is restricted to Administrator access. Your current account role is flagged as <code className="bg-[#1c1b1d] px-1.5 py-0.5 rounded text-[#00dbe7] font-mono">{user.role || 'Developer'}</code>.
                   </p>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setUser(prev => {
-                        const next = { ...prev, role: 'Admin' as const };
-                        localStorage.setItem('sutharlabs_active_user', JSON.stringify(next));
-                        return next;
-                      });
-                      addLog({ timestamp: new Date().toLocaleTimeString(), type: 'SUCCESS', message: 'ADMIN: Session credential override activated.' });
-                    }}
-                    className="mt-2 px-6 py-2.5 rounded bg-red-900/40 border border-[#ffb4ab]/30 text-[#ffb4ab] text-xs font-mono font-bold uppercase transition-all hover:bg-red-900/60 cursor-pointer"
-                  >
-                    Bypass / Elevate to Administrator
-                  </button>
                 </div>
             )}
             

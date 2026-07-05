@@ -1,56 +1,376 @@
 @import "tailwindcss";
 
+:root {
+  /* Default Light Theme Variables */
+  --bg-color: #f4f6f8;
+  --surface-color: #ffffff;
+  --surface-dim-color: #f8fafc;
+  --surface-bright-color: #ffffff;
+  
+  --surface-container-lowest-color: #ffffff;
+  --surface-container-low-color: #f8fafc;
+  --surface-container-color: #edf2f7;
+  --surface-container-high-color: #e2e8f0;
+  --surface-container-highest-color: #cbd5e1;
+  --surface-variant-color: #f1f5f9;
+  
+  --on-background-color: #0f172a;
+  --on-surface-color: #1e293b;
+  --on-surface-variant-color: #475569;
+  --outline-color: #94a3b8;
+  --outline-variant-color: #e2e8f0;
+  
+  --primary-color: #0284c7;
+  --primary-container-color: #e0f2fe;
+  --on-primary-color: #ffffff;
+  --on-primary-container-color: #0369a1;
+  --primary-fixed-color: #0ea5e9;
+  --primary-fixed-dim-color: #0284c7;
+  --on-primary-fixed-color: #0c4a6e;
+  --on-primary-fixed-variant-color: #0369a1;
+  --inverse-primary-color: #38bdf8;
+  --surface-tint-color: #0284c7;
+  
+  --secondary-color: #7c3aed;
+  --secondary-container-color: #f3e8ff;
+  --on-secondary-color: #ffffff;
+  --on-secondary-container-color: #5b21b6;
+  --secondary-fixed-color: #c084fc;
+  --secondary-fixed-dim-color: #7c3aed;
+  --on-secondary-fixed-color: #4c1d95;
+  --on-secondary-fixed-variant-color: #5b21b6;
+  
+  --tertiary-color: #059669;
+  --tertiary-container-color: #ecfdf5;
+  --on-tertiary-color: #ffffff;
+  --on-tertiary-container-color: #047857;
+  --tertiary-fixed-color: #34d399;
+  --tertiary-fixed-dim-color: #059669;
+  --on-tertiary-fixed-color: #064e3b;
+  --on-tertiary-fixed-variant-color: #047857;
+  
+  --error-color: #dc2626;
+  --error-container-color: #fee2e2;
+  --on-error-color: #ffffff;
+  --on-error-container-color: #991b1b;
+  
+  --inverse-surface-color: #0f172a;
+  --inverse-on-surface-color: #ffffff;
+
+  --chart-grid-color: rgba(148, 163, 184, 0.12);
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-border: rgba(148, 163, 184, 0.15);
+}
+
+.dark {
+  /* Dark Theme Variables */
+  --bg-color: #050505;
+  --surface-color: #131315;
+  --surface-dim-color: #131315;
+  --surface-bright-color: #39393b;
+  
+  --surface-container-lowest-color: #0e0e10;
+  --surface-container-low-color: #1c1b1d;
+  --surface-container-color: #201f21;
+  --surface-container-high-color: #2a2a2c;
+  --surface-container-highest-color: #353437;
+  --surface-variant-color: #353437;
+  
+  --on-background-color: #e5e1e4;
+  --on-surface-color: #e5e1e4;
+  --on-surface-variant-color: #b9cacb;
+  --outline-color: #849495;
+  --outline-variant-color: #3a494b;
+  
+  --primary-color: #e1fdff;
+  --primary-container-color: #00f2ff;
+  --on-primary-color: #00363a;
+  --on-primary-container-color: #006a71;
+  --primary-fixed-color: #74f5ff;
+  --primary-fixed-dim-color: #00dbe7;
+  --on-primary-fixed-color: #002022;
+  --on-primary-fixed-variant-color: #004f54;
+  --inverse-primary-color: #00696f;
+  --surface-tint-color: #00dbe7;
+  
+  --secondary-color: #ebb2ff;
+  --secondary-container-color: #ce5dff;
+  --on-secondary-color: #520071;
+  --on-secondary-container-color: #480064;
+  --secondary-fixed-color: #f8d8ff;
+  --secondary-fixed-dim-color: #ebb2ff;
+  --on-secondary-fixed-color: #320047;
+  --on-secondary-fixed-variant-color: #74009f;
+  
+  --tertiary-color: #e2ffe3;
+  --tertiary-container-color: #00fb83;
+  --on-tertiary-color: #003919;
+  --on-tertiary-container-color: #006f36;
+  --tertiary-fixed-color: #61ff97;
+  --tertiary-fixed-dim-color: #00e476;
+  --on-tertiary-fixed-color: #00210c;
+  --on-tertiary-fixed-variant-color: #005227;
+  
+  --error-color: #ffb4ab;
+  --error-container-color: #93000a;
+  --on-error-color: #690005;
+  --on-error-container-color: #ffdad6;
+  
+  --inverse-surface-color: #e5e1e4;
+  --inverse-on-surface-color: #313032;
+
+  --chart-grid-color: rgba(255, 255, 255, 0.03);
+  --glass-bg: rgba(18, 18, 20, 0.82);
+  --glass-border: rgba(255, 255, 255, 0.05);
+}
+
 @theme {
-  --color-on-tertiary-fixed-variant: #005227;
-  --color-on-error: #690005;
-  --color-error-container: #93000a;
-  --color-on-error-container: #ffdad6;
-  --color-surface-dim: #131315;
-  --color-surface-container-high: #2a2a2c;
-  --color-secondary: #ebb2ff;
-  --color-tertiary-container: #00fb83;
-  --color-on-secondary-container: #480064;
-  --color-error: #ffb4ab;
-  --color-on-tertiary-fixed: #00210c;
-  --color-outline-variant: #3a494b;
-  --color-surface: #131315;
-  --color-surface-container-highest: #353437;
-  --color-primary-container: #00f2ff;
-  --color-surface-container-lowest: #0e0e10;
-  --color-outline: #849495;
-  --color-primary: #e1fdff;
-  --color-secondary-fixed-dim: #ebb2ff;
-  --color-tertiary: #e2ffe3;
-  --color-surface-bright: #39393b;
-  --color-tertiary-fixed-dim: #00e476;
-  --color-surface-variant: #353437;
-  --color-on-background: #e5e1e4;
-  --color-surface-container: #201f21;
-  --color-on-secondary: #520071;
-  --color-on-primary-fixed: #002022;
-  --color-tertiary-fixed: #61ff97;
-  --color-background: #131315;
-  --color-on-primary-container: #006a71;
-  --color-surface-container-low: #1c1b1d;
-  --color-inverse-surface: #e5e1e4;
-  --color-inverse-on-surface: #313032;
-  --color-secondary-fixed: #f8d8ff;
-  --color-on-surface-variant: #b9cacb;
-  --color-primary-fixed: #74f5ff;
-  --color-on-tertiary-container: #006f36;
-  --color-primary-fixed-dim: #00dbe7;
-  --color-on-secondary-fixed: #320047;
-  --color-on-secondary-fixed-variant: #74009f;
-  --color-surface-tint: #00dbe7;
-  --color-on-tertiary: #003919;
-  --color-on-primary-fixed-variant: #004f54;
-  --color-inverse-primary: #00696f;
-  --color-on-surface: #e5e1e4;
-  --color-secondary-container: #ce5dff;
-  --color-on-primary: #00363a;
+  --color-on-tertiary-fixed-variant: var(--on-tertiary-fixed-variant-color);
+  --color-on-error: var(--on-error-color);
+  --color-error-container: var(--error-container-color);
+  --color-on-error-container: var(--on-error-container-color);
+  --color-surface-dim: var(--surface-dim-color);
+  --color-surface-container-high: var(--surface-container-high-color);
+  --color-secondary: var(--secondary-color);
+  --color-tertiary-container: var(--tertiary-container-color);
+  --color-on-secondary-container: var(--on-secondary-container-color);
+  --color-error: var(--error-color);
+  --color-on-tertiary-fixed: var(--on-tertiary-fixed-color);
+  --color-outline-variant: var(--outline-variant-color);
+  --color-surface: var(--surface-color);
+  --color-surface-container-highest: var(--surface-container-highest-color);
+  --color-primary-container: var(--primary-container-color);
+  --color-surface-container-lowest: var(--surface-container-lowest-color);
+  --color-outline: var(--outline-color);
+  --color-primary: var(--primary-color);
+  --color-secondary-fixed-dim: var(--secondary-fixed-dim-color);
+  --color-tertiary: var(--tertiary-color);
+  --color-surface-bright: var(--surface-bright-color);
+  --color-tertiary-fixed-dim: var(--tertiary-fixed-dim-color);
+  --color-surface-variant: var(--surface-variant-color);
+  --color-on-background: var(--on-background-color);
+  --color-surface-container: var(--surface-container-color);
+  --color-on-secondary: var(--on-secondary-color);
+  --color-on-primary-fixed: var(--on-primary-fixed-color);
+  --color-tertiary-fixed: var(--tertiary-fixed-color);
+  --color-background: var(--bg-color);
+  --color-on-primary-container: var(--on-primary-container-color);
+  --color-surface-container-low: var(--surface-container-low-color);
+  --color-inverse-surface: var(--inverse-surface-color);
+  --color-inverse-on-surface: var(--inverse-on-surface-color);
+  --color-secondary-fixed: var(--secondary-fixed-color);
+  --color-on-surface-variant: var(--on-surface-variant-color);
+  --color-primary-fixed: var(--primary-fixed-color);
+  --color-on-tertiary-container: var(--on-tertiary-container-color);
+  --color-primary-fixed-dim: var(--primary-fixed-dim-color);
+  --color-on-secondary-fixed: var(--on-secondary-fixed-color);
+  --color-on-secondary-fixed-variant: var(--on-secondary-fixed-variant-color);
+  --color-surface-tint: var(--surface-tint-color);
+  --color-on-tertiary: var(--on-tertiary-color);
+  --color-on-primary-fixed-variant: var(--on-primary-fixed-variant-color);
+  --color-inverse-primary: var(--inverse-primary-color);
+  --color-on-surface: var(--on-surface-color);
+  --color-secondary-container: var(--secondary-container-color);
+  --color-on-primary: var(--on-primary-color);
 
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
+/* Hardcoded color utility overrides for Light Mode */
+html:not(.dark) .bg-\[\#050505\],
+html:not(.dark) .bg-\[\#0c0c0e\],
+html:not(.dark) .bg-\[\#070708\] {
+  background-color: var(--bg-color) !important;
+}
+html:not(.dark) .bg-\[\#0e0e10\],
+html:not(.dark) .bg-\[\#0e0e10\]\/80,
+html:not(.dark) .bg-\[\#0e0e10\]\/90 {
+  background-color: var(--surface-container-lowest-color) !important;
+}
+html:not(.dark) .bg-\[\#131315\],
+html:not(.dark) .bg-\[\#131315\]\/95 {
+  background-color: var(--surface-color) !important;
+}
+html:not(.dark) .bg-\[\#131315\]\/90 {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+}
+html:not(.dark) .bg-\[\#131315\]\/80 {
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+html:not(.dark) .bg-\[\#131315\]\/50 {
+  background-color: rgba(255, 255, 255, 0.5) !important;
+}
+html:not(.dark) .bg-\[\#131315\]\/40 {
+  background-color: rgba(255, 255, 255, 0.4) !important;
+}
+html:not(.dark) .bg-\[\#131315\]\/30 {
+  background-color: rgba(255, 255, 255, 0.3) !important;
+}
+html:not(.dark) .bg-\[\#201f21\],
+html:not(.dark) .bg-\[\#1c1b1d\],
+html:not(.dark) .bg-\[\#201f21\]\/80,
+html:not(.dark) .bg-\[\#1c1b1d\]\/40 {
+  background-color: var(--surface-container-color) !important;
+}
+html:not(.dark) .bg-\[\#2a2a2c\],
+html:not(.dark) .bg-\[\#2a2a2c\]\/60 {
+  background-color: var(--surface-container-high-color) !important;
+}
+html:not(.dark) .bg-\[\#353437\] {
+  background-color: var(--surface-container-highest-color) !important;
+}
+
+html:not(.dark) .text-\[\#e5e1e4\] {
+  color: var(--on-surface-color) !important;
+}
+html:not(.dark) .text-white {
+  color: var(--on-surface-color) !important;
+}
+html:not(.dark) .hover\:text-white:hover {
+  color: var(--on-surface-color) !important;
+}
+html:not(.dark) .text-\[\#b9cacb\],
+html:not(.dark) .text-\[\#b9cacb\]\/80,
+html:not(.dark) .text-\[\#b9cacb\]\/95 {
+  color: var(--on-surface-variant-color) !important;
+}
+html:not(.dark) .text-\[\#849495\] {
+  color: var(--on-surface-variant-color) !important;
+  opacity: 0.7;
+}
+
+html:not(.dark) .border-\[\#3a494b\]\/10,
+html:not(.dark) .border-\[\#3a494b\]\/20,
+html:not(.dark) .border-\[\#3a494b\]\/30,
+html:not(.dark) .border-\[\#3a494b\]\/40,
+html:not(.dark) .border-\[\#3a494b\]\/50 {
+  border-color: var(--outline-variant-color) !important;
+}
+
+/* Overrides for text shadow neon glowing text in light mode - remove shadows for readability */
+html:not(.dark) .neon-text-glow,
+html:not(.dark) .neon-text-emerald,
+html:not(.dark) .neon-text-purple {
+  text-shadow: none !important;
+}
+
+/* Accent override for buttons/badges that are hardcoded with dark background / light text */
+html:not(.dark) .bg-\[\#00dbe7\] {
+  background-color: var(--primary-color) !important;
+  color: #ffffff !important;
+}
+html:not(.dark) .text-\[\#74f5ff\] {
+  color: var(--primary-color) !important;
+}
+html:not(.dark) .bg-\[\#00dbe7\]\/10,
+html:not(.dark) .bg-\[\#00dbe7\]\/20 {
+  background-color: var(--primary-container-color) !important;
+  color: var(--on-primary-container-color) !important;
+}
+
+html:not(.dark) .bg-\[\#ce5dff\] {
+  background-color: var(--secondary-color) !important;
+  color: #ffffff !important;
+}
+html:not(.dark) .text-\[\#ebb2ff\] {
+  color: var(--secondary-color) !important;
+}
+html:not(.dark) .bg-\[\#ce5dff\]\/10,
+html:not(.dark) .bg-\[\#ce5dff\]\/20 {
+  background-color: var(--secondary-container-color) !important;
+  color: var(--on-secondary-container-color) !important;
+}
+
+html:not(.dark) .bg-\[\#00e476\],
+html:not(.dark) .bg-\[\#00fb83\] {
+  background-color: var(--tertiary-color) !important;
+  color: #ffffff !important;
+}
+html:not(.dark) .text-\[\#00e476\],
+html:not(.dark) .text-\[\#00fb83\] {
+  color: var(--tertiary-color) !important;
+}
+html:not(.dark) .bg-\[\#00e476\]\/10,
+html:not(.dark) .bg-\[\#00fb83\]\/30 {
+  background-color: var(--tertiary-container-color) !important;
+  color: var(--on-tertiary-container-color) !important;
+}
+
+html:not(.dark) .bg-red-950\/5 {
+  background-color: #fef2f2 !important;
+}
+html:not(.dark) .border-red-900\/20 {
+  border-color: #fee2e2 !important;
+}
+html:not(.dark) .text-\[\#ffb4ab\] {
+  color: var(--error-color) !important;
+}
+html:not(.dark) .text-\[\#002022\],
+html:not(.dark) .text-\[\#00363a\] {
+  color: #ffffff !important;
+}
+
+/* Scrollbar thumb override */
+html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb {
+  background: var(--surface-container-high-color) !important;
+}
+html:not(.dark) .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--surface-container-highest-color) !important;
+}
+
+/* Generic hover bg overrides for white backgrounds in Light Mode */
+html:not(.dark) .bg-white\/5 {
+  background-color: rgba(15, 23, 42, 0.05) !important;
+}
+html:not(.dark) .bg-white\/10 {
+  background-color: rgba(15, 23, 42, 0.1) !important;
+}
+html:not(.dark) .bg-white\/\[0\.02\] {
+  background-color: rgba(15, 23, 42, 0.02) !important;
+}
+html:not(.dark) .hover\:bg-white\/5:hover {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
+html:not(.dark) .hover\:bg-white\/10:hover {
+  background-color: rgba(15, 23, 42, 0.12) !important;
+}
+html:not(.dark) .hover\:bg-white\/\[0\.02\]:hover {
+  background-color: rgba(15, 23, 42, 0.04) !important;
+}
+html:not(.dark) .border-white\/5 {
+  border-color: rgba(15, 23, 42, 0.05) !important;
+}
+html:not(.dark) .border-white\/10 {
+  border-color: rgba(15, 23, 42, 0.08) !important;
+}
+html:not(.dark) .border-white\/20 {
+  border-color: rgba(15, 23, 42, 0.12) !important;
+}
+
+/* Specific Top Navigation controls mapping in Light Mode */
+html:not(.dark) nav {
+  box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04) !important;
+}
+html:not(.dark) nav button.text-\[\#74f5ff\] {
+  color: var(--primary-color) !important;
+  background-color: var(--primary-container-color) !important;
+}
+html:not(.dark) nav button.text-\[\#00e476\] {
+  color: var(--tertiary-color) !important;
+  background-color: var(--tertiary-container-color) !important;
+}
+html:not(.dark) nav button.text-\[\#ce5dff\] {
+  color: var(--secondary-color) !important;
+  background-color: var(--secondary-container-color) !important;
+}
+html:not(.dark) nav button.text-\[\#00dbe7\] {
+  color: var(--primary-color) !important;
+  background-color: var(--primary-container-color) !important;
+}
+html:not(.dark) nav button:hover:not(.font-bold) {
+  background-color: rgba(15, 23, 42, 0.05) !important;
+  color: var(--on-background-color) !important;
 }
 
 /* Custom Scrollbars */
@@ -80,10 +400,10 @@
 
 /* Glassmorphism Panel styles */
 .glass-panel {
-  background: rgba(18, 18, 20, 0.82);
+  background: var(--glass-bg);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
 }
 
 /* Glow Borders and text blooms */
@@ -138,26 +458,26 @@
 /* Subtle dashboard backing elements */
 .chart-grid {
   background-image: 
-    linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+    linear-gradient(to right, var(--chart-grid-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--chart-grid-color) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 
 /* Prose customizations */
 .prose-custom h1, .prose-custom h2, .prose-custom h3, .prose-custom h4 {
-  color: #ffffff;
+  color: var(--on-surface-color);
   font-family: "Inter", sans-serif;
   font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 .prose-custom p {
-  color: #b9cacb;
+  color: var(--on-surface-variant-color);
 }
 
 .prose-custom pre {
-  background-color: #131315;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background-color: var(--surface-dim-color);
+  border: 1px solid var(--outline-variant-color);
 }
 
 /* Custom Responsive Media Queries */

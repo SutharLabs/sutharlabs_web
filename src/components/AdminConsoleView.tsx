@@ -266,7 +266,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
   };
 
   // Change user authorization rank/role
-  const handleRoleChange = async (userId: string, targetRole: 'Admin' | 'Developer' | 'Banned') => {
+  const handleRoleChange = async (userId: string, targetRole: 'Admin' | 'Developer' | 'Banned' | 'Pending') => {
     const targetUser = users.find(u => u.id === userId);
     if (!targetUser) return;
 
@@ -557,16 +557,19 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
                             value={item.role}
                             onChange={(e) => handleRoleChange(item.id, e.target.value as any)}
                             disabled={item.email === currentUserEmail}
-                            className={`bg-[#201f21] border text-xs rounded px-2 py-1 font-mono transition-all outline-none cursor-pointer focus:ring-1 focus:ring-[#00dbe7] ${
+                            className={`bg-surface border text-xs rounded px-2 py-1 font-mono transition-all outline-none cursor-pointer focus:ring-1 focus:ring-[#00dbe7] ${
                               item.role === 'Admin' 
                                 ? 'border-[#ce5dff]/50 text-[#ebb2ff] font-bold' 
                                 : item.role === 'Banned' 
                                 ? 'border-red-900 text-red-400' 
+                                : item.role === 'Pending'
+                                ? 'border-amber-500/50 text-amber-500 font-bold'
                                 : 'border-[#3a494b]/40 text-[#00dbe7]'
                             }`}
                           >
                             <option value="Admin">Administrator</option>
                             <option value="Developer">Developer</option>
+                            <option value="Pending">Pending Approval</option>
                             <option value="Banned">Banned</option>
                           </select>
                         </td>
