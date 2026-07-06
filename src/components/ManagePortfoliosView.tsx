@@ -111,18 +111,18 @@ export default function ManagePortfoliosView({ logs, onAddLog, userToken }: Mana
 
   return (
     <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto custom-scrollbar h-full">
-      <div className="glass-panel p-4 sm:p-6 rounded-lg border border-[#3a494b]/20 flex flex-col gap-4 sm:gap-6">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 border-b border-[#3a494b]/20 pb-3">
+      <div className="glass-panel p-4 sm:p-6 rounded-lg border border-outline/20 flex flex-col gap-4 sm:gap-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 border-b border-outline/20 pb-3">
           <div className="flex items-center gap-3">
-            <span className="material-symbols-outlined text-[#ce5dff] text-2xl">web</span>
+            <span className="material-symbols-outlined text-secondary text-2xl">web</span>
             <div>
-              <h3 className="text-[#e5e1e4] font-bold">Development Portfolio</h3>
-              <p className="text-[10px] font-mono text-[#849495]">Manage SutharLabs service credibility projects</p>
+              <h3 className="text-on-surface font-bold">Development Portfolio</h3>
+              <p className="text-[10px] font-mono text-on-surface-variant">Manage SutharLabs service credibility projects</p>
             </div>
           </div>
           <div>
             {!editingId && (
-              <button onClick={handleAddNew} className="flex items-center gap-1.5 px-3 py-1.5 bg-[#ce5dff] text-black border border-[#ce5dff] rounded text-xs font-bold hover:brightness-110 transition-all cursor-pointer">
+              <button onClick={handleAddNew} className="flex items-center gap-1.5 px-3 py-1.5 bg-secondary text-on-secondary border border-secondary rounded text-xs font-bold hover:opacity-90 transition-opacity cursor-pointer">
                 <Plus className="w-4 h-4" /> Add Project
               </button>
             )}
@@ -133,15 +133,15 @@ export default function ManagePortfoliosView({ logs, onAddLog, userToken }: Mana
           {editData.map(p => {
             const isEditing = editingId === p.id;
             return (
-              <div key={p.id} className={`p-5 bg-[#131315] border ${isEditing ? 'border-[#ce5dff] shadow-[0_0_15px_rgba(206,93,255,0.15)]' : 'border-[#3a494b]/30 hover:border-[#ce5dff]/50'} rounded-xl transition-all group flex flex-col gap-3 relative`}>
+              <div key={p.id} className={`p-5 bg-surface-container-low border ${isEditing ? 'border-secondary shadow-sm' : 'border-outline/30 hover:border-secondary/50'} rounded-xl transition-all group flex flex-col gap-3 relative`}>
                 
                 {/* Actions overlay */}
                 {!isEditing && editingId === null && (
                   <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => setEditingId(p.id)} className="p-1.5 bg-[#1b1b1f] border border-[#3a494b]/40 rounded hover:text-[#ce5dff] hover:border-[#ce5dff]/50 transition-all cursor-pointer">
+                    <button onClick={() => setEditingId(p.id)} className="p-1.5 bg-surface-container-high border border-outline/40 rounded hover:text-secondary hover:border-secondary/50 transition-all cursor-pointer text-on-surface-variant">
                       <Edit3 className="w-3.5 h-3.5" />
                     </button>
-                    <button onClick={() => handleDelete(p.id)} className="p-1.5 bg-[#1b1b1f] border border-[#3a494b]/40 rounded hover:text-red-400 hover:border-red-400/50 transition-all cursor-pointer">
+                    <button onClick={() => handleDelete(p.id)} className="p-1.5 bg-surface-container-high border border-outline/40 rounded hover:text-error hover:border-error/50 transition-all cursor-pointer text-on-surface-variant">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -150,23 +150,23 @@ export default function ManagePortfoliosView({ logs, onAddLog, userToken }: Mana
                 <div className="flex justify-between items-start gap-2 pr-16">
                   <div className="flex items-center gap-2 flex-1">
                     {isEditing ? (
-                      <input type="text" value={p.blueprintSymbol} onChange={e => handleChange(p.id, 'blueprintSymbol', e.target.value)} className="bg-[#1b1b1f] border border-[#3a494b]/40 rounded px-1 py-1 text-xs text-center text-white w-8" placeholder="Icon" title="Material Symbol name" />
+                      <input type="text" value={p.blueprintSymbol} onChange={e => handleChange(p.id, 'blueprintSymbol', e.target.value)} className="bg-surface-container-high border border-outline/40 rounded px-1 py-1 text-xs text-center text-on-surface outline-none focus:border-secondary transition-all w-8" placeholder="Icon" title="Material Symbol name" />
                     ) : (
-                      <span className="material-symbols-outlined text-[#ce5dff] text-xl flex-shrink-0">{p.blueprintSymbol || 'globe'}</span>
+                      <span className="material-symbols-outlined text-secondary text-xl flex-shrink-0">{p.blueprintSymbol || 'globe'}</span>
                     )}
                     
                     {isEditing ? (
-                      <input type="text" value={p.title} onChange={e => handleChange(p.id, 'title', e.target.value)} className="bg-[#1b1b1f] border border-[#ce5dff]/50 rounded px-2 py-1 text-xs text-white w-full font-bold focus:outline-none focus:border-[#ce5dff]" placeholder="Project Title" />
+                      <input type="text" value={p.title} onChange={e => handleChange(p.id, 'title', e.target.value)} className="bg-surface-container-high border border-secondary/50 rounded px-2 py-1 text-xs text-on-surface w-full font-bold focus:outline-none focus:border-secondary transition-all" placeholder="Project Title" />
                     ) : (
-                      <h4 className="text-[#e5e1e4] font-bold text-sm">{p.title}</h4>
+                      <h4 className="text-on-surface font-bold text-sm">{p.title}</h4>
                     )}
                   </div>
                 </div>
                 
                 {isEditing ? (
-                  <input type="text" value={p.segment} onChange={e => handleChange(p.id, 'segment', e.target.value)} className="bg-[#1b1b1f] border border-[#3a494b]/40 rounded px-2 py-1 text-[10px] font-mono text-white w-full" placeholder="Segment (e.g. Web Dev, AI)" />
+                  <input type="text" value={p.segment} onChange={e => handleChange(p.id, 'segment', e.target.value)} className="bg-surface-container-high border border-outline/40 rounded px-2 py-1 text-[10px] font-mono text-on-surface outline-none focus:border-secondary transition-all w-full" placeholder="Segment (e.g. Web Dev, AI)" />
                 ) : (
-                  <div className="self-start px-2 py-0.5 rounded text-[9px] font-mono border whitespace-nowrap bg-[#ce5dff]/10 text-[#ebb2ff] border-[#ce5dff]/30">
+                  <div className="self-start px-2 py-0.5 rounded text-[9px] font-mono border whitespace-nowrap bg-secondary/10 text-secondary border-secondary/30">
                     {p.segment}
                   </div>
                 )}
@@ -175,69 +175,69 @@ export default function ManagePortfoliosView({ logs, onAddLog, userToken }: Mana
                   {isEditing ? (
                     <>
                       <div>
-                        <label className="text-[9px] text-[#849495] uppercase tracking-wider block mb-1">Short Description</label>
-                        <textarea value={p.description || ''} onChange={e => handleChange(p.id, 'description', e.target.value)} className="bg-[#1b1b1f] border border-[#3a494b]/40 rounded px-2 py-1 text-[10px] text-gray-300 w-full h-12 resize-none custom-scrollbar" placeholder="Short intro..." />
+                        <label className="text-[9px] text-on-surface-variant uppercase tracking-wider block mb-1">Short Description</label>
+                        <textarea value={p.description || ''} onChange={e => handleChange(p.id, 'description', e.target.value)} className="bg-surface-container-high border border-outline/40 rounded px-2 py-1 text-[10px] text-on-surface w-full h-12 resize-none custom-scrollbar outline-none focus:border-secondary transition-all" placeholder="Short intro..." />
                       </div>
                       <div>
-                        <label className="text-[9px] text-[#849495] uppercase tracking-wider block mb-1">Detailed Case Study</label>
-                        <textarea value={p.detailedCase || ''} onChange={e => handleChange(p.id, 'detailedCase', e.target.value)} className="bg-[#1b1b1f] border border-[#3a494b]/40 rounded px-2 py-1 text-[10px] text-gray-300 w-full h-20 resize-none custom-scrollbar" placeholder="Full details..." />
+                        <label className="text-[9px] text-on-surface-variant uppercase tracking-wider block mb-1">Detailed Case Study</label>
+                        <textarea value={p.detailedCase || ''} onChange={e => handleChange(p.id, 'detailedCase', e.target.value)} className="bg-surface-container-high border border-outline/40 rounded px-2 py-1 text-[10px] text-on-surface w-full h-20 resize-none custom-scrollbar outline-none focus:border-secondary transition-all" placeholder="Full details..." />
                       </div>
                     </>
                   ) : (
-                    <p className="text-[10px] text-gray-400 line-clamp-3">{p.detailedCase || p.description}</p>
+                    <p className="text-[10px] text-on-surface-variant line-clamp-3">{p.detailedCase || p.description}</p>
                   )}
                   
-                  <div className="flex items-center gap-2 pt-2 border-t border-[#3a494b]/10">
-                    <span className="text-[#849495] flex items-center gap-1 w-16"><Globe className="w-3 h-3"/> Link</span>
+                  <div className="flex items-center gap-2 pt-2 border-t border-outline/10">
+                    <span className="text-on-surface-variant flex items-center gap-1 w-16"><Globe className="w-3 h-3"/> Link</span>
                     {isEditing ? (
-                      <input type="text" value={p.stat || ''} onChange={e => handleChange(p.id, 'stat', e.target.value)} className="bg-[#1b1b1f] border border-[#3a494b]/40 rounded px-2 py-1 text-[10px] text-white flex-1" placeholder="URL stat (e.g. Live at domain.com)" />
+                      <input type="text" value={p.stat || ''} onChange={e => handleChange(p.id, 'stat', e.target.value)} className="bg-surface-container-high border border-outline/40 rounded px-2 py-1 text-[10px] text-on-surface outline-none focus:border-secondary transition-all flex-1" placeholder="URL stat (e.g. Live at domain.com)" />
                     ) : (
-                      <span className="text-[#00e476] font-mono text-[10px]">{p.stat}</span>
+                      <span className="text-tertiary font-mono text-[10px]">{p.stat}</span>
                     )}
                   </div>
 
                   {isEditing && (
                     <div className="flex items-center gap-2 pt-1">
-                      <span className="text-[#849495] flex items-center gap-1 w-16 text-[9px] uppercase tracking-wider">Stat Label</span>
-                      <input type="text" value={p.statLabel || ''} onChange={e => handleChange(p.id, 'statLabel', e.target.value)} className="bg-[#1b1b1f] border border-[#3a494b]/40 rounded px-2 py-1 text-[10px] text-white flex-1" placeholder="Corporate marketing platform" />
+                      <span className="text-on-surface-variant flex items-center gap-1 w-16 text-[9px] uppercase tracking-wider">Stat Label</span>
+                      <input type="text" value={p.statLabel || ''} onChange={e => handleChange(p.id, 'statLabel', e.target.value)} className="bg-surface-container-high border border-outline/40 rounded px-2 py-1 text-[10px] text-on-surface outline-none focus:border-secondary transition-all flex-1" placeholder="Corporate marketing platform" />
                     </div>
                   )}
 
                   <div className="flex items-center gap-2 pt-1">
-                    <span className="text-[#849495] flex items-center gap-1 w-16"><Code2 className="w-3 h-3"/> Stack</span>
+                    <span className="text-on-surface-variant flex items-center gap-1 w-16"><Code2 className="w-3 h-3"/> Stack</span>
                     {isEditing ? (
-                      <input type="text" value={(p.techs || []).join(', ')} onChange={e => handleChange(p.id, 'techs', e.target.value)} className="bg-[#1b1b1f] border border-[#3a494b]/40 rounded px-2 py-1 text-[10px] font-mono text-white flex-1" placeholder="React, Node.js, etc" />
+                      <input type="text" value={(p.techs || []).join(', ')} onChange={e => handleChange(p.id, 'techs', e.target.value)} className="bg-surface-container-high border border-outline/40 rounded px-2 py-1 text-[10px] font-mono text-on-surface outline-none focus:border-secondary transition-all flex-1" placeholder="React, Node.js, etc" />
                     ) : (
-                      <span className="text-gray-300 font-mono text-[10px] truncate block w-full" title={(p.techs || []).join(', ')}>
+                      <span className="text-on-surface-variant font-mono text-[10px] truncate block w-full" title={(p.techs || []).join(', ')}>
                         {(p.techs || []).join(' • ')}
                       </span>
                     )}
                   </div>
 
                   {isEditing && (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-[#3a494b]/10">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2 border-t border-outline/10">
                       <div>
-                        <label className="text-[9px] text-[#849495] uppercase tracking-wider block mb-1">Client Name</label>
-                        <input type="text" value={p.client || ''} onChange={e => handleChange(p.id, 'client', e.target.value)} className="bg-[#1b1b1f] border border-[#3a494b]/40 rounded px-2 py-1 text-[10px] text-white w-full" />
+                        <label className="text-[9px] text-on-surface-variant uppercase tracking-wider block mb-1">Client Name</label>
+                        <input type="text" value={p.client || ''} onChange={e => handleChange(p.id, 'client', e.target.value)} className="bg-surface-container-high border border-outline/40 rounded px-2 py-1 text-[10px] text-on-surface outline-none focus:border-secondary transition-all w-full" />
                       </div>
                       <div>
-                        <label className="text-[9px] text-[#849495] uppercase tracking-wider block mb-1">Client Title</label>
-                        <input type="text" value={p.clientTitle || ''} onChange={e => handleChange(p.id, 'clientTitle', e.target.value)} className="bg-[#1b1b1f] border border-[#3a494b]/40 rounded px-2 py-1 text-[10px] text-white w-full" />
+                        <label className="text-[9px] text-on-surface-variant uppercase tracking-wider block mb-1">Client Title</label>
+                        <input type="text" value={p.clientTitle || ''} onChange={e => handleChange(p.id, 'clientTitle', e.target.value)} className="bg-surface-container-high border border-outline/40 rounded px-2 py-1 text-[10px] text-on-surface outline-none focus:border-secondary transition-all w-full" />
                       </div>
                     </div>
                   )}
 
                   {isEditing && (
-                    <div className="flex items-center gap-2 pt-2 border-t border-[#3a494b]/10">
-                      <span className="text-[#849495] flex items-center gap-1 w-16"><ImageIcon className="w-3 h-3"/> Image</span>
-                      <input type="text" value={p.imageSrc || ''} onChange={e => handleChange(p.id, 'imageSrc', e.target.value)} className="bg-[#1b1b1f] border border-[#3a494b]/40 rounded px-2 py-1 text-[10px] text-white flex-1" placeholder="Image URL (e.g. /my_img.png)" />
+                    <div className="flex items-center gap-2 pt-2 border-t border-outline/10">
+                      <span className="text-on-surface-variant flex items-center gap-1 w-16"><ImageIcon className="w-3 h-3"/> Image</span>
+                      <input type="text" value={p.imageSrc || ''} onChange={e => handleChange(p.id, 'imageSrc', e.target.value)} className="bg-surface-container-high border border-outline/40 rounded px-2 py-1 text-[10px] text-on-surface outline-none focus:border-secondary transition-all flex-1" placeholder="Image URL (e.g. /my_img.png)" />
                     </div>
                   )}
                   
                   {isEditing && (
-                    <div className="flex items-center justify-end gap-2 pt-4 border-t border-[#3a494b]/20 mt-4">
-                      <button onClick={handleCancel} className="px-3 py-1.5 text-gray-400 hover:text-white text-xs font-bold transition-all cursor-pointer">Cancel</button>
-                      <button onClick={() => handleSave(p.id)} className="flex items-center gap-1.5 px-4 py-1.5 bg-[#ce5dff] text-black rounded text-xs font-bold hover:brightness-110 transition-all cursor-pointer">
+                    <div className="flex items-center justify-end gap-2 pt-4 border-t border-outline/20 mt-4">
+                      <button onClick={handleCancel} className="px-3 py-1.5 text-on-surface-variant hover:text-on-surface text-xs font-bold transition-all cursor-pointer">Cancel</button>
+                      <button onClick={() => handleSave(p.id)} className="flex items-center gap-1.5 px-4 py-1.5 bg-secondary text-on-secondary rounded text-xs font-bold hover:opacity-90 transition-opacity cursor-pointer">
                         <Save className="w-3.5 h-3.5" /> Save Entry
                       </button>
                     </div>

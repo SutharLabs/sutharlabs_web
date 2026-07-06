@@ -216,7 +216,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
     : { text: 'text-[#74f5ff]', bg: 'bg-[#00dbe7]/10', border: 'border-[#00dbe7]/30' };
 
   // ── RSI colour ─────────────────────────────────────────────────────────────
-  const rsiColor = analysis?.rsi == null ? 'text-gray-500'
+  const rsiColor = analysis?.rsi == null ? 'text-on-surface-variant'
     : analysis.rsi > 70 ? 'text-[#ff6b6b]'
     : analysis.rsi < 30 ? 'text-[#00e476]'
     : 'text-[#74f5ff]';
@@ -276,8 +276,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       )}
 
       {/* ── Symbol Selector ─────────────────────────────────────────────── */}
-      <div className="glass-panel rounded-lg p-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center border border-[#3a494b]/20">
-        <span className="font-mono text-[10px] text-[#849495] uppercase tracking-widest whitespace-nowrap">NSE/BSE Symbol</span>
+      <div className="glass-panel rounded-lg p-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center border border-outline/20">
+        <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">NSE/BSE Symbol</span>
         <div className="relative flex-grow max-w-xs">
           <input
             value={symbolInput}
@@ -285,10 +285,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
             onFocus={() => setShowDropdown(true)}
             onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
             placeholder="e.g. RELIANCE.NS"
-            className="w-full bg-[#0c0c0e] border border-[#3a494b]/30 rounded px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-[#00dbe7] uppercase"
+            className="w-full bg-[#0c0c0e] border border-outline/30 rounded px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-[#00dbe7] uppercase"
           />
           {showDropdown && filteredStocks.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-[#131315] border border-[#3a494b]/30 rounded shadow-2xl z-50 overflow-hidden">
+            <div className="absolute top-full left-0 right-0 mt-1 bg-surface-container-low border border-outline/30 rounded shadow-2xl z-50 overflow-hidden">
               {filteredStocks.map(s => (
                 <button
                   key={s.symbol}
@@ -296,7 +296,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                   className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-[#00dbe7]/10 transition-colors flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 gap-2 border-none bg-transparent cursor-pointer"
                 >
                   <span className="text-[#00dbe7]">{s.symbol}</span>
-                  <span className="text-[#849495] truncate text-right">{s.name}</span>
+                  <span className="text-on-surface-variant truncate text-right">{s.name}</span>
                 </button>
               ))}
             </div>
@@ -309,7 +309,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
           Load
         </button>
         {quote?.market_open != null && (
-          <span className={`flex items-center gap-1.5 text-[10px] font-mono ${quote.market_open ? 'text-[#00e476]' : 'text-[#849495]'}`}>
+          <span className={`flex items-center gap-1.5 text-[10px] font-mono ${quote.market_open ? 'text-[#00e476]' : 'text-on-surface-variant'}`}>
             <span className={`w-1.5 h-1.5 rounded-full ${quote.market_open ? 'bg-[#00e476] animate-pulse' : 'bg-[#849495]'}`} />
             {quote.market_open ? 'MARKET OPEN' : 'MARKET CLOSED'}
           </span>
@@ -325,11 +325,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
           <div className="flex justify-between items-start z-10">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-sans font-bold tracking-tight text-[#e5e1e4]">
+                <h1 className="text-3xl font-sans font-bold tracking-tight text-on-surface">
                   {quote?.symbol?.replace('.NS', '').replace('.BO', '') ?? symbol.replace('.NS', '')}
                 </h1>
                 <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/40 leading-none">NSE</span>
-                {loading && <span className="text-[10px] font-mono text-[#849495] animate-pulse">Loading...</span>}
+                {loading && <span className="text-[10px] font-mono text-on-surface-variant animate-pulse">Loading...</span>}
               </div>
               <p className="text-xs text-[#b9cacb] mt-1.5 font-light">{quote?.name ?? '—'}</p>
             </div>
@@ -359,11 +359,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                       style={{ width: `${(suggestion.confidence ?? 0) * 100}%` }}
                     />
                   </div>
-                  <span className="font-mono text-[10px] text-[#849495] whitespace-nowrap">
+                  <span className="font-mono text-[10px] text-on-surface-variant whitespace-nowrap">
                     {((suggestion.confidence ?? 0) * 100).toFixed(0)}% confidence
                   </span>
                 </div>
-                <div className="flex gap-4 mt-1 text-[9px] font-mono text-[#849495]">
+                <div className="flex gap-4 mt-1 text-[9px] font-mono text-on-surface-variant">
                   {suggestion.target_price && <span>Target: <span className="text-[#00e476]">₹{suggestion.target_price.toFixed(2)}</span></span>}
                   {suggestion.stop_loss && <span>Stop: <span className="text-[#ff6b6b]">₹{suggestion.stop_loss.toFixed(2)}</span></span>}
                   {suggestion.risk_reward_ratio && <span>R/R: <span className="text-[#74f5ff]">{suggestion.risk_reward_ratio.toFixed(2)}</span></span>}
@@ -381,7 +381,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
             </button>
             <button
               onClick={() => setSelectedAction('SELL')}
-              className="flex-1 border border-[#3a494b] text-[#e5e1e4] font-mono text-xs py-3 rounded uppercase tracking-wider hover:bg-white/[0.04] transition-all cursor-pointer"
+              className="flex-1 border border-[#3a494b] text-on-surface font-mono text-xs py-3 rounded uppercase tracking-wider hover:bg-white/[0.04] transition-all cursor-pointer"
             >
               SELL {quote?.symbol?.replace('.NS', '') ?? symbol}
             </button>
@@ -392,28 +392,28 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
         <div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Volume */}
           <div className="glass-panel rounded-lg p-4 flex flex-col justify-center">
-            <span className="font-mono text-[10px] uppercase text-[#849495] tracking-widest mb-1.5">Volume</span>
-            <span className="font-mono text-sm text-[#e5e1e4] font-semibold">
+            <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1.5">Volume</span>
+            <span className="font-mono text-sm text-on-surface font-semibold">
               {quote?.volume != null ? (quote.volume > 1e6 ? `${(quote.volume / 1e6).toFixed(1)}M` : quote.volume.toLocaleString()) : '—'}
             </span>
           </div>
           {/* Day range */}
           <div className="glass-panel rounded-lg p-4 flex flex-col justify-center">
-            <span className="font-mono text-[10px] uppercase text-[#849495] tracking-widest mb-1.5">Day Range</span>
-            <span className="font-mono text-xs text-[#e5e1e4] font-semibold">
+            <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1.5">Day Range</span>
+            <span className="font-mono text-xs text-on-surface font-semibold">
               {quote?.low != null ? `₹${quote.low.toFixed(1)}` : '—'} – {quote?.high != null ? `₹${quote.high.toFixed(1)}` : '—'}
             </span>
           </div>
           {/* RSI */}
           <div className="glass-panel rounded-lg p-4 flex flex-col justify-center">
-            <span className="font-mono text-[10px] uppercase text-[#849495] tracking-widest mb-1.5">RSI (14)</span>
+            <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1.5">RSI (14)</span>
             <span className={`font-mono text-sm font-semibold ${rsiColor}`}>
               {analysis?.rsi != null ? analysis.rsi.toFixed(1) : '—'} <span className="text-[9px]">{rsiLabel}</span>
             </span>
           </div>
           {/* Market status */}
           <div className="glass-panel rounded-lg p-4 flex flex-col justify-center border-b-2 border-[#00e476]">
-            <span className="font-mono text-[10px] uppercase text-[#849495] tracking-widest mb-1.5">ADX</span>
+            <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1.5">ADX</span>
             <span className="font-mono text-xs text-[#00e476] font-semibold">
               {analysis?.adx != null ? `${analysis.adx.toFixed(1)} (${analysis.adx > 25 ? 'Trending' : 'Ranging'})` : '—'}
             </span>
@@ -425,39 +425,39 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       {analysis && (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           <div className="glass-panel rounded-lg p-4 space-y-1">
-            <span className="font-mono text-[10px] text-[#849495] uppercase tracking-widest">MACD</span>
+            <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">MACD</span>
             <div className="text-xs font-mono">
               <span className={analysis.macd != null && analysis.macd_signal != null && analysis.macd > analysis.macd_signal ? 'text-[#00e476]' : 'text-[#ff6b6b]'}>
                 {analysis.macd?.toFixed(3) ?? '—'}
               </span>
-              <span className="text-[#849495]"> / {analysis.macd_signal?.toFixed(3) ?? '—'}</span>
+              <span className="text-on-surface-variant"> / {analysis.macd_signal?.toFixed(3) ?? '—'}</span>
             </div>
-            <div className="text-[9px] font-mono text-[#849495]">
+            <div className="text-[9px] font-mono text-on-surface-variant">
               {analysis.macd != null && analysis.macd_signal != null
                 ? analysis.macd > analysis.macd_signal ? '▲ Bullish crossover' : '▼ Bearish crossover'
                 : 'No data'}
             </div>
           </div>
           <div className="glass-panel rounded-lg p-4 space-y-1">
-            <span className="font-mono text-[10px] text-[#849495] uppercase tracking-widest">Bollinger Bands</span>
+            <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Bollinger Bands</span>
             <div className="text-xs font-mono text-[#74f5ff]">{analysis.bb_upper?.toFixed(1) ?? '—'}</div>
-            <div className="text-[9px] font-mono text-[#849495]">
+            <div className="text-[9px] font-mono text-on-surface-variant">
               Mid: {analysis.bb_middle?.toFixed(1) ?? '—'} | Low: {analysis.bb_lower?.toFixed(1) ?? '—'}
             </div>
           </div>
           <div className="glass-panel rounded-lg p-4 space-y-1">
-            <span className="font-mono text-[10px] text-[#849495] uppercase tracking-widest">EMA Trend</span>
+            <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">EMA Trend</span>
             <div className="text-xs font-mono">
               <span className={analysis.ema_20 != null && analysis.ema_50 != null && analysis.ema_20 > analysis.ema_50 ? 'text-[#00e476]' : 'text-[#ff6b6b]'}>
                 EMA20: {analysis.ema_20?.toFixed(1) ?? '—'}
               </span>
             </div>
-            <div className="text-[9px] font-mono text-[#849495]">EMA50: {analysis.ema_50?.toFixed(1) ?? '—'}</div>
+            <div className="text-[9px] font-mono text-on-surface-variant">EMA50: {analysis.ema_50?.toFixed(1) ?? '—'}</div>
           </div>
           <div className="glass-panel rounded-lg p-4 space-y-1">
-            <span className="font-mono text-[10px] text-[#849495] uppercase tracking-widest">ATR (Volatility)</span>
+            <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">ATR (Volatility)</span>
             <div className="text-xs font-mono text-[#74f5ff]">{analysis.atr?.toFixed(2) ?? '—'}</div>
-            <div className="text-[9px] font-mono text-[#849495]">
+            <div className="text-[9px] font-mono text-on-surface-variant">
               {analysis.atr != null && quote?.current_price
                 ? `${((analysis.atr / quote.current_price) * 100).toFixed(2)}% of price`
                 : 'Avg True Range'}
@@ -468,8 +468,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
 
       {/* ── Order Drawer ────────────────────────────────────────────────── */}
       {selectedAction && (
-        <div className="glass-panel rounded-lg p-5 border border-[#00dbe7]/40 bg-[#131315] animate-fade-in">
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 border-b border-[#3a494b]/20 pb-3 mb-4">
+        <div className="glass-panel rounded-lg p-5 border border-[#00dbe7]/40 bg-surface-container-low animate-fade-in">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 border-b border-outline/20 pb-3 mb-4">
             <h4 className="font-sans font-bold text-sm text-[#74f5ff] uppercase tracking-wider flex items-center gap-2">
               <span className="material-symbols-outlined text-[#00dbe7] text-base select-none">bolt</span>
               Order Terminal — {selectedAction} {quote?.symbol?.replace('.NS', '') ?? symbol}
@@ -479,21 +479,21 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
             </button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
-            <div className="bg-[#0e0e10]/80 p-3 rounded border border-[#3a494b]/30">
-              <span className="block font-mono text-[10px] text-[#849495] uppercase">Market Price</span>
-              <span className="font-mono text-sm text-[#e5e1e4] font-bold block mt-1">₹{quote?.current_price?.toFixed(2) ?? '—'}</span>
+            <div className="bg-[#0e0e10]/80 p-3 rounded border border-outline/30">
+              <span className="block font-mono text-[10px] text-on-surface-variant uppercase">Market Price</span>
+              <span className="font-mono text-sm text-on-surface font-bold block mt-1">₹{quote?.current_price?.toFixed(2) ?? '—'}</span>
             </div>
-            <div className="bg-[#0e0e10]/80 p-3 rounded border border-[#3a494b]/30">
-              <span className="block font-mono text-[10px] text-[#849495] uppercase">Available Cash</span>
+            <div className="bg-[#0e0e10]/80 p-3 rounded border border-outline/30">
+              <span className="block font-mono text-[10px] text-on-surface-variant uppercase">Available Cash</span>
               <span className="font-mono text-sm text-[#74f5ff] font-bold block mt-1">₹{portfolio.cash?.toFixed(2)}</span>
             </div>
-            <div className="bg-[#0e0e10]/80 p-3 rounded border border-[#3a494b]/30">
-              <span className="block font-mono text-[10px] text-[#849495] uppercase">Positions</span>
+            <div className="bg-[#0e0e10]/80 p-3 rounded border border-outline/30">
+              <span className="block font-mono text-[10px] text-on-surface-variant uppercase">Positions</span>
               <span className="font-mono text-sm text-[#e2ffe3] font-bold block mt-1">{portfolio.shares} shares @ ₹{portfolio.buyPrice}</span>
             </div>
             <div className="flex gap-2">
-              <div className="bg-[#0e0e10]/80 p-3 rounded border border-[#3a494b]/30 flex-grow flex flex-col justify-center">
-                <span className="block font-mono text-[9px] text-[#849495] uppercase leading-none">QTY</span>
+              <div className="bg-[#0e0e10]/80 p-3 rounded border border-outline/30 flex-grow flex flex-col justify-center">
+                <span className="block font-mono text-[9px] text-on-surface-variant uppercase leading-none">QTY</span>
                 <input
                   type="number" min="1" max="10000"
                   value={actionQuantity}
@@ -518,7 +518,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
 
       {/* ── Price Chart ─────────────────────────────────────────────────── */}
       <div className="glass-panel rounded-lg flex-1 min-h-[320px] flex flex-col p-1">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 p-3 border-b border-[#3a494b]/10 bg-[#1c1b1d]/40">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 p-3 border-b border-outline/10 bg-[#1c1b1d]/40">
           <div className="flex gap-1">
             {(['1D', '1W', '1M', '1Y'] as const).map(p => (
               <button
@@ -527,19 +527,19 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                 className={`px-3 py-1 rounded text-xs font-mono transition-all cursor-pointer ${
                   activePeriod === p
                     ? 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/30'
-                    : 'bg-[#201f21] text-[#b9cacb] hover:text-[#e5e1e4]'
+                    : 'bg-[#201f21] text-[#b9cacb] hover:text-on-surface'
                 }`}
               >
                 {p}
               </button>
             ))}
           </div>
-          <span className="font-mono text-[9px] text-[#849495]">
+          <span className="font-mono text-[9px] text-on-surface-variant">
             {candles.length > 0 ? `${candles.length} candles` : 'Loading chart...'}
           </span>
         </div>
 
-        <div className="flex-grow relative chart-grid m-2 rounded overflow-hidden bg-[#131315]/40 flex min-h-[200px]">
+        <div className="flex-grow relative chart-grid m-2 rounded overflow-hidden bg-surface-container-low/40 flex min-h-[200px]">
           {closes.length > 1 ? (
             <>
               <div className="flex-grow h-full relative z-0 pr-14 pb-6">
@@ -575,20 +575,20 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                 </svg>
               </div>
               {/* Y axis */}
-              <div className="absolute right-0 top-0 bottom-6 w-14 flex flex-col justify-between py-4 text-[9px] font-mono text-[#849495] bg-[#131315]/90 backdrop-blur pl-2 border-l border-[#3a494b]/20 z-10 select-none">
+              <div className="absolute right-0 top-0 bottom-6 w-14 flex flex-col justify-between py-4 text-[9px] font-mono text-on-surface-variant bg-surface-container-low/90 backdrop-blur pl-2 border-l border-outline/20 z-10 select-none">
                 <span>₹{maxClose.toFixed(0)}</span>
                 <span>₹{((maxClose + minClose) / 2).toFixed(0)}</span>
                 <span>₹{minClose.toFixed(0)}</span>
               </div>
               {/* X axis */}
-              <div className="absolute bottom-0 left-0 right-14 h-6 flex justify-between px-4 text-[9px] font-mono text-[#849495] bg-[#131315]/90 backdrop-blur items-center border-t border-[#3a494b]/20 z-10 select-none">
+              <div className="absolute bottom-0 left-0 right-14 h-6 flex justify-between px-4 text-[9px] font-mono text-on-surface-variant bg-surface-container-low/90 backdrop-blur items-center border-t border-outline/20 z-10 select-none">
                 {candles.length > 0 && [0, Math.floor(candles.length * 0.25), Math.floor(candles.length * 0.5), Math.floor(candles.length * 0.75), candles.length - 1].map(i => (
                   <span key={i}>{candles[i]?.time?.slice(0, 10) ?? ''}</span>
                 ))}
               </div>
             </>
           ) : (
-            <div className="flex-grow flex items-center justify-center text-[#849495] text-xs font-mono">
+            <div className="flex-grow flex items-center justify-center text-on-surface-variant text-xs font-mono">
               {loading ? 'Fetching chart data from NSE...' : 'No chart data available'}
             </div>
           )}
@@ -596,15 +596,15 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       </div>
 
       {/* ── Terminal ─────────────────────────────────────────────────────── */}
-      <div className="h-44 border border-[#3a494b]/20 bg-[#0e0e10]/90 rounded-lg flex flex-col overflow-hidden">
-        <div className="flex items-center px-4 py-1.5 border-b border-[#3a494b]/10 bg-[#201f21]/80 select-none">
+      <div className="h-44 border border-outline/20 bg-[#0e0e10]/90 rounded-lg flex flex-col overflow-hidden">
+        <div className="flex items-center px-4 py-1.5 border-b border-outline/10 bg-[#201f21]/80 select-none">
           <span className="font-mono text-[9px] font-bold text-[#b9cacb] uppercase tracking-widest leading-none">TERMINAL</span>
           <div className="flex gap-4 ml-6 font-mono text-[10px]">
             {(['AGENT_LOGS', 'OUTPUT', 'DEBUG_CONSOLE'] as const).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`pb-0.5 cursor-pointer transition-all ${activeTab === tab ? 'text-[#74f5ff] border-b border-[#00dbe7]' : 'text-[#849495] hover:text-[#e5e1e4]'}`}
+                className={`pb-0.5 cursor-pointer transition-all ${activeTab === tab ? 'text-[#74f5ff] border-b border-[#00dbe7]' : 'text-on-surface-variant hover:text-on-surface'}`}
               >
                 {tab}
               </button>
@@ -624,13 +624,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                   : 'text-[#b9cacb]/80';
                 return (
                   <div key={i} className={`flex gap-2 ${c}`}>
-                    <span className="text-[#849495]">[{log.timestamp}]</span>
+                    <span className="text-on-surface-variant">[{log.timestamp}]</span>
                     <span>{log.message}</span>
                   </div>
                 );
               })}
               <div className="text-[#b9cacb]/80 flex gap-2">
-                <span className="text-[#849495]">[{new Date().toLocaleTimeString()}]</span>
+                <span className="text-on-surface-variant">[{new Date().toLocaleTimeString()}]</span>
                 <span className="animate-pulse">_</span>
               </div>
               <div ref={terminalEndRef} />
@@ -638,7 +638,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
           )}
 
           {activeTab === 'OUTPUT' && (
-            <div className="text-[#849495] space-y-0.5">
+            <div className="text-on-surface-variant space-y-0.5">
               <div>&gt; SutharLabs Stock Analyzer v1.0 connected</div>
               <div>&gt; Data source: Yahoo Finance (NSE/BSE)</div>
               <div>&gt; Indicators: RSI, MACD, Bollinger, EMA, ADX, ATR</div>

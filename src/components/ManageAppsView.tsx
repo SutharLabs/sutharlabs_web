@@ -76,51 +76,51 @@ export default function ManageAppsView({ logs, onAddLog, userToken }: ManageProp
 
   return (
     <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto custom-scrollbar h-full">
-      <div className="glass-panel p-4 sm:p-6 rounded-lg border border-[#3a494b]/20 flex flex-col gap-4 sm:gap-6">
-        <div className="flex items-center gap-3 border-b border-[#3a494b]/20 pb-3">
-          <span className="material-symbols-outlined text-[#00e476] text-2xl">storefront</span>
+      <div className="glass-panel p-4 sm:p-6 rounded-lg border border-outline/20 flex flex-col gap-4 sm:gap-6">
+        <div className="flex items-center gap-3 border-b border-outline/20 pb-3">
+          <span className="material-symbols-outlined text-tertiary text-2xl">storefront</span>
           <div>
-            <h3 className="text-[#e5e1e4] font-bold">App Store Control</h3>
-            <p className="text-[10px] font-mono text-[#849495]">Manage public app catalog</p>
+            <h3 className="text-on-surface font-bold">App Store Control</h3>
+            <p className="text-[10px] font-mono text-on-surface-variant">Manage public app catalog</p>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
           <div className="space-y-3">
-            <h4 className="text-sm font-bold text-[#e5e1e4]">Live Store Inventory</h4>
+            <h4 className="text-sm font-bold text-on-surface">Live Store Inventory</h4>
             <div className="space-y-2">
               {plugins.map(p => (
-                <div key={p.id} className="p-3 bg-[#131315] border border-[#3a494b]/30 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
+                <div key={p.id} className="p-3 bg-surface-container-low border border-outline/30 rounded flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
                   <div className="flex items-center gap-3">
-                    <span className="material-symbols-outlined text-[#00dbe7]">{p.iconSymbol}</span>
-                    <div><div className="text-sm font-bold text-[#e5e1e4]">{p.name}</div><div className="text-[10px] text-gray-500">{p.category} | {p.type}</div></div>
+                    <span className="material-symbols-outlined text-primary">{p.iconSymbol}</span>
+                    <div><div className="text-sm font-bold text-on-surface">{p.name}</div><div className="text-[10px] text-on-surface-variant">{p.category} | {p.type}</div></div>
                   </div>
-                  <button onClick={() => handleDeletePlugin(p.id, p.name)} className="text-[#ffb4ab] hover:text-red-300 p-1"><Trash2 className="w-4 h-4" /></button>
+                  <button onClick={() => handleDeletePlugin(p.id, p.name)} className="text-error hover:opacity-80 p-1 transition-opacity"><Trash2 className="w-4 h-4" /></button>
                 </div>
               ))}
             </div>
           </div>
 
           <div>
-            <h4 className="text-sm font-bold text-[#e5e1e4] mb-3">Publish New App</h4>
-            <form onSubmit={handlePublishPlugin} className="space-y-4 bg-[#131315]/50 border border-[#3a494b]/30 p-4 rounded">
+            <h4 className="text-sm font-bold text-on-surface mb-3">Publish New App</h4>
+            <form onSubmit={handlePublishPlugin} className="space-y-4 bg-surface border border-outline/30 p-4 rounded">
               <div>
-                <label className="block text-gray-400 mb-1 text-xs">App Package (.zip)</label>
-                <input type="file" accept=".zip,.vsix" onChange={(e) => setSelectedAppFile(e.target.files ? e.target.files[0] : null)} className="w-full text-xs text-[#e5e1e4]" />
+                <label className="block text-on-surface-variant mb-1 text-xs">App Package (.zip)</label>
+                <input type="file" accept=".zip,.vsix" onChange={(e) => setSelectedAppFile(e.target.files ? e.target.files[0] : null)} className="w-full text-xs text-on-surface" />
               </div>
               <div>
-                <label className="block text-gray-400 mb-1 text-xs">Display Name</label>
-                <input type="text" value={newPlugin.name} onChange={e => setNewPlugin({...newPlugin, name: e.target.value})} className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2 text-xs text-[#e5e1e4]" />
+                <label className="block text-on-surface-variant mb-1 text-xs">Display Name</label>
+                <input type="text" value={newPlugin.name} onChange={e => setNewPlugin({...newPlugin, name: e.target.value})} className="w-full bg-surface-container-high border border-outline/40 rounded p-2 text-xs text-on-surface outline-none focus:border-primary transition-all" />
               </div>
                <div>
-                <label className="block text-gray-400 mb-1 text-xs">Category</label>
-                <input type="text" value={newPlugin.category} onChange={e => setNewPlugin({...newPlugin, category: e.target.value})} className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2 text-xs text-[#e5e1e4]" />
+                <label className="block text-on-surface-variant mb-1 text-xs">Category</label>
+                <input type="text" value={newPlugin.category} onChange={e => setNewPlugin({...newPlugin, category: e.target.value})} className="w-full bg-surface-container-high border border-outline/40 rounded p-2 text-xs text-on-surface outline-none focus:border-primary transition-all" />
               </div>
               <div>
-                <label className="block text-gray-400 mb-1 text-xs">Material Icon</label>
-                <input type="text" value={newPlugin.iconSymbol} onChange={e => setNewPlugin({...newPlugin, iconSymbol: e.target.value})} className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2 text-xs text-[#e5e1e4]" />
+                <label className="block text-on-surface-variant mb-1 text-xs">Material Icon</label>
+                <input type="text" value={newPlugin.iconSymbol} onChange={e => setNewPlugin({...newPlugin, iconSymbol: e.target.value})} className="w-full bg-surface-container-high border border-outline/40 rounded p-2 text-xs text-on-surface outline-none focus:border-primary transition-all" />
               </div>
-              <button type="submit" className="w-full py-2 bg-[#74f5ff] text-black text-xs font-bold rounded">PUBLISH APP</button>
+              <button type="submit" className="w-full py-2 bg-primary text-on-primary text-xs font-bold rounded hover:opacity-90 transition-opacity">PUBLISH APP</button>
             </form>
           </div>
         </div>

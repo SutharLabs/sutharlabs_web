@@ -114,41 +114,41 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
       <div className="grid grid-cols-1 md:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Outstanding Card */}
         <div className="glass-panel p-5 rounded-lg border-l-4 border-[#00dbe7] flex flex-col justify-center">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-[#849495] mb-1 block">Total Value</span>
-          <span className="text-xl font-bold text-[#e5e1e4] font-sans block">${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface-variant mb-1 block">Total Value</span>
+          <span className="text-xl font-bold text-on-surface font-sans block">${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
 
         {/* Pending / Overdue Card */}
         <div className="glass-panel p-5 rounded-lg border-l-4 border-[#ce5dff] flex flex-col justify-center">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-[#849495] mb-1 block">Outstanding</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface-variant mb-1 block">Outstanding</span>
           <span className="text-xl font-bold text-[#ebb2ff] font-sans block">${outstandingAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
 
         {/* Paid / Realized Card */}
         <div className="glass-panel p-5 rounded-lg border-l-4 border-[#00e476] flex flex-col justify-center">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-[#849495] mb-1 block">Paid Portfolio</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface-variant mb-1 block">Paid Portfolio</span>
           <span className="text-xl font-bold text-[#00e476] font-sans block">${paidAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
         </div>
 
         {/* Gross margin placeholder calculation */}
         <div className="glass-panel p-5 rounded-lg border-l-4 border-gray-600 flex flex-col justify-center">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-[#849495] mb-1 block">Margin</span>
+          <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface-variant mb-1 block">Margin</span>
           <span className="text-xl font-bold text-white font-mono block">84.2%</span>
         </div>
       </div>
 
       {/* Main Bar Chart Matrix displaying invoices visual proportions */}
       <div className="glass-panel rounded-lg p-5 flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 pb-2 border-b border-[#3a494b]/10">
-          <h3 className="font-mono text-xs font-bold text-[#e5e1e4] uppercase tracking-wider flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 pb-2 border-b border-outline/10">
+          <h3 className="font-mono text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
             <span className="material-symbols-outlined text-[#00dbe7] text-base select-none">currency_exchange</span>
             Payout Cycle Analysis (Active Invoices Proportional Graph)
           </h3>
-          <span className="text-[10px] font-mono text-[#849495]">Dynamic scale relative to inputs</span>
+          <span className="text-[10px] font-mono text-on-surface-variant">Dynamic scale relative to inputs</span>
         </div>
 
         {/* Custom SVG bars representing individual invoice weights */}
-        <div className="h-[140px] relative chart-grid rounded bg-[#131315]/40 flex items-end p-4">
+        <div className="h-[140px] relative chart-grid rounded bg-surface-container-low/40 flex items-end p-4">
           <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
             {/* Draw flowing connections under values */}
             {invoices.map((inv, idx) => {
@@ -201,23 +201,23 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
           </svg>
 
           {/* Simple legends inside bottom panel */}
-          <div className="absolute bottom-1 left-0 right-0 flex justify-between px-6 font-mono text-[8px] text-[#849495]">
+          <div className="absolute bottom-1 left-0 right-0 flex justify-between px-6 font-mono text-[8px] text-on-surface-variant">
             {invoices.map(i => <span key={i.id}>{i.id}</span>)}
           </div>
         </div>
       </div>
 
       {/* Interactive Creation invoice overlay or inline form */}
-      <div className="glass-panel p-5 rounded-lg border border-[#3a494b]/15">
+      <div className="glass-panel p-5 rounded-lg border border-outline/15">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-4">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[#00e476] select-none text-md">receipt_long</span>
-            <h3 className="font-mono text-xs font-bold text-[#e5e1e4] uppercase tracking-widest">Invoices Log Book</h3>
+            <h3 className="font-mono text-xs font-bold text-on-surface uppercase tracking-widest">Invoices Log Book</h3>
           </div>
           
           <button 
             onClick={() => setIsFormVisible(!isFormVisible)}
-            className="px-3 py-1 bg-[#201f21] border border-[#3a494b]/40 rounded hover:border-[#00dbe7] text-xs font-mono text-[#74f5ff] transition-all cursor-pointer"
+            className="px-3 py-1 bg-[#201f21] border border-outline/40 rounded hover:border-[#00dbe7] text-xs font-mono text-[#74f5ff] transition-all cursor-pointer"
           >
             {isFormVisible ? 'Collapse Panel' : 'Form Invoice Entry'}
           </button>
@@ -225,38 +225,38 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
 
         {/* Input Form Elements */}
         {isFormVisible && (
-          <form onSubmit={handleCreateInvoice} className="bg-[#0e0e10]/60 p-4 rounded-md border border-[#3a494b]/20 mb-5 space-y-4 animate-fade-in">
+          <form onSubmit={handleCreateInvoice} className="bg-[#0e0e10]/60 p-4 rounded-md border border-outline/20 mb-5 space-y-4 animate-fade-in">
             <div className="grid grid-cols-1 md:grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-1">
-                <label className="block font-mono text-[9px] text-[#849495] uppercase">Client Name</label>
+                <label className="block font-mono text-[9px] text-on-surface-variant uppercase">Client Name</label>
                 <input 
                   type="text" 
                   value={client}
                   onChange={(e) => setClient(e.target.value)}
                   placeholder="Tesla Motors"
-                  className="w-full bg-[#131315] border border-[#3a494b]/40 rounded p-2 text-xs font-mono text-[#e5e1e4] focus:outline-none focus:border-[#00e476]"
+                  className="w-full bg-surface-container-low border border-outline/40 rounded p-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00e476]"
                   required
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block font-mono text-[9px] text-[#849495] uppercase">Billing Amount ($USD)</label>
+                <label className="block font-mono text-[9px] text-on-surface-variant uppercase">Billing Amount ($USD)</label>
                 <input 
                   type="number" 
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="2500"
-                  className="w-full bg-[#131315] border border-[#3a494b]/40 rounded p-2 text-xs font-mono text-[#e5e1e4] focus:outline-none focus:border-[#00e476]"
+                  className="w-full bg-surface-container-low border border-outline/40 rounded p-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00e476]"
                   required
                 />
               </div>
 
               <div className="space-y-1">
-                <label className="block font-mono text-[9px] text-[#849495] uppercase">Inception Status</label>
+                <label className="block font-mono text-[9px] text-on-surface-variant uppercase">Inception Status</label>
                 <select 
                   value={status}
                   onChange={(e) => setStatus(e.target.value as any)}
-                  className="w-full bg-[#131315] border border-[#3a494b]/40 rounded p-2 text-xs font-mono text-[#e5e1e4] focus:outline-none focus:border-[#00e476] h-[34px]"
+                  className="w-full bg-surface-container-low border border-outline/40 rounded p-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00e476] h-[34px]"
                 >
                   <option value="Pending">Pending / Unpaid</option>
                   <option value="Paid">Cleared / Paid</option>
@@ -277,8 +277,8 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
 
         {/* Filters control toolbar */}
         <div className="flex gap-2 mb-4">
-          <div className="flex-grow bg-[#201f21] rounded border border-[#3a494b]/30 flex items-center px-3 py-1.5 focus-within:border-[#00dbe7] transition-all">
-            <span className="material-symbols-outlined text-sm text-[#849495] select-none mr-2">search</span>
+          <div className="flex-grow bg-[#201f21] rounded border border-outline/30 flex items-center px-3 py-1.5 focus-within:border-[#00dbe7] transition-all">
+            <span className="material-symbols-outlined text-sm text-on-surface-variant select-none mr-2">search</span>
             <input 
               type="text" 
               placeholder="Search ledger by client name or ID..."
@@ -290,9 +290,9 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
         </div>
 
         {/* Ledgers table representation */}
-        <div className="w-full overflow-x-auto rounded border border-[#3a494b]/10">
+        <div className="w-full overflow-x-auto rounded border border-outline/10">
           <table className="w-full text-left font-mono text-xs border-collapse divide-y divide-[#3a494b]/15">
-            <thead className="bg-[#0e0e10]/60 text-[#849495] select-none text-[10px]">
+            <thead className="bg-[#0e0e10]/60 text-on-surface-variant select-none text-[10px]">
               <tr>
                 <th className="p-3">ID</th>
                 <th className="p-3">DATE</th>
@@ -301,15 +301,15 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
                 <th className="p-3 text-right">STATUS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#3a494b]/10 bg-[#131315]/40">
+            <tbody className="divide-y divide-[#3a494b]/10 bg-surface-container-low/40">
               {filteredInvoices.map((inv) => {
                 const isPaid = inv.status === 'Paid';
 
                 return (
                   <tr key={inv.id} className="hover:bg-white/[0.02] transition-colors">
                     <td className="p-3 text-[#00dbe7] font-bold">{inv.id}</td>
-                    <td className="p-3 text-gray-400">{inv.date}</td>
-                    <td className="p-3 text-[#e5e1e4] font-semibold">{inv.client}</td>
+                    <td className="p-3 text-on-surface-variant">{inv.date}</td>
+                    <td className="p-3 text-on-surface font-semibold">{inv.client}</td>
                     <td className="p-3 text-right text-white font-bold">
                       ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
                     </td>
@@ -328,7 +328,7 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
 
               {filteredInvoices.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="p-6 sm:p-12 text-center text-[#849495] font-light">
+                  <td colSpan={5} className="p-6 sm:p-12 text-center text-on-surface-variant font-light">
                     No records matches filter criteria.
                   </td>
                 </tr>

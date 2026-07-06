@@ -167,11 +167,11 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
   return (
     <div className="flex-grow flex flex-col gap-4">
       {/* Designer Dashboard Header toolbar info */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 bg-[#1c1b1d]/40 border border-[#3a494b]/20 p-3 rounded-lg">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 bg-[#1c1b1d]/40 border border-outline/20 p-3 rounded-lg">
         <div className="flex items-center gap-3">
           <span className="material-symbols-outlined text-[#ce5dff] select-none text-md">account_tree</span>
           <div>
-            <h2 className="font-mono text-xs font-bold text-[#e5e1e4] leading-none">Custom_Flow.flow</h2>
+            <h2 className="font-mono text-xs font-bold text-on-surface leading-none">Custom_Flow.flow</h2>
             <span className="text-[10px] text-[#b9cacb]/80 leading-none">Visual Orchestration Workspace</span>
           </div>
         </div>
@@ -192,7 +192,7 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
                 message: 'Flow canvas node positions reverted to initial defaults.'
               });
             }}
-            className="px-3 py-1.5 rounded bg-[#201f21] border border-[#3a494b]/30 text-xs text-[#b9cacb] font-mono hover:text-[#e5e1e4] cursor-pointer"
+            className="px-3 py-1.5 rounded bg-[#201f21] border border-outline/30 text-xs text-[#b9cacb] font-mono hover:text-on-surface cursor-pointer"
           >
             Clear Nodes
           </button>
@@ -207,7 +207,7 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
             onMouseMove={handleCanvasMouseMove}
             onMouseUp={handleCanvasMouseUp}
             onMouseLeave={handleCanvasMouseUp}
-            className="flex-grow rounded-lg h-full border border-[#3a494b]/15 bg-[#131315]/80 chart-grid relative overflow-hidden select-none"
+            className="flex-grow rounded-lg h-full border border-outline/15 bg-surface-container-low/80 chart-grid relative overflow-hidden select-none"
           >
             {/* SVG wires connections layer */}
             <svg className="absolute inset-0 pointer-events-none w-full h-full z-0">
@@ -248,7 +248,7 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
             {/* Nodes Elements Layer */}
             {nodes.map((node) => {
               const isActive = selectedNodeId === node.id;
-              let badgeColor = 'bg-[#201f21] text-[#b9cacb] border-[#3a494b]/30';
+              let badgeColor = 'bg-[#201f21] text-[#b9cacb] border-outline/30';
               if (node.status === 'EXECUTED') badgeColor = 'bg-[#00fb83]/10 text-[#00e476] border-[#00e476]/35';
               if (node.status === 'ACTIVE') badgeColor = 'bg-[#ce5dff]/10 text-[#ebb2ff] border-[#ce5dff]/35';
 
@@ -258,21 +258,21 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
                   style={{ left: `${node.x}px`, top: `${node.y}px` }}
                   onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                   className={`absolute w-[180px] p-3 rounded-lg glass-panel hover:scale-[1.01] hover:border-[#74f5ff]/20 hover:shadow-[0_0_12px_rgba(0,219,231,0.15)] transition-all cursor-grab active:cursor-grabbing z-10 ${
-                    isActive ? 'neon-border-active' : 'border-[#3a494b]/15'
+                    isActive ? 'neon-border-active' : 'border-outline/15'
                   }`}
                 >
                   <div className="flex items-center justify-between mb-2">
-                    <span className="font-mono text-[9px] uppercase tracking-wider text-[#849495]">{node.type}</span>
+                    <span className="font-mono text-[9px] uppercase tracking-wider text-on-surface-variant">{node.type}</span>
                     <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono leading-none border uppercase ${badgeColor}`}>
                       {node.status || 'IDLE'}
                     </span>
                   </div>
                   
-                  <h3 className="text-xs font-semibold text-[#e5e1e4] leading-tight select-none pointer-events-none truncate">{node.label}</h3>
+                  <h3 className="text-xs font-semibold text-on-surface leading-tight select-none pointer-events-none truncate">{node.label}</h3>
 
                   <div className="mt-4 flex items-center justify-between">
                     <div className="h-1.5 w-1.5 rounded-full bg-[#849495]"></div>
-                    <span className="font-mono text-[8px] text-[#849495]">x:{Math.round(node.x)} y:{Math.round(node.y)}</span>
+                    <span className="font-mono text-[8px] text-on-surface-variant">x:{Math.round(node.x)} y:{Math.round(node.y)}</span>
                     <div className="h-1.5 w-1.5 rounded-full bg-[#00fb83]"></div>
                   </div>
                 </div>
@@ -281,7 +281,7 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
 
             {/* Empty Watermark Indicator */}
             {nodes.length === 0 && (
-              <div className="absolute inset-0 flex items-center justify-center text-center text-[#849495] font-mono text-xs">
+              <div className="absolute inset-0 flex items-center justify-center text-center text-on-surface-variant font-mono text-xs">
                 No active nodes. Click "Include Node" to initialize pipeline.
               </div>
             )}
@@ -291,21 +291,21 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
         {/* Property Inspector sidebar / Form configurer */}
         <div className="lg:col-span-4 flex flex-col gap-4">
           {/* Node detailed inspector */}
-          <div className="glass-panel rounded-lg p-5 border border-[#3a494b]/15 flex-grow flex flex-col gap-5 justify-between">
+          <div className="glass-panel rounded-lg p-5 border border-outline/15 flex-grow flex flex-col gap-5 justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-4 border-b border-[#3a494b]/10 pb-2">
+              <div className="flex items-center gap-2 mb-4 border-b border-outline/10 pb-2">
                 <span className="material-symbols-outlined text-[#00dbe7] text-md select-none">terminal</span>
-                <h3 className="font-mono text-xs font-bold text-[#e5e1e4] uppercase tracking-widest">Properties</h3>
+                <h3 className="font-mono text-xs font-bold text-on-surface uppercase tracking-widest">Properties</h3>
               </div>
 
               {selectedNode ? (
                 <div className="space-y-4">
                   {/* Name field */}
                   <div className="space-y-1">
-                    <label className="block font-mono text-[9px] text-[#849495] uppercase">Node Label</label>
+                    <label className="block font-mono text-[9px] text-on-surface-variant uppercase">Node Label</label>
                     <input 
                       type="text"
-                      className="w-full bg-[#201f21] border border-[#3a494b]/40 rounded p-2 text-xs font-mono text-[#e5e1e4] focus:outline-none focus:border-[#00dbe7] focus:ring-0"
+                      className="w-full bg-surface-container-high border border-outline/40 rounded p-2 text-xs font-mono text-on-surface focus: focus:border-outline/40 focus:ring-0 outline-none transition-all"
                       value={selectedNode.label}
                       onChange={(e) => updateSelectedNode({ label: e.target.value })}
                     />
@@ -313,9 +313,9 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
 
                   {/* Status Dropdowns */}
                   <div className="space-y-1">
-                    <label className="block font-mono text-[9px] text-[#849495] uppercase">Process Status</label>
+                    <label className="block font-mono text-[9px] text-on-surface-variant uppercase">Process Status</label>
                     <select 
-                      className="w-full bg-[#201f21] border border-[#3a494b]/40 rounded p-2 text-xs font-mono text-[#e5e1e4] focus:outline-none focus:border-[#ce5dff] focus:ring-0"
+                      className="w-full bg-[#201f21] border border-outline/40 rounded p-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#ce5dff] focus:ring-0"
                       value={selectedNode.status || 'IDLE'}
                       onChange={(e) => updateSelectedNode({ status: e.target.value as any })}
                     >
@@ -328,8 +328,8 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
                   {/* Attachment toggle sliders */}
                   <div className="flex items-center justify-between pt-1">
                     <div>
-                      <span className="block font-mono text-xs text-[#e5e1e4] font-medium">Orchestration Plugin</span>
-                      <span className="text-[10px] text-[#849495] font-light">Bypass validation checks</span>
+                      <span className="block font-mono text-xs text-on-surface font-medium">Orchestration Plugin</span>
+                      <span className="text-[10px] text-on-surface-variant font-light">Bypass validation checks</span>
                     </div>
                     <label className="relative inline-flex items-center cursor-pointer select-none">
                       <input 
@@ -343,15 +343,15 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
                   </div>
 
                   {selectedNode.fileUsed && (
-                    <div className="p-3 rounded bg-[#0e0e10]/80 border border-[#3a494b]/30 font-mono text-[10px] space-y-1 text-[#b9cacb]">
-                      <div className="text-[#849495] uppercase">Linked Schema Assets</div>
+                    <div className="p-3 rounded bg-[#0e0e10]/80 border border-outline/30 font-mono text-[10px] space-y-1 text-[#b9cacb]">
+                      <div className="text-on-surface-variant uppercase">Linked Schema Assets</div>
                       <div className="text-white font-bold truncate">{selectedNode.fileUsed}</div>
                     </div>
                   )}
 
                 </div>
               ) : (
-                <div className="text-center py-12 text-[#849495] font-mono text-xs">
+                <div className="text-center py-12 text-on-surface-variant font-mono text-xs">
                   Select a workflow node on the canvas to configure parameters.
                 </div>
               )}
@@ -381,12 +381,12 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
                 }
               }}
               className={`border-2 border-dashed p-4 rounded-lg flex flex-col items-center justify-center text-center cursor-pointer transition-all ${
-                isDraggingFile ? 'border-[#00dbe7] bg-[#00dbe7]/5' : 'border-[#3a494b]/30 hover:border-[#00e476]/50'
+                isDraggingFile ? 'border-[#00dbe7] bg-[#00dbe7]/5' : 'border-outline/30 hover:border-[#00e476]/50'
               }`}
             >
               <span className="material-symbols-outlined text-[#00e476] mb-1.5 text-2xl select-none">upload_file</span>
-              <span className="font-sans text-xs text-[#e5e1e4] font-medium block">Drop schema dataset (.csv, .json)</span>
-              <span className="text-[10px] font-mono text-[#849495] block mt-0.5">Drag &amp; drop mock values here</span>
+              <span className="font-sans text-xs text-on-surface font-medium block">Drop schema dataset (.csv, .json)</span>
+              <span className="text-[10px] font-mono text-on-surface-variant block mt-0.5">Drag &amp; drop mock values here</span>
               
               {importedFilename && (
                 <div className="mt-3 bg-[#00fb83]/10 text-[#00e476] border border-[#00fb83]/30 px-2 py-1 rounded text-[10px] font-mono truncate w-full max-w-[200px]">

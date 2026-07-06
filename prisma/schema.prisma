@@ -8,15 +8,16 @@ generator client {
 
 // 1. Corporate Accounts
 model User {
-  id               String                @id @default(uuid())
-  email            String                @unique
-  name             String
-  passwordHash     String?
-  role             String                @default("Developer") // Admin, Developer, Banned
-  joinedAt         DateTime              @default(now())
-  activityCount    Int                   @default(0)
-  portfolio        Portfolio?
-  workspacePlugins UserWorkspacePlugin[]
+  id                  String                @id @default(uuid())
+  email               String                @unique
+  name                String
+  passwordHash        String?
+  role                String                @default("Developer") // Admin, Developer, Banned
+  mustChangePassword  Boolean               @default(false)
+  joinedAt            DateTime              @default(now())
+  activityCount       Int                   @default(0)
+  portfolio           Portfolio?
+  workspacePlugins    UserWorkspacePlugin[]
 }
 
 // 2. Financial Ledgers

@@ -38,21 +38,21 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
 
   return (
     <div className="flex-1 flex flex-col p-4 sm:p-6 overflow-y-auto custom-scrollbar h-full">
-      <div className="glass-panel p-4 sm:p-6 rounded-lg border border-[#3a494b]/20 flex flex-col gap-4 sm:gap-6">
-        <div className="flex items-center gap-3 border-b border-[#3a494b]/20 pb-3">
+      <div className="glass-panel p-4 sm:p-6 rounded-lg border border-outline/20 flex flex-col gap-4 sm:gap-6">
+        <div className="flex items-center gap-3 border-b border-outline/20 pb-3">
           <span className="material-symbols-outlined text-[#00dbe7] text-2xl">extension</span>
           <div>
-            <h3 className="text-[#e5e1e4] font-bold">Workspace Plugins</h3>
-            <p className="text-[10px] font-mono text-[#849495]">Manage internal IDE extensions</p>
+            <h3 className="text-on-surface font-bold">Workspace Plugins</h3>
+            <p className="text-[10px] font-mono text-on-surface-variant">Manage internal IDE extensions</p>
           </div>
         </div>
 
-        <div className="bg-[#131315]/50 border border-[#3a494b]/30 p-4 rounded mb-2">
-          <h4 className="text-sm font-bold text-[#e5e1e4] mb-3 flex items-center gap-2">
+        <div className="bg-surface-container-low/50 border border-outline/30 p-4 rounded mb-2">
+          <h4 className="text-sm font-bold text-on-surface mb-3 flex items-center gap-2">
             <PlusCircle className="w-4 h-4 text-[#00dbe7]" /> Install Workspace Plugin
           </h4>
           <div className="flex flex-col gap-3">
-            <input type="file" accept=".zip,.vsix" onChange={(e) => setSelectedPluginFile(e.target.files ? e.target.files[0] : null)} className="text-xs text-[#e5e1e4]" />
+            <input type="file" accept=".zip,.vsix" onChange={(e) => setSelectedPluginFile(e.target.files ? e.target.files[0] : null)} className="text-xs text-on-surface" />
             <button onClick={async () => {
                 if (selectedPluginFile && await uploadFile(selectedPluginFile)) {
                   setSelectedPluginFile(null);
@@ -68,11 +68,11 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
 
         <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 gap-4">
           {workspacePlugins.map(wp => (
-            <div key={wp.id} className="p-4 bg-[#131315] border border-[#3a494b]/30 rounded">
+            <div key={wp.id} className="p-4 bg-surface-container-low border border-outline/30 rounded">
               <div className="flex justify-between items-start">
                 <div className="flex gap-3">
                   <span className="material-symbols-outlined text-[#00dbe7]">{wp.iconSymbol}</span>
-                  <div><div className="text-[#e5e1e4] font-bold text-sm">{wp.name}</div><div className="text-[#849495] font-mono text-[9px]">v{wp.version}</div></div>
+                  <div><div className="text-on-surface font-bold text-sm">{wp.name}</div><div className="text-on-surface-variant font-mono text-[9px]">v{wp.version}</div></div>
                 </div>
               </div>
             </div>

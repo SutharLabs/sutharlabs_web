@@ -462,7 +462,8 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
           name: user.name,
           role: user.role,
           isLoggedIn: true,
-          token
+          token,
+          mustChangePassword: user.mustChangePassword
         }
       });
     } catch (error) {
@@ -471,7 +472,26 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
     }
   });
 
-  // POST /api/auth/oauth
+  // POST /api/auth/change-password
+  app.post("/api/auth/change-password", authenticateToken, async (req: any, res: any) => {
+    const { newPassword } = req.body;
+    if (!newPassword || newPassword.length < 5) {
+      return res.status(400).json({ error: "New password must be at least 5 characters." });
+    }
+    try {
+      await prisma.user.update({
+        where: { email: req.user.email },
+        data: {
+          passwordHash: hashPassword(newPassword),
+          mustChangePassword: false
+        }
+      });
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to update password." });
+    }
+  });
+
   app.post("/api/auth/oauth", async (req, res) => {
     const { platform } = req.body;
     if (!platform) {
@@ -567,12 +587,16 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
         return res.status(400).json({ error: "A user with this email coordinate is already provisioned." });
       }
 
+      // Generate a random 12-character temporary password
+      const tempPassword = crypto.randomBytes(6).toString("base64url").slice(0, 12);
+
       const created = await prisma.user.create({
         data: {
           email: email.toLowerCase(),
           name,
           role: role || "Developer",
-          passwordHash: hashPassword("developer123"), // default password
+          passwordHash: hashPassword(tempPassword),
+          mustChangePassword: true,
           activityCount: 0,
           portfolio: {
             create: {
@@ -590,7 +614,8 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
         name: created.name,
         role: created.role,
         joinedAt: created.joinedAt.toISOString(),
-        activityCount: created.activityCount
+        activityCount: created.activityCount,
+        temporaryPassword: tempPassword  // returned ONCE — never stored in plaintext
       });
     } catch (error) {
       res.status(500).json({ error: "Failed to manually provision developer account." });
@@ -622,9 +647,20 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
     const { id } = req.params;
 
     try {
+      // Look up the user to get their email for relation cleanup
+      const user = await prisma.user.findUnique({ where: { id } });
+      if (!user) {
+        return res.status(404).json({ error: "User record not found." });
+      }
+
+      // Sequentially cascade-delete related records before removing the user
+      await prisma.userWorkspacePlugin.deleteMany({ where: { userEmail: user.email } });
+      await prisma.portfolio.deleteMany({ where: { userEmail: user.email } });
       await prisma.user.delete({ where: { id } });
+
       res.json({ success: true, purgedId: id });
     } catch (error) {
+      console.error("Delete user error:", error);
       res.status(500).json({ error: "Failed to purge developer account credentials." });
     }
   });

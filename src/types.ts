@@ -4,6 +4,7 @@ export interface UserProfile {
   isLoggedIn: boolean;
   role?: 'Admin' | 'Developer' | 'Banned' | 'Pending';
   token?: string;
+  mustChangePassword?: boolean;
 }
 
 export type WorkspaceTab = 'Stock Tracker' | 'Custom Flow' | 'Accounting' | 'Admin Console' | 'Manage Plugins' | 'Manage Apps' | 'Manage Portfolios' | 'Doc Nexus' | 'README' | 'Plugin Store';

@@ -50,10 +50,10 @@ export default function MutedMarkdownView() {
     html = html.replace(/^\s*&gt;\s+(.*$)/gim, '<blockquote class="border-l-4 border-[#ce5dff] pl-3 py-1 my-3 bg-[#ce5dff]/5 rounded-r font-sans italic text-sm text-[#b9cacb]">$1</blockquote>');
 
     // Code Blocks (fenced)
-    html = html.replace(/```([\s\S]*?)```/gim, '<pre class="bg-[#201f21] border border-[#3a494b]/30 rounded p-3 my-4 font-mono text-xs overflow-x-auto text-[#74f5ff]">$1</pre>');
+    html = html.replace(/```([\s\S]*?)```/gim, '<pre class="bg-[#201f21] border border-outline/30 rounded p-3 my-4 font-mono text-xs overflow-x-auto text-[#74f5ff]">$1</pre>');
 
     // Inline Code
-    html = html.replace(/`([^`]+)`/g, '<code class="bg-[#2a2a2c]/60 border border-[#3a494b]/20 px-1 py-0.5 rounded font-mono text-xs text-[#ebb2ff]">$1</code>');
+    html = html.replace(/`([^`]+)`/g, '<code class="bg-[#2a2a2c]/60 border border-outline/20 px-1 py-0.5 rounded font-mono text-xs text-[#ebb2ff]">$1</code>');
 
     // Bold
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
@@ -84,9 +84,9 @@ export default function MutedMarkdownView() {
     <div className="flex-grow flex flex-col lg:flex-row gap-4 min-h-[460px]">
       
       {/* Raw Markdown Editor Pane on Left */}
-      <div className="flex-1 flex flex-col bg-[#0e0e10]/80 rounded-lg border border-[#3a494b]/20 overflow-hidden">
-        <div className="flex items-center px-4 py-2 border-b border-[#3a494b]/10 bg-[#201f21]/80 select-none justify-between">
-          <span className="font-mono text-[9px] font-bold text-[#849495] uppercase tracking-widest leading-none">MARKDOWN SOURCE</span>
+      <div className="flex-1 flex flex-col bg-[#0e0e10]/80 rounded-lg border border-outline/20 overflow-hidden">
+        <div className="flex items-center px-4 py-2 border-b border-outline/10 bg-[#201f21]/80 select-none justify-between">
+          <span className="font-mono text-[9px] font-bold text-on-surface-variant uppercase tracking-widest leading-none">MARKDOWN SOURCE</span>
           <span className="text-[10px] font-mono text-[#74f5ff]">README.md</span>
         </div>
         
@@ -99,15 +99,15 @@ export default function MutedMarkdownView() {
       </div>
 
       {/* Rendered Live Preview Pane on Right */}
-      <div className="flex-1 flex flex-col bg-[#0e0e10]/80 rounded-lg border border-[#3a494b]/20 overflow-hidden">
-        <div className="flex items-center px-4 py-2 border-b border-[#3a494b]/10 bg-[#201f21]/80 select-none justify-between">
-          <span className="font-mono text-[9px] font-bold text-[#849495] uppercase tracking-widest leading-none">DOCKING COMPILED WINDOW</span>
+      <div className="flex-1 flex flex-col bg-[#0e0e10]/80 rounded-lg border border-outline/20 overflow-hidden">
+        <div className="flex items-center px-4 py-2 border-b border-outline/10 bg-[#201f21]/80 select-none justify-between">
+          <span className="font-mono text-[9px] font-bold text-on-surface-variant uppercase tracking-widest leading-none">DOCKING COMPILED WINDOW</span>
           <span className="text-[10px] font-mono text-[#00e476] flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-[#00fb83]"></span> Live HTML
           </span>
         </div>
 
-        <div className="flex-grow bg-[#131315]/40 p-5 overflow-y-auto custom-scrollbar prose-custom">
+        <div className="flex-grow bg-surface-container-low/40 p-5 overflow-y-auto custom-scrollbar prose-custom">
           {/* Inject safe parsed regex styling code */}
           <div dangerouslySetInnerHTML={{ __html: parsedHtml }} />
         </div>

@@ -51,6 +51,39 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
   const [pluginError, setPluginError] = useState('');
   const [pluginSuccess, setPluginSuccess] = useState('');
 
+  // Custom confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    subtext?: string;
+    icon: 'delete' | 'warning';
+    onConfirm: () => void;
+  }>({
+    open: false,
+    title: '',
+    message: '',
+    icon: 'delete',
+    onConfirm: () => {}
+  });
+
+  const closeConfirmModal = () => setConfirmModal(prev => ({ ...prev, open: false }));
+
+  // Credential reveal modal (shown once after provisioning)
+  const [credentialModal, setCredentialModal] = useState<{
+    open: boolean;
+    name: string;
+    email: string;
+    password: string;
+    copied: boolean;
+  }>({
+    open: false,
+    name: '',
+    email: '',
+    password: '',
+    copied: false
+  });
+
   // Load store plugins from real backend REST API
   const fetchPlugins = async () => {
     try {
@@ -145,29 +178,37 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
   };
 
   const handleDeletePlugin = async (id: string, name: string) => {
-    if (confirm(`Unpublish and purge the plugin listing for "${name}"?`)) {
-      try {
-        const response = await fetch(`/api/plugins/${id}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${userToken}` }
-        });
+    setConfirmModal({
+      open: true,
+      title: 'Unpublish Plugin',
+      message: `Purge "${name}" from the plugin registry?`,
+      subtext: 'This will permanently remove the plugin listing from the store. Installed instances will not be affected.',
+      icon: 'warning',
+      onConfirm: async () => {
+        closeConfirmModal();
+        try {
+          const response = await fetch(`/api/plugins/${id}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${userToken}` }
+          });
 
-        if (!response.ok) {
-          const errData = await response.json();
-          alert(errData.error || 'Failed to delete plugin.');
-          return;
+          if (!response.ok) {
+            const errData = await response.json();
+            setPluginError(errData.error || 'Failed to delete plugin.');
+            return;
+          }
+
+          setPlugins(prev => prev.filter(p => p.id !== id));
+          onAddLog({
+            timestamp: new Date().toLocaleTimeString(),
+            type: 'ERROR',
+            message: `ADMIN: Purged and unpublished MCP plugin listings index on backend for: "${name}".`
+          });
+        } catch (err) {
+          console.error('Failed to delete plugin:', err);
         }
-
-        setPlugins(prev => prev.filter(p => p.id !== id));
-        onAddLog({
-          timestamp: new Date().toLocaleTimeString(),
-          type: 'ERROR',
-          message: `ADMIN: Purged and unpublished MCP plugin listings index on backend for: "${name}".`
-        });
-      } catch (err) {
-        console.error('Failed to delete plugin:', err);
       }
-    }
+    });
   };
   const [systemActive, setSystemActive] = useState(true);
   const [cpuUsage, setCpuUsage] = useState(38);
@@ -253,12 +294,20 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
 
       setUsers(prev => [...prev, data]);
       setNewUser({ name: '', email: '', role: 'Developer' });
-      setSuccessMsg(`User ${data.name} provisioned successfully!`);
+
+      // Show one-time credential reveal modal
+      setCredentialModal({
+        open: true,
+        name: data.name,
+        email: data.email,
+        password: data.temporaryPassword,
+        copied: false
+      });
 
       onAddLog({
         timestamp: new Date().toLocaleTimeString(),
         type: 'SUCCESS',
-        message: `ADMIN: Manual account initialization completed for ${data.email} under role ${data.role}.`
+        message: `ADMIN: Manual account initialization completed for ${data.email} under role ${data.role}. Temporary credentials issued.`
       });
     } catch (err) {
       setErrorMsg('Server database connection error.');
@@ -271,7 +320,14 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
     if (!targetUser) return;
 
     if (targetUser.email === currentUserEmail) {
-      alert("Self-modification of administrative status is locked.");
+      setConfirmModal({
+        open: true,
+        title: 'Action Blocked',
+        message: 'Self-role modification is locked.',
+        subtext: 'You cannot change your own administrator role while logged in.',
+        icon: 'warning',
+        onConfirm: closeConfirmModal
+      });
       return;
     }
 
@@ -287,7 +343,13 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
 
       if (!response.ok) {
         const errData = await response.json();
-        alert(errData.error || 'Failed to update role.');
+        setConfirmModal({
+          open: true,
+          title: 'Role Update Failed',
+          message: errData.error || 'Failed to update role.',
+          icon: 'warning',
+          onConfirm: closeConfirmModal
+        });
         return;
       }
 
@@ -308,33 +370,48 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
     if (!targetUser) return;
 
     if (targetUser.email === currentUserEmail) {
-      alert("Self-deletion of active workspace controller is locked.");
+      setConfirmModal({
+        open: true,
+        title: 'Action Blocked',
+        message: 'Self-deletion is locked.',
+        subtext: 'The active workspace administrator account cannot be deleted while logged in.',
+        icon: 'warning',
+        onConfirm: closeConfirmModal
+      });
       return;
     }
 
-    if (confirm(`Are you sure you want to permanently delete user record for ${targetUser.name}?`)) {
-      try {
-        const response = await fetch(`/api/users/${userId}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${userToken}` }
-        });
+    setConfirmModal({
+      open: true,
+      title: 'Delete User Record',
+      message: `Permanently delete "${targetUser.name}"?`,
+      subtext: `This will purge ${targetUser.email} from the registry along with their portfolio and workspace data. This action cannot be undone.`,
+      icon: 'delete',
+      onConfirm: async () => {
+        closeConfirmModal();
+        try {
+          const response = await fetch(`/api/users/${userId}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': `Bearer ${userToken}` }
+          });
 
-        if (!response.ok) {
-          const errData = await response.json();
-          alert(errData.error || 'Failed to purge user.');
-          return;
+          if (!response.ok) {
+            const errData = await response.json();
+            setPluginError(errData.error || 'Failed to purge user.');
+            return;
+          }
+
+          setUsers(prev => prev.filter(u => u.id !== userId));
+          onAddLog({
+            timestamp: new Date().toLocaleTimeString(),
+            type: 'ERROR',
+            message: `ADMIN: User index permanently deleted: ${targetUser.email}. Security tokens cleared.`
+          });
+        } catch (err) {
+          console.error('Failed to delete user:', err);
         }
-
-        setUsers(prev => prev.filter(u => u.id !== userId));
-        onAddLog({
-          timestamp: new Date().toLocaleTimeString(),
-          type: 'ERROR',
-          message: `ADMIN: User index permanently deleted: ${targetUser.email}. Security tokens cleared.`
-        });
-      } catch (err) {
-        console.error('Failed to delete user:', err);
       }
-    }
+    });
   };
 
   // Execute stress testing
@@ -372,10 +449,169 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
 
   return (
     <div className="space-y-6 flex flex-col h-full overflow-y-auto">
+
+      {/* ===== CREDENTIAL REVEAL MODAL ===== */}
+      {credentialModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+        >
+          <div
+            className="rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden animate-[fadeInScale_0.2s_ease-out]"
+            style={{
+              background: 'var(--surface-color)',
+              border: '1px solid var(--secondary-color)',
+            }}
+          >
+            <div className="bg-gradient-to-r from-purple-500 to-fuchsia-400 h-1.5 w-full" />
+            <div className="p-6">
+              <div className="flex flex-col items-center text-center space-y-3 mb-6">
+                <div className="w-12 h-12 rounded-full flex items-center justify-center bg-purple-500/20 text-purple-400 mb-2 border border-purple-500/30">
+                  <UserPlus className="w-6 h-6" />
+                </div>
+                <h3 className="text-xl font-bold" style={{ color: 'var(--on-surface-color)' }}>Account Provisioned</h3>
+                <p className="text-sm font-medium" style={{ color: 'var(--on-surface-variant-color)' }}>
+                  A temporary access key has been generated for {credentialModal.email}
+                </p>
+                <div className="text-xs px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                  This credential will only be shown once.
+                </div>
+              </div>
+
+              <div 
+                className="bg-black/20 p-4 rounded-xl border border-dashed border-purple-500/40 relative group cursor-pointer hover:bg-black/30 transition-all flex items-center justify-between"
+                onClick={() => {
+                  navigator.clipboard.writeText(credentialModal.password);
+                  setCredentialModal(p => ({ ...p, copied: true }));
+                }}
+              >
+                <div className="font-mono text-lg tracking-wider text-[#ce5dff] font-bold select-all">
+                  {credentialModal.password}
+                </div>
+                <div className="flex flex-col items-center text-[10px] text-on-surface-variant font-mono">
+                  {credentialModal.copied ? <CheckCircle className="w-4 h-4 text-green-400 mb-1" /> : <ShieldAlert className="w-4 h-4 mb-1" />}
+                  {credentialModal.copied ? 'COPIED' : 'COPY'}
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <button
+                  onClick={() => setCredentialModal(p => ({ ...p, open: false }))}
+                  className="w-full py-2.5 rounded-lg font-bold text-sm transition-all"
+                  style={{
+                    background: 'var(--secondary-color)',
+                    color: 'var(--on-secondary-color)'
+                  }}
+                >
+                  ACKNOWLEDGE & CLOSE
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== CUSTOM CONFIRMATION MODAL ===== */}
+      {confirmModal.open && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center"
+          onClick={(e) => { if (e.target === e.currentTarget) closeConfirmModal(); }}
+          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)' }}
+        >
+          <div
+            className="rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-[fadeInScale_0.18s_ease-out]"
+            style={{
+              background: 'var(--surface-color)',
+              border: '1px solid var(--outline-variant-color)',
+            }}
+          >
+            {/* Coloured accent top bar */}
+            <div className={`h-1 w-full ${confirmModal.icon === 'delete' ? 'bg-gradient-to-r from-red-500 to-red-300' : 'bg-gradient-to-r from-amber-500 to-yellow-300'}`} />
+
+            <div className="p-6">
+              {/* Icon + title */}
+              <div className="flex items-start gap-4 mb-4">
+                <div
+                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
+                  style={{
+                    background: confirmModal.icon === 'delete' ? 'var(--error-container-color)' : 'color-mix(in srgb, #f59e0b 15%, var(--surface-container-color))',
+                    border: `1px solid ${confirmModal.icon === 'delete' ? 'var(--error-color)' : '#f59e0b'}`,
+                    opacity: 0.9
+                  }}
+                >
+                  <span
+                    className="material-symbols-outlined text-xl"
+                    style={{ color: confirmModal.icon === 'delete' ? 'var(--error-color)' : '#d97706' }}
+                  >
+                    {confirmModal.icon === 'delete' ? 'delete_forever' : 'warning'}
+                  </span>
+                </div>
+                <div>
+                  <h3
+                    className="text-[15px] font-bold tracking-tight"
+                    style={{ color: 'var(--on-surface-color)' }}
+                  >
+                    {confirmModal.title}
+                  </h3>
+                  <p
+                    className="text-[13px] mt-0.5 font-medium"
+                    style={{ color: 'var(--on-surface-color)' }}
+                  >
+                    {confirmModal.message}
+                  </p>
+                </div>
+              </div>
+
+              {/* Subtext */}
+              {confirmModal.subtext && (
+                <p
+                  className="text-[12px] leading-relaxed mb-5 pl-[60px] -mt-1"
+                  style={{ color: 'var(--on-surface-variant-color)' }}
+                >
+                  {confirmModal.subtext}
+                </p>
+              )}
+
+              {/* Action buttons */}
+              <div className="flex gap-3 justify-end">
+                <button
+                  type="button"
+                  onClick={closeConfirmModal}
+                  className="px-4 py-2 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer hover:opacity-80"
+                  style={{
+                    color: 'var(--on-surface-variant-color)',
+                    background: 'var(--surface-container-color)',
+                    border: '1px solid var(--outline-variant-color)',
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmModal.onConfirm}
+                  className="px-5 py-2 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer hover:opacity-80"
+                  style={confirmModal.icon === 'delete' ? {
+                    color: 'var(--on-error-color)',
+                    background: 'var(--error-color)',
+                    border: '1px solid var(--error-color)',
+                  } : {
+                    color: '#ffffff',
+                    background: '#d97706',
+                    border: '1px solid #d97706',
+                  }}
+                >
+                  {confirmModal.icon === 'delete' ? 'Delete' : 'OK'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* View Title */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#3a494b]/20 pb-4 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-outline/20 pb-4 gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-[#e5e1e4] flex items-center gap-2">
+          <h2 className="text-xl font-bold tracking-tight text-on-surface flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-[#ce5dff] animate-ping"></span>
             Admin Command Center
           </h2>
@@ -418,7 +654,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       </div>
 
       {/* Tab Selector */}
-      <div className="flex overflow-x-auto whitespace-nowrap gap-2 border-b border-[#3a494b]/20 pb-0 w-full snap-x">
+      <div className="flex overflow-x-auto whitespace-nowrap gap-2 border-b border-outline/20 pb-0 w-full snap-x">
         {(['DASHBOARD', 'APP_STORE', 'WORKSPACE_PLUGINS', 'PORTFOLIOS'] as const).map(tab => (
           <button
             key={tab}
@@ -426,7 +662,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
             className={`px-4 py-2 font-mono text-xs uppercase font-bold tracking-wider transition-all border-b-2 shrink-0 snap-start ${
               activeAdminTab === tab 
                 ? 'text-[#00dbe7] border-[#00dbe7]' 
-                : 'text-[#849495] border-transparent hover:text-[#b9cacb]'
+                : 'text-on-surface-variant border-transparent hover:text-[#b9cacb]'
             }`}
           >
             {tab.replace('_', ' ')}
@@ -440,15 +676,15 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
           <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* Core CPU Utilization */}
-            <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
+            <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
               <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-                <span className="flex items-center gap-1.5 text-gray-400">
+                <span className="flex items-center gap-1.5 text-on-surface-variant">
                   <Cpu className="w-4 h-4 text-[#00e476]" />
                   Edge CPU Usage
                 </span>
                 <span className={`${cpuUsage > 80 ? 'text-[#ffb4ab] font-bold' : 'text-[#00e476]'}`}>{cpuUsage}%</span>
               </div>
-              <div className="w-full bg-[#1b1b1f] h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
                 <div 
                   style={{ width: `${cpuUsage}%` }} 
                   className={`h-full transition-all duration-700 ${
@@ -456,59 +692,59 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
                   }`}
                 ></div>
               </div>
-              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Allocated: 12 Cores / Xeon E-2388</span>
+              <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block">Allocated: 12 Cores / Xeon E-2388</span>
             </div>
 
             {/* JVM/Memory Pool */}
-            <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
+            <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
               <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-                <span className="flex items-center gap-1.5 text-gray-400">
+                <span className="flex items-center gap-1.5 text-on-surface-variant">
                   <HardDrive className="w-4 h-4 text-[#74f5ff]" />
                   Memory Pool (RAM)
                 </span>
                 <span className="text-[#00dbe7]">{memoryUsage}%</span>
               </div>
-              <div className="w-full bg-[#1b1b1f] h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
                 <div 
                   style={{ width: `${memoryUsage}%` }} 
                   className="h-full bg-[#00dbe7] transition-all duration-700"
                 ></div>
               </div>
-              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Used: {(16 * memoryUsage / 100).toFixed(1)} GB / 16.0 GB</span>
+              <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block">Used: {(16 * memoryUsage / 100).toFixed(1)} GB / 16.0 GB</span>
             </div>
 
             {/* Global Request Rate */}
-            <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
+            <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
               <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-                <span className="flex items-center gap-1.5 text-gray-400">
+                <span className="flex items-center gap-1.5 text-on-surface-variant">
                   <TrendingUp className="w-4 h-4 text-[#ce5dff]" />
                   API Requests/s
                 </span>
                 <span className="text-[#ce5dff] font-bold">{requestRate} r/s</span>
               </div>
-              <div className="w-full bg-[#1b1b1f] h-2 rounded-full overflow-hidden">
+              <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
                 <div 
                   style={{ width: `${Math.min(100, (requestRate / 500) * 100)}%` }} 
                   className="h-full bg-[#ce5dff] transition-all duration-700"
                 ></div>
               </div>
-              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Avg Response Latency: 12.8ms</span>
+              <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block">Avg Response Latency: 12.8ms</span>
             </div>
 
             {/* WebSocket Sync Nodes */}
-            <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40">
+            <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
               <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-                <span className="flex items-center gap-1.5 text-gray-400">
+                <span className="flex items-center gap-1.5 text-on-surface-variant">
                   <Globe className="w-4 h-4 text-amber-400" />
                   Gateway Peers
                 </span>
                 <span className="text-[#ebb2ff]">99.99%</span>
               </div>
               <div className="flex items-center gap-2 mt-1">
-                <span className="text-xl font-bold font-mono text-[#e5e1e4]">24 Active</span>
+                <span className="text-xl font-bold font-mono text-on-surface">24 Active</span>
                 <span className="px-1.5 py-0.5 rounded bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 text-[9px] font-mono">GMT TLS</span>
               </div>
-              <span className="text-[10px] text-gray-500 font-mono mt-1.5 block">Data Replication Target: US-East-H</span>
+              <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block">Data Replication Target: US-East-H</span>
             </div>
           </div>
 
@@ -516,13 +752,13 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
           <div className="grid grid-cols-1 lg:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 items-start">
             
             {/* User Management List Directory Block */}
-            <div className="lg:col-span-2 glass-panel p-5 rounded-xl border border-[#3a494b]/15 bg-[#131315]/20 flex flex-col space-y-4">
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 pb-2 border-b border-[#3a494b]/10">
-                <h3 className="font-sans font-bold text-sm text-[#e5e1e4] flex items-center gap-2">
+            <div className="lg:col-span-2 glass-panel p-5 rounded-xl border border-outline/15 bg-surface-container-low/20 flex flex-col space-y-4">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 pb-2 border-b border-outline/10">
+                <h3 className="font-sans font-bold text-sm text-on-surface flex items-center gap-2">
                   <Users className="w-4 h-4 text-[#00dbe7]" />
                   Authorized Corporate Accounts ({users.length})
                 </h3>
-                <span className="text-[10px] font-mono text-gray-500 bg-[#1b1b1f] px-2 py-0.5 rounded border border-[#3a494b]/20">
+                <span className="text-[10px] font-mono text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded border border-outline/20">
                   Local DB Indexed
                 </span>
               </div>
@@ -531,7 +767,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
               <div className="overflow-x-auto min-w-full">
                 <table className="w-full text-left font-mono text-xs text-[#b9cacb]">
                   <thead>
-                    <tr className="border-b border-[#3a494b]/10 text-gray-500 select-none pb-2 text-[10px] uppercase tracking-wider">
+                    <tr className="border-b border-outline/10 text-on-surface-variant select-none pb-2 text-[10px] uppercase tracking-wider">
                       <th className="py-2.5 font-semibold">User Details</th>
                       <th className="py-2.5 font-semibold">Access Privilege</th>
                       <th className="py-2.5 font-semibold hidden md:table-cell">Usage Track</th>
@@ -547,9 +783,9 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
                         }`}
                       >
                         <td className="py-3">
-                          <div className="font-sans font-bold text-[#e5e1e4] text-xs">{item.name}</div>
-                          <div className="text-[10px] text-gray-400 select-all">{item.email}</div>
-                          <div className="text-[9px] text-gray-500 mt-0.5">Joined: {new Date(item.joinedAt).toLocaleDateString()}</div>
+                          <div className="font-sans font-bold text-on-surface text-xs">{item.name}</div>
+                          <div className="text-[10px] text-on-surface-variant select-all">{item.email}</div>
+                          <div className="text-[9px] text-on-surface-variant mt-0.5">Joined: {new Date(item.joinedAt).toLocaleDateString()}</div>
                         </td>
                         <td className="py-3">
                           <select
@@ -564,7 +800,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
                                 ? 'border-red-900 text-red-400' 
                                 : item.role === 'Pending'
                                 ? 'border-amber-500/50 text-amber-500 font-bold'
-                                : 'border-[#3a494b]/40 text-[#00dbe7]'
+                                : 'border-outline/40 text-[#00dbe7]'
                             }`}
                           >
                             <option value="Admin">Administrator</option>
@@ -575,14 +811,14 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
                         </td>
                         <td className="py-3 hidden md:table-cell">
                           <div className="text-[12px] font-bold text-white">{item.activityCount + (item.role !== 'Banned' ? Math.round(multiplier * Math.random() * 4) : 0)} syncs</div>
-                          <span className="text-[9px] text-gray-500">API Gateway Calls</span>
+                          <span className="text-[9px] text-on-surface-variant">API Gateway Calls</span>
                         </td>
                         <td className="py-3 text-right">
                           <button
                             type="button"
                             onClick={() => handleDeleteUser(item.id)}
                             disabled={item.email === currentUserEmail}
-                            className="p-1.5 hover:bg-[#ffb4ab]/10 text-gray-400 hover:text-[#ffb4ab] rounded transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+                            className="p-1.5 hover:bg-[#ffb4ab]/10 text-on-surface-variant hover:text-[#ffb4ab] rounded transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
                             title="Delete User Record"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -595,25 +831,56 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
               </div>
             </div>
 
-            {/* Add New User Account Column Panel */}
-            <div className="glass-panel p-5 rounded-xl border border-[#3a494b]/15 bg-[#131315]/30 flex flex-col space-y-4">
-              <div className="pb-2 border-b border-[#3a494b]/10">
-                <h3 className="font-sans font-bold text-sm text-[#e5e1e4] flex items-center gap-2">
-                  <UserPlus className="w-4 h-4 text-[#ebb2ff]" />
+            {/* Provision Account Panel */}
+            <div
+              className="rounded-xl flex flex-col space-y-4 p-5"
+              style={{
+                background: 'var(--surface-container-low-color)',
+                border: '1px solid var(--outline-variant-color)'
+              }}
+            >
+              <div
+                className="pb-3 mb-1"
+                style={{ borderBottom: '1px solid var(--outline-variant-color)' }}
+              >
+                <h3
+                  className="font-sans font-bold text-sm flex items-center gap-2"
+                  style={{ color: 'var(--on-surface-color)' }}
+                >
+                  <UserPlus className="w-4 h-4" style={{ color: 'var(--secondary-color)' }} />
                   Provision Account
                 </h3>
-                <p className="text-[10px] text-gray-400 font-mono mt-0.5">Initialize developer workspace permissions manual override.</p>
+                <p
+                  className="text-[10px] font-mono mt-0.5"
+                  style={{ color: 'var(--on-surface-variant-color)' }}
+                >
+                  Initialize developer workspace permissions manual override.
+                </p>
               </div>
 
               {errorMsg && (
-                <div className="p-3 rounded-lg bg-red-950/40 border border-red-900 text-[#ffb4ab] text-[10px] font-mono flex items-center gap-2">
+                <div
+                  className="p-3 rounded-lg text-[10px] font-mono flex items-center gap-2"
+                  style={{
+                    background: 'var(--error-container-color)',
+                    border: '1px solid var(--error-color)',
+                    color: 'var(--on-error-container-color)'
+                  }}
+                >
                   <ShieldAlert className="w-4 h-4 shrink-0" />
                   <span>{errorMsg}</span>
                 </div>
               )}
 
               {successMsg && (
-                <div className="p-3 rounded-lg bg-green-950/40 border border-green-900 text-[#61ff97] text-[10px] font-mono flex items-center gap-2">
+                <div
+                  className="p-3 rounded-lg text-[10px] font-mono flex items-center gap-2"
+                  style={{
+                    background: 'var(--tertiary-container-color)',
+                    border: '1px solid var(--tertiary-color)',
+                    color: 'var(--on-tertiary-container-color)'
+                  }}
+                >
                   <CheckCircle className="w-4 h-4 shrink-0" />
                   <span>{successMsg}</span>
                 </div>
@@ -621,45 +888,87 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
 
               <form onSubmit={handleAddUserSubmit} className="space-y-4 font-mono text-xs">
                 <div>
-                  <label htmlFor="fullname" className="block text-gray-400 mb-1">Corporate Full Name</label>
+                  <label
+                    htmlFor="fullname"
+                    className="block mb-1.5 text-[11px] font-semibold"
+                    style={{ color: 'var(--on-surface-variant-color)' }}
+                  >
+                    Corporate Full Name
+                  </label>
                   <input
                     id="fullname"
                     type="text"
                     placeholder="e.g. Satoshi Nakamoto"
                     value={newUser.name}
                     onChange={(e) => setNewUser({ ...newUser, name: e.target.value })}
-                    className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2.5 text-[#e5e1e4] placeholder-gray-600 focus:outline-none focus:border-[#ce5dff] transition-colors"
+                    className="w-full rounded p-2.5 focus:outline-none transition-colors"
+                    style={{
+                      background: 'var(--surface-color)',
+                      border: '1px solid var(--outline-variant-color)',
+                      color: 'var(--on-surface-color)',
+                    }}
+                    onFocus={e => (e.target.style.borderColor = 'var(--secondary-color)')}
+                    onBlur={e => (e.target.style.borderColor = 'var(--outline-variant-color)')}
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="email" className="block text-gray-400 mb-1">Authorizing Email Coordinate</label>
+                  <label
+                    htmlFor="email"
+                    className="block mb-1.5 text-[11px] font-semibold"
+                    style={{ color: 'var(--on-surface-variant-color)' }}
+                  >
+                    Authorizing Email Coordinate
+                  </label>
                   <input
                     id="email"
                     type="email"
                     placeholder="developer@sutharlabs.com"
                     value={newUser.email}
                     onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                    className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2.5 text-[#e5e1e4] placeholder-gray-600 focus:outline-none focus:border-[#ce5dff] transition-colors"
+                    className="w-full rounded p-2.5 focus:outline-none transition-colors"
+                    style={{
+                      background: 'var(--surface-color)',
+                      border: '1px solid var(--outline-variant-color)',
+                      color: 'var(--on-surface-color)',
+                    }}
+                    onFocus={e => (e.target.style.borderColor = 'var(--secondary-color)')}
+                    onBlur={e => (e.target.style.borderColor = 'var(--outline-variant-color)')}
                   />
                 </div>
 
                 <div>
-                  <label htmlFor="authgroup" className="block text-gray-400 mb-1">User Authorization Group</label>
+                  <label
+                    htmlFor="authgroup"
+                    className="block mb-1.5 text-[11px] font-semibold"
+                    style={{ color: 'var(--on-surface-variant-color)' }}
+                  >
+                    User Authorization Group
+                  </label>
                   <select
                     id="authgroup"
                     value={newUser.role}
                     onChange={(e) => setNewUser({ ...newUser, role: e.target.value as any })}
-                    className="w-full bg-[#1b1b1f] border border-[#3a494b]/40 rounded p-2.5 text-[#e5e1e4] focus:outline-none focus:border-[#ce5dff] transition-colors"
+                    className="w-full rounded p-2.5 focus:outline-none transition-colors"
+                    style={{
+                      background: 'var(--surface-color)',
+                      border: '1px solid var(--outline-variant-color)',
+                      color: 'var(--on-surface-color)',
+                    }}
                   >
                     <option value="Developer">Developer Profile</option>
                     <option value="Admin">System Administrator</option>
+                    <option value="Pending">Pending Approval</option>
                   </select>
                 </div>
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded bg-[#ce5dff] text-black font-semibold hover:brightness-110 tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs"
+                  className="w-full py-2.5 rounded font-semibold hover:opacity-90 tracking-wider transition-all cursor-pointer flex items-center justify-center gap-1.5 text-xs"
+                  style={{
+                    background: 'var(--secondary-color)',
+                    color: 'var(--on-secondary-color)'
+                  }}
                 >
                   <UserPlus className="w-4 h-4" />
                   PROVISION CREDENTIALS
@@ -671,19 +980,19 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       )}
 
       {/* System simulation logs drawer */}
-      <div className="glass-panel p-4 rounded-xl border border-[#3a494b]/15 bg-black/40 overflow-hidden flex flex-col h-48">
-        <span className="text-[10px] font-mono text-gray-500 uppercase tracking-widest block mb-2 select-none border-b border-[#3a494b]/10 pb-1.5 flex items-center gap-2">
+      <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-black/40 overflow-hidden flex flex-col h-48">
+        <span className="text-[10px] font-mono text-on-surface-variant uppercase tracking-widest block mb-2 select-none border-b border-outline/10 pb-1.5 flex items-center gap-2">
           <Database className="w-3.5 h-3.5 text-[#ce5dff]" />
           ADMIN PRIVILEGED TELEMETRY AUDIT
         </span>
         <div className="flex-1 overflow-y-auto font-mono text-[10px] text-[#b9cacb] space-y-1 custom-scrollbar">
           {logs.filter(l => l.message.includes('ADMIN') || l.message.includes('ALERT') || l.message.includes('SUCCESS')).slice(-12).reverse().map((log, index) => (
             <div key={index} className="flex gap-2 p-1 rounded hover:bg-white/[0.02]">
-              <span className="text-gray-500 text-[9px]">{log.timestamp}</span>
+              <span className="text-on-surface-variant text-[9px]">{log.timestamp}</span>
               <span className={`font-bold ${
                 log.type === 'SUCCESS' ? 'text-[#00e476]' : log.type === 'ERROR' ? 'text-[#ffb4ab]' : log.type === 'ALERT' ? 'text-amber-400' : 'text-[#74f5ff]'
               }`}>[{log.type}]</span>
-              <span className="text-[#e5e1e4]">{log.message}</span>
+              <span className="text-on-surface">{log.message}</span>
             </div>
           ))}
         </div>

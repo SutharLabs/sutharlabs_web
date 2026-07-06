@@ -236,10 +236,10 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
     html = html.replace(/^\s*&gt;\s+(.*$)/gim, '<blockquote class="border-l-4 border-gray-600 pl-3 py-1 my-3 bg-white/[0.02] rounded-r font-sans italic text-sm text-[#b9cacb]">$1</blockquote>');
 
     // Code Blocks (fenced)
-    html = html.replace(/```([\s\S]*?)```/gim, '<pre class="bg-[#131315]/90 border border-[#3a494b]/20 rounded-lg p-3.5 my-4 font-mono text-xs overflow-x-auto text-[#ebb2ff]">$1</pre>');
+    html = html.replace(/```([\s\S]*?)```/gim, '<pre class="bg-surface-container-low/90 border border-outline/20 rounded-lg p-3.5 my-4 font-mono text-xs overflow-x-auto text-[#ebb2ff]">$1</pre>');
 
     // Inline Code
-    html = html.replace(/`([^`]+)`/g, '<code class="bg-[#2a2a2c]/60 border border-[#3a494b]/25 px-1 py-0.5 rounded font-mono text-xs text-[#74f5ff]">$1</code>');
+    html = html.replace(/`([^`]+)`/g, '<code class="bg-[#2a2a2c]/60 border border-outline/25 px-1 py-0.5 rounded font-mono text-xs text-[#74f5ff]">$1</code>');
 
     // Bold
     html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
@@ -284,7 +284,7 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
     <div className="space-y-4 flex flex-col h-full overflow-y-auto">
       
       {/* Top Controls Toolbar */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#3a494b]/20 pb-4 gap-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-outline/20 pb-4 gap-4">
         <div className="flex items-center gap-3">
           <div className="p-2 rounded-lg bg-[#ce5dff]/15 border border-[#ce5dff]/30 text-[#ebb2ff] flex items-center justify-center">
             <BookOpen className="w-5 h-5" />
@@ -330,11 +330,11 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-grow min-h-[500px] items-stretch">
         
         {/* Left Side: Smart TOC & Editor Pane (col-span-6) */}
-        <div className="lg:col-span-6 glass-panel rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 flex overflow-hidden min-h-[400px]">
+        <div className="lg:col-span-6 glass-panel rounded-xl border border-outline/15 bg-surface-container-low/40 flex overflow-hidden min-h-[400px]">
           
           {/* Smart TOC Column Sidebar */}
-          <div className="w-44 bg-[#0c0c0e]/95 border-r border-[#3a494b]/10 flex flex-col p-3 shrink-0 select-none hidden sm:flex">
-            <span className="font-mono text-[9px] text-[#849495] uppercase tracking-widest block mb-4 border-b border-[#3a494b]/15 pb-1">
+          <div className="w-44 bg-[#0c0c0e]/95 border-r border-outline/10 flex flex-col p-3 shrink-0 select-none hidden sm:flex">
+            <span className="font-mono text-[9px] text-on-surface-variant uppercase tracking-widest block mb-4 border-b border-outline/15 pb-1">
               Smart TOC
             </span>
             <div className="space-y-1.5 overflow-y-auto custom-scrollbar flex-grow pr-1">
@@ -360,8 +360,8 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
 
           {/* Document Content Textarea */}
           <div className="flex-1 flex flex-col h-full bg-[#050505] relative">
-            <div className="flex items-center px-4 py-2 border-b border-[#3a494b]/10 bg-[#201f21]/80 select-none justify-between font-mono text-[10px]">
-              <span className="text-gray-400">DOCNEXUS SOURCE EDITOR</span>
+            <div className="flex items-center px-4 py-2 border-b border-outline/10 bg-[#201f21]/80 select-none justify-between font-mono text-[10px]">
+              <span className="text-on-surface-variant">DOCNEXUS SOURCE EDITOR</span>
               <span className="text-[#ebb2ff]">Markdown Mode</span>
             </div>
             
@@ -376,10 +376,10 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
         </div>
 
         {/* Right Side: Compiled Conversions Sandbox (col-span-6) */}
-        <div className="lg:col-span-6 flex flex-col glass-panel rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 overflow-hidden min-h-[400px]">
+        <div className="lg:col-span-6 flex flex-col glass-panel rounded-xl border border-outline/15 bg-surface-container-low/40 overflow-hidden min-h-[400px]">
           
           {/* Tabs Toggles */}
-          <div className="flex border-b border-[#3a494b]/10 bg-[#201f21]/60 font-mono text-[10px] items-center px-2 select-none justify-between">
+          <div className="flex border-b border-outline/10 bg-[#201f21]/60 font-mono text-[10px] items-center px-2 select-none justify-between">
             <div className="flex gap-2">
               {(['PREVIEW', 'SEQUENCE', 'TOPOLOGY', 'GRID'] as const).map(tab => (
                 <button
@@ -388,7 +388,7 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
                   className={`py-3 px-3 transition-all cursor-pointer border-b-2 flex items-center gap-1.5 ${
                     activeTab === tab 
                       ? 'text-[#74f5ff] border-[#00dbe7] bg-white/[0.02]' 
-                      : 'text-gray-400 border-transparent hover:text-white'
+                      : 'text-on-surface-variant border-transparent hover:text-white'
                   }`}
                 >
                   {tab === 'PREVIEW' && <BookOpen className="w-3.5 h-3.5" />}
@@ -406,13 +406,13 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
           </div>
 
           {/* Compiled Canvas Body */}
-          <div className="flex-grow p-4 overflow-y-auto custom-scrollbar bg-[#131315]/20 flex flex-col">
+          <div className="flex-grow p-4 overflow-y-auto custom-scrollbar bg-surface-container-low/20 flex flex-col">
             
             {/* TAB 1: Markdown + Alerts Preview */}
             {activeTab === 'PREVIEW' && (
               <div className="prose-custom flex-grow">
                 {content.trim() === '' ? (
-                  <div className="h-full flex items-center justify-center text-center text-gray-500 font-mono text-xs italic py-20">
+                  <div className="h-full flex items-center justify-center text-center text-on-surface-variant font-mono text-xs italic py-20">
                     Document is blank. Start typing on the left pane.
                   </div>
                 ) : (
@@ -424,7 +424,7 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
             {/* TAB 2: Smart Sequence Compiler */}
             {activeTab === 'SEQUENCE' && (
               <div className="flex-grow flex flex-col gap-4">
-                <div className="p-3 bg-[#0e0e10]/80 rounded border border-[#3a494b]/20 flex items-center gap-2">
+                <div className="p-3 bg-[#0e0e10]/80 rounded border border-outline/20 flex items-center gap-2">
                   <Info className="text-[#00dbe7] w-4 h-4" />
                   <span className="font-sans text-[11px] text-[#b9cacb]">
                     Automatically parses sequential message formats: <code className="bg-[#201f21] px-1 py-0.5 rounded text-white font-mono text-[10px]">Actor1 -&gt; Actor2: Message</code>
@@ -432,11 +432,11 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
                 </div>
 
                 {messages.length === 0 ? (
-                  <div className="flex-grow flex items-center justify-center text-center py-20 text-gray-500 font-mono text-xs italic">
+                  <div className="flex-grow flex items-center justify-center text-center py-20 text-on-surface-variant font-mono text-xs italic">
                     No matching sequence flows found. Wrap them inside a sequence block!
                   </div>
                 ) : (
-                  <div className="flex-grow glass-panel p-4 sm:p-6 rounded-lg border border-[#3a494b]/15 bg-[#0e0e10]/40 overflow-x-auto relative flex flex-col items-center">
+                  <div className="flex-grow glass-panel p-4 sm:p-6 rounded-lg border border-outline/15 bg-[#0e0e10]/40 overflow-x-auto relative flex flex-col items-center">
                     
                     {/* SVG Sequence diagram drawer */}
                     <div className="min-w-[450px] relative flex flex-col py-4">
@@ -520,7 +520,7 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
             {/* TAB 3: Network Topology Visualizer */}
             {activeTab === 'TOPOLOGY' && (
               <div className="flex-grow flex flex-col gap-4">
-                <div className="p-3 bg-[#0e0e10]/80 rounded border border-[#3a494b]/20 flex items-center gap-2">
+                <div className="p-3 bg-[#0e0e10]/80 rounded border border-outline/20 flex items-center gap-2">
                   <Server className="text-[#ce5dff] w-4 h-4" />
                   <span className="font-sans text-[11px] text-[#b9cacb]">
                     Recognizes network layout coordinate files: <code className="bg-[#201f21] px-1 py-0.5 rounded text-white font-mono text-[10px]">[Node1] === [Node2]</code>
@@ -528,11 +528,11 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
                 </div>
 
                 {topologyNodes.length === 0 ? (
-                  <div className="flex-grow flex items-center justify-center text-center py-20 text-gray-500 font-mono text-xs italic">
+                  <div className="flex-grow flex items-center justify-center text-center py-20 text-on-surface-variant font-mono text-xs italic">
                     No network nodes recognized. Specify structural nodes in raw panels.
                   </div>
                 ) : (
-                  <div className="flex-grow glass-panel rounded-lg border border-[#3a494b]/15 bg-[#0e0e10]/40 overflow-hidden relative min-h-[300px] p-4 sm:p-6 flex flex-col">
+                  <div className="flex-grow glass-panel rounded-lg border border-outline/15 bg-[#0e0e10]/40 overflow-hidden relative min-h-[300px] p-4 sm:p-6 flex flex-col">
                     
                     {/* SVG lines layer drawing connections */}
                     <div className="w-full flex-grow relative min-h-[250px] chart-grid rounded overflow-hidden">
@@ -574,10 +574,10 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
                           <div 
                             key={node}
                             style={{ left: `${posX - 40}px`, top: `${posY - 35}px` }}
-                            className="absolute w-20 p-2 rounded-lg border border-[#00dbe7]/30 bg-[#131315] hover:border-[#74f5ff]/70 flex flex-col items-center justify-center text-center shadow-[0_0_12px_rgba(0,219,231,0.15)] transition-all select-none hover:scale-105"
+                            className="absolute w-20 p-2 rounded-lg border border-[#00dbe7]/30 bg-surface-container-low hover:border-[#74f5ff]/70 flex flex-col items-center justify-center text-center shadow-[0_0_12px_rgba(0,219,231,0.15)] transition-all select-none hover:scale-105"
                           >
                             <span className="material-symbols-outlined text-[#74f5ff] text-base mb-1 select-none">dns</span>
-                            <span className="font-mono text-[9px] text-[#e5e1e4] font-bold block truncate w-full">{node}</span>
+                            <span className="font-mono text-[9px] text-on-surface font-bold block truncate w-full">{node}</span>
                           </div>
                         );
                       })}
@@ -592,7 +592,7 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
             {/* TAB 4: Sortable High-Density Table Grid */}
             {activeTab === 'GRID' && (
               <div className="flex-grow flex flex-col gap-4">
-                <div className="p-3 bg-[#0e0e10]/80 rounded border border-[#3a494b]/20 flex items-center gap-2">
+                <div className="p-3 bg-[#0e0e10]/80 rounded border border-outline/20 flex items-center gap-2">
                   <Grid className="text-[#00e476] w-4 h-4" />
                   <span className="font-sans text-[11px] text-[#b9cacb]">
                     Sortable grid parsed from standard Markdown table schemas. Click columns headers to sort.
@@ -600,13 +600,13 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
                 </div>
 
                 {parsedTable.headers.length === 0 ? (
-                  <div className="flex-grow flex items-center justify-center text-center py-20 text-gray-500 font-mono text-xs italic">
+                  <div className="flex-grow flex items-center justify-center text-center py-20 text-on-surface-variant font-mono text-xs italic">
                     No table found. Type standard Markdown tables on the left pane.
                   </div>
                 ) : (
-                  <div className="w-full overflow-x-auto rounded border border-[#3a494b]/15 bg-[#0e0e10]/40">
+                  <div className="w-full overflow-x-auto rounded border border-outline/15 bg-[#0e0e10]/40">
                     <table className="w-full text-left font-mono text-xs border-collapse">
-                      <thead className="bg-[#0c0c0e] text-[#849495] select-none text-[10px] uppercase">
+                      <thead className="bg-[#0c0c0e] text-on-surface-variant select-none text-[10px] uppercase">
                         <tr>
                           {parsedTable.headers.map((hdr, i) => {
                             const isSorted = sortConfig?.key === i;
@@ -614,7 +614,7 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
                               <th 
                                 key={i} 
                                 onClick={() => handleSort(i)}
-                                className="p-3 cursor-pointer hover:text-white transition-colors border-b border-[#3a494b]/20 select-none font-bold"
+                                className="p-3 cursor-pointer hover:text-white transition-colors border-b border-outline/20 select-none font-bold"
                               >
                                 <span className="flex items-center gap-1">
                                   {hdr}
@@ -631,7 +631,7 @@ export default function DocNexusView({ onAddLog, userToken }: DocNexusViewProps)
                       </thead>
                       <tbody className="divide-y divide-[#3a494b]/10">
                         {parsedTable.rows.map((row, rIdx) => (
-                          <tr key={rIdx} className="hover:bg-white/[0.02] transition-all text-[#e5e1e4]">
+                          <tr key={rIdx} className="hover:bg-white/[0.02] transition-all text-on-surface">
                             {row.map((cell, cIdx) => (
                               <td key={cIdx} className="p-3 select-all leading-normal">
                                 {cell}

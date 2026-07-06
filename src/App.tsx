@@ -50,10 +50,21 @@ const URL_TO_TAB: Record<string, WorkspaceTab> = Object.entries(ROUTE_MAP).reduc
 export default function App() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [user, setUser] = useState<UserProfile>({
-    email: 'developer@sutharlabs.com',
-    name: 'Suthar Developer',
-    isLoggedIn: false // starts false to showcase the premium Landing Page first, then can launch or authenticate!
+  const [user, setUser] = useState<UserProfile>(() => {
+    const saved = localStorage.getItem('sutharlabs_active_user');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && parsed.isLoggedIn) return parsed;
+      } catch (err) {
+        console.error('Failed to load saved session:', err);
+      }
+    }
+    return {
+      email: '',
+      name: '',
+      isLoggedIn: false
+    };
   });
 
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -72,17 +83,6 @@ export default function App() {
   }, [theme]);
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('sutharlabs_active_user');
-    if (saved) {
-      try {
-        setUser(JSON.parse(saved));
-      } catch (err) {
-        console.error('Failed to load saved session:', err);
-      }
-    }
-  }, []);
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'signin' | 'signup'>('signin');
@@ -137,8 +137,12 @@ export default function App() {
 
   // Application Top Level Routes
   return (
-    <Routes>
-      <Route path="/" element={
+    <>
+      {user.isLoggedIn && user.mustChangePassword && (
+        <PasswordResetModal user={user} setUser={setUser} userToken={user.token || ''} />
+      )}
+      <Routes>
+        <Route path="/" element={
         user.isLoggedIn ? <Navigate to="/workspace/stock-tracker" /> : 
         <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} theme={theme} toggleTheme={toggleTheme} />
       } />
@@ -152,6 +156,7 @@ export default function App() {
         <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
       } />
     </Routes>
+    </>
   );
 }
 
@@ -433,6 +438,112 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
 
       </div>
 
+    </div>
+  );
+}
+
+function PasswordResetModal({ user, setUser, userToken }: { user: UserProfile, setUser: any, userToken: string }) {
+  const [newPassword, setNewPassword] = React.useState('');
+  const [errorMsg, setErrorMsg] = React.useState('');
+  const [loading, setLoading] = React.useState(false);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (newPassword.length < 5) {
+      setErrorMsg('Password must be at least 5 characters.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify({ newPassword })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setErrorMsg(data.error || 'Failed to update password');
+        return;
+      }
+      
+      const updatedUser = { ...user, mustChangePassword: false };
+      setUser(updatedUser);
+      localStorage.setItem('sutharlabs_active_user', JSON.stringify(updatedUser));
+    } catch (err) {
+      setErrorMsg('Network error.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(12px)' }}
+    >
+      <div
+        className="rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden animate-[fadeInScale_0.2s_ease-out]"
+        style={{
+          background: 'var(--surface-color)',
+          border: '1px solid var(--error-color)',
+        }}
+      >
+        <div className="bg-gradient-to-r from-red-500 to-amber-500 h-1.5 w-full" />
+        <div className="p-6">
+          <div className="flex flex-col items-center text-center space-y-3 mb-6">
+            <div className="w-12 h-12 rounded-full flex items-center justify-center bg-red-500/10 text-red-500 mb-2 border border-red-500/20">
+              <span className="material-symbols-outlined text-[28px]">lock_reset</span>
+            </div>
+            <h3 className="text-xl font-bold" style={{ color: 'var(--on-surface-color)' }}>Update Required</h3>
+            <p className="text-sm font-medium" style={{ color: 'var(--on-surface-variant-color)' }}>
+              For security, you must replace your temporary password before accessing the workspace.
+            </p>
+          </div>
+
+          {errorMsg && (
+            <div className="mb-4 p-3 rounded-lg text-xs font-mono flex items-center gap-2 bg-red-500/10 text-red-500 border border-red-500/20">
+              <span className="material-symbols-outlined text-[16px]">error</span>
+              <span>{errorMsg}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                placeholder="Enter new password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="w-full rounded p-3 text-sm focus:outline-none transition-colors"
+                style={{
+                  background: 'var(--surface-container-color)',
+                  border: '1px solid var(--outline-variant-color)',
+                  color: 'var(--on-surface-color)',
+                }}
+                onFocus={e => (e.target.style.borderColor = 'var(--secondary-color)')}
+                onBlur={e => (e.target.style.borderColor = 'var(--outline-variant-color)')}
+                autoFocus
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 rounded-lg font-bold text-sm transition-all flex items-center justify-center gap-2 hover:opacity-90 disabled:opacity-50"
+              style={{
+                background: 'var(--secondary-color)',
+                color: 'var(--on-secondary-color)'
+              }}
+            >
+              {loading ? 'SAVING...' : 'SECURE ACCOUNT'}
+              {!loading && <span className="material-symbols-outlined text-[18px]">arrow_forward</span>}
+            </button>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

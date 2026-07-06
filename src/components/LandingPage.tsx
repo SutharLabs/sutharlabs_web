@@ -134,7 +134,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
     : portfolioProjects.filter(p => p.segment === activeFilter);
 
   return (
-    <div className="min-h-screen flex flex-col font-sans relative overflow-x-hidden bg-[#050505] text-[#e5e1e4]">
+    <div className="min-h-screen flex flex-col font-sans relative overflow-x-hidden bg-[#050505] text-on-surface">
       
       {/* Ambient Background Glows */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -143,7 +143,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
       </div>
 
       {/* Responsive Top Navigation Bar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 py-3 bg-[#131315]/80 backdrop-blur-xl rounded-full mt-4 mx-auto w-[92%] sm:w-[95%] max-w-7xl border border-[#3a494b]/10 shadow-[0_0_15px_rgba(0,219,231,0.08)] transition-all duration-300 ease-out">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 py-3 bg-surface-container-low/80 backdrop-blur-xl rounded-full mt-4 mx-auto w-[92%] sm:w-[95%] max-w-7xl border border-outline/10 shadow-[0_0_15px_rgba(0,219,231,0.08)] transition-all duration-300 ease-out">
         <div 
           onClick={() => {
             setCurrentView('HOME');
@@ -235,7 +235,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
           <button
             type="button"
             onClick={toggleTheme}
-            className="p-2.5 bg-white/5 border border-white/10 rounded-full text-[#e5e1e4] hover:text-[#00dbe7] hover:border-[#00dbe7]/50 transition-all flex items-center justify-center cursor-pointer"
+            className="p-2.5 bg-white/5 border border-white/10 rounded-full text-on-surface hover:text-[#00dbe7] hover:border-[#00dbe7]/50 transition-all flex items-center justify-center cursor-pointer"
             title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
           >
             {theme === 'light' ? (
@@ -294,10 +294,10 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
           />
 
           {/* Right Sliding Drawer Panel */}
-          <div className="fixed right-0 top-0 bottom-0 z-50 h-full w-[85%] max-w-[340px] bg-[#0c0c0e] border-l border-[#3a494b]/20 shadow-[0_0_50px_rgba(0,0,0,0.85)] lg:hidden p-4 sm:p-6 flex flex-col justify-between font-mono animate-[slideInRight_0.3s_ease-out] select-none">
+          <div className="fixed right-0 top-0 bottom-0 z-50 h-full w-[85%] max-w-[340px] bg-[#0c0c0e] border-l border-outline/20 shadow-[0_0_50px_rgba(0,0,0,0.85)] lg:hidden p-4 sm:p-6 flex flex-col justify-between font-mono animate-[slideInRight_0.3s_ease-out] select-none">
             <div>
               {/* Header inside drawer */}
-              <div className="flex items-center justify-between pb-6 border-b border-[#3a494b]/15 mb-8">
+              <div className="flex items-center justify-between pb-6 border-b border-outline/15 mb-8">
                 <div className="flex items-center gap-2">
                   <svg className="w-5.5 h-5.5" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <defs>
@@ -391,7 +391,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
             </div>
 
             {/* Launcher button at bottom */}
-            <div className="pt-6 border-t border-[#3a494b]/15 space-y-3">
+            <div className="pt-6 border-t border-outline/15 space-y-3">
               {/* Theme Toggle in Mobile Drawer */}
               <button
                 type="button"
@@ -399,7 +399,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                   setIsMobileMenuOpen(false);
                   toggleTheme?.();
                 }}
-                className="w-full py-2.5 bg-white/5 border border-white/10 rounded-lg text-[#e5e1e4] hover:text-[#00dbe7] hover:border-[#00dbe7]/50 transition-all font-mono text-[11px] font-bold uppercase cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-white/5 border border-white/10 rounded-lg text-on-surface hover:text-[#00dbe7] hover:border-[#00dbe7]/50 transition-all font-mono text-[11px] font-bold uppercase cursor-pointer flex items-center justify-center gap-2"
               >
                 {theme === 'light' ? (
                   <>
@@ -455,7 +455,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#00dbe7]/10 border border-[#00dbe7]/30 text-[#74f5ff] font-mono text-[10px] uppercase tracking-widest leading-none mb-2 select-none">
                 R&amp;D Lab &amp; Engineering Studio
               </div>
-              <h1 className="text-3xl sm:text-3xl sm:text-4xl md:text-3xl md:text-5xl lg:text-4xl md:text-6xl font-bold tracking-tight leading-tight text-[#e5e1e4] neon-text-primary px-2">
+              <h1 className="text-3xl sm:text-3xl sm:text-4xl md:text-3xl md:text-5xl lg:text-4xl md:text-6xl font-bold tracking-tight leading-tight text-on-surface neon-text-primary px-2">
                 Synthesizing Next-Gen Tooling &amp; High-Performance Engineering.
               </h1>
               <p className="text-sm sm:text-base md:text-lg text-[#b9cacb] max-w-3xl mx-auto font-sans font-light leading-relaxed">
@@ -498,10 +498,10 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
           
           {/* Services Offered Section */}
           <section id="services" className="space-y-8 scroll-mt-24">
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-[#3a494b]/20 pb-4 gap-2">
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-outline/20 pb-4 gap-2">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-[#ce5dff] text-2xl sm:text-3xl select-none">home_repair_service</span>
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Services Offered</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-on-surface">Services Offered</h2>
               </div>
               <p className="text-xs sm:text-sm text-[#b9cacb]/80 font-mono">Precision coding &amp; architecture packages.</p>
             </div>
@@ -606,10 +606,10 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
 
           {/* Featured Plugins Slider Section */}
           <section className="space-y-8 animate-[fadeIn_0.3s_ease-out]">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#3a494b]/20 pb-4 gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-outline/20 pb-4 gap-4">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-[#00dbe7] text-2xl sm:text-3xl select-none">dynamic_feed</span>
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Popular Tools &amp; Plugins</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-on-surface">Popular Tools &amp; Plugins</h2>
               </div>
               
               <button 
@@ -675,11 +675,11 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                    ))}
                  </div>
               ) : (
-                <div className="text-center py-6 sm:py-10 font-mono text-xs italic text-gray-500">Loading products registry...</div>
+                <div className="text-center py-6 sm:py-10 font-mono text-xs italic text-on-surface-variant">Loading products registry...</div>
               )}
 
               {/* Slider Dots & Arrow Navigation */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mt-8 pt-4 border-t border-[#3a494b]/10 select-none">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mt-8 pt-4 border-t border-outline/10 select-none">
                 <div className="flex gap-1">
                   {plugins.map((_, idx) => (
                     <button
@@ -696,13 +696,13 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                 <div className="flex gap-2">
                   <button
                     onClick={() => setActivePluginIndex((prev) => (prev === 0 ? plugins.length - 1 : prev - 1))}
-                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#00dbe7]/50 hover:bg-[#00dbe7]/10 text-white flex items-center justify-center transition-all cursor-pointer animate-[press_0.2s_ease]"
+                    className="w-8 h-8 rounded-full border border-outline/30 bg-transparent hover:border-[#00dbe7]/50 hover:bg-[#00dbe7]/10 text-white flex items-center justify-center transition-all cursor-pointer animate-[press_0.2s_ease]"
                   >
                     <span className="material-symbols-outlined text-base">arrow_back</span>
                   </button>
                   <button
                     onClick={() => setActivePluginIndex((prev) => (prev === plugins.length - 1 ? 0 : prev + 1))}
-                    className="w-8 h-8 rounded-full border border-[#3a494b]/30 bg-transparent hover:border-[#00dbe7]/50 hover:bg-[#00dbe7]/10 text-white flex items-center justify-center transition-all cursor-pointer animate-[press_0.2s_ease]"
+                    className="w-8 h-8 rounded-full border border-outline/30 bg-transparent hover:border-[#00dbe7]/50 hover:bg-[#00dbe7]/10 text-white flex items-center justify-center transition-all cursor-pointer animate-[press_0.2s_ease]"
                   >
                     <span className="material-symbols-outlined text-base">arrow_forward</span>
                   </button>
@@ -713,10 +713,10 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
 
           {/* Featured Portfolio Slider Section */}
           <section id="portfolio" className="space-y-8 scroll-mt-24 animate-[fadeIn_0.3s_ease-out]">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-[#3a494b]/20 pb-4 gap-4">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-outline/20 pb-4 gap-4">
               <div className="flex items-center gap-3">
                 <span className="material-symbols-outlined text-[#00e476] text-2xl sm:text-3xl select-none">cases</span>
-                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-[#e5e1e4]">Featured Development Cases</h2>
+                <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-on-surface">Featured Development Cases</h2>
               </div>
               
               <button 
@@ -730,7 +730,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
               </button>
             </div>
 
-            <div className="relative glass-panel rounded-xl border border-outline/10 bg-surface dark:bg-[#131315]/30 overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
+            <div className="relative glass-panel rounded-xl border border-outline/10 bg-surface dark:bg-surface-container-low/30 overflow-hidden shadow-[0_10px_30px_rgba(0,0,0,0.04)] dark:shadow-[0_10px_30px_rgba(0,0,0,0.25)]">
               
               {portfolioProjects.length > 0 ? (
                 (() => {
@@ -989,7 +989,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
         <div className="space-y-10 py-4 animate-[fadeIn_0.3s_ease-out]">
           
           {/* Header Breadcrumbs */}
-          <div className="flex items-center gap-2 text-xs font-mono text-gray-500 select-none">
+          <div className="flex items-center gap-2 text-xs font-mono text-on-surface-variant select-none">
             <button onClick={() => setCurrentView('HOME')} className="hover:text-white transition-all bg-transparent border-none cursor-pointer">HOME</button>
             <span>/</span>
             <span className="text-[#00e476]">DEVELOPMENT AGENCY CASES</span>
@@ -1007,9 +1007,9 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
           </div>
 
           {/* Segment filter panel */}
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 bg-[#131315]/80 p-4 rounded-xl border border-[#3a494b]/15 select-none">
-            <span className="text-xs font-mono text-[#849495] uppercase hidden sm:inline">Active Case Filters</span>
-            <div className="flex flex-wrap gap-1 bg-[#0c0c0e] p-1 rounded-lg border border-[#3a494b]/10 font-mono text-[10px]">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 bg-surface-container-low/80 p-4 rounded-xl border border-outline/15 select-none">
+            <span className="text-xs font-mono text-on-surface-variant uppercase hidden sm:inline">Active Case Filters</span>
+            <div className="flex flex-wrap gap-1 bg-[#0c0c0e] p-1 rounded-lg border border-outline/10 font-mono text-[10px]">
               {(['All', 'Web Dev', 'Mobile Apps', 'AI & Analytics'] as const).map((filter) => (
                 <button
                   key={filter}
@@ -1033,7 +1033,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
               <div 
                 key={proj.id}
                 onClick={() => setSelectedProject(proj)}
-                className="group glass-panel rounded-xl border border-[#3a494b]/15 hover:border-[#00e476]/50 bg-[#131315]/30 cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-[0_4px_30px_rgba(0,228,118,0.08)] flex flex-col justify-between"
+                className="group glass-panel rounded-xl border border-outline/15 hover:border-[#00e476]/50 bg-surface-container-low/30 cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-[0_4px_30px_rgba(0,228,118,0.08)] flex flex-col justify-between"
               >
                 <div>
                   {/* Decorative glowing project banner */}
@@ -1051,7 +1051,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                     
                     {/* Floating architectural wireframe icon */}
                     <div className="absolute bottom-4 left-6 flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-[#1c1b1d] border border-[#3a494b]/40 flex items-center justify-center">
+                      <div className="w-8 h-8 rounded-full bg-[#1c1b1d] border border-outline/40 flex items-center justify-center">
                         <span className="material-symbols-outlined text-[#74f5ff] text-sm">{proj.blueprintSymbol}</span>
                       </div>
                       <span className="font-mono text-[9px] uppercase tracking-widest text-[#ebb2ff]">{proj.id}</span>
@@ -1064,10 +1064,10 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                   </div>
                 </div>
 
-                <div className="px-6 pb-6 pt-2 flex items-center justify-between border-t border-[#3a494b]/10 text-[10px] font-mono">
+                <div className="px-6 pb-6 pt-2 flex items-center justify-between border-t border-outline/10 text-[10px] font-mono">
                   <div className="flex flex-wrap gap-1.5 max-w-[70%]">
                     {proj.techs.slice(0, 3).map((t) => (
-                      <span key={t} className="px-1.5 py-0.5 rounded bg-[#201f21] text-[#849495]">{t}</span>
+                      <span key={t} className="px-1.5 py-0.5 rounded bg-[#201f21] text-on-surface-variant">{t}</span>
                     ))}
                   </div>
                   <span className="text-[#00e476] flex items-center group-hover:translate-x-1 transition-transform">
@@ -1102,7 +1102,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                 setCurrentView('HOME');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="px-6 py-3 rounded-lg border border-[#3a494b]/30 bg-transparent text-[#b9cacb] font-mono text-xs uppercase tracking-wider hover:text-white hover:border-white transition-all cursor-pointer"
+              className="px-6 py-3 rounded-lg border border-outline/30 bg-transparent text-[#b9cacb] font-mono text-xs uppercase tracking-wider hover:text-white hover:border-white transition-all cursor-pointer"
             >
               Back to Home Page
             </button>
@@ -1116,7 +1116,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
         <div className="space-y-10 py-4 animate-[fadeIn_0.3s_ease-out] max-w-4xl mx-auto w-full">
           
           {/* Header Breadcrumbs */}
-          <div className="flex items-center gap-2 text-xs font-mono text-gray-500 select-none">
+          <div className="flex items-center gap-2 text-xs font-mono text-on-surface-variant select-none">
             <button onClick={() => setCurrentView('HOME')} className="hover:text-white transition-all bg-transparent border-none cursor-pointer">HOME</button>
             <span>/</span>
             <span className="text-[#00dbe7]">CONTACT US</span>
@@ -1137,7 +1137,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
           <div className="grid grid-cols-1 md:grid-cols-12 gap-4 sm:gap-8 items-stretch">
             
             {/* Track 1: Enterprise Consultation Form (Cols 7) */}
-            <div className="md:col-span-7 glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#3a494b]/15 bg-[#131315]/50 flex flex-col justify-between space-y-6">
+            <div className="md:col-span-7 glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-outline/15 bg-surface-container-low/50 flex flex-col justify-between space-y-6">
               <div className="space-y-2">
                 <span className="px-2 py-0.5 rounded bg-[#00e476]/20 border border-[#00e476]/30 text-[#00e476] text-[9px] font-mono uppercase tracking-wider">Enterprise &amp; Agency Funnel</span>
                 <h3 className="text-lg font-bold text-white">Start a Project Consultation</h3>
@@ -1169,28 +1169,28 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                 >
                   <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
-                      <label className="text-gray-500 block">YOUR NAME</label>
+                      <label className="text-on-surface-variant block">YOUR NAME</label>
                       <input 
                         type="text" 
                         required 
                         placeholder="Elon Musk" 
-                        className="w-full bg-[#0c0c0e] border border-[#3a494b]/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs"
+                        className="w-full bg-surface-container-high border border-outline/40 rounded p-2.5 text-on-surface focus: focus:border-outline/40 font-mono text-xs outline-none transition-all"
                       />
                     </div>
                     <div className="space-y-1">
-                      <label className="text-gray-500 block">EMAIL ADDRESS</label>
+                      <label className="text-on-surface-variant block">EMAIL ADDRESS</label>
                       <input 
                         type="email" 
                         required 
                         placeholder="elon@spacex.com" 
-                        className="w-full bg-[#0c0c0e] border border-[#3a494b]/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs"
+                        className="w-full bg-surface-container-high border border-outline/40 rounded p-2.5 text-on-surface focus: focus:border-outline/40 font-mono text-xs outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                      <label className="text-gray-500 block">PROJECT TYPE</label>
-                      <select className="w-full bg-[#0c0c0e] border border-[#3a494b]/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs cursor-pointer">
+                      <label className="text-on-surface-variant block">PROJECT TYPE</label>
+                      <select className="w-full bg-[#0c0c0e] border border-outline/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs cursor-pointer">
                         <option>Web Application Dev</option>
                         <option>Mobile App Dev (React Native)</option>
                         <option>Agentic AI Workflows</option>
@@ -1200,12 +1200,12 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                     </div>
 
                   <div className="space-y-1">
-                    <label className="text-gray-500 block">PROJECT SPECIFICATION OVERVIEW</label>
+                    <label className="text-on-surface-variant block">PROJECT SPECIFICATION OVERVIEW</label>
                     <textarea 
                       rows={4} 
                       required
                       placeholder="Briefly describe the systems architectural target and features needed..." 
-                      className="w-full bg-[#0c0c0e] border border-[#3a494b]/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs resize-none"
+                      className="w-full bg-surface-container-high border border-outline/40 rounded p-2.5 text-on-surface focus: focus:border-outline/40 font-mono text-xs resize-none outline-none transition-all"
                     />
                   </div>
 
@@ -1224,7 +1224,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
             <div className="md:col-span-5 flex flex-col gap-4 sm:gap-6">
               
               {/* Card 1: Open Source & Developer Channels */}
-              <div className="glass-panel p-4 sm:p-6 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 space-y-4">
+              <div className="glass-panel p-4 sm:p-6 rounded-xl border border-outline/15 bg-surface-container-low/40 space-y-4">
                 <div className="space-y-1.5">
                   <span className="px-2 py-0.5 rounded bg-[#ce5dff]/20 border border-[#ce5dff]/30 text-[#ebb2ff] text-[9px] font-mono uppercase tracking-wider">Lab Support</span>
                   <h3 className="text-base font-bold text-white">Developer Collaborations</h3>
@@ -1247,14 +1247,14 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
               </div>
 
               {/* Card 2: HQ Coordinates */}
-              <div className="glass-panel p-4 sm:p-6 rounded-xl border border-[#3a494b]/15 bg-[#131315]/40 space-y-3 font-mono text-xs leading-relaxed text-[#b9cacb]">
+              <div className="glass-panel p-4 sm:p-6 rounded-xl border border-outline/15 bg-surface-container-low/40 space-y-3 font-mono text-xs leading-relaxed text-[#b9cacb]">
                 <h4 className="text-white font-bold uppercase tracking-wider text-[10px]">HQ Coordinates</h4>
                 <p className="text-xs">
                   SutharLabs Research Hub &amp; Studios<br />
                   Digital Innovation Cluster<br />
                   India
                 </p>
-                <div className="pt-2 border-t border-[#3a494b]/10 flex justify-between text-[10px] text-gray-500">
+                <div className="pt-2 border-t border-outline/10 flex justify-between text-[10px] text-on-surface-variant">
                   <span>TIMEZONE</span>
                   <span>UTC+5:30 (IST)</span>
                 </div>
@@ -1271,7 +1271,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                 setCurrentView('HOME');
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
-              className="px-6 py-3 rounded-lg border border-[#3a494b]/30 bg-transparent text-[#b9cacb] font-mono text-xs uppercase tracking-wider hover:text-white hover:border-white transition-all cursor-pointer"
+              className="px-6 py-3 rounded-lg border border-outline/30 bg-transparent text-[#b9cacb] font-mono text-xs uppercase tracking-wider hover:text-white hover:border-white transition-all cursor-pointer"
             >
               Back to Home Page
             </button>
@@ -1283,7 +1283,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
       {/* Dynamic Project Spec Sheet Overlay Drawer/Modal */}
       {selectedProject && (
         <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-panel border border-tertiary/30 max-w-2xl w-full rounded-2xl bg-surface dark:bg-[#131315]/95 shadow-[0_15px_50px_rgba(0,0,0,0.85)] max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col justify-between">
+          <div className="glass-panel border border-tertiary/30 max-w-2xl w-full rounded-2xl bg-surface dark:bg-surface-container-low/95 shadow-[0_15px_50px_rgba(0,0,0,0.85)] max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col justify-between">
             
             {/* Drawer Header */}
             <div className="p-4 sm:p-6 border-b border-outline/20 flex justify-between items-start">
@@ -1385,7 +1385,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
       </main>
 
       {/* Footer */}
-      <footer className="w-full py-4 sm:py-8 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 bg-surface-container dark:bg-[#131315] border-t border-outline/10 z-10 mt-auto">
+      <footer className="w-full py-4 sm:py-8 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 bg-surface-container dark:bg-surface-container-low border-t border-outline/10 z-10 mt-auto">
         <div className="text-md font-bold text-primary tracking-tight hover:brightness-110">
           SutharLabs
         </div>

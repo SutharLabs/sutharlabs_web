@@ -84,7 +84,7 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
   };
 
   return (
-    <div className="min-h-screen w-full overflow-y-auto flex items-center justify-center relative bg-surface dark:bg-[#050505] p-4 font-sans chart-grid">
+    <div className="min-h-screen w-full overflow-y-auto flex items-center justify-center relative bg-background p-4 font-sans chart-grid">
       {/* Glow Ambient Circles */}
       <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-primary/5 blur-[120px] rounded-full pointer-events-none"></div>
       <div className="absolute bottom-[-20%] right-[-10%] w-[40%] h-[40%] bg-secondary/5 blur-[100px] rounded-full pointer-events-none"></div>
@@ -148,7 +148,7 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
                 <div className="rounded bg-surface-container-high border border-outline/20 p-3 block focus-within:border-secondary focus-within:shadow-[0_0_8px_rgba(206,93,255,0.2)] transition-all">
                   <label className="block font-mono text-[10px] text-on-surface-variant uppercase mb-1 tracking-wider">Full Name</label>
                   <input 
-                    className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-on-surface placeholder-on-surface-variant/50 outline-none" 
+                    className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-on-surface placeholder-on-surface-variant/50 outline-none transition-all" 
                     placeholder="John Doe" 
                     type="text"
                     value={fullname}
@@ -160,7 +160,7 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
               <div className="rounded bg-surface-container-high border border-outline/20 p-3 block focus-within:border-primary focus-within:shadow-[0_0_8px_rgba(0,219,231,0.2)] transition-all">
                 <label className="block font-mono text-[10px] text-on-surface-variant uppercase mb-1 tracking-wider">Email Address</label>
                 <input 
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-on-surface placeholder-on-surface-variant/50 outline-none" 
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-on-surface placeholder-on-surface-variant/50 outline-none transition-all" 
                   placeholder="user@domain.com" 
                   type="email"
                   required
@@ -175,7 +175,7 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
                   <span className="font-mono text-[10px] text-primary hover:brightness-110 transition-colors cursor-pointer">Forgot?</span>
                 </div>
                 <input 
-                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-on-surface outline-none" 
+                  className="w-full bg-transparent border-none p-0 focus:ring-0 font-mono text-sm text-on-surface outline-none transition-all" 
                   placeholder="••••••••" 
                   type="password"
                   required

@@ -92,8 +92,8 @@ export default function WorkspacePluginStore({ logs, onAddLog, userEmail, userTo
 
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0">
         <div>
-          <h2 className="text-2xl font-sans font-bold text-[#e5e1e4]">Workspace Plugin Store</h2>
-          <p className="text-xs text-[#849495] mt-1">Install native extensions directly into your workspace.</p>
+          <h2 className="text-2xl font-sans font-bold text-on-surface">Workspace Plugin Store</h2>
+          <p className="text-xs text-on-surface-variant mt-1">Install native extensions directly into your workspace.</p>
         </div>
         <span className="material-symbols-outlined text-[#00dbe7] text-3xl sm:text-4xl">extension</span>
       </div>
@@ -102,18 +102,18 @@ export default function WorkspacePluginStore({ logs, onAddLog, userEmail, userTo
         {plugins.map(p => {
           const isInstalled = installedIds.has(p.id);
           return (
-            <div key={p.id} className="glass-panel p-5 rounded-lg flex flex-col gap-3 relative overflow-hidden group border border-[#3a494b]/30 hover:border-[#00dbe7]/50 transition-all">
+            <div key={p.id} className="glass-panel p-5 rounded-lg flex flex-col gap-3 relative overflow-hidden group border border-outline/30 hover:border-[#00dbe7]/50 transition-all">
               {isInstalled && <div className="absolute top-0 right-0 w-16 h-16 bg-[#00e476]/10 rounded-bl-full pointer-events-none" />}
               
               <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-lg bg-[#0e0e10] border border-[#3a494b]/50 flex items-center justify-center shrink-0">
+                <div className="w-12 h-12 rounded-lg bg-[#0e0e10] border border-outline/50 flex items-center justify-center shrink-0">
                   <span className="material-symbols-outlined text-[#00dbe7] text-2xl">{p.iconSymbol}</span>
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-[#e5e1e4] group-hover:text-[#74f5ff] transition-colors">{p.name}</h3>
+                  <h3 className="text-lg font-bold text-on-surface group-hover:text-[#74f5ff] transition-colors">{p.name}</h3>
                   <div className="flex items-center gap-2 mt-1">
-                    <span className="text-[10px] font-mono text-[#849495] uppercase px-2 py-0.5 bg-[#131315] rounded border border-[#3a494b]/30">{p.category}</span>
-                    <span className="text-[10px] font-mono text-[#849495]">v{p.version}</span>
+                    <span className="text-[10px] font-mono text-on-surface-variant uppercase px-2 py-0.5 bg-surface-container-low rounded border border-outline/30">{p.category}</span>
+                    <span className="text-[10px] font-mono text-on-surface-variant">v{p.version}</span>
                     <span className="text-[10px] font-mono text-[#00e476]">{p.type}</span>
                   </div>
                 </div>
