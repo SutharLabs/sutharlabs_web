@@ -17,7 +17,7 @@
     <script>
       (function() {
         var saved = localStorage.getItem('sutharlabs_theme');
-        var theme = (saved === 'light' || saved === 'dark') ? saved : 'dark';
+        var theme = (saved === 'light' || saved === 'dark') ? saved : 'light';
         if (theme === 'dark') document.documentElement.classList.add('dark');
         else document.documentElement.classList.remove('dark');
       })();

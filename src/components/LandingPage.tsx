@@ -91,40 +91,24 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
     return items;
   };
 
-  // Load store plugins from real backend REST API routes
+  // Static plugin data — embedded directly to work without a backend (Vercel frontend deployment)
   useEffect(() => {
-    const fetchPlugins = async () => {
-      try {
-        const response = await fetch('/api/plugins');
-        if (response.ok) {
-          const data = await response.json();
-          setPlugins(data);
-        }
-      } catch (err) {
-        console.error('Error fetching registry plugins from backend server:', err);
-      }
-    };
+    setPlugins([
+      { id: 'plugin_1', name: 'JIRA MCP Server', category: 'DevOps', type: 'Free', downloads: '2.4k', rating: 4.8, description: 'Seamless Model Context Protocol integration to read, create, update, and search JIRA issues, sprints, and project boards directly through your agent workflow.', iconSymbol: 'smart_toy', tags: ['JIRA', 'Atlassian', 'MCP', 'Workspace'] },
+      { id: 'plugin_2', name: 'Confluence MCP Server', category: 'Productivity', type: 'Premium', downloads: '1.9k', rating: 4.9, description: 'Dynamic MCP bridge empowering agents to crawl, index, read, and write high-structured Confluence spaces, meeting notes, and engineering documentation templates.', iconSymbol: 'database', tags: ['Confluence', 'Atlassian', 'Knowledge', 'Data'] },
+      { id: 'plugin_3', name: 'DevOps Copilot', category: 'AI', type: 'Free', downloads: '12k', rating: 4.9, description: 'Automated CI/CD pipeline monitoring, anomaly detection, and automated hot-fix container generation scripts.', iconSymbol: 'smart_toy', tags: ['DevOps', 'AI', 'Kubernetes'] },
+      { id: 'plugin_4', name: 'FinData MCP', category: 'Finance', type: 'Premium', downloads: '8k', rating: 4.7, description: 'Secure Model Context Protocol server for real-time market data extraction, financial ledgers, and portfolio analytics.', iconSymbol: 'account_balance', tags: ['Finance', 'Ledger', 'API'] },
+      { id: 'plugin_5', name: 'Vector Sync', category: 'Plugin', type: 'Trial', downloads: '15k', rating: 4.8, description: 'Seamlessly sync relational transaction databases to vector storage indexes for dynamic context RAG logic.', iconSymbol: 'database', tags: ['Vector DB', 'RAG', 'Admin'] },
+    ]);
 
-    fetchPlugins();
-
-    const fetchPortfolios = async () => {
-      try {
-        const response = await fetch('/api/portfolios');
-        if (response.ok) {
-          const data = await response.json();
-          setPortfolioProjects(data);
-        }
-      } catch (err) {
-        console.error('Error fetching portfolios:', err);
-      }
-    };
-    fetchPortfolios();
-
-
-    // Periodically sync with backend database list for reliable administration updates
-    const interval = setInterval(fetchPlugins, 3000);
-    return () => clearInterval(interval);
+    setPortfolioProjects([
+      { id: 'proj_1', title: 'Driven Enterprise', segment: 'Web Dev', description: 'A comprehensive digital marketing and corporate services hub showcasing global product portfolios.', detailedCase: 'Engineered a highly aesthetic marketing website featuring seamless page interactions, tailored visual showcases, and custom search optimization layouts. Built to provide reliable product discovery. Officially verified operating at https://drivenenterprise.in/', stat: 'Live at drivenenterprise.in', statLabel: 'Corporate marketing platform', techs: ['React 18', 'Vite', 'Tailwind CSS', 'Framer Motion', 'SEO Optimized'], client: 'Driven Enterprise', clientTitle: 'Director of Digital Brand', blueprintSymbol: 'globe', imageSrc: '/driven_enterprise.png' },
+      { id: 'proj_2', title: 'Aradhana Dharmika Trust', segment: 'Web Dev', description: 'Spiritual community and administrative temple trust platform handling daily activities and dynamic notices.', detailedCase: 'Designed a high-integrity, completely responsive portal for the Temple and Educational Trust. Streamlines daily calendar logs, community activities, and announcement boards with lightweight state synchronization. Officially verified operating at https://aradhanadharmikatrust.org/', stat: 'Live at aradhanadharmikatrust.org', statLabel: 'Temple & Educational Trust Hub', techs: ['React', 'TypeScript', 'Tailwind CSS', 'Dignified Theme', 'Responsive Grid'], client: 'Trust Board', clientTitle: 'Lead Trustee, Aradhana Trust', blueprintSymbol: 'account_balance', imageSrc: '/aradhana_trust.png' },
+      { id: 'proj_3', title: 'GoToxinFree With Tina', segment: 'Web Dev', description: 'Vibrant personal blogging, travels storyteller, and medical/health opinion exchange portal.', detailedCase: 'Developed an elegant bespoke personal blog and content syndicate system with high contrast reading panels and local user bookmarks. Completely mobile optimized with zero latency reading transitions. Officially verified operating at https://gotoxinfreewithtina.com/', stat: 'Live at gotoxinfreewithtina.com', statLabel: 'Travel Storytelling & Health Blog', techs: ['React 19', 'Tailwind UI', 'Markdown Reader', 'Bespoke Layouts', 'RSS Sync'], client: 'Tina Maria', clientTitle: 'Creator & Lead Author', blueprintSymbol: 'article', imageSrc: '/gotoxinfree_tina.png' },
+      { id: 'proj_4', title: 'SutharLabs Sovereign Engine', segment: 'AI & Analytics', description: 'Dense dashboard playground mapping live index telemetry trackers, visual node flows, and accounting modules.', detailedCase: 'Created this entire workspace development block to prove complete interactive UI capability. Fully localizes mock state engines, reactive flow graphs, financial ledger balancers, and full real-time simulation logic.', stat: 'Workspace Suite', statLabel: 'Active SutharLabs Showcase Core', techs: ['React 18', 'TypeScript', 'D3.js', 'Recharts', 'Tailwind CSS', 'Node APIs'], client: 'Internal Systems', clientTitle: 'Founder, SutharLabs', blueprintSymbol: 'deployed_code', imageSrc: '/sutharlabs_engine.png' },
+    ]);
   }, []);
+
 
   // Portfolio items presenting credibility for custom web & mobile apps
   
