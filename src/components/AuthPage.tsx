@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { UserProfile } from '../types';
+import { useGoogleLogin } from '@react-oauth/google';
 
 interface AuthPageProps {
   onLoginSuccess: (profile: UserProfile) => void;
@@ -59,14 +60,56 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
     }
   };
 
-  const handleSocialLogin = async (platform: 'GitHub' | 'Google') => {
+  const googleLogin = useGoogleLogin({
+    onSuccess: (tokenResponse) => {
+      handleRealSocialLogin('Google', tokenResponse.access_token);
+    },
+    onError: () => {
+      setErrorMsg('Google Login Failed');
+    }
+  });
+
+  const handleSocialLoginClick = (platform: 'GitHub' | 'Google') => {
+    if (platform === 'Google') {
+      googleLogin();
+    } else {
+      handleSocialLogin(platform);
+    }
+  };
+
+  const handleRealSocialLogin = async (platform: 'GitHub' | 'Google', token: string) => {
     setErrorMsg('');
     setLoading(true);
     try {
       const response = await fetch('/api/auth/oauth', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ platform })
+        body: JSON.stringify({ platform, token })
+      });
+
+      const data = await response.json();
+      if (!response.ok) {
+        setErrorMsg(data.error || 'Failed to authenticate via OAuth.');
+        return;
+      }
+
+      onLoginSuccess(data.user);
+    } catch (err) {
+      setErrorMsg('Failed to connect to the authentication server.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSocialLogin = async (platform: 'GitHub' | 'Google', mockEmail?: string, mockName?: string) => {
+    // Kept for GitHub fallback
+    setErrorMsg('');
+    setLoading(true);
+    try {
+      const response = await fetch('/api/auth/oauth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ platform, email: mockEmail, name: mockName })
       });
 
       const data = await response.json();
@@ -212,7 +255,7 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
             {/* Social Authentication Widgets */}
             <div className="flex flex-col gap-4">
               <button 
-                onClick={() => handleSocialLogin('Google')}
+                onClick={(e) => { e.preventDefault(); handleSocialLoginClick('Google'); }}
                 className="flex items-center justify-center gap-3 py-2.5 px-4 rounded-lg bg-surface border border-outline/25 dark:border-outline/10 font-sans text-sm font-medium text-on-surface hover:bg-on-surface/5 transition-all duration-200 cursor-pointer w-full shadow-sm"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
