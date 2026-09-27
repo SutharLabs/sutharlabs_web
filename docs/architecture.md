@@ -45,3 +45,16 @@ We implemented a robust hybrid architecture utilizing:
 
 ### Database Layer
 Because Vercel is strictly ephemeral (no file-system persistence), the original file-based SQLite database (`prisma/dev.db`) is replaced in production with **Neon Serverless Postgres** via `@prisma/adapter-neon`. Prisma acts as the universal ORM interface, seamlessly interacting with SQLite locally and Postgres in the cloud without altering any backend logic.
+
+## 5. Portability & Future VPS Migration (AWS, Hostinger, DigitalOcean)
+One of the primary advantages of this custom monolithic Express architecture is **zero vendor lock-in**. Unlike Next.js applications that are heavily coupled to Vercel's proprietary infrastructure, this entire platform remains a standard Node.js application at its core.
+
+If scaling demands or feature requirements (such as long-running background tasks or WebSockets) outgrow Vercel's Serverless environment, the platform can be seamlessly ported to any traditional Virtual Private Server (VPS) or cloud provider (e.g., AWS EC2, Hostinger, Render, DigitalOcean, or Railway).
+
+### Migration Strategy:
+1. **Remove Vercel Bridge**: Simply delete `api/server.ts` and `vercel.json`.
+2. **Build the Frontend**: Run `npm run build` to compile the Vite React application into static assets.
+3. **Start the Express Server**: The `server.ts` file automatically detects if it is running outside of Vercel (via the lack of the `VERCEL` env flag) and will natively serve the static `dist/` directory on port 3000 (or the specified `$PORT` environment variable).
+4. **Dockerization (Optional)**: The platform can easily be containerized using a standard Node.js Dockerfile, allowing orchestrated deployments via Kubernetes or AWS ECS.
+
+This hybrid approach ensures immediate, free scalability via Vercel today, with an open, unhindered migration path to dedicated hardware tomorrow.
