@@ -2,6 +2,7 @@
   "buildCommand": "npm install && npx prisma generate && vite build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/(?!api/)(.*)", "destination": "/index.html" }
+    { "source": "/api/(.*)", "destination": "/api/server?apiPath=$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
