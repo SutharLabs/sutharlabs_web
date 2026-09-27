@@ -5,7 +5,7 @@ import fs from "fs";
 import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
 import { getPrismaClient } from "./api/_utils.js";
-import { PluginEngine } from "./src/plugins/PluginEngine";
+import { PluginEngine } from "./src/plugins/PluginEngine.js";
 
 const PORT = 3000;
 const prisma = getPrismaClient();
