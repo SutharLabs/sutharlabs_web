@@ -346,22 +346,8 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
   // ==================== AUTH ENDPOINTS ====================
 
   // File Upload Logic
-  const multer = (await import('multer')).default;
-  const upload = multer({ dest: path.join(process.cwd(), 'uploads/') });
-
-  app.post('/api/plugins/upload', upload.single('pluginFile'), async (req, res) => {
-    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
-    
-    // In a real scenario, we would unzip the file to installed_plugins/ 
-    // For now we just mock the success response.
-    const fs = await import('fs/promises');
-    try {
-      await fs.copyFile(req.file.path, path.join(process.cwd(), 'installed_plugins', req.file.originalname));
-      await fs.unlink(req.file.path);
-    } catch(e) {}
-    
-    res.json({ message: 'File uploaded successfully', filename: req.file.originalname });
-  });
+  // Temporarily disabled multer due to Vercel dynamic import compatibility issues
+  // app.post('/api/plugins/upload', ...);
 
   // POST /api/auth/signup
   app.post("/api/auth/signup", async (req, res) => {
