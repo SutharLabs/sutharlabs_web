@@ -223,15 +223,19 @@ After deploying, Google OAuth will reject requests from your new Vercel domain b
 
 1. Go to the [Google Cloud Console](https://console.cloud.google.com/) → **APIs & Services → Credentials**.
 2. Click on your OAuth 2.0 Client ID.
-3. Under **Authorized JavaScript origins**, click **+ ADD URI** and add:
+3. Under **Authorized JavaScript origins**, click **+ ADD URI** and add your production domain(s) (without a trailing slash):
    ```
    https://your-app.vercel.app
+   https://www.your-custom-domain.com
+   https://your-custom-domain.com
    ```
-4. Under **Authorized redirect URIs**, add:
+4. Under **Authorized redirect URIs**, add the exact same domains:
    ```
    https://your-app.vercel.app
-   https://your-app.vercel.app/auth/callback
+   https://www.your-custom-domain.com
+   https://your-custom-domain.com
    ```
+   *(Note: Add the `/auth/callback` path if your application requires it, but standard Google OAuth popups often just need the root origin).*
 5. Click **Save**.
 
 > **Note:** Propagation can take a few minutes. If OAuth fails immediately after saving, wait 2–5 minutes and try again.
