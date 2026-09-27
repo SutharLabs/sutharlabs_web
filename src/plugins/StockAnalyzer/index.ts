@@ -1,32 +1,9 @@
 import yahooFinance from 'yahoo-finance2';
 import { RSI, MACD, BollingerBands, ATR, ADX, SMA, EMA } from 'technicalindicators';
-import { Redis } from '@upstash/redis';
-
-const redisUrl = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const redisToken = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-const redis = redisUrl && redisToken ? new Redis({ url: redisUrl, token: redisToken }) : null;
-
-async function getCached<T>(key: string, fetcher: () => Promise<T>, ttlSeconds = 60): Promise<T> {
-  if (!redis) return fetcher();
-  try {
-    const cached = await redis.get<T>(key);
-    if (cached) return cached;
-  } catch (e) {
-    console.error(`Redis Cache read error for ${key}:`, e);
-  }
-  const data = await fetcher();
-  try {
-    await redis.set(key, data, { ex: ttlSeconds });
-  } catch (e) {
-    console.error(`Redis Cache write error for ${key}:`, e);
-  }
-  return data;
-}
 
 export async function getQuote(symbol: string) {
-  return getCached(`stock:quote:${symbol}`, async () => {
-    try {
-      const quote: any = await yahooFinance.quote(symbol);
+  try {
+    const quote: any = await yahooFinance.quote(symbol);
     return {
       symbol,
       name: quote.longName || quote.shortName || symbol,
@@ -40,16 +17,14 @@ export async function getQuote(symbol: string) {
       change_percent: quote.regularMarketChangePercent,
       market_open: quote.marketState === 'REGULAR',
     };
-    } catch (e) {
-      throw new Error(`Failed to fetch quote for ${symbol}: ${e}`);
-    }
-  }, 30); // 30 second cache for live quote
+  } catch (e) {
+    throw new Error(`Failed to fetch quote for ${symbol}: ${e}`);
+  }
 }
 
 export async function getHistory(symbol: string, period: string = '5d', interval: any = '15m') {
-  return getCached(`stock:history:${symbol}:${period}:${interval}`, async () => {
-    try {
-      const pMap: any = {
+  try {
+    const pMap: any = {
       '1D': { period1: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), interval: '5m' },
       '1W': { period1: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), interval: '15m' },
       '1M': { period1: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), interval: '1h' },
@@ -69,16 +44,14 @@ export async function getHistory(symbol: string, period: string = '5d', interval
     })).filter(c => c.close != null);
     
     return { symbol, period, candles };
-    } catch (e) {
-      throw new Error(`Failed to fetch history for ${symbol}: ${e}`);
-    }
-  }, 120); // 2 minute cache for history
+  } catch (e) {
+    throw new Error(`Failed to fetch history for ${symbol}: ${e}`);
+  }
 }
 
 export async function getAnalysis(symbol: string) {
-  return getCached(`stock:analysis:${symbol}`, async () => {
-    try {
-      const result: any = await yahooFinance.chart(symbol, {
+  try {
+    const result: any = await yahooFinance.chart(symbol, {
       period1: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
       interval: '1d'
     });
@@ -128,18 +101,16 @@ export async function getAnalysis(symbol: string) {
       ema_50: ema50[ema50.length - 1],
       ma_20: ma20[ma20.length - 1],
       signals
-      };
-    } catch (e) {
-      throw new Error(`Failed to run analysis for ${symbol}: ${e}`);
-    }
-  }, 300); // 5 minute cache for full analysis
+    };
+  } catch (e) {
+    throw new Error(`Failed to run analysis for ${symbol}: ${e}`);
+  }
 }
 
 export async function getSuggestion(symbol: string) {
-  return getCached(`stock:suggestion:${symbol}`, async () => {
-    try {
-      const quote = await getQuote(symbol);
-      const analysis = await getAnalysis(symbol);
+  try {
+    const quote = await getQuote(symbol);
+    const analysis = await getAnalysis(symbol);
     
     let score = 0;
     let strength = 0;
@@ -204,9 +175,8 @@ export async function getSuggestion(symbol: string) {
       stop_loss: stop,
       risk_reward_ratio: rr,
       reasoning
-      };
-    } catch (e) {
-      throw new Error(`Failed to get suggestion for ${symbol}: ${e}`);
-    }
-  }, 300); // 5 minute cache for suggestions
+    };
+  } catch (e) {
+    throw new Error(`Failed to get suggestion for ${symbol}: ${e}`);
+  }
 }
