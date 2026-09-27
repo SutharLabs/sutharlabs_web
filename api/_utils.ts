@@ -1,6 +1,4 @@
 import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
-import pg from 'pg';
 import crypto from 'crypto';
 
 export const SECRET_KEY = process.env.JWT_SECRET || "suthar-labs-sovereign-secret-key-2026-matrix-neon";
@@ -9,9 +7,7 @@ let cachedPrisma: PrismaClient | null = null;
 
 export function getPrismaClient() {
   if (cachedPrisma) return cachedPrisma;
-  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-  const adapter = new PrismaPg(pool as any);
-  cachedPrisma = new PrismaClient({ adapter });
+  cachedPrisma = new PrismaClient();
   return cachedPrisma;
 }
 
