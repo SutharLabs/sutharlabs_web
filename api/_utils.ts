@@ -1,5 +1,10 @@
 import { PrismaClient } from '@prisma/client';
+import { PrismaNeon } from '@prisma/adapter-neon';
+import { Pool, neonConfig } from '@neondatabase/serverless';
+import ws from 'ws';
 import crypto from 'crypto';
+
+neonConfig.webSocketConstructor = ws;
 
 export const SECRET_KEY = process.env.JWT_SECRET || "suthar-labs-sovereign-secret-key-2026-matrix-neon";
 
@@ -7,7 +12,9 @@ let cachedPrisma: PrismaClient | null = null;
 
 export function getPrismaClient() {
   if (cachedPrisma) return cachedPrisma;
-  cachedPrisma = new PrismaClient();
+  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+  const adapter = new PrismaNeon(pool as any);
+  cachedPrisma = new PrismaClient({ adapter });
   return cachedPrisma;
 }
 
