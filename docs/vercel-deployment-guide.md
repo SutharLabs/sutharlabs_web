@@ -97,13 +97,17 @@ This approach converts the Express server into Vercel Serverless Functions so th
 
 Create an `api/` directory at the project root. Vercel treats each file here as a serverless function endpoint.
 
-**Example: `api/index.ts`** — Wrap your Express app as a Vercel handler:
+**Example: `api/[...express].ts`** — Wrap your Express app as a Vercel catch-all dynamic route to ensure `req.url` is correctly preserved without manual rewrites replacing it:
 
 ```typescript
-import app from '../server'; // export the express `app` from server.ts
+import app, { startPromise } from '../server.js'; // export the express `app` and any async bootstrap promise from server.ts
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-export default function handler(req: VercelRequest, res: VercelResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Ensure the server has finished bootstrapping routes and plugins (if applicable)
+  await startPromise;
+  
+  // Hand off to Express
   return app(req as any, res as any);
 }
 ```
@@ -115,10 +119,11 @@ Update `server.ts` to **export** the Express app instead of calling `app.listen(
 // app.listen(PORT, () => { ... })
 
 // To:
+export const startPromise = startServer().catch(console.error); // Ensure your bootstrapping completes
 export default app;
 
 // Only listen locally when not in serverless context
-if (process.env.NODE_ENV !== 'production') {
+if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
 }
@@ -132,16 +137,18 @@ npm install --save-dev @vercel/node
 
 ### Step 2: Update `vercel.json` for Full-Stack
 
+To ensure Vercel does not accidentally serve `index.html` for API requests, use an explicit pass-through rewrite for `/api/(.*)` *before* your SPA catch-all rewrite:
+
 ```json
 {
-  "buildCommand": "vite build && prisma generate",
+  "buildCommand": "npm install && npx prisma generate && vite build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/index" },
+    { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/index.ts": {
+    "api/**/*.ts": {
       "maxDuration": 30
     }
   }
