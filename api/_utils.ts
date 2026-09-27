@@ -13,9 +13,6 @@ let cachedPrisma: PrismaClient | null = null;
 export function getPrismaClient() {
   if (cachedPrisma) return cachedPrisma;
   const dbUrl = process.env["NEON_DB_URL"] || process.env["DATABASE_URL"];
-  if (!dbUrl) {
-    throw new Error(`getPrismaClient failed: Database URL is undefined! NEON_DB_URL=${typeof process.env["NEON_DB_URL"]}, DATABASE_URL=${typeof process.env["DATABASE_URL"]}`);
-  }
   const adapter = new PrismaNeon({ connectionString: dbUrl });
   cachedPrisma = new PrismaClient({ adapter });
   return cachedPrisma;
