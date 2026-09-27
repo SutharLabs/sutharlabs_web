@@ -5,6 +5,7 @@ import fs from "fs";
 import crypto from "crypto";
 import { getPrismaClient } from "./api/_utils.js";
 import { PluginEngine } from "./src/plugins/PluginEngine.js";
+import { getQuote, getHistory, getAnalysis, getSuggestion } from "./src/plugins/StockAnalyzer/index.js";
 
 const PORT = 3000;
 const prisma = getPrismaClient();
@@ -800,10 +801,8 @@ app.get("/api/workspace-plugins/installed", authenticateToken, async (req: any, 
 // ==========================================
 // NATIVE TS STOCK ANALYZER API
 // ==========================================
-// Using dynamic imports so we don't crash if yahoo-finance2 is missing during build
 app.get("/api/workspace/stock-analyzer/quote", async (req: any, res: any) => {
   try {
-    const { getQuote } = await import("./src/plugins/StockAnalyzer/index.ts");
     const data = await getQuote(req.query.symbol as string);
     res.json(data);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -811,7 +810,6 @@ app.get("/api/workspace/stock-analyzer/quote", async (req: any, res: any) => {
 
 app.get("/api/workspace/stock-analyzer/history", async (req: any, res: any) => {
   try {
-    const { getHistory } = await import("./src/plugins/StockAnalyzer/index.ts");
     const data = await getHistory(req.query.symbol as string, req.query.period as string, req.query.interval as string);
     res.json(data);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -819,7 +817,6 @@ app.get("/api/workspace/stock-analyzer/history", async (req: any, res: any) => {
 
 app.get("/api/workspace/stock-analyzer/analysis", async (req: any, res: any) => {
   try {
-    const { getAnalysis } = await import("./src/plugins/StockAnalyzer/index.ts");
     const data = await getAnalysis(req.query.symbol as string);
     res.json(data);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
@@ -827,7 +824,6 @@ app.get("/api/workspace/stock-analyzer/analysis", async (req: any, res: any) => 
 
 app.get("/api/workspace/stock-analyzer/suggestion", async (req: any, res: any) => {
   try {
-    const { getSuggestion } = await import("./src/plugins/StockAnalyzer/index.ts");
     const data = await getSuggestion(req.query.symbol as string);
     res.json(data);
   } catch (e: any) { res.status(500).json({ error: e.message }); }
