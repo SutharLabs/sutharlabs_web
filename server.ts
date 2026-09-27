@@ -4,13 +4,11 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { createServer as createViteServer } from "vite";
-import pg from "pg";
-import { PrismaClient } from "@prisma/client";
-import { PrismaPg } from "@prisma/adapter-pg";
+import { getPrismaClient } from "./api/_utils.js";
+import { PluginEngine } from "./src/plugins/PluginEngine";
 
 const PORT = 3000;
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } });
-const prisma = new PrismaClient({ adapter });
+const prisma = getPrismaClient();
 const SECRET_KEY = process.env.JWT_SECRET || "suthar-labs-sovereign-secret-key-2026-matrix-neon";
 
 // Compact cryptographic signature token generator (stateless industry standard)
@@ -284,9 +282,11 @@ async function seedDatabase() {
   }
 }
 
+const app = express();
+export default app;
+app.use(express.json());
+
 async function startServer() {
-  const app = express();
-  app.use(express.json());
 
 // -------------------------------------------------------------
 // Development Portfolios
@@ -1168,7 +1168,6 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
   });
 
   // ==================== INITIALIZE PLUGIN ENGINE ====================
-  const { PluginEngine } = await import('./src/plugins/PluginEngine.ts');
   const pluginEngine = new PluginEngine(app);
   await pluginEngine.initialize();
 
@@ -1190,11 +1189,13 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`[SutharLabs Sovereign Engine] Full-stack SQLite server running on http://0.0.0.0:${PORT}`);
-  });
+  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`[SutharLabs Sovereign Engine] Full-stack SQLite server running on http://0.0.0.0:${PORT}`);
+    });
+  }
 }
 
-startServer().catch((err) => {
+export const startPromise = startServer().catch((err) => {
   console.error("Failed to bootstrap full-stack workspace node server:", err);
 });
