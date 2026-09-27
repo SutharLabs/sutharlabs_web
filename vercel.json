@@ -6,7 +6,7 @@
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/*.ts": {
+    "api/**/*.ts": {
       "maxDuration": 15
     }
   }
