@@ -3,7 +3,6 @@ import "dotenv/config";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
-import { createServer as createViteServer } from "vite";
 import { getPrismaClient } from "./api/_utils.js";
 import { PluginEngine } from "./src/plugins/PluginEngine.js";
 
@@ -1176,6 +1175,7 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
 
   // Mount Vite development server or production static assets handler
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa"
