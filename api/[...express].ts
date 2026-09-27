@@ -5,7 +5,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // In Vercel, req.url often strips the /api base path when using catch-all routes.
   // We need to restore it so Express router can match correctly.
   if (req.url && !req.url.startsWith('/api')) {
-    req.url = `/api${req.url === '/' ? '' : req.url}`;
+    const cleanUrl = req.url.startsWith('/') ? req.url : `/${req.url}`;
+    req.url = `/api${cleanUrl}`;
   }
   
   // Ensure the server has finished bootstrapping routes and plugins (if applicable)
