@@ -1,15 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { PrismaClient } from '@prisma/client';
-import { PrismaNeon } from '@prisma/adapter-neon';
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import ws from 'ws';
-
-neonConfig.webSocketConstructor = ws;
+import { getPrismaClient } from './_utils';
 
 export default async function handler(_req: VercelRequest, res: VercelResponse) {
-  const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  const adapter = new PrismaNeon(pool as any);
-  const prisma = new PrismaClient({ adapter });
+  const prisma = getPrismaClient();
 
   try {
     const projects = await prisma.developmentProject.findMany({
@@ -21,8 +14,5 @@ export default async function handler(_req: VercelRequest, res: VercelResponse) 
   } catch (err) {
     console.error('[api/portfolios] Error:', err);
     res.status(500).json({ error: 'Failed to fetch portfolios' });
-  } finally {
-    await prisma.$disconnect();
-    await pool.end();
   }
 }
