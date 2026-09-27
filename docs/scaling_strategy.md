@@ -17,10 +17,14 @@ The plugin architecture currently stages `.zip` or `.vsix` files in a local `/up
 - **Solution**: Replace `multer` with **Vercel Blob** (or AWS S3) to stream plugin uploads directly to cloud storage.
 - **Benefit**: Permanently solves the ephemeral storage issue and allows Vercel's CDN to serve plugin assets globally.
 
-### 4. Vercel Edge Middleware
-Currently, invalid API requests (e.g., bad JWT) still boot up the Node.js server to be rejected.
-- **Solution**: Implement a `middleware.ts` file at the project root to run on Vercel's **Edge Network**.
-- **Benefit**: Verify JWT tokens instantly in single-digit milliseconds globally, rejecting unauthorized users *before* they consume expensive Node.js Serverless Function compute time.
+### 4. Middleware Layer (Implemented)
+- **Status**: **Active** in `src/middleware/`
+- **Features Introduced**:
+  - `securityHeaders`: Enforces modern HTTP security headers (`X-Content-Type-Options: nosniff`, `X-Frame-Options: SAMEORIGIN`, `X-XSS-Protection`, strict referrer policy) and instant 204 preflight CORS responses.
+  - `rateLimiter`: Zero-cost, in-memory sliding window rate limiter throttling brute-force auth attempts (20 req / 5 min), stock query spam (60 req / min), and general API abuse (300 req / min).
+  - `authenticateToken` & `requireAdmin`: Decoupled, type-safe JWT authentication and role-based access control guards.
+  - `requestLogger`: High-precision API latency logger flagging slow executions (`[SLOW]` > 1s).
+  - `errorHandler` & `notFoundHandler`: Gracefully traps exceptions without crashing and prevents the SPA fallback from masking 404 API errors.
 
 ### 5. Migrate to Next.js (App Router)
 For massive enterprise scaling, the ultimate Vercel optimization is migrating the Vite React frontend and Express backend to Next.js.

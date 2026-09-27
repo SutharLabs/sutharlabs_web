@@ -3,66 +3,23 @@ import "dotenv/config";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
-import { getPrismaClient } from "./api/_utils.js";
+import { getPrismaClient, hashPassword, generateToken, verifyToken } from "./api/_utils.js";
 import { PluginEngine } from "./src/plugins/PluginEngine.js";
 import { getQuote, getHistory, getAnalysis, getSuggestion } from "./src/plugins/StockAnalyzer/index.js";
+import {
+  securityHeaders,
+  requestLogger,
+  authLimiter,
+  stockApiLimiter,
+  generalApiLimiter,
+  authenticateToken,
+  requireAdmin,
+  errorHandler,
+  notFoundHandler
+} from "./src/middleware/index.js";
 
 const PORT = 3000;
 const prisma = getPrismaClient();
-const SECRET_KEY = process.env.JWT_SECRET || "suthar-labs-sovereign-secret-key-2026-matrix-neon";
-
-// Compact cryptographic signature token generator (stateless industry standard)
-function generateToken(payload: object): string {
-  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
-  const body = Buffer.from(JSON.stringify({ ...payload, exp: Date.now() + 24 * 60 * 60 * 1000 })).toString("base64url");
-  const signature = crypto.createHmac("sha256", SECRET_KEY).update(`${header}.${body}`).digest("base64url");
-  return `${header}.${body}.${signature}`;
-}
-
-// Token session verifier
-function verifyToken(token: string): any {
-  try {
-    const [header, body, signature] = token.split(".");
-    if (!header || !body || !signature) return null;
-    const expectedSignature = crypto.createHmac("sha256", SECRET_KEY).update(`${header}.${body}`).digest("base64url");
-    if (signature !== expectedSignature) return null;
-    const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf8"));
-    if (payload.exp && Date.now() > payload.exp) return null; // expired
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-// Express Request Token Authenticator Middleware
-function authenticateToken(req: any, res: any, next: any) {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
-  if (!token) {
-    return res.status(401).json({ error: "Access Denied: Bearer authentication token is required." });
-  }
-
-  const decoded = verifyToken(token);
-  if (!decoded) {
-    return res.status(403).json({ error: "Access Denied: Session token is invalid or has expired." });
-  }
-
-  req.user = decoded;
-  next();
-}
-
-// Admin-only authorization guard — must be chained after authenticateToken
-function requireAdmin(req: any, res: any, next: any) {
-  if (!req.user || req.user.role !== "Admin") {
-    return res.status(403).json({ error: "Access Denied: Administrator privileges are required for this operation." });
-  }
-  next();
-}
-
-// Dynamic password SHA256 hasher
-function hashPassword(password: string): string {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
 
 // Default initial plugins data
 const defaultPlugins = [
@@ -284,7 +241,21 @@ async function seedDatabase() {
 
 const app = express();
 export default app;
+
+// 1. Modern HTTP Security Headers & CORS Pre-flight optimization
+app.use(securityHeaders);
+
+// 2. High-precision request performance & latency logger
+app.use(requestLogger);
+
+// 3. Request body parsing
 app.use(express.json());
+
+// 4. In-memory Rate Limiters (100% Free, zero third-party dependencies)
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
+app.use("/api/stock-analyzer", stockApiLimiter);
+app.use("/api", generalApiLimiter);
 
 async function startServer() {
 
@@ -1154,6 +1125,12 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
 
   // Serve compiled frontend UI assets from installed plugins
   app.use('/api/plugins/serve', express.static(path.join(process.cwd(), 'installed_plugins')));
+
+  // Unmatched /api/* routes return clean JSON 404 instead of falling through to SPA HTML
+  app.use('/api/*', notFoundHandler);
+
+  // Global Centralized Error Handler
+  app.use(errorHandler);
 
   // Mount Vite development server or production static assets handler
   if (process.env.NODE_ENV !== "production") {
