@@ -104,6 +104,17 @@ import app, { startPromise } from '../server.js'; // export the express `app` an
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  // Restore original URL for Express routing via our explicit rewrite query parameter
+  if (req.query && req.query.apiPath) {
+    const apiPath = Array.isArray(req.query.apiPath) ? req.query.apiPath[0] : req.query.apiPath;
+    const urlObj = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    urlObj.searchParams.delete('apiPath');
+    const search = urlObj.searchParams.toString();
+    req.url = `/api/${apiPath}${search ? '?' + search : ''}`;
+  } else if (req.url?.startsWith('/api/server')) {
+    req.url = req.url.replace('/api/server', '/api');
+  }
+  
   // Ensure the server has finished bootstrapping routes and plugins (if applicable)
   await startPromise;
   
@@ -144,7 +155,7 @@ To ensure Vercel does not accidentally serve `index.html` for API requests, use 
   "buildCommand": "npm install && npx prisma generate && vite build",
   "outputDirectory": "dist",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/api/(.*)", "destination": "/api/server?apiPath=$1" },
     { "source": "/(.*)", "destination": "/index.html" }
   ],
   "functions": {
