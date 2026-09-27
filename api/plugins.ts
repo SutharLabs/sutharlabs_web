@@ -11,8 +11,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Parse the tags JSON string back to array for the frontend
     const parsed = plugins.map(p => ({ ...p, tags: JSON.parse(p.tags) }));
     res.status(200).json(parsed);
-  } catch (err) {
+  } catch (err: any) {
     console.error('[api/plugins] Error:', err);
-    res.status(500).json({ error: 'Failed to fetch plugins' });
+    res.status(500).json({ error: 'Failed to fetch plugins', details: err?.message || String(err) });
   }
 }
