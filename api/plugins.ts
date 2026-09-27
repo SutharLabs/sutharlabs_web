@@ -2,9 +2,8 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getPrismaClient } from './_utils';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const prisma = getPrismaClient();
-
   try {
+    const prisma = getPrismaClient();
     const plugins = await prisma.plugin.findMany({
       orderBy: { name: 'asc' }
     });
