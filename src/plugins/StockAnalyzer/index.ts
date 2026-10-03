@@ -1,5 +1,8 @@
-import yahooFinance from 'yahoo-finance2';
+import YahooFinance from 'yahoo-finance2';
 import { RSI, MACD, BollingerBands, ATR, ADX, SMA, EMA } from 'technicalindicators';
+
+// Instantiate YahooFinance client (compatible with yahoo-finance2 v3+)
+const yahooFinance = new (YahooFinance as any)({ suppressNotices: ['yahooSurvey'] });
 
 export async function getQuote(symbol: string) {
   try {
