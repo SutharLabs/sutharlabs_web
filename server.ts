@@ -252,9 +252,10 @@ app.use(requestLogger);
 app.use(express.json());
 
 // 4. In-memory Rate Limiters (100% Free, zero third-party dependencies)
-app.use("/api/auth/login", authLimiter);
-app.use("/api/auth/register", authLimiter);
-app.use("/api/stock-analyzer", stockApiLimiter);
+app.use("/api/auth/signin", authLimiter);
+app.use("/api/auth/signup", authLimiter);
+app.use("/api/auth/change-password", authLimiter);
+app.use("/api/workspace/stock-analyzer", stockApiLimiter);
 app.use("/api", generalApiLimiter);
 
 async function startServer() {
