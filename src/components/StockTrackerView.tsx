@@ -86,7 +86,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
   const [actionQuantity, setActionQuantity] = useState<number>(1);
   const [notification, setNotification] = useState('');
 
-  const terminalEndRef = useRef<HTMLDivElement>(null);
+  const terminalContainerRef = useRef<HTMLDivElement>(null);
   const onAddLogRef = useRef(onAddLog);
   useEffect(() => {
     onAddLogRef.current = onAddLog;
@@ -192,9 +192,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
     return () => clearInterval(id);
   }, [symbol]);
 
-  // ── Terminal scroll ────────────────────────────────────────────────────────
+  // ── Terminal internal auto-scroll (does not hijack page window scroll) ────
   useEffect(() => {
-    terminalEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (terminalContainerRef.current) {
+      terminalContainerRef.current.scrollTop = terminalContainerRef.current.scrollHeight;
+    }
   }, [logs, activeTab]);
 
   // ── Chart SVG path ─────────────────────────────────────────────────────────
@@ -617,7 +619,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
           </div>
         </div>
 
-        <div className="flex-1 p-3 font-mono text-xs overflow-y-auto custom-scrollbar bg-[#050505]">
+        <div ref={terminalContainerRef} className="flex-1 p-3 font-mono text-xs overflow-y-auto custom-scrollbar bg-[#050505]">
           {activeTab === 'AGENT_LOGS' && (
             <div className="space-y-1">
               {logs.map((log, i) => {
@@ -638,7 +640,6 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                 <span className="text-on-surface-variant">[{new Date().toLocaleTimeString()}]</span>
                 <span className="animate-pulse">_</span>
               </div>
-              <div ref={terminalEndRef} />
             </div>
           )}
 
@@ -650,7 +651,6 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
               <div>&gt; Signal engine: TradingSuggestions v1.0 active</div>
               <div>&gt; Polling interval: 30s quote refresh</div>
               <div className="text-[#00e476]">Status: Stock API bridge running on port 5001</div>
-              <div ref={terminalEndRef} />
             </div>
           )}
 
@@ -661,7 +661,6 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
               )) ?? <div>[SIGNAL] No analysis loaded</div>}
               {analysis && <div>[INDICATORS] RSI={analysis.rsi?.toFixed(1)} | MACD={analysis.macd?.toFixed(3)} | ADX={analysis.adx?.toFixed(1)}</div>}
               {quote && <div>[QUOTE] Open={quote.open?.toFixed(2)} High={quote.high?.toFixed(2)} Low={quote.low?.toFixed(2)}</div>}
-              <div ref={terminalEndRef} />
             </div>
           )}
         </div>
