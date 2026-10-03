@@ -735,7 +735,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
                           </select>
                         </td>
                         <td className="py-3 hidden md:table-cell">
-                          <div className="text-[12px] font-bold text-on-surface">{item.activityCount + (item.role !== 'Banned' ? Math.round(multiplier * Math.random() * 4) : 0)} syncs</div>
+                          <div className="text-[12px] font-bold text-on-surface">{(item.activityCount ?? 0)} syncs</div>
                           <span className="text-[9px] text-on-surface-variant">API Gateway Calls</span>
                         </td>
                         <td className="py-3 text-right">
