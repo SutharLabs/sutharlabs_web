@@ -437,7 +437,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             )}
             
             {activeTab === 'Admin Console' && user.role === 'Admin' && (
-              <AdminConsoleView logs={logs} onAddLog={addLog} currentUserEmail={user.email} userToken={user.token || ''} />
+              <AdminConsoleView logs={logs} onAddLog={addLog} currentUserEmail={user.email} userToken={user.token || ''} theme={theme} />
             )}
             {activeTab === 'Manage Apps' && user.role === 'Admin' && (
               <ManageAppsView logs={logs} onAddLog={addLog} userToken={user.token || ''} />

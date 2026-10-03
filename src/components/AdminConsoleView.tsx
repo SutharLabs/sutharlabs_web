@@ -26,9 +26,11 @@ interface AdminConsoleProps {
   onAddLog: (log: TerminalLog) => void;
   currentUserEmail: string;
   userToken: string;
+  theme?: 'light' | 'dark';
 }
 
-export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, userToken }: AdminConsoleProps) {
+export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, userToken, theme = 'dark' }: AdminConsoleProps) {
+  const isLight = theme === 'light';
   // Load or initialize registered users from localStorage
   const [users, setUsers] = useState<RegisteredUser[]>([]);
   const [newUser, setNewUser] = useState({ name: '', email: '', role: 'Developer' as const });
@@ -625,18 +627,22 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
             onClick={toggleMaintenance}
             className={`px-3 py-1.5 rounded text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-2 ${
               systemActive 
-                ? 'bg-emerald-50 dark:bg-[#1a2f21] text-emerald-700 dark:text-[#00e476] border-emerald-300 dark:border-[#00e476]/30 hover:bg-emerald-100 dark:hover:bg-[#1a2f21]/80 shadow-sm' 
-                : 'bg-rose-50 dark:bg-[#3b1219] text-rose-700 dark:text-[#ffb4ab] border-rose-300 dark:border-[#ffb4ab]/30 hover:bg-rose-100 dark:hover:bg-[#3b1219]/80 shadow-sm'
+                ? isLight
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 shadow-sm' 
+                  : 'bg-[#1a2f21] text-[#00e476] border-[#00e476]/30 hover:bg-[#1a2f21]/80 shadow-sm'
+                : isLight
+                  ? 'bg-rose-50 text-rose-800 border-rose-300 hover:bg-rose-100 shadow-sm'
+                  : 'bg-[#3b1219] text-[#ffb4ab] border-[#ffb4ab]/30 hover:bg-[#3b1219]/80 shadow-sm'
             }`}
           >
             {systemActive ? (
               <>
-                <ToggleRight className="w-4 h-4 shrink-0 text-emerald-600 dark:text-[#00e476]" />
+                <ToggleRight className={`w-4 h-4 shrink-0 ${isLight ? 'text-emerald-700' : 'text-[#00e476]'}`} />
                 System Active
               </>
             ) : (
               <>
-                <ToggleLeft className="w-4 h-4 shrink-0 text-rose-600 dark:text-[#ffb4ab]" />
+                <ToggleLeft className={`w-4 h-4 shrink-0 ${isLight ? 'text-rose-700' : 'text-[#ffb4ab]'}`} />
                 Maint. Locked
               </>
             )}
@@ -647,14 +653,18 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
             onClick={initiateUsageSpike}
             className={`px-3 py-1.5 rounded text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-2 ${
               systemActive
-                ? 'bg-sky-50 dark:bg-[#1a2c31] text-sky-700 dark:text-[#74f5ff] border-sky-300 dark:border-[#00dbe7]/30 hover:bg-sky-100 dark:hover:bg-[#00dbe7]/20 shadow-sm'
-                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-950/60 shadow-sm'
+                ? isLight
+                  ? 'bg-sky-50 text-sky-800 border-sky-300 hover:bg-sky-100 shadow-sm'
+                  : 'bg-[#1a2c31] text-[#74f5ff] border-[#00dbe7]/30 hover:bg-[#00dbe7]/20 shadow-sm'
+                : isLight
+                  ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 shadow-sm'
+                  : 'bg-amber-950/40 text-amber-300 border-amber-500/30 hover:bg-amber-950/60 shadow-sm'
             }`}
           >
             {systemActive ? (
-              <CheckCircle className="w-4 h-4 shrink-0 text-sky-600 dark:text-[#00dbe7]" />
+              <CheckCircle className={`w-4 h-4 shrink-0 ${isLight ? 'text-sky-700' : 'text-[#00dbe7]'}`} />
             ) : (
-              <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+              <ShieldAlert className={`w-4 h-4 shrink-0 ${isLight ? 'text-amber-700' : 'text-amber-400'}`} />
             )}
             {systemActive ? 'ACTIVE' : 'MAINTENANCE'}
           </button>
@@ -685,18 +695,18 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
             
             {/* Core CPU Utilization */}
             <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
-              <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-                <span className="flex items-center gap-1.5 text-on-surface-variant">
-                  <Cpu className="w-4 h-4 text-[#00e476]" />
+              <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
+                <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
+                  <Cpu className={`w-4 h-4 shrink-0 ${isLight ? 'text-emerald-600' : 'text-[#00e476]'}`} />
                   Edge CPU Usage
                 </span>
-                <span className={`${cpuUsage > 80 ? 'text-[#ffb4ab] font-bold' : 'text-[#00e476]'}`}>{cpuUsage}%</span>
+                <span className={`${cpuUsage > 80 ? 'text-[#ffb4ab] font-bold' : isLight ? 'text-emerald-700 font-semibold' : 'text-[#00e476]'}`}>{cpuUsage}%</span>
               </div>
               <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
                 <div 
                   style={{ width: `${cpuUsage}%` }} 
                   className={`h-full transition-all duration-700 ${
-                    cpuUsage > 80 ? 'bg-[#ffb4ab]' : cpuUsage > 60 ? 'bg-[#ce5dff]' : 'bg-[#00e476]'
+                    cpuUsage > 80 ? 'bg-[#ffb4ab]' : cpuUsage > 60 ? 'bg-[#ce5dff]' : isLight ? 'bg-emerald-500' : 'bg-[#00e476]'
                   }`}
                 ></div>
               </div>
@@ -705,17 +715,17 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
 
             {/* JVM/Memory Pool */}
             <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
-              <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-                <span className="flex items-center gap-1.5 text-on-surface-variant">
-                  <HardDrive className="w-4 h-4 text-[#74f5ff]" />
+              <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
+                <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
+                  <HardDrive className={`w-4 h-4 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#74f5ff]'}`} />
                   Memory Pool (RAM)
                 </span>
-                <span className="text-[#00dbe7]">{memoryUsage}%</span>
+                <span className={isLight ? 'text-sky-700 font-semibold' : 'text-[#00dbe7]'}>{memoryUsage}%</span>
               </div>
               <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
                 <div 
                   style={{ width: `${memoryUsage}%` }} 
-                  className="h-full bg-[#00dbe7] transition-all duration-700"
+                  className={`h-full transition-all duration-700 ${isLight ? 'bg-sky-500' : 'bg-[#00dbe7]'}`}
                 ></div>
               </div>
               <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block">Used: {(16 * memoryUsage / 100).toFixed(1)} GB / 16.0 GB</span>
@@ -723,17 +733,17 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
 
             {/* Global Request Rate */}
             <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
-              <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-                <span className="flex items-center gap-1.5 text-on-surface-variant">
-                  <TrendingUp className="w-4 h-4 text-[#ce5dff]" />
+              <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
+                <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
+                  <TrendingUp className={`w-4 h-4 shrink-0 ${isLight ? 'text-purple-600' : 'text-[#ce5dff]'}`} />
                   API Requests/s
                 </span>
-                <span className="text-[#ce5dff] font-bold">{requestRate} r/s</span>
+                <span className={`${isLight ? 'text-purple-700' : 'text-[#ce5dff]'} font-bold`}>{requestRate} r/s</span>
               </div>
               <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
                 <div 
                   style={{ width: `${Math.min(100, (requestRate / 500) * 100)}%` }} 
-                  className="h-full bg-[#ce5dff] transition-all duration-700"
+                  className={`h-full transition-all duration-700 ${isLight ? 'bg-purple-500' : 'bg-[#ce5dff]'}`}
                 ></div>
               </div>
               <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block">Avg Response Latency: 12.8ms</span>
@@ -741,16 +751,16 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
 
             {/* WebSocket Sync Nodes */}
             <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
-              <div className="flex items-center justify-between mb-3 text-xs text-[#b9cacb] font-mono">
-                <span className="flex items-center gap-1.5 text-on-surface-variant">
-                  <Globe className="w-4 h-4 text-amber-400" />
+              <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
+                <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
+                  <Globe className={`w-4 h-4 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
                   Gateway Peers
                 </span>
-                <span className="text-[#ebb2ff]">99.99%</span>
+                <span className={isLight ? 'text-purple-700 font-semibold' : 'text-[#ebb2ff]'}>99.99%</span>
               </div>
               <div className="flex items-center gap-2 mt-1">
                 <span className="text-xl font-bold font-mono text-on-surface">24 Active</span>
-                <span className="px-1.5 py-0.5 rounded bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 text-[9px] font-mono">GMT TLS</span>
+                <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono border ${isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-[#00e476]/10 text-[#00e476] border-[#00e476]/25'}`}>GMT TLS</span>
               </div>
               <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block">Data Replication Target: US-East-H</span>
             </div>
@@ -763,7 +773,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
             <div className="lg:col-span-2 glass-panel p-5 rounded-xl border border-outline/15 bg-surface-container-low/20 flex flex-col space-y-4">
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 pb-2 border-b border-outline/10">
                 <h3 className="font-sans font-bold text-sm text-on-surface flex items-center gap-2">
-                  <Users className="w-4 h-4 text-[#00dbe7]" />
+                  <Users className={`w-4 h-4 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`} />
                   Authorized Corporate Accounts ({users.length})
                 </h3>
                 <span className="text-[10px] font-mono text-on-surface-variant bg-surface-container-high px-2 py-0.5 rounded border border-outline/20">
@@ -818,7 +828,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
                           </select>
                         </td>
                         <td className="py-3 hidden md:table-cell">
-                          <div className="text-[12px] font-bold text-white">{item.activityCount + (item.role !== 'Banned' ? Math.round(multiplier * Math.random() * 4) : 0)} syncs</div>
+                          <div className="text-[12px] font-bold text-on-surface">{item.activityCount + (item.role !== 'Banned' ? Math.round(multiplier * Math.random() * 4) : 0)} syncs</div>
                           <span className="text-[9px] text-on-surface-variant">API Gateway Calls</span>
                         </td>
                         <td className="py-3 text-right">
@@ -826,10 +836,12 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
                             type="button"
                             onClick={() => handleDeleteUser(item.id)}
                             disabled={item.email === currentUserEmail}
-                            className="p-1.5 hover:bg-[#ffb4ab]/10 text-on-surface-variant hover:text-[#ffb4ab] rounded transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer"
+                            className={`p-1.5 rounded transition-all disabled:opacity-30 disabled:hover:bg-transparent cursor-pointer ${
+                              isLight ? 'hover:bg-rose-50 text-slate-400 hover:text-rose-600' : 'hover:bg-[#ffb4ab]/10 text-on-surface-variant hover:text-[#ffb4ab]'
+                            }`}
                             title="Delete User Record"
                           >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 className="w-4 h-4 shrink-0" />
                           </button>
                         </td>
                       </tr>
