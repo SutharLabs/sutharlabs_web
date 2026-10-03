@@ -247,10 +247,14 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
           type="button"
           onClick={() => setIsSidebarOpen(!isSidebarOpen)}
           title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
-          className={`hidden md:flex absolute top-1/2 -translate-y-1/2 z-30 items-center justify-center w-5 h-12 bg-[#18181b] border border-[#3a494b]/40 shadow-xl text-[#849495] hover:text-[#00dbe7] hover:border-[#00dbe7]/60 hover:bg-[#222228] transition-all duration-300 ease-in-out cursor-pointer group ${
+          className={`hidden md:flex fixed top-1/2 -translate-y-1/2 z-40 items-center justify-center w-5 h-12 transition-all duration-300 ease-in-out cursor-pointer group shadow-lg ${
             isSidebarOpen 
               ? 'left-64 -translate-x-1/2 rounded-full' 
-              : 'left-0 rounded-r-md border-l-0'
+              : 'left-0 translate-x-0 rounded-r-md border-l-0'
+          } ${
+            theme === 'light'
+              ? 'bg-white border border-slate-300 text-slate-700 hover:text-sky-600 hover:border-sky-500 hover:bg-slate-50 shadow-slate-300/60'
+              : 'bg-[#18181b] border border-[#3a494b]/50 text-[#b9cacb] hover:text-[#00dbe7] hover:border-[#00dbe7]/60 hover:bg-[#222228] shadow-black/80'
           }`}
         >
           <span className={`material-symbols-outlined text-sm transition-transform duration-300 ${isSidebarOpen ? '' : 'rotate-180'} group-hover:scale-110`}>
