@@ -13,6 +13,19 @@
         font-family: 'Inter', sans-serif;
       }
     </style>
+    <!-- Suppress harmless third-party extension and browser telemetry errors (e.g. Chrome Web Vitals / MetaMask shims) -->
+    <script>
+      window.addEventListener('error', function(e) {
+        if (e.message && (e.message.includes("reading 'startTime'") || e.message.includes('MetaMask'))) {
+          e.preventDefault();
+        }
+      });
+      window.addEventListener('unhandledrejection', function(e) {
+        if (e.reason && (String(e.reason).includes('MetaMask') || String(e.reason).includes('startTime'))) {
+          e.preventDefault();
+        }
+      });
+    </script>
     <!-- Theme flash prevention: runs synchronously before React to avoid FOUC -->
     <script>
       (function() {
