@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
+import { recordApiRequest } from "../services/telemetryService.js";
 
 /**
  * Production Request Performance Logger Middleware
@@ -14,6 +15,7 @@ export function requestLogger(req: Request, res: Response, next: NextFunction) {
 
   res.on("finish", () => {
     const duration = Math.round(performance.now() - start);
+    recordApiRequest(duration, res.statusCode);
     const status = res.statusCode;
     const isSlow = duration > 1000;
     const slowBadge = isSlow ? " ⚠️ [SLOW]" : "";

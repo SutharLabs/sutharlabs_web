@@ -14,9 +14,42 @@ import {
   TrendingUp,
   Cpu,
   Zap,
-  HardDrive
+  HardDrive,
+  RefreshCw
 } from 'lucide-react';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer';
+
+interface SystemTelemetry {
+  cpu: {
+    usagePercent: number;
+    model: string;
+    cores: number;
+    speed: string;
+  };
+  memory: {
+    usagePercent: number;
+    totalGB: number;
+    usedGB: number;
+    freeGB: number;
+    heapUsedMB: number;
+  };
+  requests: {
+    ratePerSec: number;
+    avgLatencyMs: number;
+    totalRequests: number;
+  };
+  system: {
+    platform: string;
+    arch: string;
+    hostname: string;
+    nodeVersion: string;
+    uptimeSeconds: number;
+    uptimeFormatted: string;
+    isLocalhost: boolean;
+    environment: string;
+    database: string;
+  };
+}
 
 interface AdminConsoleProps {
   logs: TerminalLog[];
@@ -65,15 +98,26 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
     copied: false
   });
   const [systemActive, setSystemActive] = useState(true);
-  const [cpuUsage, setCpuUsage] = useState(38);
-  const [memoryUsage, setMemoryUsage] = useState(54);
-  const [requestRate, setRequestRate] = useState(128);
-  const [syncStatus, setSyncStatus] = useState<'Synchronous' | 'De-synced'>('Synchronous');
+  const [isRefreshingTelemetry, setIsRefreshingTelemetry] = useState(false);
+  const [telemetry, setTelemetry] = useState<SystemTelemetry>({
+    cpu: { usagePercent: 14, model: 'Host Processor', cores: 4, speed: '' },
+    memory: { usagePercent: 55, totalGB: 16, usedGB: 8.8, freeGB: 7.2, heapUsedMB: 35 },
+    requests: { ratePerSec: 0, avgLatencyMs: 0, totalRequests: 0 },
+    system: {
+      platform: 'Windows',
+      arch: 'x64',
+      hostname: 'Localhost',
+      nodeVersion: 'v22',
+      uptimeSeconds: 0,
+      uptimeFormatted: '0m',
+      isLocalhost: true,
+      environment: 'Development',
+      database: 'Neon Serverless PG'
+    }
+  });
+
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-
-  // Simulation state
-  const [multiplier, setMultiplier] = useState(1);
 
   const fetchUsers = async () => {
     try {
@@ -89,31 +133,29 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
     }
   };
 
+  const fetchTelemetry = async () => {
+    try {
+      const response = await fetch('/api/admin/telemetry', {
+        headers: { 'Authorization': `Bearer ${userToken}` }
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setTelemetry(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch host telemetry:', err);
+    }
+  };
+
   useEffect(() => {
     fetchUsers();
-    const interval = setInterval(fetchUsers, 5000);
+    fetchTelemetry();
+    const interval = setInterval(() => {
+      fetchUsers();
+      fetchTelemetry();
+    }, 3000);
     return () => clearInterval(interval);
   }, [userToken]);
-
-  // Telemetry fluctuation simulation
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCpuUsage((prev) => {
-        const delta = (Math.random() - 0.5) * 8 * multiplier;
-        return Math.max(12, Math.min(98, Math.round(prev + delta)));
-      });
-      setMemoryUsage((prev) => {
-        const delta = (Math.random() - 0.5) * 4 * multiplier;
-        return Math.max(25, Math.min(95, Math.round(prev + delta)));
-      });
-      setRequestRate((prev) => {
-        const delta = (Math.random() - 0.5) * 20 * multiplier;
-        return Math.max(40, Math.round(prev + delta));
-      });
-    }, 2500);
-
-    return () => clearInterval(interval);
-  }, [multiplier]);
 
   // Handle User Registration manually inside admin cockpit
   const handleAddUserSubmit = async (e: React.FormEvent) => {
@@ -268,27 +310,16 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
     });
   };
 
-  // Execute stress testing
-  const initiateUsageSpike = () => {
-    setMultiplier(4);
-    setCpuUsage(89);
-    setRequestRate(445);
-    setMemoryUsage(78);
-    
+  // Execute real host diagnostics sweep
+  const runDiagnostics = async () => {
+    setIsRefreshingTelemetry(true);
+    await fetchTelemetry();
+    setTimeout(() => setIsRefreshingTelemetry(false), 600);
     onAddLog({
       timestamp: new Date().toLocaleTimeString(),
-      type: 'ALERT',
-      message: 'ALERT: Initiating simulated stress payload! High incoming WebSocket queries from 3Edge Servers.'
+      type: 'SUCCESS',
+      message: `ADMIN: Diagnostic sweep complete on host [${telemetry.cpu.cores} Cores - ${telemetry.cpu.model}]. CPU: ${telemetry.cpu.usagePercent}%, RAM: ${telemetry.memory.usedGB}GB / ${telemetry.memory.totalGB}GB.`
     });
-
-    setTimeout(() => {
-      setMultiplier(1);
-      onAddLog({
-        timestamp: new Date().toLocaleTimeString(),
-        type: 'SUCCESS',
-        message: 'SUCCESS: Stress payload throttled. Auto-balancing load profiles re-stabilized servers.'
-      });
-    }, 6000);
   };
 
   // Toggle Maintenance Mode
@@ -502,102 +533,118 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
           
           <button
             type="button"
-            onClick={initiateUsageSpike}
+            onClick={runDiagnostics}
+            disabled={isRefreshingTelemetry}
             className={`px-3 py-1.5 rounded text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-2 ${
-              systemActive
-                ? isLight
-                  ? 'bg-sky-50 text-sky-800 border-sky-300 hover:bg-sky-100 shadow-sm'
-                  : 'bg-[#1a2c31] text-[#74f5ff] border-[#00dbe7]/30 hover:bg-[#00dbe7]/20 shadow-sm'
-                : isLight
-                  ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100 shadow-sm'
-                  : 'bg-amber-950/40 text-amber-300 border-amber-500/30 hover:bg-amber-950/60 shadow-sm'
+              isLight
+                ? 'bg-sky-50 text-sky-800 border-sky-300 hover:bg-sky-100 shadow-sm disabled:opacity-50'
+                : 'bg-[#1a2c31] text-[#74f5ff] border-[#00dbe7]/30 hover:bg-[#00dbe7]/20 shadow-sm disabled:opacity-50'
             }`}
           >
-            {systemActive ? (
-              <CheckCircle className={`w-4 h-4 shrink-0 ${isLight ? 'text-sky-700' : 'text-[#00dbe7]'}`} />
-            ) : (
-              <ShieldAlert className={`w-4 h-4 shrink-0 ${isLight ? 'text-amber-700' : 'text-amber-400'}`} />
-            )}
-            {systemActive ? 'ACTIVE' : 'MAINTENANCE'}
+            <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isRefreshingTelemetry ? 'animate-spin' : ''} ${isLight ? 'text-sky-700' : 'text-[#00dbe7]'}`} />
+            {isRefreshingTelemetry ? 'REFRESHING...' : 'RUN DIAGNOSTICS'}
           </button>
         </div>
       </div>
 
       {/* Aggregate Telemetry Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            
-            {/* Core CPU Utilization */}
-            <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
-              <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
-                <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
-                  <Cpu className={`w-4 h-4 shrink-0 ${isLight ? 'text-emerald-600' : 'text-[#00e476]'}`} />
-                  Edge CPU Usage
-                </span>
-                <span className={`${cpuUsage > 80 ? 'text-[#ffb4ab] font-bold' : isLight ? 'text-emerald-700 font-semibold' : 'text-[#00e476]'}`}>{cpuUsage}%</span>
-              </div>
-              <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
-                <div 
-                  style={{ width: `${cpuUsage}%` }} 
-                  className={`h-full transition-all duration-700 ${
-                    cpuUsage > 80 ? 'bg-[#ffb4ab]' : cpuUsage > 60 ? 'bg-[#ce5dff]' : isLight ? 'bg-emerald-500' : 'bg-[#00e476]'
-                  }`}
-                ></div>
-              </div>
-              <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block">Allocated: 12 Cores / Xeon E-2388</span>
-            </div>
-
-            {/* JVM/Memory Pool */}
-            <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
-              <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
-                <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
-                  <HardDrive className={`w-4 h-4 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#74f5ff]'}`} />
-                  Memory Pool (RAM)
-                </span>
-                <span className={isLight ? 'text-sky-700 font-semibold' : 'text-[#00dbe7]'}>{memoryUsage}%</span>
-              </div>
-              <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
-                <div 
-                  style={{ width: `${memoryUsage}%` }} 
-                  className={`h-full transition-all duration-700 ${isLight ? 'bg-sky-500' : 'bg-[#00dbe7]'}`}
-                ></div>
-              </div>
-              <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block">Used: {(16 * memoryUsage / 100).toFixed(1)} GB / 16.0 GB</span>
-            </div>
-
-            {/* Global Request Rate */}
-            <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
-              <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
-                <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
-                  <TrendingUp className={`w-4 h-4 shrink-0 ${isLight ? 'text-purple-600' : 'text-[#ce5dff]'}`} />
-                  API Requests/s
-                </span>
-                <span className={`${isLight ? 'text-purple-700' : 'text-[#ce5dff]'} font-bold`}>{requestRate} r/s</span>
-              </div>
-              <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
-                <div 
-                  style={{ width: `${Math.min(100, (requestRate / 500) * 100)}%` }} 
-                  className={`h-full transition-all duration-700 ${isLight ? 'bg-purple-500' : 'bg-[#ce5dff]'}`}
-                ></div>
-              </div>
-              <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block">Avg Response Latency: 12.8ms</span>
-            </div>
-
-            {/* WebSocket Sync Nodes */}
-            <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
-              <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
-                <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
-                  <Globe className={`w-4 h-4 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
-                  Gateway Peers
-                </span>
-                <span className={isLight ? 'text-purple-700 font-semibold' : 'text-[#ebb2ff]'}>99.99%</span>
-              </div>
-              <div className="flex items-center gap-2 mt-1">
-                <span className="text-xl font-bold font-mono text-on-surface">24 Active</span>
-                <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono border ${isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-[#00e476]/10 text-[#00e476] border-[#00e476]/25'}`}>GMT TLS</span>
-              </div>
-              <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block">Data Replication Target: US-East-H</span>
-            </div>
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        
+        {/* Core CPU Utilization */}
+        <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
+          <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
+            <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
+              <Cpu className={`w-4 h-4 shrink-0 ${isLight ? 'text-emerald-600' : 'text-[#00e476]'}`} />
+              Host CPU Usage
+            </span>
+            <span className={`${telemetry.cpu.usagePercent > 80 ? 'text-[#ffb4ab] font-bold' : isLight ? 'text-emerald-700 font-semibold' : 'text-[#00e476]'}`}>
+              {telemetry.cpu.usagePercent}%
+            </span>
           </div>
+          <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+            <div 
+              style={{ width: `${telemetry.cpu.usagePercent}%` }} 
+              className={`h-full transition-all duration-700 ${
+                telemetry.cpu.usagePercent > 80 ? 'bg-[#ffb4ab]' : telemetry.cpu.usagePercent > 60 ? 'bg-[#ce5dff]' : isLight ? 'bg-emerald-500' : 'bg-[#00e476]'
+              }`}
+            ></div>
+          </div>
+          <span 
+            className="text-[10px] text-on-surface-variant font-mono mt-1.5 block truncate"
+            title={`${telemetry.cpu.cores} Cores / ${telemetry.cpu.model}`}
+          >
+            Allocated: {telemetry.cpu.cores} Cores / {telemetry.cpu.model}
+          </span>
+        </div>
+
+        {/* JVM/Memory Pool */}
+        <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
+          <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
+            <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
+              <HardDrive className={`w-4 h-4 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#74f5ff]'}`} />
+              Memory Pool (RAM)
+            </span>
+            <span className={isLight ? 'text-sky-700 font-semibold' : 'text-[#00dbe7]'}>
+              {telemetry.memory.usagePercent}%
+            </span>
+          </div>
+          <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+            <div 
+              style={{ width: `${telemetry.memory.usagePercent}%` }} 
+              className={`h-full transition-all duration-700 ${isLight ? 'bg-sky-500' : 'bg-[#00dbe7]'}`}
+            ></div>
+          </div>
+          <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block truncate">
+            Used: {telemetry.memory.usedGB} GB / {telemetry.memory.totalGB} GB
+          </span>
+        </div>
+
+        {/* Global Request Rate */}
+        <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
+          <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
+            <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
+              <TrendingUp className={`w-4 h-4 shrink-0 ${isLight ? 'text-purple-600' : 'text-[#ce5dff]'}`} />
+              API Requests/s
+            </span>
+            <span className={`${isLight ? 'text-purple-700' : 'text-[#ce5dff]'} font-bold`}>
+              {telemetry.requests.ratePerSec} r/s
+            </span>
+          </div>
+          <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+            <div 
+              style={{ width: `${Math.min(100, Math.max(5, (telemetry.requests.ratePerSec / 50) * 100))}%` }} 
+              className={`h-full transition-all duration-700 ${isLight ? 'bg-purple-500' : 'bg-[#ce5dff]'}`}
+            ></div>
+          </div>
+          <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block truncate">
+            Avg Latency: {telemetry.requests.avgLatencyMs > 0 ? `${telemetry.requests.avgLatencyMs}ms` : '<1ms'} • Total: {telemetry.requests.totalRequests}
+          </span>
+        </div>
+
+        {/* Host Gateway Node */}
+        <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/40">
+          <div className="flex items-center justify-between mb-3 text-xs text-on-surface-variant font-mono">
+            <span className="flex items-center gap-1.5 text-on-surface-variant font-medium">
+              <Globe className={`w-4 h-4 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
+              Host Gateway Node
+            </span>
+            <span className={isLight ? 'text-emerald-700 font-semibold' : 'text-[#00e476]'}>
+              {systemActive ? 'ONLINE' : 'MAINT'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xl font-bold font-mono text-on-surface">
+              {telemetry.system.platform} {telemetry.system.arch}
+            </span>
+            <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono border ${isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-[#00e476]/10 text-[#00e476] border-[#00e476]/25'}`}>
+              Node {telemetry.system.nodeVersion}
+            </span>
+          </div>
+          <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block truncate">
+            {telemetry.system.database} • Uptime: {telemetry.system.uptimeFormatted}
+          </span>
+        </div>
+      </div>
 
           {/* Main Panel Content (Split User List + Add User Form) */}
           <div className="grid grid-cols-1 lg:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 items-start">

@@ -6,6 +6,7 @@ import crypto from "crypto";
 import { getPrismaClient, hashPassword, generateToken, verifyToken } from "./api/_utils.js";
 import { PluginEngine } from "./src/plugins/PluginEngine.js";
 import { getQuote, getHistory, getAnalysis, getSuggestion } from "./src/plugins/StockAnalyzer/index.js";
+import { getSystemTelemetry } from "./src/services/telemetryService.js";
 import {
   securityHeaders,
   requestLogger,
@@ -533,6 +534,18 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
     } catch (error) {
       console.error("OAuth error:", error);
       res.status(500).json({ error: "An internal server error occurred during oauth handshake." });
+    }
+  });
+
+  // ==================== SYSTEM & HOST TELEMETRY (REAL-TIME) ====================
+  // GET /api/admin/telemetry
+  app.get("/api/admin/telemetry", async (req, res) => {
+    try {
+      const data = getSystemTelemetry();
+      res.json(data);
+    } catch (error) {
+      console.error("Telemetry error:", error);
+      res.status(500).json({ error: "Failed to gather host telemetry." });
     }
   });
 
