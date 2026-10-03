@@ -4,6 +4,7 @@ import {
   Users, Activity, Database, Globe, Trash2, UserPlus, ShieldAlert, CheckCircle,
   ToggleLeft, ToggleRight, TrendingUp, Cpu, Zap, HardDrive, PlusCircle, Tag, Layers, Server
 } from 'lucide-react';
+import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
 interface ManageProps {
   logs: TerminalLog[];
@@ -125,6 +126,12 @@ export default function ManageAppsView({ logs, onAddLog, userToken }: ManageProp
           </div>
         </div>
       </div>
+
+      <CollapsibleLogDrawer
+        title="APP MANAGEMENT AUDIT LOG"
+        logs={logs}
+        defaultExpanded={false}
+      />
     </div>
   );
 }

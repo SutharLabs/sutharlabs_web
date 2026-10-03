@@ -9,14 +9,16 @@ import {
   Grid, 
   Info 
 } from 'lucide-react';
+import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
 interface DocNexusViewProps {
+  logs?: TerminalLog[];
   onAddLog: (log: TerminalLog) => void;
   userToken: string;
   theme?: 'light' | 'dark';
 }
 
-export default function DocNexusView({ onAddLog, userToken, theme = 'dark' }: DocNexusViewProps) {
+export default function DocNexusView({ logs = [], onAddLog, userToken, theme = 'dark' }: DocNexusViewProps) {
   const isLight = theme === 'light';
   const [content, setContent] = useState('');
   const [title, setTitle] = useState('DocNexus Sovereign Guide');
@@ -737,6 +739,11 @@ export default function DocNexusView({ onAddLog, userToken, theme = 'dark' }: Do
 
       </div>
 
+      <CollapsibleLogDrawer
+        title="DOCNEXUS WORKSPACE AUDIT LOG"
+        logs={logs}
+        defaultExpanded={false}
+      />
     </div>
   );
 }

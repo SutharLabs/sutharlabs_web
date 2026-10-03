@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { TerminalLog } from '../types';
+import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
 interface WorkspacePluginStoreProps {
   logs: TerminalLog[];
@@ -136,6 +137,12 @@ export default function WorkspacePluginStore({ logs, onAddLog, userEmail, userTo
           );
         })}
       </div>
+
+      <CollapsibleLogDrawer
+        title="PLUGIN STORE EVENT LOG"
+        logs={logs}
+        defaultExpanded={false}
+      />
     </div>
   );
 }

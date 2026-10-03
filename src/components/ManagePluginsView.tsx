@@ -4,6 +4,7 @@ import {
   Users, Activity, Database, Globe, Trash2, UserPlus, ShieldAlert, CheckCircle,
   ToggleLeft, ToggleRight, TrendingUp, Cpu, Zap, HardDrive, PlusCircle, Tag, Layers, Server
 } from 'lucide-react';
+import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
 interface ManageProps {
   logs: TerminalLog[];
@@ -79,6 +80,12 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
           ))}
         </div>
       </div>
+
+      <CollapsibleLogDrawer
+        title="PLUGIN REGISTRY AUDIT LOG"
+        logs={logs}
+        defaultExpanded={false}
+      />
     </div>
   );
 }

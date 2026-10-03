@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TerminalLog } from '../types';
 import { Globe, ExternalLink, Code2, Save, Edit3, Image as ImageIcon, Plus, Trash2 } from 'lucide-react';
+import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
 interface ManageProps {
   logs: TerminalLog[];
@@ -248,6 +249,12 @@ export default function ManagePortfoliosView({ logs, onAddLog, userToken }: Mana
           })}
         </div>
       </div>
+
+      <CollapsibleLogDrawer
+        title="PORTFOLIO SYNC AUDIT LOG"
+        logs={logs}
+        defaultExpanded={false}
+      />
     </div>
   );
 }

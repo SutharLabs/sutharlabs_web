@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { RegisteredUser, TerminalLog, StorePlugin } from '../types';
+import { RegisteredUser, TerminalLog } from '../types';
 import { 
   Users, 
   Activity, 
@@ -14,12 +14,9 @@ import {
   TrendingUp,
   Cpu,
   Zap,
-  HardDrive,
-  PlusCircle,
-  Tag,
-  Layers,
-  Server
+  HardDrive
 } from 'lucide-react';
+import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
 interface AdminConsoleProps {
   logs: TerminalLog[];
@@ -34,24 +31,6 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
   // Load or initialize registered users from localStorage
   const [users, setUsers] = useState<RegisteredUser[]>([]);
   const [newUser, setNewUser] = useState({ name: '', email: '', role: 'Developer' as const });
-  const [activeAdminTab, setActiveAdminTab] = useState<'DASHBOARD' | 'APP_STORE' | 'WORKSPACE_PLUGINS' | 'PORTFOLIOS'>('DASHBOARD');
-  const [portfolios, setPortfolios] = useState<any[]>([]);
-  const [workspacePlugins, setWorkspacePlugins] = useState<any[]>([]);
-
-  // Store management states
-  const [plugins, setPlugins] = useState<StorePlugin[]>([]);
-  const [newPlugin, setNewPlugin] = useState({
-    name: '',
-    category: 'MCP',
-    type: 'Free' as 'Free' | 'Premium' | 'Trial',
-    downloads: '1.2k',
-    rating: 4.8,
-    description: '',
-    iconSymbol: 'smart_toy',
-    tagsString: 'MCP, Developer'
-  });
-  const [pluginError, setPluginError] = useState('');
-  const [pluginSuccess, setPluginSuccess] = useState('');
 
   // Custom confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
@@ -85,133 +64,6 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
     password: '',
     copied: false
   });
-
-  // Load store plugins from real backend REST API
-  const fetchPlugins = async () => {
-    try {
-      const response = await fetch('/api/plugins');
-      if (response.ok) {
-        const data = await response.json();
-        setPlugins(data);
-      }
-    } catch (err) {
-      console.error('Error fetching registry plugins in Admin:', err);
-    }
-  };
-
-  const fetchAdminData = async () => {
-    try {
-      const pRes = await fetch('/api/admin/portfolios', { headers: { 'Authorization': `Bearer ${userToken}` } });
-      if (pRes.ok) setPortfolios(await pRes.json());
-      const wpRes = await fetch('/api/workspace-plugins');
-      if (wpRes.ok) setWorkspacePlugins(await wpRes.json());
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  useEffect(() => {
-    fetchPlugins();
-    fetchAdminData();
-    const interval = setInterval(() => {
-      fetchPlugins();
-      fetchAdminData();
-    }, 5000);
-    return () => clearInterval(interval);
-  }, [userToken]);
-
-  const handleAddPluginSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPluginError('');
-    setPluginSuccess('');
-
-    if (!newPlugin.name.trim() || !newPlugin.description.trim()) {
-      setPluginError('Name and Description are required parameters.');
-      return;
-    }
-
-    try {
-      const response = await fetch('/api/plugins', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${userToken}`
-        },
-        body: JSON.stringify({
-          name: newPlugin.name,
-          category: newPlugin.category,
-          type: newPlugin.type,
-          downloads: newPlugin.downloads || '0k',
-          rating: Number(newPlugin.rating) || 5.0,
-          description: newPlugin.description,
-          iconSymbol: newPlugin.iconSymbol,
-          tags: newPlugin.tagsString.split(',').map(t => t.trim()).filter(Boolean)
-        })
-      });
-
-      if (!response.ok) {
-        const errData = await response.json();
-        setPluginError(errData.error || 'Failed to publish plugin on server backend.');
-        return;
-      }
-
-      const created = await response.json();
-      setPlugins(prev => [...prev, created]);
-      setNewPlugin({
-        name: '',
-        category: 'MCP',
-        type: 'Free',
-        downloads: '1.2k',
-        rating: 4.8,
-        description: '',
-        iconSymbol: 'smart_toy',
-        tagsString: 'MCP, Developer'
-      });
-      setPluginSuccess(`Plugin ${created.name} published successfully!`);
-
-      onAddLog({
-        timestamp: new Date().toLocaleTimeString(),
-        type: 'SUCCESS',
-        message: `ADMIN: Published new MCP storefront plugin to backend database: "${created.name}" [category: ${created.category}, type: ${created.type}].`
-      });
-    } catch (err) {
-      setPluginError('Failed to publish plugin due to server connection error.');
-    }
-  };
-
-  const handleDeletePlugin = async (id: string, name: string) => {
-    setConfirmModal({
-      open: true,
-      title: 'Unpublish Plugin',
-      message: `Purge "${name}" from the plugin registry?`,
-      subtext: 'This will permanently remove the plugin listing from the store. Installed instances will not be affected.',
-      icon: 'warning',
-      onConfirm: async () => {
-        closeConfirmModal();
-        try {
-          const response = await fetch(`/api/plugins/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${userToken}` }
-          });
-
-          if (!response.ok) {
-            const errData = await response.json();
-            setPluginError(errData.error || 'Failed to delete plugin.');
-            return;
-          }
-
-          setPlugins(prev => prev.filter(p => p.id !== id));
-          onAddLog({
-            timestamp: new Date().toLocaleTimeString(),
-            type: 'ERROR',
-            message: `ADMIN: Purged and unpublished MCP plugin listings index on backend for: "${name}".`
-          });
-        } catch (err) {
-          console.error('Failed to delete plugin:', err);
-        }
-      }
-    });
-  };
   const [systemActive, setSystemActive] = useState(true);
   const [cpuUsage, setCpuUsage] = useState(38);
   const [memoryUsage, setMemoryUsage] = useState(54);
@@ -671,26 +523,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
         </div>
       </div>
 
-      {/* Tab Selector */}
-      <div className="flex overflow-x-auto whitespace-nowrap gap-2 border-b border-outline/20 pb-0 w-full snap-x">
-        {(['DASHBOARD', 'APP_STORE', 'WORKSPACE_PLUGINS', 'PORTFOLIOS'] as const).map(tab => (
-          <button
-            key={tab}
-            onClick={() => setActiveAdminTab(tab)}
-            className={`px-4 py-2 font-mono text-xs uppercase font-bold tracking-wider transition-all border-b-2 shrink-0 snap-start ${
-              activeAdminTab === tab 
-                ? 'text-[#00dbe7] border-[#00dbe7]' 
-                : 'text-on-surface-variant border-transparent hover:text-[#b9cacb]'
-            }`}
-          >
-            {tab.replace('_', ' ')}
-          </button>
-        ))}
-      </div>
-
-      {activeAdminTab === 'DASHBOARD' && (
-        <>
-          {/* Aggregate Telemetry Cards */}
+      {/* Aggregate Telemetry Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             
             {/* Core CPU Utilization */}
@@ -996,27 +829,13 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
               </form>
             </div>
           </div>
-        </>
-      )}
 
-      {/* System simulation logs drawer */}
-      <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-black/40 overflow-hidden flex flex-col h-48">
-        <span className="text-[10px] font-mono text-on-surface-variant uppercase tracking-widest block mb-2 select-none border-b border-outline/10 pb-1.5 flex items-center gap-2">
-          <Database className="w-3.5 h-3.5 text-[#ce5dff]" />
-          ADMIN PRIVILEGED TELEMETRY AUDIT
-        </span>
-        <div className="flex-1 overflow-y-auto font-mono text-[10px] text-[#b9cacb] space-y-1 custom-scrollbar">
-          {logs.filter(l => l.message.includes('ADMIN') || l.message.includes('ALERT') || l.message.includes('SUCCESS')).slice(-12).reverse().map((log, index) => (
-            <div key={index} className="flex gap-2 p-1 rounded hover:bg-white/[0.02]">
-              <span className="text-on-surface-variant text-[9px]">{log.timestamp}</span>
-              <span className={`font-bold ${
-                log.type === 'SUCCESS' ? 'text-[#00e476]' : log.type === 'ERROR' ? 'text-[#ffb4ab]' : log.type === 'ALERT' ? 'text-amber-400' : 'text-[#74f5ff]'
-              }`}>[{log.type}]</span>
-              <span className="text-on-surface">{log.message}</span>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Privileged Telemetry Audit Log (Collapsible) */}
+      <CollapsibleLogDrawer
+        title="ADMIN PRIVILEGED TELEMETRY AUDIT"
+        logs={logs.filter(l => l.message.includes('ADMIN') || l.message.includes('ALERT') || l.message.includes('SUCCESS'))}
+        defaultExpanded={false}
+      />
     </div>
   );
 }

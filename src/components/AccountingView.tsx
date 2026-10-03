@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Invoice, TerminalLog } from '../types';
+import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
 interface AccountingViewProps {
+  logs?: TerminalLog[];
   onAddLog: (log: TerminalLog) => void;
   userToken: string;
 }
@@ -13,7 +15,7 @@ const initialInvoices: Invoice[] = [
   { id: 'ST-00244', date: '2026-05-23', client: 'Lambda Group', amount: 4800.00, status: 'Paid' }
 ];
 
-export default function AccountingView({ onAddLog, userToken }: AccountingViewProps) {
+export default function AccountingView({ logs = [], onAddLog, userToken }: AccountingViewProps) {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -338,6 +340,11 @@ export default function AccountingView({ onAddLog, userToken }: AccountingViewPr
         </div>
       </div>
 
+      <CollapsibleLogDrawer
+        title="FINANCIAL AUDIT LOG"
+        logs={logs}
+        defaultExpanded={false}
+      />
     </div>
   );
 }

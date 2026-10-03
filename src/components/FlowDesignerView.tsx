@@ -1,7 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { FlowNode, TerminalLog } from '../types';
+import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
 interface FlowDesignerViewProps {
+  logs?: TerminalLog[];
   onAddLog: (log: TerminalLog) => void;
   userToken: string;
 }
@@ -12,7 +14,7 @@ const initialNodes: FlowNode[] = [
   { id: '3', label: 'PostgreSQL Ledger', type: 'output', status: 'IDLE', x: 480, y: 90 }
 ];
 
-export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerViewProps) {
+export default function FlowDesignerView({ logs = [], onAddLog, userToken }: FlowDesignerViewProps) {
   const [nodes, setNodes] = useState<FlowNode[]>(initialNodes);
 
   // Load layout nodes on mount
@@ -398,6 +400,12 @@ export default function FlowDesignerView({ onAddLog, userToken }: FlowDesignerVi
           </div>
         </div>
       </div>
+
+      <CollapsibleLogDrawer
+        title="DAG PIPELINE EXECUTION LOG"
+        logs={logs}
+        defaultExpanded={false}
+      />
     </div>
   );
 }

@@ -409,6 +409,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
 
             {activeTab === 'Custom Flow' && (
               <FlowDesignerView 
+                logs={logs}
                 onAddLog={addLog} 
                 userToken={user.token || ''}
               />
@@ -416,12 +417,13 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
 
             {activeTab === 'Accounting' && (
               <AccountingView 
+                logs={logs}
                 onAddLog={addLog} 
                 userToken={user.token || ''}
               />
             )}
 
-            {activeTab === 'Doc Nexus' && <DocNexusView onAddLog={addLog} userToken={user.token || ''} theme={theme} />}
+            {activeTab === 'Doc Nexus' && <DocNexusView logs={logs} onAddLog={addLog} userToken={user.token || ''} theme={theme} />}
             {activeTab === 'Plugin Store' && <WorkspacePluginStore logs={logs} onAddLog={addLog} userEmail={user.email} userToken={user.token || ''} />}
 
             {(activeTab === 'Admin Console' || activeTab === 'Manage Plugins' || activeTab === 'Manage Apps' || activeTab === 'Manage Portfolios') && user.role !== 'Admin' && (

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { TerminalLog, UserPortfolio } from '../types';
 
 interface StockTrackerViewProps {
@@ -80,6 +81,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
 
   const [activePeriod, setActivePeriod] = useState<'1D' | '1W' | '1M' | '1Y'>('1W');
   const [activeTab, setActiveTab] = useState<'AGENT_LOGS' | 'OUTPUT' | 'DEBUG_CONSOLE'>('AGENT_LOGS');
+  const [isTerminalCollapsed, setIsTerminalCollapsed] = useState(false);
 
   const [portfolio, setPortfolio] = useState<UserPortfolio>({ cash: 10000, shares: 0, buyPrice: 0 });
   const [selectedAction, setSelectedAction] = useState<'BUY' | 'SELL' | null>(null);
@@ -603,23 +605,48 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       </div>
 
       {/* ── Terminal ─────────────────────────────────────────────────────── */}
-      <div className="h-44 border border-outline/20 bg-[#0e0e10]/90 rounded-lg flex flex-col overflow-hidden">
-        <div className="flex items-center px-4 py-1.5 border-b border-outline/10 bg-[#201f21]/80 select-none">
-          <span className="font-mono text-[9px] font-bold text-[#b9cacb] uppercase tracking-widest leading-none">TERMINAL</span>
-          <div className="flex gap-4 ml-6 font-mono text-[10px]">
-            {(['AGENT_LOGS', 'OUTPUT', 'DEBUG_CONSOLE'] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`pb-0.5 cursor-pointer transition-all ${activeTab === tab ? 'text-[#74f5ff] border-b border-[#00dbe7]' : 'text-on-surface-variant hover:text-on-surface'}`}
+      <div className={`border border-outline/20 bg-[#0e0e10]/90 rounded-lg flex flex-col overflow-hidden transition-all duration-300 ${
+        isTerminalCollapsed ? 'h-9 shrink-0' : 'h-44'
+      }`}>
+        <div 
+          onClick={() => setIsTerminalCollapsed(!isTerminalCollapsed)}
+          className="flex items-center justify-between px-4 py-1.5 border-b border-outline/10 bg-[#201f21]/80 select-none cursor-pointer"
+        >
+          <div className="flex items-center">
+            <span className="font-mono text-[9px] font-bold text-[#b9cacb] uppercase tracking-widest leading-none">TERMINAL</span>
+            {!isTerminalCollapsed && (
+              <div 
+                className="flex gap-4 ml-6 font-mono text-[10px]"
+                onClick={(e) => e.stopPropagation()}
               >
-                {tab}
-              </button>
-            ))}
+                {(['AGENT_LOGS', 'OUTPUT', 'DEBUG_CONSOLE'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab)}
+                    className={`pb-0.5 cursor-pointer transition-all ${activeTab === tab ? 'text-[#74f5ff] border-b border-[#00dbe7]' : 'text-on-surface-variant hover:text-on-surface'}`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsTerminalCollapsed(!isTerminalCollapsed);
+            }}
+            className="flex items-center gap-1 font-mono text-[10px] text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+          >
+            <span>{isTerminalCollapsed ? 'Expand' : 'Collapse'}</span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${!isTerminalCollapsed ? 'rotate-180' : ''}`} />
+          </button>
         </div>
 
-        <div ref={terminalContainerRef} className="flex-1 p-3 font-mono text-xs overflow-y-auto custom-scrollbar bg-[#050505]">
+        {!isTerminalCollapsed && (
+          <div ref={terminalContainerRef} className="flex-1 p-3 font-mono text-xs overflow-y-auto custom-scrollbar bg-[#050505]">
           {activeTab === 'AGENT_LOGS' && (
             <div className="space-y-1">
               {logs.map((log, i) => {
@@ -664,6 +691,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
             </div>
           )}
         </div>
+        )}
       </div>
 
     </div>
