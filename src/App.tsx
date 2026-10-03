@@ -15,8 +15,7 @@ import DocNexusView from './components/DocNexusView';
 import WorkspacePluginStore from './components/WorkspacePluginStore';
 
 const MANAGEMENT_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
-  { name: 'Plugin Store', icon: 'extension', size: '3.1 KB' },
-  { name: 'README', icon: 'description', size: '2.1 KB' }
+  { name: 'Plugin Store', icon: 'extension', size: '3.1 KB' }
 ];
 
 const INSTALLED_PLUGINS: { name: WorkspaceTab; icon: string; size: string }[] = [
@@ -163,6 +162,7 @@ export default function App() {
 function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab, handleLogout, theme, toggleTheme }: any) {
   const [isManagementOpen, setIsManagementOpen] = React.useState(true);
   const [isPluginsOpen, setIsPluginsOpen] = React.useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   const navigate = useNavigate();
   
   if (!user.isLoggedIn) return <Navigate to="/auth" />;
@@ -240,13 +240,29 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
       </header>
 
       {/* Main split dashboard panel layout */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative">
         
+        {/* Center Fold/Expand Tab Button on left side panel border */}
+        <button
+          type="button"
+          onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+          title={isSidebarOpen ? "Collapse sidebar" : "Expand sidebar"}
+          className={`hidden md:flex absolute top-1/2 -translate-y-1/2 z-30 items-center justify-center w-5 h-12 bg-[#18181b] border border-[#3a494b]/40 shadow-xl text-[#849495] hover:text-[#00dbe7] hover:border-[#00dbe7]/60 hover:bg-[#222228] transition-all duration-300 ease-in-out cursor-pointer group ${
+            isSidebarOpen 
+              ? 'left-64 -translate-x-1/2 rounded-full' 
+              : 'left-0 rounded-r-md border-l-0'
+          }`}
+        >
+          <span className={`material-symbols-outlined text-sm transition-transform duration-300 ${isSidebarOpen ? '' : 'rotate-180'} group-hover:scale-110`}>
+            chevron_left
+          </span>
+        </button>
+
         {/* Left Hand Sidebar Explorer directory tree */}
-        <aside className="w-64 bg-[#131315]/95 border-r border-[#3a494b]/10 flex flex-col justify-between select-none shrink-0 hidden md:flex">
-          
-          {/* Main folder tree structure */}
-          <div className="flex-1 py-4 flex flex-col overflow-y-auto custom-scrollbar">
+        <aside className={`${isSidebarOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 pointer-events-none border-r-0'} transition-all duration-300 ease-in-out bg-[#131315]/95 border-r border-[#3a494b]/10 flex flex-col justify-between select-none shrink-0 hidden md:flex overflow-hidden`}>
+          <div className="w-64 flex flex-col h-full justify-between shrink-0">
+            {/* Main folder tree structure */}
+            <div className="flex-1 py-4 flex flex-col overflow-y-auto custom-scrollbar">
             
             {/* MANAGEMENT SECTION */}
             <div 
@@ -347,6 +363,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               <span className="font-mono text-[9px] text-[#849495] block truncate">{user.email}</span>
             </div>
           </div>
+        </div>
 
         </aside>
 
