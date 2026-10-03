@@ -126,7 +126,9 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       });
       if (response.ok) {
         const data = await response.json();
-        setUsers(data);
+        if (Array.isArray(data)) {
+          setUsers(data);
+        }
       }
     } catch (err) {
       console.error('Failed to fetch corporate users registry:', err);
@@ -140,7 +142,14 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       });
       if (response.ok) {
         const data = await response.json();
-        setTelemetry(data);
+        if (data && typeof data === 'object') {
+          setTelemetry(prev => ({
+            cpu: { ...prev.cpu, ...(data.cpu || {}) },
+            memory: { ...prev.memory, ...(data.memory || {}) },
+            requests: { ...prev.requests, ...(data.requests || {}) },
+            system: { ...prev.system, ...(data.system || {}) }
+          }));
+        }
       }
     } catch (err) {
       console.error('Failed to fetch host telemetry:', err);
@@ -315,10 +324,12 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
     setIsRefreshingTelemetry(true);
     await fetchTelemetry();
     setTimeout(() => setIsRefreshingTelemetry(false), 600);
+    const cpuInfo = telemetry?.cpu || { cores: 1, model: 'Host Processor', usagePercent: 0 };
+    const memInfo = telemetry?.memory || { usedGB: 0, totalGB: 0 };
     onAddLog({
       timestamp: new Date().toLocaleTimeString(),
       type: 'SUCCESS',
-      message: `ADMIN: Diagnostic sweep complete on host [${telemetry.cpu.cores} Cores - ${telemetry.cpu.model}]. CPU: ${telemetry.cpu.usagePercent}%, RAM: ${telemetry.memory.usedGB}GB / ${telemetry.memory.totalGB}GB.`
+      message: `ADMIN: Diagnostic sweep complete on host [${cpuInfo.cores} Cores - ${cpuInfo.model}]. CPU: ${cpuInfo.usagePercent}%, RAM: ${memInfo.usedGB}GB / ${memInfo.totalGB}GB.`
     });
   };
 
@@ -330,6 +341,22 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       type: 'ALERT',
       message: `ADMIN: Maintenance toggle activated. System-wide user portal state set to ${!systemActive ? 'ACTIVE' : 'MAINTENANCE_LOCKED'}.`
     });
+  };
+
+  // Safe fallbacks for telemetry metrics to prevent runtime render crashes
+  const cpu = telemetry?.cpu || { usagePercent: 0, model: 'Host Processor', cores: 1, speed: '' };
+  const memory = telemetry?.memory || { usagePercent: 0, totalGB: 0, usedGB: 0, freeGB: 0, heapUsedMB: 0 };
+  const requests = telemetry?.requests || { ratePerSec: 0, avgLatencyMs: 0, totalRequests: 0 };
+  const system = telemetry?.system || {
+    platform: 'Host',
+    arch: 'x64',
+    hostname: 'Localhost',
+    nodeVersion: 'v22',
+    uptimeSeconds: 0,
+    uptimeFormatted: '0m',
+    isLocalhost: true,
+    environment: 'Development',
+    database: 'PostgreSQL'
   };
 
   return (
@@ -557,23 +584,23 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
               <Cpu className={`w-4 h-4 shrink-0 ${isLight ? 'text-emerald-600' : 'text-[#00e476]'}`} />
               Host CPU Usage
             </span>
-            <span className={`${telemetry.cpu.usagePercent > 80 ? 'text-[#ffb4ab] font-bold' : isLight ? 'text-emerald-700 font-semibold' : 'text-[#00e476]'}`}>
-              {telemetry.cpu.usagePercent}%
+            <span className={`${(cpu.usagePercent ?? 0) > 80 ? 'text-[#ffb4ab] font-bold' : isLight ? 'text-emerald-700 font-semibold' : 'text-[#00e476]'}`}>
+              {cpu.usagePercent ?? 0}%
             </span>
           </div>
           <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
             <div 
-              style={{ width: `${telemetry.cpu.usagePercent}%` }} 
+              style={{ width: `${Math.min(100, Math.max(0, cpu.usagePercent ?? 0))}%` }} 
               className={`h-full transition-all duration-700 ${
-                telemetry.cpu.usagePercent > 80 ? 'bg-[#ffb4ab]' : telemetry.cpu.usagePercent > 60 ? 'bg-[#ce5dff]' : isLight ? 'bg-emerald-500' : 'bg-[#00e476]'
+                (cpu.usagePercent ?? 0) > 80 ? 'bg-[#ffb4ab]' : (cpu.usagePercent ?? 0) > 60 ? 'bg-[#ce5dff]' : isLight ? 'bg-emerald-500' : 'bg-[#00e476]'
               }`}
             ></div>
           </div>
           <span 
             className="text-[10px] text-on-surface-variant font-mono mt-1.5 block truncate"
-            title={`${telemetry.cpu.cores} Cores / ${telemetry.cpu.model}`}
+            title={`${cpu.cores ?? 1} Cores / ${cpu.model || 'Host Processor'}`}
           >
-            Allocated: {telemetry.cpu.cores} Cores / {telemetry.cpu.model}
+            Allocated: {cpu.cores ?? 1} Cores / {cpu.model || 'Host Processor'}
           </span>
         </div>
 
@@ -585,17 +612,17 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
               Memory Pool (RAM)
             </span>
             <span className={isLight ? 'text-sky-700 font-semibold' : 'text-[#00dbe7]'}>
-              {telemetry.memory.usagePercent}%
+              {memory.usagePercent ?? 0}%
             </span>
           </div>
           <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
             <div 
-              style={{ width: `${telemetry.memory.usagePercent}%` }} 
+              style={{ width: `${Math.min(100, Math.max(0, memory.usagePercent ?? 0))}%` }} 
               className={`h-full transition-all duration-700 ${isLight ? 'bg-sky-500' : 'bg-[#00dbe7]'}`}
             ></div>
           </div>
           <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block truncate">
-            Used: {telemetry.memory.usedGB} GB / {telemetry.memory.totalGB} GB
+            Used: {memory.usedGB ?? 0} GB / {memory.totalGB ?? 0} GB
           </span>
         </div>
 
@@ -607,17 +634,17 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
               API Requests/s
             </span>
             <span className={`${isLight ? 'text-purple-700' : 'text-[#ce5dff]'} font-bold`}>
-              {telemetry.requests.ratePerSec} r/s
+              {requests.ratePerSec ?? 0} r/s
             </span>
           </div>
           <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
             <div 
-              style={{ width: `${Math.min(100, Math.max(5, (telemetry.requests.ratePerSec / 50) * 100))}%` }} 
+              style={{ width: `${Math.min(100, Math.max(5, ((requests.ratePerSec ?? 0) / 50) * 100))}%` }} 
               className={`h-full transition-all duration-700 ${isLight ? 'bg-purple-500' : 'bg-[#ce5dff]'}`}
             ></div>
           </div>
           <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block truncate">
-            Avg Latency: {telemetry.requests.avgLatencyMs > 0 ? `${telemetry.requests.avgLatencyMs}ms` : '<1ms'} • Total: {telemetry.requests.totalRequests}
+            Avg Latency: {(requests.avgLatencyMs ?? 0) > 0 ? `${requests.avgLatencyMs}ms` : '<1ms'} • Total: {requests.totalRequests ?? 0}
           </span>
         </div>
 
@@ -634,14 +661,14 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xl font-bold font-mono text-on-surface">
-              {telemetry.system.platform} {telemetry.system.arch}
+              {system.platform || 'Host'} {system.arch || 'x64'}
             </span>
             <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono border ${isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-300' : 'bg-[#00e476]/10 text-[#00e476] border-[#00e476]/25'}`}>
-              Node {telemetry.system.nodeVersion}
+              Node {system.nodeVersion || 'v22'}
             </span>
           </div>
           <span className="text-[10px] text-on-surface-variant font-mono mt-1.5 block truncate">
-            {telemetry.system.database} • Uptime: {telemetry.system.uptimeFormatted}
+            {system.database || 'Database'} • Uptime: {system.uptimeFormatted || '0m'}
           </span>
         </div>
       </div>
@@ -880,7 +907,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       {/* Privileged Telemetry Audit Log (Collapsible) */}
       <CollapsibleLogDrawer
         title="ADMIN PRIVILEGED TELEMETRY AUDIT"
-        logs={logs.filter(l => l.message.includes('ADMIN') || l.message.includes('ALERT') || l.message.includes('SUCCESS'))}
+        logs={(logs || []).filter(l => l && typeof l.message === 'string' && (l.message.includes('ADMIN') || l.message.includes('ALERT') || l.message.includes('SUCCESS')))}
         defaultExpanded={false}
       />
     </div>

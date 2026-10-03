@@ -13,6 +13,7 @@ import ManagePluginsView from './components/ManagePluginsView';
 import ManagePortfoliosView from './components/ManagePortfoliosView';
 import DocNexusView from './components/DocNexusView';
 import WorkspacePluginStore from './components/WorkspacePluginStore';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const MANAGEMENT_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
   { name: 'Plugin Store', icon: 'extension', size: '3.1 KB' }
@@ -142,19 +143,34 @@ export default function App() {
       )}
       <Routes>
         <Route path="/" element={
-        user.isLoggedIn ? <Navigate to="/workspace/stock-tracker" /> : 
-        <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} theme={theme} toggleTheme={toggleTheme} />
-      } />
-      <Route path="/auth" element={
-        <AuthPage initialTab={authTab} onLoginSuccess={handleLoginSuccess} onBackToHome={() => navigate('/')} />
-      } />
-      <Route path="/admin/*" element={
-        <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
-      } />
-      <Route path="/workspace/*" element={
-        <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
-      } />
-    </Routes>
+          user.isLoggedIn ? <Navigate to="/workspace/stock-tracker" replace /> : 
+          <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} theme={theme} toggleTheme={toggleTheme} />
+        } />
+        <Route path="/auth" element={
+          <AuthPage initialTab={authTab} onLoginSuccess={handleLoginSuccess} onBackToHome={() => navigate('/')} />
+        } />
+        <Route path="/admin" element={
+          <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
+        } />
+        <Route path="/admin/*" element={
+          <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
+        } />
+        <Route path="/workspace" element={
+          <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
+        } />
+        <Route path="/workspace/*" element={
+          <WorkspaceLayout user={user} setUser={setUser} logs={logs} addLog={addLog} activeTab={activeTab} setActiveTab={setActiveTab} handleLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />
+        } />
+        <Route path="/dashboard" element={
+          <Navigate to="/workspace/stock-tracker" replace />
+        } />
+        <Route path="/dashboard/*" element={
+          <Navigate to="/workspace/stock-tracker" replace />
+        } />
+        <Route path="*" element={
+          <Navigate to={user.isLoggedIn ? "/workspace/stock-tracker" : "/"} replace />
+        } />
+      </Routes>
     </>
   );
 }
@@ -397,64 +413,84 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
 
           {/* Render Active Component File Workspace Panel */}
           <div className="flex-grow flex flex-col">
-            
-            {activeTab === 'Stock Tracker' && (
-              <StockTrackerView 
-                logs={logs} 
-                onAddLog={addLog} 
-                userEmail={user.email}
-                userToken={user.token || ''}
-              />
-            )}
+            <ErrorBoundary fallbackTitle="Active View Encountered An Error">
+              {activeTab === 'Stock Tracker' && (
+                <StockTrackerView 
+                  logs={logs} 
+                  onAddLog={addLog} 
+                  userEmail={user.email}
+                  userToken={user.token || ''}
+                />
+              )}
 
-            {activeTab === 'Custom Flow' && (
-              <FlowDesignerView 
-                logs={logs}
-                onAddLog={addLog} 
-                userToken={user.token || ''}
-              />
-            )}
+              {activeTab === 'Custom Flow' && (
+                <FlowDesignerView 
+                  logs={logs}
+                  onAddLog={addLog} 
+                  userToken={user.token || ''}
+                />
+              )}
 
-            {activeTab === 'Accounting' && (
-              <AccountingView 
-                logs={logs}
-                onAddLog={addLog} 
-                userToken={user.token || ''}
-              />
-            )}
+              {activeTab === 'Accounting' && (
+                <AccountingView 
+                  logs={logs}
+                  onAddLog={addLog} 
+                  userToken={user.token || ''}
+                />
+              )}
 
-            {activeTab === 'Doc Nexus' && <DocNexusView logs={logs} onAddLog={addLog} userToken={user.token || ''} theme={theme} />}
-            {activeTab === 'Plugin Store' && <WorkspacePluginStore logs={logs} onAddLog={addLog} userEmail={user.email} userToken={user.token || ''} />}
+              {activeTab === 'Doc Nexus' && <DocNexusView logs={logs} onAddLog={addLog} userToken={user.token || ''} theme={theme} />}
+              {activeTab === 'Plugin Store' && <WorkspacePluginStore logs={logs} onAddLog={addLog} userEmail={user.email} userToken={user.token || ''} />}
 
-            {(activeTab === 'Admin Console' || activeTab === 'Manage Plugins' || activeTab === 'Manage Apps' || activeTab === 'Manage Portfolios') && user.role !== 'Admin' && (
-                <div className="glass-panel p-8 rounded-xl border border-red-900/20 bg-red-950/5 flex flex-col items-center justify-center text-center max-w-lg mx-auto my-12 space-y-4">
-                  <div className="w-16 h-16 rounded-full bg-red-950/20 border border-red-900 flex items-center justify-center mb-2">
-                    <span className="material-symbols-outlined text-3xl text-[#ffb4ab]">security</span>
+              {(activeTab === 'Admin Console' || activeTab === 'Manage Plugins' || activeTab === 'Manage Apps' || activeTab === 'Manage Portfolios') && user.role !== 'Admin' && (
+                  <div className="glass-panel p-8 rounded-xl border border-red-900/20 bg-red-950/5 flex flex-col items-center justify-center text-center max-w-lg mx-auto my-12 space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-red-950/20 border border-red-900 flex items-center justify-center mb-2">
+                      <span className="material-symbols-outlined text-3xl text-[#ffb4ab]">security</span>
+                    </div>
+                    <h3 className="text-lg font-bold text-white">Administrative Lockdown</h3>
+                    <p className="text-xs text-[#b9cacb] leading-relaxed">
+                      This module is restricted to Administrator access. Your current account role is flagged as <code className="bg-[#1c1b1d] px-1.5 py-0.5 rounded text-[#00dbe7] font-mono">{user.role || 'Developer'}</code>.
+                    </p>
                   </div>
-                  <h3 className="text-lg font-bold text-white">Administrative Lockdown</h3>
-                  <p className="text-xs text-[#b9cacb] leading-relaxed">
-                    This module is restricted to Administrator access. Your current account role is flagged as <code className="bg-[#1c1b1d] px-1.5 py-0.5 rounded text-[#00dbe7] font-mono">{user.role || 'Developer'}</code>.
-                  </p>
-                </div>
-            )}
-            
-            {activeTab === 'Admin Console' && user.role === 'Admin' && (
-              <AdminConsoleView logs={logs} onAddLog={addLog} currentUserEmail={user.email} userToken={user.token || ''} theme={theme} />
-            )}
-            {activeTab === 'Manage Apps' && user.role === 'Admin' && (
-              <ManageAppsView logs={logs} onAddLog={addLog} userToken={user.token || ''} />
-            )}
-            {activeTab === 'Manage Plugins' && user.role === 'Admin' && (
-              <ManagePluginsView logs={logs} onAddLog={addLog} userToken={user.token || ''} />
-            )}
-            {activeTab === 'Manage Portfolios' && user.role === 'Admin' && (
-              <ManagePortfoliosView logs={logs} onAddLog={addLog} userToken={user.token || ''} />
-            )}
+              )}
+              
+              {activeTab === 'Admin Console' && user.role === 'Admin' && (
+                <AdminConsoleView logs={logs} onAddLog={addLog} currentUserEmail={user.email} userToken={user.token || ''} theme={theme} />
+              )}
+              {activeTab === 'Manage Apps' && user.role === 'Admin' && (
+                <ManageAppsView logs={logs} onAddLog={addLog} userToken={user.token || ''} />
+              )}
+              {activeTab === 'Manage Plugins' && user.role === 'Admin' && (
+                <ManagePluginsView logs={logs} onAddLog={addLog} userToken={user.token || ''} />
+              )}
+              {activeTab === 'Manage Portfolios' && user.role === 'Admin' && (
+                <ManagePortfoliosView logs={logs} onAddLog={addLog} userToken={user.token || ''} />
+              )}
 
-            {activeTab === 'README' && (
-              <MutedMarkdownView />
-            )}
+              {activeTab === 'README' && (
+                <MutedMarkdownView />
+              )}
 
+              {![
+                'Stock Tracker',
+                'Custom Flow',
+                'Accounting',
+                'Doc Nexus',
+                'Plugin Store',
+                'Admin Console',
+                'Manage Apps',
+                'Manage Plugins',
+                'Manage Portfolios',
+                'README'
+              ].includes(activeTab) && (
+                <StockTrackerView 
+                  logs={logs} 
+                  onAddLog={addLog} 
+                  userEmail={user.email}
+                  userToken={user.token || ''}
+                />
+              )}
+            </ErrorBoundary>
           </div>
 
         </div>
