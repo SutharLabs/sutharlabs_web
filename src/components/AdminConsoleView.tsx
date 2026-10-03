@@ -615,7 +615,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
             <span className="w-2.5 h-2.5 rounded-full bg-[#ce5dff] animate-ping"></span>
             Admin Command Center
           </h2>
-          <p className="text-xs text-[#b9cacb]/80 font-mono mt-1">
+          <p className="text-xs text-on-surface-variant font-mono mt-1">
             System coordinates, server orchestration, and secure credentials management.
           </p>
         </div>
@@ -625,18 +625,18 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
             onClick={toggleMaintenance}
             className={`px-3 py-1.5 rounded text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-2 ${
               systemActive 
-                ? 'bg-[#1a2f21] text-[#00e476] border-[#00e476]/30' 
-                : 'bg-[#3b1219] text-[#ffb4ab] border-[#ffb4ab]/30'
+                ? 'bg-emerald-50 dark:bg-[#1a2f21] text-emerald-700 dark:text-[#00e476] border-emerald-300 dark:border-[#00e476]/30 hover:bg-emerald-100 dark:hover:bg-[#1a2f21]/80 shadow-sm' 
+                : 'bg-rose-50 dark:bg-[#3b1219] text-rose-700 dark:text-[#ffb4ab] border-rose-300 dark:border-[#ffb4ab]/30 hover:bg-rose-100 dark:hover:bg-[#3b1219]/80 shadow-sm'
             }`}
           >
             {systemActive ? (
               <>
-                <ToggleRight className="text-[#00e476] w-4 h-4" />
+                <ToggleRight className="w-4 h-4 shrink-0 text-emerald-600 dark:text-[#00e476]" />
                 System Active
               </>
             ) : (
               <>
-                <ToggleLeft className="text-[#ffb4ab] w-4 h-4" />
+                <ToggleLeft className="w-4 h-4 shrink-0 text-rose-600 dark:text-[#ffb4ab]" />
                 Maint. Locked
               </>
             )}
@@ -645,9 +645,17 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
           <button
             type="button"
             onClick={initiateUsageSpike}
-            className="px-3 py-1.5 rounded text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border bg-[#1a2c31] text-[#74f5ff] border-[#00dbe7]/30 hover:bg-[#00dbe7]/20 transition-all flex items-center gap-2"
+            className={`px-3 py-1.5 rounded text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-2 ${
+              systemActive
+                ? 'bg-sky-50 dark:bg-[#1a2c31] text-sky-700 dark:text-[#74f5ff] border-sky-300 dark:border-[#00dbe7]/30 hover:bg-sky-100 dark:hover:bg-[#00dbe7]/20 shadow-sm'
+                : 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-300 dark:border-amber-500/30 hover:bg-amber-100 dark:hover:bg-amber-950/60 shadow-sm'
+            }`}
           >
-            <span className="material-symbols-outlined text-sm">{systemActive ? 'CheckCircle' : 'ShieldAlert'}</span>
+            {systemActive ? (
+              <CheckCircle className="w-4 h-4 shrink-0 text-sky-600 dark:text-[#00dbe7]" />
+            ) : (
+              <ShieldAlert className="w-4 h-4 shrink-0 text-amber-600 dark:text-amber-400" />
+            )}
             {systemActive ? 'ACTIVE' : 'MAINTENANCE'}
           </button>
         </div>
