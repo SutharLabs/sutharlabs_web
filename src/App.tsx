@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
 import { UserProfile, WorkspaceTab, TerminalLog } from './types';
 import LandingPage from './components/LandingPage';
@@ -96,9 +96,9 @@ export default function App() {
     { timestamp: '14:32:05', type: 'AGENT', message: 'AGENT: Loaded models for predictive analytics.' }
   ]);
 
-  const addLog = (newLog: TerminalLog) => {
-    setLogs((prev) => [...prev, newLog]);
-  };
+  const addLog = useCallback((newLog: TerminalLog) => {
+    setLogs((prev) => [...prev.slice(-100), newLog]);
+  }, []);
 
   const handleLaunchWorkspace = () => {
     if (user.isLoggedIn) {

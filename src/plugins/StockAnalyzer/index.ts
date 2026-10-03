@@ -55,15 +55,15 @@ export async function getHistory(symbol: string, period: string = '5d', interval
 export async function getAnalysis(symbol: string) {
   try {
     const result: any = await yahooFinance.chart(symbol, {
-      period1: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
+      period1: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000), // ~6 months (125+ trading sessions)
       interval: '1d'
     });
     
-    const closes = result.quotes.map(q => q.close).filter(Boolean) as number[];
-    const highs = result.quotes.map(q => q.high).filter(Boolean) as number[];
-    const lows = result.quotes.map(q => q.low).filter(Boolean) as number[];
+    const closes = result.quotes.map((q: any) => q.close).filter(Boolean) as number[];
+    const highs = result.quotes.map((q: any) => q.high).filter(Boolean) as number[];
+    const lows = result.quotes.map((q: any) => q.low).filter(Boolean) as number[];
     
-    if (closes.length < 50) throw new Error("Not enough data for analysis");
+    if (closes.length < 30) throw new Error("Not enough data for analysis (minimum 30 trading sessions required)");
 
     const rsi = RSI.calculate({ values: closes, period: 14 });
     const macd = MACD.calculate({ values: closes, fastPeriod: 12, slowPeriod: 26, signalPeriod: 9, SimpleMAOscillator: false, SimpleMASignal: false });
@@ -71,7 +71,7 @@ export async function getAnalysis(symbol: string) {
     const atr = ATR.calculate({ high: highs, low: lows, close: closes, period: 14 });
     const adx = ADX.calculate({ high: highs, low: lows, close: closes, period: 14 });
     const ema20 = EMA.calculate({ values: closes, period: 20 });
-    const ema50 = EMA.calculate({ values: closes, period: 50 });
+    const ema50 = closes.length >= 50 ? EMA.calculate({ values: closes, period: 50 }) : [];
     const ma20 = SMA.calculate({ values: closes, period: 20 });
     
     const latestRsi = rsi[rsi.length - 1];
@@ -101,7 +101,7 @@ export async function getAnalysis(symbol: string) {
       atr: latestAtr,
       adx: latestAdx?.adx,
       ema_20: ema20[ema20.length - 1],
-      ema_50: ema50[ema50.length - 1],
+      ema_50: ema50.length > 0 ? ema50[ema50.length - 1] : undefined,
       ma_20: ma20[ma20.length - 1],
       signals
     };

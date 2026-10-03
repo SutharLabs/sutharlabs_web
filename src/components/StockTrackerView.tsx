@@ -87,6 +87,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
   const [notification, setNotification] = useState('');
 
   const terminalEndRef = useRef<HTMLDivElement>(null);
+  const onAddLogRef = useRef(onAddLog);
+  useEffect(() => {
+    onAddLogRef.current = onAddLog;
+  }, [onAddLog]);
+
   const svgWidth = 600;
   const svgHeight = 220;
 
@@ -118,7 +123,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       if (qRes.ok) {
         const q: Quote = await qRes.json();
         setQuote(q);
-        onAddLog({
+        onAddLogRef.current({
           timestamp: new Date().toLocaleTimeString(),
           type: 'DATA',
           message: `Tick → ${q.symbol}: ₹${q.current_price?.toFixed(2)} (${q.change_percent >= 0 ? '+' : ''}${q.change_percent?.toFixed(2)}%)`
@@ -138,7 +143,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
         const a: Analysis = await aRes.json();
         setAnalysis(a);
         if (a.rsi != null) {
-          onAddLog({
+          onAddLogRef.current({
             timestamp: new Date().toLocaleTimeString(),
             type: 'AGENT',
             message: `AGENT: ${sym} RSI=${a.rsi?.toFixed(1)} | MACD=${a.macd?.toFixed(3)} | ADX=${a.adx?.toFixed(1)}`
@@ -151,18 +156,18 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       if (sRes.ok) {
         const s: Suggestion = await sRes.json();
         setSuggestion(s);
-        onAddLog({
+        onAddLogRef.current({
           timestamp: new Date().toLocaleTimeString(),
           type: s.action === 'BUY' ? 'SUCCESS' : s.action === 'SELL' ? 'ALERT' : 'INFO',
           message: `SIGNAL: ${sym} → ${s.action} | Confidence: ${((s.confidence || 0) * 100).toFixed(0)}%`
         });
       }
     } catch (e) {
-      onAddLog({ timestamp: new Date().toLocaleTimeString(), type: 'ERROR', message: `API error: ${e}` });
+      onAddLogRef.current({ timestamp: new Date().toLocaleTimeString(), type: 'ERROR', message: `API error: ${e}` });
     } finally {
       setLoading(false);
     }
-  }, [onAddLog]);
+  }, []);
 
   // ── Initial fetch + period change ──────────────────────────────────────────
   useEffect(() => {
@@ -177,7 +182,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
         .then(q => {
           if (!q) return;
           setQuote(q);
-          onAddLog({
+          onAddLogRef.current({
             timestamp: new Date().toLocaleTimeString(),
             type: 'DATA',
             message: `Tick → ${q.symbol}: ₹${q.current_price?.toFixed(2)} (${q.change_percent >= 0 ? '+' : ''}${q.change_percent?.toFixed(2)}%)`
@@ -185,7 +190,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
         }).catch(() => {});
     }, 30000);
     return () => clearInterval(id);
-  }, [symbol, onAddLog]);
+  }, [symbol]);
 
   // ── Terminal scroll ────────────────────────────────────────────────────────
   useEffect(() => {
