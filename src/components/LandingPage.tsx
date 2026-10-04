@@ -55,12 +55,12 @@ const getProjectFeedbackDetails = (project: PortfolioProject): ProjectFeedbackDa
   const id = (project.id || '').toLowerCase();
   const title = (project.title || '').toLowerCase();
 
-  // 1. Driven Enterprise: Feedback from director regarding look & feel and ease of adding products/services
+  // 1. Driven Enterprise: Feedback from General Manager Suresh Voseta regarding look & feel and ease of adding products/services
   if (id.includes('proj_1') || title.includes('driven')) {
     return {
       quote: project.feedback || "The new website captures the exact premium look and feel we envisioned for Driven Enterprise. Beyond the sleek modern aesthetics, what truly stands out is how effortless it is for our team to add new products, update industrial specs, and publish service offerings on the fly without any technical friction.",
-      author: "Director",
-      authorTitle: "Director, Driven Enterprise"
+      author: "Suresh Voseta",
+      authorTitle: "General Manager, Driven Enterprise"
     };
   }
 
