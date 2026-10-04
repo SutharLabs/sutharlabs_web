@@ -1,11 +1,12 @@
 import express from "express";
+import multer from "multer";
 import "dotenv/config";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { getPrismaClient, hashPassword, generateToken, verifyToken } from "./api/_utils.js";
 import { PluginEngine } from "./src/plugins/PluginEngine.js";
-import { getQuote, getHistory, getAnalysis, getSuggestion } from "./src/plugins/StockAnalyzer/index.js";
+import { registerAllPluginRoutes } from "./src/plugins/serverRegistry.js";
 import { getSystemTelemetry } from "./src/services/telemetryService.js";
 import {
   securityHeaders,
@@ -21,6 +22,11 @@ import {
 
 const PORT = 3000;
 const prisma = getPrismaClient();
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 }
+});
 
 // Default initial plugins data
 const defaultPlugins = [
@@ -324,9 +330,37 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
 
   // ==================== AUTH ENDPOINTS ====================
 
-  // File Upload Logic
-  // Temporarily disabled multer due to Vercel dynamic import compatibility issues
-  // app.post('/api/plugins/upload', ...);
+  // File Upload Logic (.zip, .vsix workspace and app plugins)
+  app.post("/api/plugins/upload", authenticateToken, requireAdmin, upload.single("pluginFile"), async (req: any, res: any) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No plugin package archive was uploaded." });
+      }
+
+      const originalName = req.file.originalname;
+      const size = req.file.size;
+      console.log(`[Plugin Upload Engine] Received package: ${originalName} (${size} bytes)`);
+
+      // Persist to uploads directory on disk if running outside Vercel serverless
+      if (!process.env.VERCEL) {
+        const uploadsDir = path.join(process.cwd(), "uploads");
+        if (!fs.existsSync(uploadsDir)) {
+          fs.mkdirSync(uploadsDir, { recursive: true });
+        }
+        fs.writeFileSync(path.join(uploadsDir, originalName), req.file.buffer);
+      }
+
+      res.json({
+        success: true,
+        message: `Plugin archive ${originalName} uploaded successfully.`,
+        filename: originalName,
+        size
+      });
+    } catch (err: any) {
+      console.error("Plugin upload error:", err);
+      res.status(500).json({ error: "Failed to process uploaded plugin archive." });
+    }
+  });
 
   // POST /api/auth/signup
   app.post("/api/auth/signup", async (req, res) => {
@@ -668,62 +702,7 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
     }
   });
 
-  // ==================== INVOICES ENDPOINTS ====================
 
-  // GET /api/invoices
-  app.get("/api/invoices", authenticateToken, async (req, res) => {
-    try {
-      const invoices = await prisma.invoice.findMany({
-        orderBy: { date: "desc" }
-      });
-      res.json(invoices);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch invoices ledger." });
-    }
-  });
-
-  // POST /api/invoices (State-of-the-Art Date-Based daily sequence ID generator)
-  app.post("/api/invoices", authenticateToken, async (req, res) => {
-    const { client, amount, status } = req.body;
-    if (!client || !amount) {
-      return res.status(400).json({ error: "Client name and billing amount are required fields." });
-    }
-
-    try {
-      const date = new Date();
-      // Date string format YYYYMMDD
-      const dateStr = `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
-      
-      // Determine daily count dynamically to calculate next sequence
-      const todayString = date.toISOString().split("T")[0];
-      const count = await prisma.invoice.count({
-        where: {
-          date: {
-            contains: todayString
-          }
-        }
-      });
-
-      const sequenceNo = count + 1;
-      const formattedInvoiceId = `INV-${dateStr}-${sequenceNo.toString().padStart(4, '0')}`;
-
-      const created = await prisma.invoice.create({
-        data: {
-          id: formattedInvoiceId,
-          date: todayString,
-          client,
-          amount: parseFloat(amount),
-          status: status || "Pending"
-        }
-      });
-      res.status(201).json(created);
-    } catch (error) {
-      console.error("Create invoice error:", error);
-      res.status(500).json({ error: "Failed to insert transaction invoice." });
-    }
-  });
-
-  // ==================== FLOW DESIGNER NODES ENDPOINTS ====================
 
 
 // ==========================================
@@ -732,29 +711,130 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
 
 app.get("/api/workspace-plugins", async (req, res) => {
   try {
-    const plugins = await prisma.workspacePlugin.findMany();
-    res.json(plugins);
+    const plugins = await prisma.workspacePlugin.findMany({
+      include: {
+        reviews: {
+          orderBy: { createdAt: 'desc' }
+        },
+        versions: {
+          orderBy: { publishedAt: 'desc' }
+        },
+        installedBy: true
+      }
+    });
+
+    const enriched = plugins.map(p => {
+      const reviewCount = p.reviews.length;
+      const avgRating = reviewCount > 0
+        ? Number((p.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(1))
+        : 0;
+      return {
+        id: p.id,
+        name: p.name,
+        category: p.category,
+        type: p.type,
+        description: p.description,
+        iconSymbol: p.iconSymbol,
+        version: p.version,
+        installsCount: p.installedBy.length,
+        rating: avgRating,
+        reviewsCount: reviewCount,
+        reviews: p.reviews,
+        versions: p.versions
+      };
+    });
+
+    res.json(enriched);
   } catch (error) {
     console.error("Failed to fetch workspace plugins:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// Install a plugin for the current user
+// Submit or update a real rating & feedback review for a workspace plugin
+app.post("/api/workspace-plugins/:id/reviews", authenticateToken, async (req: any, res: any) => {
+  try {
+    const pluginId = req.params.id;
+    const { rating, feedback } = req.body;
+    const ratingNum = parseInt(rating, 10);
+    if (!ratingNum || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).json({ error: "Rating must be an integer between 1 and 5 stars" });
+    }
+
+    const review = await prisma.workspacePluginReview.upsert({
+      where: {
+        userEmail_pluginId: {
+          userEmail: req.user.email,
+          pluginId: pluginId
+        }
+      },
+      update: {
+        rating: ratingNum,
+        feedback: feedback ? String(feedback).trim() : null,
+        userName: req.user.name || req.user.email.split('@')[0]
+      },
+      create: {
+        pluginId: pluginId,
+        userEmail: req.user.email,
+        userName: req.user.name || req.user.email.split('@')[0],
+        rating: ratingNum,
+        feedback: feedback ? String(feedback).trim() : null
+      }
+    });
+
+    res.json(review);
+  } catch (error) {
+    console.error("Failed to submit review:", error);
+    res.status(500).json({ error: "Failed to submit review" });
+  }
+});
+
+// Delete a user's review and rating for a workspace plugin
+app.delete("/api/workspace-plugins/:id/reviews", authenticateToken, async (req: any, res: any) => {
+  try {
+    const pluginId = req.params.id;
+    await prisma.workspacePluginReview.delete({
+      where: {
+        userEmail_pluginId: {
+          userEmail: req.user.email,
+          pluginId: pluginId
+        }
+      }
+    });
+    res.json({ success: true, message: "Review deleted successfully" });
+  } catch (error) {
+    console.error("Failed to delete review:", error);
+    res.status(500).json({ error: "Failed to delete review" });
+  }
+});
+
+// Install or update a plugin for the current user
 app.post("/api/workspace-plugins/install", authenticateToken, async (req: any, res: any) => {
   try {
     const { pluginId } = req.body;
     if (!pluginId) return res.status(400).json({ error: "Missing pluginId" });
 
-    const install = await prisma.userWorkspacePlugin.create({
-      data: {
+    const plugin = await prisma.workspacePlugin.findUnique({ where: { id: pluginId } });
+    if (!plugin) return res.status(404).json({ error: "Plugin not found" });
+
+    const install = await prisma.userWorkspacePlugin.upsert({
+      where: {
+        userEmail_pluginId: {
+          userEmail: req.user.email,
+          pluginId: pluginId
+        }
+      },
+      update: {
+        installedVersion: plugin.version
+      },
+      create: {
         userEmail: req.user.email,
-        pluginId: pluginId
+        pluginId: pluginId,
+        installedVersion: plugin.version
       }
     });
     res.json(install);
   } catch (error: any) {
-    if (error.code === 'P2002') return res.status(400).json({ error: "Plugin already installed" });
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
@@ -778,57 +858,150 @@ app.delete("/api/workspace-plugins/install/:pluginId", authenticateToken, async 
 
 app.get("/api/workspace-plugins/installed", authenticateToken, async (req: any, res: any) => {
   try {
-    const installs = await prisma.userWorkspacePlugin.findMany({
+    let installs = await prisma.userWorkspacePlugin.findMany({
       where: { userEmail: req.user.email },
       include: { plugin: true }
     });
-    res.json(installs.map(i => i.plugin));
+
+    if (installs.length === 0) {
+      const allPlugins = await prisma.workspacePlugin.findMany();
+      for (const p of allPlugins) {
+        try {
+          await prisma.userWorkspacePlugin.create({
+            data: { userEmail: req.user.email, pluginId: p.id, installedVersion: p.version }
+          });
+        } catch (e) {
+          // ignore duplicate
+        }
+      }
+      installs = await prisma.userWorkspacePlugin.findMany({
+        where: { userEmail: req.user.email },
+        include: { plugin: true }
+      });
+    }
+
+    res.json(installs.map(i => ({
+      ...i.plugin,
+      installedVersion: i.installedVersion
+    })));
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch installed plugins" });
   }
 });
 
-// ==========================================
-// NATIVE TS STOCK ANALYZER API
-// ==========================================
-app.get("/api/workspace/stock-analyzer/quote", async (req: any, res: any) => {
+// Admin: Upload plugin archive package (.zip or .vsix)
+app.post("/api/plugins/upload", authenticateToken, requireAdmin, upload.single("pluginFile"), async (req: any, res: any) => {
   try {
-    const data = await getQuote(req.query.symbol as string);
-    res.json(data);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    if (!req.file) {
+      return res.status(400).json({ error: "No archive package file provided." });
+    }
+
+    const checksumSha256 = crypto.createHash("sha256").update(req.file.buffer).digest("hex");
+    const filename = req.file.originalname || "plugin-package.zip";
+    const storageDir = path.join(process.cwd(), "storage", "plugins");
+    if (!fs.existsSync(storageDir)) {
+      fs.mkdirSync(storageDir, { recursive: true });
+    }
+
+    const savedPath = path.join(storageDir, `${Date.now()}_${filename}`);
+    fs.writeFileSync(savedPath, req.file.buffer);
+
+    res.json({
+      success: true,
+      filename,
+      size: req.file.size,
+      checksumSha256,
+      packageUrl: `/storage/plugins/${path.basename(savedPath)}`
+    });
+  } catch (error) {
+    console.error("Failed to upload plugin package:", error);
+    res.status(500).json({ error: "Failed to process plugin package archive." });
+  }
 });
 
-app.get("/api/workspace/stock-analyzer/history", async (req: any, res: any) => {
+// Admin: Publish / Add a new workspace plugin or version to the global catalog
+app.post("/api/workspace-plugins", authenticateToken, requireAdmin, async (req: any, res: any) => {
   try {
-    const data = await getHistory(req.query.symbol as string, req.query.period as string, req.query.interval as string);
-    res.json(data);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    const { name, category, type, description, iconSymbol, version, changelog, checksumSha256, packageUrl } = req.body;
+    if (!name) {
+      return res.status(400).json({ error: "Plugin name is a required parameter." });
+    }
+
+    const id = req.body.id || `wp_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}`;
+    const targetVersion = version || "0.1.0";
+
+    const created = await prisma.workspacePlugin.upsert({
+      where: { id },
+      update: {
+        name,
+        category: category || "General",
+        type: type || "Community",
+        description: description || "Custom developer workspace tool extension.",
+        iconSymbol: iconSymbol || "extension",
+        version: targetVersion
+      },
+      create: {
+        id,
+        name,
+        category: category || "General",
+        type: type || "Community",
+        description: description || "Custom developer workspace tool extension.",
+        iconSymbol: iconSymbol || "extension",
+        version: targetVersion
+      }
+    });
+
+    // Record this version in historical release ledger
+    await prisma.workspacePluginVersion.upsert({
+      where: {
+        pluginId_version: {
+          pluginId: id,
+          version: targetVersion
+        }
+      },
+      update: {
+        changelog: changelog || `Release ${targetVersion}`,
+        checksumSha256: checksumSha256 || null,
+        packageUrl: packageUrl || null,
+        publishedBy: req.user.name || req.user.email
+      },
+      create: {
+        pluginId: id,
+        version: targetVersion,
+        changelog: changelog || `Release ${targetVersion}`,
+        checksumSha256: checksumSha256 || null,
+        packageUrl: packageUrl || null,
+        publishedBy: req.user.name || req.user.email
+      }
+    });
+
+    res.status(201).json(created);
+  } catch (error) {
+    console.error("Failed to create workspace plugin:", error);
+    res.status(500).json({ error: "Failed to create workspace plugin." });
+  }
 });
 
-app.get("/api/workspace/stock-analyzer/analysis", async (req: any, res: any) => {
+// Admin: Delete / Unpublish a workspace plugin from the global catalog
+app.delete("/api/workspace-plugins/:id", authenticateToken, requireAdmin, async (req: any, res: any) => {
   try {
-    const data = await getAnalysis(req.query.symbol as string);
-    res.json(data);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
+    const { id } = req.params;
+    // Remove user installation records first
+    await prisma.userWorkspacePlugin.deleteMany({
+      where: { pluginId: id }
+    });
+    // Remove plugin from catalog
+    await prisma.workspacePlugin.delete({
+      where: { id }
+    });
+    res.json({ success: true, removedId: id });
+  } catch (error) {
+    console.error("Failed to delete workspace plugin:", error);
+    res.status(500).json({ error: "Failed to delete workspace plugin." });
+  }
 });
 
-app.get("/api/workspace/stock-analyzer/suggestion", async (req: any, res: any) => {
-  try {
-    const data = await getSuggestion(req.query.symbol as string);
-    res.json(data);
-  } catch (e: any) { res.status(500).json({ error: e.message }); }
-});
 
-app.get("/api/workspace/stock-analyzer/nifty50", (req, res) => {
-  res.json([
-    {"symbol": "RELIANCE.NS",   "name": "Reliance Industries"},
-    {"symbol": "TCS.NS",        "name": "Tata Consultancy Services"},
-    {"symbol": "HDFCBANK.NS",   "name": "HDFC Bank"},
-    {"symbol": "INFY.NS",       "name": "Infosys"},
-    {"symbol": "ICICIBANK.NS",  "name": "ICICI Bank"},
-    {"symbol": "HINDUNILVR.NS", "name": "Hindustan Unilever"}
-  ]);
-});
 
 // ==========================================
 // ADMIN PORTFOLIO API
@@ -845,59 +1018,7 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
 });
 
 
-// ==========================================
-// DOCNEXUS API (Document Management)
-// ==========================================
 
-  // GET /api/nodes
-  app.get("/api/nodes", authenticateToken, async (req, res) => {
-    try {
-      const nodes = await prisma.flowNode.findMany();
-      res.json(nodes);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to fetch visual workflow canvas nodes." });
-    }
-  });
-
-  // POST /api/nodes/sync
-  app.post("/api/nodes/sync", authenticateToken, async (req, res) => {
-    const nodes = req.body;
-    if (!Array.isArray(nodes)) {
-      return res.status(400).json({ error: "Payload must be a valid list of layout nodes." });
-    }
-
-    try {
-      // Cyclic Check & DAG Schema Validation (State-of-the-Art)
-      const labels = nodes.map((n) => n.label);
-      const uniqueLabels = new Set(labels);
-      if (uniqueLabels.size !== labels.length) {
-        return res.status(400).json({ error: "Pipeline DAG validation failed: Duplicate node labels are not allowed." });
-      }
-
-      // Direct SQLite transactional replacement for visual canvas states
-      await prisma.$transaction(async (tx) => {
-        await tx.flowNode.deleteMany();
-        for (const n of nodes) {
-          await tx.flowNode.create({
-            data: {
-              id: String(n.id),
-              label: n.label,
-              type: n.type,
-              status: n.status || "IDLE",
-              pluginActive: !!n.pluginActive,
-              fileUsed: n.fileUsed || null,
-              x: parseFloat(n.x) || 0.0,
-              y: parseFloat(n.y) || 0.0
-            }
-          });
-        }
-      });
-      res.json({ success: true, count: nodes.length });
-    } catch (error) {
-      console.error("Canvas sync error:", error);
-      res.status(500).json({ error: "Failed to synchronize visual canvas coordinates." });
-    }
-  });
 
   // ==================== PORTFOLIO & AUDITABLE TRADING ====================
 
@@ -1094,49 +1215,8 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
     }
   });
 
-  // ==================== DOCNEXUS DOCUMENT ENDPOINTS ====================
-
-  // GET /api/docnexus/document
-  app.get("/api/docnexus/document", authenticateToken, async (req, res) => {
-    try {
-      let doc = await prisma.document.findUnique({
-        where: { id: "doc_nexus_default" }
-      });
-
-      if (!doc) {
-        doc = await prisma.document.create({
-          data: {
-            id: "doc_nexus_default",
-            title: "DocNexus Sovereign Guide",
-            content: `# DocNexus Document Sandbox Guide\n\nWelcome to the **DocNexus Sovereign Document Engine**, a high-performance Markdown and diagramming playground!\n\n> [!NOTE]\n> This applet represents a complete TypeScript implementation of the enterprise-grade DocNexus core.\n\n## Feature Showcases\n\n### 1. Smart Sequence Diagram Compiler\nType standard sequence flows below to compile an interactive calling diagram:\n\n\`\`\`sequence\nAlice -> Bob: Request API Token\nBob -> Alice: Validate HMAC Signature\nAlice -> Gateway: Sync Telemetry\n\`\`\`\n\n### 2. Network Topology Visualizer\nAdorn your structural documents with professional node topologies instantly:\n\n\`\`\`topology\n[ClientApp] === [NginxGateway]\n[NginxGateway] === [ExpressAPI]\n[ExpressAPI] --- [PostgreSQL]\n[ExpressAPI] --- [RedisCache]\n\`\`\`\n\n### 3. High-Density Data Tables\nASCII tables are parsed dynamically into modern dashboard grids:\n\n| Service Node | Role | Telemetry | Status |\n| :--- | :--- | :---: | :---: |\n| VM-East-01 | Primary API | 14ms | ACTIVE |\n| VM-East-02 | Secondary Node | 18ms | STANDBY |\n| db-sqlite-01 | Core Database | 4ms | SYNCHRONIZED |\n`
-          }
-        });
-      }
-
-      res.json(doc);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to retrieve docnexus document state." });
-    }
-  });
-
-  // POST /api/docnexus/document
-  app.post("/api/docnexus/document", authenticateToken, async (req, res) => {
-    const { title, content } = req.body;
-    if (content === undefined) {
-      return res.status(400).json({ error: "Document content is required." });
-    }
-
-    try {
-      const updated = await prisma.document.upsert({
-        where: { id: "doc_nexus_default" },
-        update: { title: title || "DocNexus Guide", content },
-        create: { id: "doc_nexus_default", title: title || "DocNexus Guide", content }
-      });
-      res.json(updated);
-    } catch (error) {
-      res.status(500).json({ error: "Failed to save docnexus document." });
-    }
-  });
+  // ==================== REGISTER IN-TREE MODULAR PLUGINS ====================
+  registerAllPluginRoutes(app);
 
   // ==================== INITIALIZE PLUGIN ENGINE ====================
   const pluginEngine = new PluginEngine(app);
@@ -1144,6 +1224,8 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
 
   // Serve compiled frontend UI assets from installed plugins
   app.use('/api/plugins/serve', express.static(path.join(process.cwd(), 'installed_plugins')));
+  // Serve plugin archives and storage assets
+  app.use('/storage', express.static(path.join(process.cwd(), 'storage')));
 
   // Unmatched /api/* routes return clean JSON 404 instead of falling through to SPA HTML
   app.use('/api/*', notFoundHandler);

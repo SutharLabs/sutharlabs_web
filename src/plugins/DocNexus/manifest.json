@@ -1,0 +1,12 @@
+{
+  "id": "wp_doc_nexus",
+  "name": "Markdown Documentation & Knowledge Base",
+  "version": "0.1.0",
+  "category": "Documentation",
+  "type": "Native",
+  "description": "Collaborative split-pane markdown documentation editor with live render, code snippet styling, and cloud persistence.",
+  "iconSymbol": "description",
+  "main": "index.ts",
+  "minEngineVersion": "0.1.0",
+  "packagedAt": "2026-10-04T14:46:20.743Z"
+}

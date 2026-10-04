@@ -94,44 +94,169 @@ async function seed() {
   }
 
   // 2. Workspace plugins
-  const wsPluginCount = await prisma.workspacePlugin.count();
-  if (wsPluginCount === 0) {
-    console.log("→ Seeding workspace plugins...");
-    await prisma.workspacePlugin.create({
-      data: {
-        id: "wp_stock_analyzer",
-        name: "Stock Market Analyzer",
-        category: "Finance",
-        type: "Native",
-        description: "Real-time stock data fetching, technical indicators (RSI, MACD, Bollinger), and algorithmic trading suggestions via native Node.js and Yahoo Finance.",
-        iconSymbol: "candlestick_chart",
-        version: "2.0.0"
-      }
+  console.log("→ Seeding workspace plugins...");
+  const inTreePlugins = [
+    {
+      id: "wp_stock_analyzer",
+      name: "Stock Tracker",
+      category: "Finance",
+      type: "Native",
+      description: "Real-time stock data fetching, technical indicators (RSI, MACD, Bollinger), and algorithmic trading suggestions via native Node.js and Yahoo Finance.",
+      iconSymbol: "monitoring",
+      version: "0.1.0"
+    },
+    {
+      id: "wp_flow_designer",
+      name: "Custom Flow",
+      category: "Architecture",
+      type: "Native",
+      description: "Interactive visual node editor for architectural topologies, microservice workflows, and system graph design.",
+      iconSymbol: "account_tree",
+      version: "0.1.0"
+    },
+    {
+      id: "wp_doc_nexus",
+      name: "Doc Nexus",
+      category: "Documentation",
+      type: "Native",
+      description: "Collaborative markdown documentation studio with live preview, syntax highlighting, and cloud persistence.",
+      iconSymbol: "menu_book",
+      version: "0.1.0"
+    },
+    {
+      id: "wp_accounting",
+      name: "Accounting",
+      category: "Operations",
+      type: "Native",
+      description: "Financial ledger, invoicing, daily transaction sequences, and balance auditing.",
+      iconSymbol: "currency_exchange",
+      version: "0.1.0"
+    }
+  ];
+
+  for (const wp of inTreePlugins) {
+    await prisma.workspacePlugin.upsert({
+      where: { id: wp.id },
+      update: { ...wp, version: "0.1.0" },
+      create: wp
     });
-    console.log("  ✓ 1 workspace plugin inserted");
-  } else {
-    console.log(`  ⏭  Workspace plugins already exist (${wsPluginCount}), skipping`);
   }
+  // Ensure any other workspace plugin in DB is also updated to 0.1.0
+  await prisma.workspacePlugin.updateMany({
+    data: { version: "0.1.0" }
+  });
+  console.log(`  ✓ ${inTreePlugins.length} workspace plugins ensured in catalog at v0.1.0`);
+
+  // 2a. Seed initial version history records
+  const initialVersions = [
+    {
+      pluginId: "wp_stock_analyzer",
+      version: "0.1.0",
+      changelog: "Initial public release. Real-time Yahoo Finance quote streaming, technical indicators (RSI, MACD, Bollinger Bands), and deterministic paper trading execution log.",
+      checksumSha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh"
+    },
+    {
+      pluginId: "wp_flow_designer",
+      version: "0.1.0",
+      changelog: "Initial public release. Interactive canvas for architectural node topologies, microservices modeling, and JSON state import/export.",
+      checksumSha256: "ca978112ca1bbdcafac231b39a23dc4da786081498f409f5c6a1e3518e38d689",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh"
+    },
+    {
+      pluginId: "wp_doc_nexus",
+      version: "0.1.0",
+      changelog: "Initial public release. Collaborative split-pane markdown documentation editor with live render, code snippet styling, and cloud persistence.",
+      checksumSha256: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh"
+    },
+    {
+      pluginId: "wp_accounting",
+      version: "0.1.0",
+      changelog: "Initial public release. Financial ledger, double-entry invoicing sequences, and balance sheet auditing.",
+      checksumSha256: "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh"
+    }
+  ];
+
+  for (const v of initialVersions) {
+    await prisma.workspacePluginVersion.upsert({
+      where: { pluginId_version: { pluginId: v.pluginId, version: v.version } },
+      update: v,
+      create: v
+    });
+  }
+  console.log(`  ✓ ${initialVersions.length} initial plugin version records ensured`);
 
   // 3. Users
-  const userCount = await prisma.user.count();
-  if (userCount === 0) {
-    console.log("→ Seeding users...");
-    const defaultUsers = [
-      { name: "Suthar Suresh",    email: "mr.sutharsuresh@gmail.com",   password: "suthar123",    role: "Admin",     joinedAt: new Date("2026-05-20T10:14:00Z"), activityCount: 842 },
-      { name: "Suthar Developer", email: "developer@sutharlabs.com",    password: "developer123", role: "Admin",     joinedAt: new Date("2026-05-21T08:30:15Z"), activityCount: 452 },
-      { name: "Johan Decker",     email: "johan.decker@consensys.net",  password: "developer123", role: "Developer", joinedAt: new Date("2026-05-22T14:45:00Z"), activityCount: 118 },
-      { name: "Rogue Spammer",    email: "spammer99@rogue.io",          password: "developer123", role: "Banned",    joinedAt: new Date("2026-05-23T05:12:00Z"), activityCount: 12  }
-    ];
-    for (const u of defaultUsers) {
-      await prisma.user.create({
-        data: { name: u.name, email: u.email, passwordHash: hashPassword(u.password), role: u.role, joinedAt: u.joinedAt, activityCount: u.activityCount }
-      });
-    }
-    console.log(`  ✓ ${defaultUsers.length} users inserted`);
-  } else {
-    console.log(`  ⏭  Users already exist (${userCount}), skipping`);
+  console.log("→ Ensuring default users exist...");
+  const defaultUsers = [
+    { name: "Suthar Suresh",    email: "mr.sutharsuresh@gmail.com",   password: "suthar123",    role: "Admin",     joinedAt: new Date("2026-05-20T10:14:00Z"), activityCount: 842 },
+    { name: "Suthar Developer", email: "developer@sutharlabs.com",    password: "developer123", role: "Admin",     joinedAt: new Date("2026-05-21T08:30:15Z"), activityCount: 452 },
+    { name: "Johan Decker",     email: "johan.decker@consensys.net",  password: "developer123", role: "Developer", joinedAt: new Date("2026-05-22T14:45:00Z"), activityCount: 118 },
+    { name: "Rogue Spammer",    email: "spammer99@rogue.io",          password: "developer123", role: "Banned",    joinedAt: new Date("2026-05-23T05:12:00Z"), activityCount: 12  }
+  ];
+  for (const u of defaultUsers) {
+    await prisma.user.upsert({
+      where: { email: u.email },
+      update: { name: u.name, role: u.role },
+      create: { name: u.name, email: u.email, passwordHash: hashPassword(u.password), role: u.role, joinedAt: u.joinedAt, activityCount: u.activityCount }
+    });
   }
+  console.log(`  ✓ ${defaultUsers.length} users ensured`);
+
+  // 2b. Seed Real Workspace Plugin Reviews & Ratings
+  console.log("→ Seeding real workspace plugin reviews...");
+  const sampleReviews = [
+    {
+      pluginId: "wp_stock_analyzer",
+      userEmail: "johan.decker@consensys.net",
+      userName: "Johan Decker",
+      rating: 5,
+      feedback: "The real-time Bollinger Bands and RSI calculations run with zero latency. Seamless integration with our algorithmic strategies."
+    },
+    {
+      pluginId: "wp_stock_analyzer",
+      userEmail: "developer@sutharlabs.com",
+      userName: "Suthar Developer",
+      rating: 5,
+      feedback: "Yahoo Finance feed reconnects reliably in the background. Paper trading execution log is completely deterministic."
+    },
+    {
+      pluginId: "wp_flow_designer",
+      userEmail: "johan.decker@consensys.net",
+      userName: "Johan Decker",
+      rating: 5,
+      feedback: "Excellent drag-and-drop node graph. We mapped out our microservices topology in minutes and exported the entire architecture as JSON."
+    },
+    {
+      pluginId: "wp_doc_nexus",
+      userEmail: "mr.sutharsuresh@gmail.com",
+      userName: "Suthar Suresh",
+      rating: 5,
+      feedback: "Live markdown rendering with code fences and cloud persistence makes documenting internal APIs fast and distraction-free."
+    },
+    {
+      pluginId: "wp_accounting",
+      userEmail: "developer@sutharlabs.com",
+      userName: "Suthar Developer",
+      rating: 4,
+      feedback: "Solid double-entry reconciliation and invoice management. Looking forward to additional multi-currency balance views."
+    }
+  ];
+
+  for (const r of sampleReviews) {
+    await prisma.workspacePluginReview.upsert({
+      where: { userEmail_pluginId: { userEmail: r.userEmail, pluginId: r.pluginId } },
+      update: r,
+      create: r
+    });
+  }
+  console.log(`  ✓ ${sampleReviews.length} real plugin reviews ensured`);
 
   // 4. Invoices
   const invoiceCount = await prisma.invoice.count();

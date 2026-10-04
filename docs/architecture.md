@@ -46,15 +46,42 @@ We implemented a robust hybrid architecture utilizing:
 ### Database Layer
 Because Vercel is strictly ephemeral (no file-system persistence), the original file-based SQLite database (`prisma/dev.db`) is replaced in production with **Neon Serverless Postgres** via `@prisma/adapter-neon`. Prisma acts as the universal ORM interface, seamlessly interacting with SQLite locally and Postgres in the cloud without altering any backend logic.
 
-## 5. Portability & Future VPS Migration (AWS, Hostinger, DigitalOcean)
+## 6. In-Tree Modular Plugin Architecture (Dual Registry Pattern)
+To ensure compatibility with Vercel's free serverless tier (ephemeral filesystem, static `@vercel/nft` dependency tracing) while maintaining full architectural isolation for future VPS migration, the platform implements an **In-Tree Modular Plugin Architecture** using a decoupled Dual Registry pattern:
+
+### Directory Structure per Plugin:
+```
+src/plugins/<PluginName>/
+  ├── manifest.json      # Machine-readable metadata (id, version, category, route)
+  ├── manifest.ts        # Typed TypeScript manifest
+  ├── index.ts           # Browser-safe client entrypoint (exports manifest + React View)
+  └── routes.ts          # Server entrypoint (exports registerRoutes(router))
+```
+
+### Decoupled Registries:
+1. **Client Registry (`src/plugins/clientRegistry.ts`)**:
+   Statically imports client entrypoints (`manifest` + `View`) without any Node.js or Express dependencies, guaranteeing error-free client bundling via Vite.
+2. **Server Registry (`src/plugins/serverRegistry.ts`)**:
+   Imports server entrypoints (`registerRoutes`) and mounts both modular namespaced routes (`/api/plugins/:id/*`) and backward-compatible route aliases (`/api/workspace/stock-analyzer`, `/api/nodes`, `/api/docnexus/document`, `/api/invoices`).
+
+## 7. Dynamic User Workspace Entitlements
+Instead of hardcoding workspace tabs and views, the IDE workspace is dynamically driven by the database:
+- User installations are tracked in `UserWorkspacePlugin` joined with `WorkspacePlugin`.
+- On workspace boot, `/api/workspace-plugins/installed` returns the user's active tools (auto-seeding the default 4 native tools for new accounts).
+- The sidebar tabs in `App.tsx` and active view panels are rendered dynamically via `getClientPluginByName(activeTab)`.
+- When users install or uninstall extensions in the `WorkspacePluginStore`, the `onPluginsChange` hook triggers immediate, seamless re-rendering without page refresh.
+
+## 8. Portability & Future VPS Migration (AWS, Hostinger, DigitalOcean)
 One of the primary advantages of this custom monolithic Express architecture is **zero vendor lock-in**. Unlike Next.js applications that are heavily coupled to Vercel's proprietary infrastructure, this entire platform remains a standard Node.js application at its core.
 
-If scaling demands or feature requirements (such as long-running background tasks or WebSockets) outgrow Vercel's Serverless environment, the platform can be seamlessly ported to any traditional Virtual Private Server (VPS) or cloud provider (e.g., AWS EC2, Hostinger, Render, DigitalOcean, or Railway).
+If scaling demands or feature requirements (such as long-running background tasks, WebSocket streaming, or runtime `.zip`/`.vsix` plugin hot-loading via `PluginEngine.ts`) outgrow Vercel's Serverless environment, the platform can be seamlessly ported to any traditional Virtual Private Server (VPS) or cloud provider (e.g., AWS EC2, Hostinger, Render, DigitalOcean, or Railway).
 
 ### Migration Strategy:
 1. **Remove Vercel Bridge**: Simply delete `api/server.ts` and `vercel.json`.
 2. **Build the Frontend**: Run `npm run build` to compile the Vite React application into static assets.
 3. **Start the Express Server**: The `server.ts` file automatically detects if it is running outside of Vercel (via the lack of the `VERCEL` env flag) and will natively serve the static `dist/` directory on port 3000 (or the specified `$PORT` environment variable).
-4. **Dockerization (Optional)**: The platform can easily be containerized using a standard Node.js Dockerfile, allowing orchestrated deployments via Kubernetes or AWS ECS.
+4. **Enable Runtime Dynamic Loading**: Re-enable `multer` uploads in `server.ts` to allow administrators to upload `.zip`/`.vsix` packages directly into `installed_plugins/`, which `PluginEngine` automatically loads and mounts at runtime without restarting the server.
+5. **Dockerization (Optional)**: The platform can easily be containerized using a standard Node.js Dockerfile, allowing orchestrated deployments via Kubernetes or AWS ECS.
 
 This hybrid approach ensures immediate, free scalability via Vercel today, with an open, unhindered migration path to dedicated hardware tomorrow.
+

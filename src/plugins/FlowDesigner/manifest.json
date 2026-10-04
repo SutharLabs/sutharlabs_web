@@ -1,0 +1,12 @@
+{
+  "id": "wp_flow_designer",
+  "name": "Interactive System Architecture Canvas",
+  "version": "0.1.0",
+  "category": "Architecture",
+  "type": "Native",
+  "description": "Interactive canvas for architectural node topologies, microservices modeling, and JSON state import/export.",
+  "iconSymbol": "account_tree",
+  "main": "index.ts",
+  "minEngineVersion": "0.1.0",
+  "packagedAt": "2026-10-04T14:46:18.997Z"
+}

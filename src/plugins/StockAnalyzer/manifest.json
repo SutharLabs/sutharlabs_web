@@ -1,0 +1,12 @@
+{
+  "id": "wp_stock_analyzer",
+  "name": "Stock Analyzer & Algorithmic Trader",
+  "version": "0.1.0",
+  "category": "Finance",
+  "type": "Native",
+  "description": "Real-time Yahoo Finance quote streaming, technical indicators (RSI, MACD, Bollinger Bands), and deterministic paper trading.",
+  "iconSymbol": "monitoring",
+  "main": "index.ts",
+  "minEngineVersion": "0.1.0",
+  "packagedAt": "2026-10-04T14:46:17.060Z"
+}

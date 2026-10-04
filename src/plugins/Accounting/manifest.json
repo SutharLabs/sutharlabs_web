@@ -1,0 +1,12 @@
+{
+  "id": "wp_accounting",
+  "name": "Financial Ledger & Invoice Engine",
+  "version": "0.1.0",
+  "category": "Finance",
+  "type": "Native",
+  "description": "Financial ledger, invoicing, daily transaction sequences, and balance auditing.",
+  "iconSymbol": "currency_exchange",
+  "main": "index.ts",
+  "minEngineVersion": "0.1.0",
+  "packagedAt": "2026-10-04T14:46:23.332Z"
+}

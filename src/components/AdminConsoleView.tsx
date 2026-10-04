@@ -302,7 +302,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
 
           if (!response.ok) {
             const errData = await response.json();
-            setPluginError(errData.error || 'Failed to purge user.');
+            setErrorMsg(errData.error || 'Failed to purge user.');
             return;
           }
 

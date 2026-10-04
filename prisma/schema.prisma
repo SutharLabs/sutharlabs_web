@@ -19,6 +19,7 @@ model User {
   activityCount       Int                   @default(0)
   portfolio           Portfolio?
   workspacePlugins    UserWorkspacePlugin[]
+  pluginReviews       WorkspacePluginReview[]
 }
 
 // 2. Financial Ledgers
@@ -73,22 +74,60 @@ model WorkspacePlugin {
   type        String   // Native, Extension, Tool
   description String
   iconSymbol  String   @default("extension")
-  version     String   @default("1.0.0")
+  version     String   @default("0.1.0")
   
   installedBy UserWorkspacePlugin[]
+  reviews     WorkspacePluginReview[]
+  versions    WorkspacePluginVersion[]
 }
 
 // 5c. Join table for User installed Workspace Plugins
 model UserWorkspacePlugin {
-  id         String   @id @default(uuid())
-  userEmail  String
-  pluginId   String
-  installedAt DateTime @default(now())
+  id               String   @id @default(uuid())
+  userEmail        String
+  pluginId         String
+  installedVersion String   @default("0.1.0")
+  installedAt      DateTime @default(now())
+  updatedAt        DateTime @default(now()) @updatedAt
 
   user       User             @relation(fields: [userEmail], references: [email], onDelete: Cascade)
   plugin     WorkspacePlugin  @relation(fields: [pluginId], references: [id], onDelete: Cascade)
   
   @@unique([userEmail, pluginId])
+}
+
+// 5d. Real User Reviews and Ratings for Workspace Plugins
+model WorkspacePluginReview {
+  id        String   @id @default(uuid())
+  pluginId  String
+  userEmail String
+  userName  String   @default("Anonymous")
+  rating    Int      // 1 to 5 stars
+  feedback  String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User            @relation(fields: [userEmail], references: [email], onDelete: Cascade)
+  plugin    WorkspacePlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@unique([userEmail, pluginId])
+}
+
+// 5e. Immutable historical versions of plugins
+model WorkspacePluginVersion {
+  id               String   @id @default(uuid())
+  pluginId         String
+  version          String   // e.g. "0.1.0"
+  changelog        String?  // Markdown summary of changes
+  packageUrl       String?  // Storage URL or file path for the .zip
+  checksumSha256   String?  // Cryptographic hash
+  minEngineVersion String   @default("0.1.0")
+  publishedBy      String   @default("System Admin")
+  publishedAt      DateTime @default(now())
+
+  plugin           WorkspacePlugin @relation(fields: [pluginId], references: [id], onDelete: Cascade)
+
+  @@unique([pluginId, version])
 }
 
 // 6. Immutable Auditable Trade Logs

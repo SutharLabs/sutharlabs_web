@@ -31,3 +31,7 @@ The backend server will securely process, unpack, and validate your plugin packa
 
 - Always prefix your CSS classes with a unique namespace to avoid polluting the global IDE stylesheet.
 - Log important operational events using the injected `onAddLog` callback prop provided to your top-level component.
+
+## 5. Versioning & Continuous Upgrades
+
+For complete documentation on SemVer tracking, manifest configuration, SHA-256 checksum generation, and continuous in-tree automation, see [docs/plugin_versioning_and_releases.md](file:///d:/Code/SutharLabs/website/docs/plugin_versioning_and_releases.md).

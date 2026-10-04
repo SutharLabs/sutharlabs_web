@@ -10,6 +10,7 @@
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js plugins-db.json",
+    "package:plugins": "tsx scripts/package-plugins.ts --sync-db",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
