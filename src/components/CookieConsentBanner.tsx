@@ -89,33 +89,33 @@ export default function CookieConsentBanner() {
           aria-label="Cookie consent banner"
           className="fixed bottom-4 left-4 right-4 sm:left-6 sm:right-auto sm:max-w-xl z-50 animate-fade-in"
         >
-          <div className="p-5 sm:p-6 rounded-2xl border border-[#00dbe7]/40 bg-[#0c0c12]/95 backdrop-blur-2xl shadow-[0_20px_60px_rgba(0,0,0,0.85)] text-on-surface flex flex-col gap-4">
+          <div className="p-5 sm:p-6 rounded-2xl border border-outline/25 dark:border-[#00dbe7]/40 bg-surface/95 dark:bg-[#0c0c12]/95 backdrop-blur-2xl shadow-2xl dark:shadow-[0_20px_60px_rgba(0,0,0,0.85)] text-on-surface flex flex-col gap-4">
             
             {/* Header info */}
             <div className="flex items-start gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-[#00dbe7]/10 border border-[#00dbe7]/30 flex items-center justify-center shrink-0 text-[#00dbe7]">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-[#00dbe7]/10 border border-primary/30 dark:border-[#00dbe7]/30 flex items-center justify-center shrink-0 text-primary dark:text-[#00dbe7]">
                 <span className="material-symbols-outlined text-2xl">cookie</span>
               </div>
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-bold text-on-surface tracking-tight">EU Cookie & Privacy Consent</h3>
-                  <span className="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold uppercase bg-[#00e476]/15 text-[#00e476] border border-[#00fb83]/30">
+                  <span className="px-2 py-0.2 rounded-full text-[9px] font-mono font-bold uppercase bg-emerald-500/15 text-emerald-700 dark:text-[#00e476] border border-emerald-500/30">
                     GDPR
                   </span>
                 </div>
-                <p className="text-xs text-[#b9cacb] leading-relaxed mt-1">
+                <p className="text-xs text-on-surface-variant leading-relaxed mt-1">
                   SutharLabs uses essential cookies for secure JWT sessions and sovereign state synchronization. With your permission, we also utilize functional memory and anonymized telemetry to optimize workspace tools.
                 </p>
               </div>
             </div>
 
             {/* Links line */}
-            <div className="flex items-center gap-4 text-[11px] font-mono text-[#849495] pt-1 border-t border-white/5">
+            <div className="flex items-center gap-4 text-[11px] font-mono text-on-surface-variant/80 pt-1 border-t border-outline/10">
               <button
                 type="button"
                 onClick={() => navigate('/privacy')}
-                className="hover:text-[#00dbe7] underline transition-colors cursor-pointer"
+                className="hover:text-primary dark:hover:text-[#00dbe7] underline transition-colors cursor-pointer"
               >
                 Privacy Policy
               </button>
@@ -123,7 +123,7 @@ export default function CookieConsentBanner() {
               <button
                 type="button"
                 onClick={() => navigate('/copyright')}
-                className="hover:text-[#00dbe7] underline transition-colors cursor-pointer"
+                className="hover:text-primary dark:hover:text-[#00dbe7] underline transition-colors cursor-pointer"
               >
                 Terms & Copyright
               </button>
@@ -131,7 +131,7 @@ export default function CookieConsentBanner() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(true)}
-                className="hover:text-[#00dbe7] underline transition-colors cursor-pointer"
+                className="hover:text-primary dark:hover:text-[#00dbe7] underline transition-colors cursor-pointer"
               >
                 Customize
               </button>
@@ -142,14 +142,14 @@ export default function CookieConsentBanner() {
               <button
                 type="button"
                 onClick={handleEssentialOnly}
-                className="px-4 py-2 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-outline/60 text-on-surface-variant hover:text-on-surface bg-surface-container-low/40 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-outline/60 text-on-surface-variant hover:text-on-surface bg-surface-container-low/70 hover:bg-surface-container-low transition-all cursor-pointer"
               >
                 Essential Only
               </button>
               <button
                 type="button"
                 onClick={() => setIsModalOpen(true)}
-                className="px-4 py-2 rounded-xl text-xs font-mono font-semibold border border-[#00dbe7]/30 text-[#00dbe7] hover:bg-[#00dbe7]/10 transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-mono font-semibold border border-primary/40 dark:border-[#00dbe7]/40 text-primary dark:text-[#00dbe7] hover:bg-primary/10 dark:hover:bg-[#00dbe7]/10 transition-all cursor-pointer"
               >
                 Preferences
               </button>
@@ -169,17 +169,17 @@ export default function CookieConsentBanner() {
       {/* Detailed Cookie Preferences Modal */}
       {isModalOpen && (
         <div 
-          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-black/50 dark:bg-black/80 backdrop-blur-md animate-fade-in"
           onClick={() => setIsModalOpen(false)}
         >
           <div 
-            className="relative w-full max-w-lg rounded-3xl border border-outline/30 bg-[#0e0e14] shadow-2xl overflow-hidden p-6 text-on-surface space-y-5"
+            className="relative w-full max-w-lg rounded-3xl border border-outline/25 dark:border-outline/30 bg-surface dark:bg-[#0e0e14] shadow-2xl overflow-hidden p-6 text-on-surface space-y-5"
             onClick={e => e.stopPropagation()}
           >
             {/* Modal Header */}
-            <div className="flex items-start justify-between gap-4 pb-4 border-b border-outline/10">
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-outline/15">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-[#00dbe7]/10 border border-[#00dbe7]/30 flex items-center justify-center text-[#00dbe7]">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 dark:bg-[#00dbe7]/10 border border-primary/30 dark:border-[#00dbe7]/30 flex items-center justify-center text-primary dark:text-[#00dbe7]">
                   <span className="material-symbols-outlined text-2xl">shield</span>
                 </div>
                 <div>
@@ -190,7 +190,7 @@ export default function CookieConsentBanner() {
               <button
                 type="button"
                 onClick={() => setIsModalOpen(false)}
-                className="w-8 h-8 rounded-full bg-surface-container hover:bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+                className="w-8 h-8 rounded-full bg-surface-container-high/60 hover:bg-surface-container-highest flex items-center justify-center text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
               >
                 ✕
               </button>
@@ -200,15 +200,15 @@ export default function CookieConsentBanner() {
             <div className="space-y-3.5 max-h-[50vh] overflow-y-auto custom-scrollbar pr-1">
               
               {/* Category 1: Strictly Necessary (Always On) */}
-              <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline/15 space-y-2">
+              <div className="p-4 rounded-2xl bg-surface-container-low dark:bg-surface-container-lowest border border-outline/15 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-bold text-on-surface">Strictly Essential Storage</span>
-                    <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-[#00e476]/15 text-[#00e476] border border-[#00fb83]/30">
+                    <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-emerald-500/15 text-emerald-700 dark:text-[#00e476] border border-emerald-500/30">
                       Always Active
                     </span>
                   </div>
-                  <span className="material-symbols-outlined text-sm text-[#00e476]">lock</span>
+                  <span className="material-symbols-outlined text-sm text-emerald-600 dark:text-[#00e476]">lock</span>
                 </div>
                 <p className="text-xs text-on-surface-variant leading-relaxed">
                   Required for user authentication (JWT credentials), session safety, CSRF verification, and database state integrity. Cannot be disabled.
@@ -216,7 +216,7 @@ export default function CookieConsentBanner() {
               </div>
 
               {/* Category 2: Functional & Preferences */}
-              <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline/15 space-y-2">
+              <div className="p-4 rounded-2xl bg-surface-container-low dark:bg-surface-container-lowest border border-outline/15 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-bold text-on-surface">Functional & Workspace State</span>
@@ -237,7 +237,7 @@ export default function CookieConsentBanner() {
               </div>
 
               {/* Category 3: Performance & Telemetry */}
-              <div className="p-4 rounded-2xl bg-surface-container-lowest border border-outline/15 space-y-2">
+              <div className="p-4 rounded-2xl bg-surface-container-low dark:bg-surface-container-lowest border border-outline/15 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-mono font-bold text-on-surface">Performance & Sandboxed Telemetry</span>
@@ -260,11 +260,11 @@ export default function CookieConsentBanner() {
             </div>
 
             {/* Modal Actions */}
-            <div className="pt-4 border-t border-outline/10 flex items-center justify-between gap-3">
+            <div className="pt-4 border-t border-outline/15 flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={handleEssentialOnly}
-                className="px-4 py-2 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-outline/50 text-on-surface-variant transition-all cursor-pointer"
+                className="px-4 py-2 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-outline/50 text-on-surface-variant hover:text-on-surface bg-surface-container-low/50 transition-all cursor-pointer"
               >
                 Reject Non-Essential
               </button>

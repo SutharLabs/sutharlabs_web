@@ -585,6 +585,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                   onAddLog={addLog}
                   onLogout={handleLogout}
                   onPluginsChange={fetchInstalledPlugins}
+                  theme={theme}
                 />
               )}
 

@@ -187,13 +187,39 @@
 /* Hardcoded color utility overrides for Light Mode */
 html:not(.dark) .bg-\[\#050505\],
 html:not(.dark) .bg-\[\#0c0c0e\],
-html:not(.dark) .bg-\[\#070708\] {
+html:not(.dark) .bg-\[\#070708\],
+html:not(.dark) .bg-\[\#07070a\],
+html:not(.dark) .bg-\[\#0a0a0e\],
+html:not(.dark) .bg-\[\#0a0a0f\] {
   background-color: var(--bg-color) !important;
 }
 html:not(.dark) .bg-\[\#0e0e10\],
 html:not(.dark) .bg-\[\#0e0e10\]\/80,
-html:not(.dark) .bg-\[\#0e0e10\]\/90 {
-  background-color: var(--surface-container-lowest-color) !important;
+html:not(.dark) .bg-\[\#0e0e10\]\/90,
+html:not(.dark) .bg-\[\#0c0c12\],
+html:not(.dark) .bg-\[\#0c0c12\]\/95,
+html:not(.dark) .bg-\[\#0e0e14\],
+html:not(.dark) .bg-\[\#101014\],
+html:not(.dark) .bg-\[\#101014\]\/90 {
+  background-color: var(--surface-color) !important;
+}
+html:not(.dark) .bg-\[\#12070a\] {
+  background-color: #fef2f2 !important;
+}
+html:not(.dark) .bg-\[\#1e0a0f\] {
+  background-color: #ffffff !important;
+}
+html:not(.dark) .bg-\[\#002812\],
+html:not(.dark) .bg-\[\#002812\]\/95 {
+  background-color: #f0fdf4 !important;
+}
+html:not(.dark) .bg-\[\#320015\],
+html:not(.dark) .bg-\[\#320015\]\/95 {
+  background-color: #fff1f2 !important;
+}
+html:not(.dark) .bg-\[\#3b0808\],
+html:not(.dark) .bg-\[\#3b0808\]\/95 {
+  background-color: #fef2f2 !important;
 }
 html:not(.dark) .bg-\[\#131315\],
 html:not(.dark) .bg-\[\#131315\]\/95 {

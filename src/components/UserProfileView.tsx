@@ -9,6 +9,7 @@ interface UserProfileViewProps {
   onAddLog: (log: TerminalLog) => void;
   onLogout: () => void;
   onPluginsChange?: () => void;
+  theme?: 'light' | 'dark';
 }
 
 interface ProfileData {
@@ -39,7 +40,8 @@ export default function UserProfileView({
   logs,
   onAddLog,
   onLogout,
-  onPluginsChange
+  onPluginsChange,
+  theme = 'dark'
 }: UserProfileViewProps) {
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -354,10 +356,10 @@ export default function UserProfileView({
         <div
           className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl backdrop-blur-xl border transition-all animate-bounce-subtle ${
             notification.type === 'success'
-              ? 'bg-[#002812]/95 border-[#00fb83]/40 text-[#00fb83]'
+              ? 'bg-surface/95 dark:bg-[#002812]/95 border-emerald-500/40 text-emerald-800 dark:text-[#00fb83]'
               : notification.type === 'alert'
-              ? 'bg-[#320015]/95 border-[#ffb4ab]/40 text-[#ffb4ab]'
-              : 'bg-[#3b0808]/95 border-red-500/40 text-red-300'
+              ? 'bg-surface/95 dark:bg-[#320015]/95 border-amber-500/40 text-amber-800 dark:text-[#ffb4ab]'
+              : 'bg-surface/95 dark:bg-[#3b0808]/95 border-red-500/40 text-red-700 dark:text-red-300'
           }`}
         >
           <span className="material-symbols-outlined text-lg">
@@ -366,7 +368,7 @@ export default function UserProfileView({
           <span className="text-xs font-mono font-medium">{notification.text}</span>
           <button
             onClick={() => setNotification(null)}
-            className="ml-2 hover:opacity-75 transition-opacity text-sm font-mono text-white/60"
+            className="ml-2 hover:opacity-75 transition-opacity text-sm font-mono text-on-surface-variant/70 cursor-pointer"
           >
             ✕
           </button>
@@ -382,11 +384,11 @@ export default function UserProfileView({
           <div className="flex items-center gap-5">
             <div className="relative">
               <div className="w-18 h-18 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#00dbe7] via-[#ce5dff] to-[#00e476] p-0.5 shadow-xl shadow-[#00dbe7]/10">
-                <div className="w-full h-full bg-[#0e0e14] rounded-[14px] flex items-center justify-center text-3xl font-extrabold text-[#74f5ff] uppercase font-mono select-none">
+                <div className="w-full h-full bg-surface dark:bg-[#0e0e14] rounded-[14px] flex items-center justify-center text-3xl font-extrabold text-primary dark:text-[#74f5ff] uppercase font-mono select-none">
                   {user.name ? user.name.charAt(0) : 'U'}
                 </div>
               </div>
-              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#00e476] border-2 border-[#0e0e14]" title="Active Sovereign Session" />
+              <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-[#00e476] border-2 border-surface dark:border-[#0e0e14]" title="Active Sovereign Session" />
             </div>
 
             <div>
@@ -760,37 +762,37 @@ export default function UserProfileView({
       {/* Account Deletion Confirmation Modal */}
       {showDeleteAccountModal && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/50 dark:bg-black/85 backdrop-blur-md animate-fade-in"
           onClick={() => setShowDeleteAccountModal(false)}
         >
           <div 
-            className="relative w-full max-w-md rounded-3xl border border-red-500/40 bg-[#12070a] shadow-2xl p-6 text-on-surface space-y-5"
+            className="relative w-full max-w-md rounded-3xl border border-red-500/30 dark:border-red-500/40 bg-surface dark:bg-[#12070a] shadow-2xl p-6 text-on-surface space-y-5"
             onClick={e => e.stopPropagation()}
           >
-            <div className="flex items-center gap-3 text-red-400">
-              <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center">
+            <div className="flex items-center gap-3 text-red-600 dark:text-red-400">
+              <div className="w-10 h-10 rounded-xl bg-red-500/10 dark:bg-red-500/20 border border-red-500/30 dark:border-red-500/40 flex items-center justify-center">
                 <span className="material-symbols-outlined text-2xl">dangerous</span>
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">Permanently Delete Account</h3>
-                <p className="text-xs text-red-300 font-mono">Irreversible Action</p>
+                <h3 className="text-base font-bold text-on-surface">Permanently Delete Account</h3>
+                <p className="text-xs text-red-600 dark:text-red-300 font-mono">Irreversible Action</p>
               </div>
             </div>
 
-            <p className="text-xs text-gray-300 leading-relaxed">
+            <p className="text-xs text-on-surface-variant leading-relaxed">
               This will permanently wipe your account ({user.email}), all trades, reviews, and portfolio history from Neon PostgreSQL.
             </p>
 
             <div>
-              <label className="text-[10px] font-mono uppercase text-gray-400 block mb-1">
-                Type <strong className="text-red-400">DELETE</strong> to confirm:
+              <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
+                Type <strong className="text-red-600 dark:text-red-400">DELETE</strong> to confirm:
               </label>
               <input
                 type="text"
                 value={deleteConfirmationText}
                 onChange={e => setDeleteConfirmationText(e.target.value)}
                 placeholder="DELETE"
-                className="w-full bg-[#1e0a0f] border border-red-500/40 rounded-xl px-3.5 py-2 text-xs font-mono text-white outline-none focus:border-red-400"
+                className="w-full bg-surface-container-low dark:bg-[#1e0a0f] border border-red-500/40 rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none focus:border-red-500"
               />
             </div>
 
@@ -801,7 +803,7 @@ export default function UserProfileView({
                   setShowDeleteAccountModal(false);
                   setDeleteConfirmationText('');
                 }}
-                className="px-4 py-2 rounded-xl text-xs font-mono text-gray-400 hover:text-white transition-colors"
+                className="px-4 py-2 rounded-xl text-xs font-mono text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
               >
                 Cancel
               </button>
