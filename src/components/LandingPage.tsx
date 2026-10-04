@@ -16,6 +16,7 @@ import {
   Zap,
   DollarSign
 } from 'lucide-react';
+import HeroStudioConsole from './HeroStudioConsole';
 
 interface LandingPageProps {
   user: UserProfile;
@@ -460,19 +461,8 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
               </div>
             </div>
 
-            {/* Glowing Console fluid Image Panel */}
-            <div className="w-full mt-14 sm:mt-20 relative rounded-2xl overflow-hidden glass-panel border border-outline/25 shadow-[0_15px_40px_rgba(0,0,0,0.06)] dark:shadow-[0_15px_40px_rgba(0,0,0,0.5)] aspect-video md:h-[400px]">
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-surface/90 z-10"></div>
-              <div className="w-full h-full bg-surface-container flex items-center justify-center relative">
-                <img 
-                  alt="SutharLabs Web, Mobile, and AI Development Connectivity" 
-                  className="fluid-img w-full h-full object-cover opacity-90 dark:opacity-75 transition-transform duration-1000 hover:scale-[1.02]" 
-                  referrerPolicy="no-referrer"
-                  src="/sutharlabs_connectivity.png"
-                />
-                <div className="absolute inset-0 border border-primary/10 rounded-2xl"></div>
-              </div>
-            </div>
+            {/* Rendered Interactive Studio Console & Capability Carousel */}
+            <HeroStudioConsole theme={theme} onLaunch={onLaunch} />
           </section>
           
           {/* Services Offered Section */}
