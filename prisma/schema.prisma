@@ -166,3 +166,18 @@ model DevelopmentProject {
   blueprintSymbol String   @default("globe")
   imageSrc        String
 }
+
+// 9. Contact Inquiries & Enterprise Consultation Leads
+model ContactInquiry {
+  id          String   @id @default(uuid())
+  trackingId  String   @unique // e.g. "SR_59281"
+  name        String
+  email       String
+  projectType String   @default("Web Application Dev")
+  message     String
+  status      String   @default("New") // "New", "Contacted", "In Progress", "Closed", "Archived"
+  notes       String?  // Internal admin follow-up notes
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

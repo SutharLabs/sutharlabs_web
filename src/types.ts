@@ -11,7 +11,33 @@ export interface UserProfile {
   joinedAt?: string;
 }
 
-export type WorkspaceTab = 'Stock Tracker' | 'Custom Flow' | 'Accounting' | 'Admin Console' | 'Manage Plugins' | 'Manage Apps' | 'Manage Portfolios' | 'Doc Nexus' | 'README' | 'Plugin Store' | 'Profile & Settings';
+export type WorkspaceTab = 
+  | 'Stock Tracker' 
+  | 'Custom Flow' 
+  | 'Accounting' 
+  | 'Admin Console' 
+  | 'Manage Plugins' 
+  | 'Manage Apps' 
+  | 'Manage Portfolios' 
+  | 'Contact Inquiries'
+  | 'Doc Nexus' 
+  | 'README' 
+  | 'Plugin Store' 
+  | 'Profile & Settings';
+
+export interface ContactInquiryItem {
+  id: string;
+  trackingId: string;
+  name: string;
+  email: string;
+  projectType: string;
+  message: string;
+  status: 'New' | 'Contacted' | 'In Progress' | 'Closed' | 'Archived' | string;
+  notes?: string | null;
+  ipAddress?: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface RegisteredUser {
   id: string;

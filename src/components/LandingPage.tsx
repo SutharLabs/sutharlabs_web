@@ -141,9 +141,52 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
     };
   }, [selectedProject]);
 
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [plugins, setPlugins] = useState<StorePlugin[]>([]);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [contactSubmitted, setContactSubmitted] = useState(false);
+  const [contactName, setContactName] = useState('');
+  const [contactEmail, setContactEmail] = useState('');
+  const [contactProjectType, setContactProjectType] = useState('Web Application Dev');
+  const [contactMessage, setContactMessage] = useState('');
+  const [contactTrackingId, setContactTrackingId] = useState('');
+  const [isSubmittingContact, setIsSubmittingContact] = useState(false);
+  const [contactError, setContactError] = useState('');
+
+  const handleContactSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!contactName.trim() || !contactEmail.trim() || !contactMessage.trim()) return;
+
+    setIsSubmittingContact(true);
+    setContactError('');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: contactName.trim(),
+          email: contactEmail.trim(),
+          projectType: contactProjectType,
+          message: contactMessage.trim()
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        setContactError(data.error || 'Failed to submit inquiry.');
+        return;
+      }
+
+      setContactTrackingId(data.trackingId || `SR_${Math.floor(10000 + Math.random() * 90000)}`);
+      setContactSubmitted(true);
+      setContactName('');
+      setContactEmail('');
+      setContactMessage('');
+    } catch (err) {
+      setContactError('Network error connecting to SutharLabs lead registry.');
+    } finally {
+      setIsSubmittingContact(false);
+    }
+  };
 
   // Carousels active indexes
   const [activePluginIndex, setActivePluginIndex] = useState(0);
@@ -1204,35 +1247,61 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
 
               {/* Form State */}
               {contactSubmitted ? (
-                <div className="p-4 sm:p-6 rounded-xl border border-[#00e476]/30 bg-[#00e476]/5 text-center space-y-4 py-12 animate-[fadeIn_0.3s_ease-out]">
-                  <span className="material-symbols-outlined text-3xl sm:text-4xl text-[#00e476] select-none">verified_user</span>
-                  <h4 className="text-base font-bold text-white">Consultation Request Dispatched!</h4>
-                  <p className="text-xs text-[#b9cacb] leading-relaxed max-w-sm mx-auto">
-                    Thank you! Your project specification parameters have been successfully registered under tracking ID <span className="font-mono text-[#00e476]">SR_{Math.floor(Math.random() * 90000) + 10000}</span>.
-                  </p>
-                  <button
-                    onClick={() => setContactSubmitted(false)}
-                    className="mt-2 text-xs font-mono text-[#00dbe7] hover:underline bg-transparent border-none cursor-pointer"
-                  >
-                    Send another inquiry
-                  </button>
+                <div className="p-6 sm:p-8 rounded-2xl border border-emerald-500/25 bg-emerald-500/[0.04] text-center space-y-5 py-10 animate-[fadeIn_0.3s_ease-out]">
+                  <div className="w-12 h-12 mx-auto rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-600 dark:text-[#00e476] shadow-sm">
+                    <span className="material-symbols-outlined text-2xl select-none">check_circle</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="text-base sm:text-lg font-bold text-on-surface">Thank You for Reaching Out</h4>
+                    <p className="text-xs text-on-surface-variant max-w-md mx-auto leading-relaxed">
+                      We have received your inquiry and our team is currently reviewing your project details. An engineering lead will contact you within one business day.
+                    </p>
+                  </div>
+
+                  <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-lg bg-surface-container-high border border-outline/30 text-xs font-mono">
+                    <span className="text-on-surface-variant font-medium">Reference ID:</span>
+                    <span className="font-bold text-emerald-600 dark:text-[#00e476] tracking-wide">{contactTrackingId}</span>
+                  </div>
+
+                  <div className="pt-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setContactSubmitted(false);
+                        setContactName('');
+                        setContactEmail('');
+                        setContactMessage('');
+                        setContactTrackingId('');
+                      }}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-outline/40 hover:border-primary text-on-surface hover:text-primary transition-all text-xs font-mono font-medium cursor-pointer bg-surface-container-low hover:bg-surface-container-high"
+                    >
+                      <span className="material-symbols-outlined text-sm select-none">edit_note</span>
+                      <span>Submit Another Inquiry</span>
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <form 
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setContactSubmitted(true);
-                  }}
+                  onSubmit={handleContactSubmit}
                   className="space-y-4 font-mono text-xs"
                 >
-                  <div className="grid grid-cols-1 sm:grid-cols-1 sm:grid-cols-2 gap-4">
+                  {contactError && (
+                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-600 dark:text-[#ffb4ab] text-xs">
+                      {contactError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <label className="text-on-surface-variant block">YOUR NAME</label>
                       <input 
                         type="text" 
                         required 
+                        value={contactName}
+                        onChange={e => setContactName(e.target.value)}
                         placeholder="Elon Musk" 
-                        className="w-full bg-surface-container-high border border-outline/40 rounded p-2.5 text-on-surface focus: focus:border-outline/40 font-mono text-xs outline-none transition-all"
+                        className="w-full bg-surface-container-high border border-outline/40 rounded p-2.5 text-on-surface focus:border-primary font-mono text-xs outline-none transition-all"
                       />
                     </div>
                     <div className="space-y-1">
@@ -1240,39 +1309,57 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                       <input 
                         type="email" 
                         required 
+                        value={contactEmail}
+                        onChange={e => setContactEmail(e.target.value)}
                         placeholder="elon@spacex.com" 
-                        className="w-full bg-surface-container-high border border-outline/40 rounded p-2.5 text-on-surface focus: focus:border-outline/40 font-mono text-xs outline-none transition-all"
+                        className="w-full bg-surface-container-high border border-outline/40 rounded p-2.5 text-on-surface focus:border-primary font-mono text-xs outline-none transition-all"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-1">
-                      <label className="text-on-surface-variant block">PROJECT TYPE</label>
-                      <select className="w-full bg-[#0c0c0e] border border-outline/20 rounded p-2.5 text-white focus:outline-none focus:border-[#00dbe7] font-mono text-xs cursor-pointer">
-                        <option>Web Application Dev</option>
-                        <option>Mobile App Dev (React Native)</option>
-                        <option>Agentic AI Workflows</option>
-                        <option>MCP Server Integration</option>
-                        <option>Other Complex Systems</option>
-                      </select>
-                    </div>
+                    <label className="text-on-surface-variant block">PROJECT TYPE</label>
+                    <select 
+                      value={contactProjectType}
+                      onChange={e => setContactProjectType(e.target.value)}
+                      className="w-full bg-surface-container-high border border-outline/40 rounded p-2.5 text-on-surface focus:outline-none focus:border-primary font-mono text-xs cursor-pointer"
+                    >
+                      <option value="Web Application Dev">Web Application Dev</option>
+                      <option value="Mobile App Dev (React Native)">Mobile App Dev (React Native)</option>
+                      <option value="Agentic AI Workflows">Agentic AI Workflows</option>
+                      <option value="MCP Server Integration">MCP Server Integration</option>
+                      <option value="Other Complex Systems">Other Complex Systems</option>
+                    </select>
+                  </div>
 
                   <div className="space-y-1">
                     <label className="text-on-surface-variant block">PROJECT SPECIFICATION OVERVIEW</label>
                     <textarea 
                       rows={4} 
                       required
+                      value={contactMessage}
+                      onChange={e => setContactMessage(e.target.value)}
                       placeholder="Briefly describe the systems architectural target and features needed..." 
-                      className="w-full bg-surface-container-high border border-outline/40 rounded p-2.5 text-on-surface focus: focus:border-outline/40 font-mono text-xs resize-none outline-none transition-all"
+                      className="w-full bg-surface-container-high border border-outline/40 rounded p-2.5 text-on-surface focus:border-primary font-mono text-xs resize-none outline-none transition-all"
                     />
                   </div>
 
                   <button 
                     type="submit"
-                    className="w-full py-3 bg-[#00dbe7] text-[#002022] font-mono text-xs font-bold uppercase rounded hover:brightness-110 tracking-wider shadow-[0_0_15px_rgba(0,219,231,0.25)] transition-all cursor-pointer border-none flex items-center justify-center gap-2"
+                    disabled={isSubmittingContact}
+                    className="w-full py-3 bg-[#00dbe7] text-[#002022] font-mono text-xs font-bold uppercase rounded hover:brightness-110 tracking-wider shadow-[0_0_15px_rgba(0,219,231,0.25)] transition-all cursor-pointer border-none flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <span className="material-symbols-outlined text-sm select-none">send</span>
-                    Submit Parameters Inquiry
+                    {isSubmittingContact ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin"></span>
+                        <span>Registering Consultation...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="material-symbols-outlined text-sm select-none">send</span>
+                        <span>Submit Parameters Inquiry</span>
+                      </>
+                    )}
                   </button>
                 </form>
               )}

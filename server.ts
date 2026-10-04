@@ -8,6 +8,7 @@ import { getPrismaClient, hashPassword, generateToken, verifyToken } from "./api
 import { PluginEngine } from "./src/plugins/PluginEngine.js";
 import { registerAllPluginRoutes } from "./src/plugins/serverRegistry.js";
 import { getSystemTelemetry } from "./src/services/telemetryService.js";
+import { notifyAdminNewInquiry } from "./src/services/emailService.js";
 import {
   securityHeaders,
   requestLogger,
@@ -1259,7 +1260,159 @@ app.delete("/api/workspace-plugins/:id", authenticateToken, requireAdmin, async 
   }
 });
 
+// ==========================================
+// CONTACT INQUIRIES & ENTERPRISE LEADS API
+// ==========================================
 
+// Public: Submit a project consultation parameter inquiry
+app.post("/api/contact", generalApiLimiter, async (req: any, res: any) => {
+  try {
+    const { name, email, projectType, message } = req.body;
+    if (!name || !email || !message) {
+      return res.status(400).json({ error: "Name, email, and project specification message are required." });
+    }
+
+    const trackingId = `SR_${Math.floor(10000 + Math.random() * 90000)}`;
+    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null;
+
+    const inquiry = await prisma.contactInquiry.create({
+      data: {
+        trackingId,
+        name: String(name).trim(),
+        email: String(email).trim().toLowerCase(),
+        projectType: projectType || "Web Application Dev",
+        message: String(message).trim(),
+        status: "New",
+        ipAddress: clientIp
+      }
+    });
+
+    // Asynchronously dispatch admin notification email
+    notifyAdminNewInquiry({
+      trackingId: inquiry.trackingId,
+      name: inquiry.name,
+      email: inquiry.email,
+      projectType: inquiry.projectType,
+      message: inquiry.message,
+      createdAt: inquiry.createdAt
+    }).catch(err => console.error("Failed to dispatch admin notification email:", err));
+
+    res.status(201).json({
+      success: true,
+      trackingId: inquiry.trackingId,
+      createdAt: inquiry.createdAt,
+      message: "Consultation inquiry received and registered."
+    });
+  } catch (error) {
+    console.error("Failed to submit contact inquiry:", error);
+    res.status(500).json({ error: "Failed to process consultation inquiry." });
+  }
+});
+
+// Admin: Get all contact inquiries with statistics
+app.get("/api/admin/contact-inquiries", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const { status, search } = req.query;
+
+    const where: any = {};
+    if (status && status !== 'All') {
+      where.status = String(status);
+    }
+    if (search) {
+      const q = String(search).trim();
+      where.OR = [
+        { name: { contains: q, mode: 'insensitive' } },
+        { email: { contains: q, mode: 'insensitive' } },
+        { trackingId: { contains: q, mode: 'insensitive' } },
+        { message: { contains: q, mode: 'insensitive' } }
+      ];
+    }
+
+    const inquiries = await prisma.contactInquiry.findMany({
+      where,
+      orderBy: { createdAt: 'desc' }
+    });
+
+    const [total, newCount, inProgressCount, contactedCount, closedCount] = await Promise.all([
+      prisma.contactInquiry.count(),
+      prisma.contactInquiry.count({ where: { status: 'New' } }),
+      prisma.contactInquiry.count({ where: { status: 'In Progress' } }),
+      prisma.contactInquiry.count({ where: { status: 'Contacted' } }),
+      prisma.contactInquiry.count({ where: { status: 'Closed' } })
+    ]);
+
+    res.json({
+      inquiries,
+      stats: {
+        total,
+        newCount,
+        inProgressCount,
+        contactedCount,
+        closedCount
+      }
+    });
+  } catch (error) {
+    console.error("Failed to fetch contact inquiries:", error);
+    res.status(500).json({ error: "Failed to load contact inquiries." });
+  }
+});
+
+// Admin: Update status or internal notes
+app.patch("/api/admin/contact-inquiries/:id", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const { status, notes } = req.body;
+
+    const updateData: any = {};
+    if (status !== undefined) updateData.status = status;
+    if (notes !== undefined) updateData.notes = notes;
+
+    const updated = await prisma.contactInquiry.update({
+      where: { id },
+      data: updateData
+    });
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Failed to update inquiry:", error);
+    res.status(500).json({ error: "Failed to update inquiry." });
+  }
+});
+
+// Admin: Delete an inquiry
+app.delete("/api/admin/contact-inquiries/:id", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    await prisma.contactInquiry.delete({ where: { id } });
+    res.json({ success: true, removedId: id });
+  } catch (error) {
+    console.error("Failed to delete inquiry:", error);
+    res.status(500).json({ error: "Failed to delete inquiry." });
+  }
+});
+
+// Admin: Test dispatch notification email
+app.post("/api/admin/contact-inquiries/:id/test-email", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const inquiry = await prisma.contactInquiry.findUnique({ where: { id } });
+    if (!inquiry) return res.status(404).json({ error: "Inquiry not found" });
+
+    const result = await notifyAdminNewInquiry({
+      trackingId: inquiry.trackingId,
+      name: inquiry.name,
+      email: inquiry.email,
+      projectType: inquiry.projectType,
+      message: inquiry.message,
+      createdAt: inquiry.createdAt
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Failed to test dispatch email:", error);
+    res.status(500).json({ error: "Failed to dispatch test notification email." });
+  }
+});
 
 // ==========================================
 // ADMIN PORTFOLIO API
