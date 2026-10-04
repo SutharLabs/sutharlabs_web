@@ -67,7 +67,7 @@ const getProjectFeedbackDetails = (project: PortfolioProject): ProjectFeedbackDa
   // 2. Aradhana Dharmika Trust: Feedback from trustee Santhosh regarding reflecting soul of trust, deeply rooted theme, modularity & future proofing
   if (id.includes('proj_2') || title.includes('aradhana')) {
     return {
-      quote: project.feedback || "The website truly reflects the sacred soul and values of our trust with its deeply rooted, dignified theme. The modularity and future-proofing allow us to seamlessly expand community seva programs, annadana notices, and educational trust updates.",
+      quote: project.feedback || "The website truly reflects the soul of our trust with its deeply rooted cultural theme. The modular setup allows us to easily expand community seva programs, annadana notices, and educational trust updates as our activities continue to grow.",
       author: "Santhosh",
       authorTitle: "Trustee, Aradhana Dharmika Trust"
     };
@@ -76,7 +76,7 @@ const getProjectFeedbackDetails = (project: PortfolioProject): ProjectFeedbackDa
   // 3. GoToxinFree With Tina: Feedback from blog author Dr. Supriti Pramanik (Ph.D.) regarding simplicity and ease of blogging with the framework and continuous support by the team
   if (id.includes('proj_3') || title.includes('toxin') || title.includes('tina')) {
     return {
-      quote: project.feedback || "Blogging with this framework is an absolute delight. The workflow is pure simplicity—publishing new health articles, research notes, and stories takes minutes with zero formatting headaches. Most importantly, the continuous support and responsiveness from the SutharLabs team have been exceptional.",
+      quote: project.feedback || "Blogging with this framework is an absolute delight. The workflow is genuinely simple, and publishing new health articles, research notes, and stories takes minutes with zero formatting headaches. Most importantly, the continuous support and responsiveness from the SutharLabs team have been exceptional.",
       author: "Dr. Supriti Pramanik (Ph.D.)",
       authorTitle: "Blog Author & Creator, Go Toxin Free"
     };

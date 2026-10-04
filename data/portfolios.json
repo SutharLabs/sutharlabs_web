@@ -26,7 +26,7 @@
     "techs": ["React", "TypeScript", "Tailwind CSS", "Dignified Theme", "Responsive Grid"],
     "client": "Santhosh",
     "clientTitle": "Trustee, Aradhana Dharmika Trust",
-    "feedback": "The website truly reflects the soul of our trust with its deeply rooted cultural theme, while offering remarkable modularity and future-proofing as our community programs and spiritual activities continue to grow.",
+    "feedback": "The website truly reflects the soul of our trust with its deeply rooted cultural theme. The modular setup allows us to easily expand community seva programs, annadana notices, and educational trust updates as our activities continue to grow.",
     "blueprintSymbol": "account_balance",
     "imageSrc": "/aradhana_trust.png",
     "liveUrl": "https://aradhanadharmikatrust.org/"
@@ -42,7 +42,7 @@
     "techs": ["React 19", "Tailwind UI", "Markdown Reader", "Bespoke Layouts", "RSS Sync"],
     "client": "Dr. Supriti Pramanik (Ph.D.)",
     "clientTitle": "Blog Author & Creator, Go Toxin Free",
-    "feedback": "Blogging with this framework is an absolute delight. The pure simplicity and ease of publishing health articles and research stories without technical complexity has been transformative. Furthermore, the continuous support and proactive guidance from the SutharLabs team have been outstanding.",
+    "feedback": "Blogging with this framework is an absolute delight. The workflow is genuinely simple, and publishing new health articles, research notes, and stories takes minutes with zero formatting headaches. Most importantly, the continuous support and responsiveness from the SutharLabs team have been exceptional.",
     "blueprintSymbol": "article",
     "imageSrc": "/gotoxinfree_tina.png",
     "liveUrl": "https://gotoxinfreewithtina.com/"
