@@ -14,9 +14,11 @@ import {
   Menu,
   ShieldCheck,
   Zap,
-  DollarSign
+  DollarSign,
+  ExternalLink
 } from 'lucide-react';
 import HeroStudioConsole from './HeroStudioConsole';
+import ProjectBrowserMockup, { getProjectLiveUrl } from './ProjectBrowserMockup';
 
 interface LandingPageProps {
   user: UserProfile;
@@ -26,7 +28,7 @@ interface LandingPageProps {
   toggleTheme?: () => void;
 }
 
-interface PortfolioProject {
+export interface PortfolioProject {
   id: string;
   title: string;
   segment: 'Web Dev' | 'Mobile Apps' | 'AI & Analytics';
@@ -39,6 +41,7 @@ interface PortfolioProject {
   clientTitle: string;
   blueprintSymbol: string;
   imageSrc: string;
+  liveUrl?: string;
 }
 
 export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'light', toggleTheme }: LandingPageProps) {
@@ -705,24 +708,21 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                 (() => {
                   const proj = portfolioProjects[activePortfolioIndex % portfolioProjects.length];
                   if (!proj) return null;
+                  const liveUrl = getProjectLiveUrl(proj);
                   return (
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-0">
-                      {/* Project Visual block */}
-                      <div className="lg:col-span-5 h-64 lg:h-auto min-h-[250px] relative select-none">
-                        <img 
-                          alt={proj.title} 
-                          className="fluid-img w-full h-full object-cover"
-                          src={proj.imageSrc}
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-0 items-center">
+                      {/* Project Visual block in Browser Frame */}
+                      <div className="lg:col-span-6 p-4 sm:p-6">
+                        <ProjectBrowserMockup
+                          project={proj}
+                          aspectRatio="card"
+                          className="w-full shadow-2xl"
+                          onOpenModal={() => setSelectedProject(proj)}
                         />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-surface/95 dark:to-[#131315]/95 z-10 hidden lg:block"></div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-surface/95 dark:from-[#131315]/95 via-transparent to-transparent z-10 lg:hidden"></div>
-                        <div className="absolute top-4 left-4 z-20 bg-on-surface/10 dark:bg-black/60 backdrop-blur border border-outline/20 rounded px-2.5 py-0.5 text-[9px] font-mono text-tertiary uppercase">
-                          Featured Case Study
-                        </div>
                       </div>
 
                       {/* Project Metadata block */}
-                      <div className="lg:col-span-7 p-4 sm:p-6 sm:p-4 sm:p-8 flex flex-col justify-between space-y-6">
+                      <div className="lg:col-span-6 p-4 sm:p-6 sm:p-8 flex flex-col justify-between space-y-6">
                         <div className="space-y-4">
                           <div className="flex justify-between items-start gap-2">
                             <div>
@@ -737,7 +737,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                           </p>
 
                           <div className="flex flex-wrap gap-1.5 pt-1">
-                            {proj.techs.slice(0, 3).map(t => (
+                            {proj.techs.slice(0, 4).map(t => (
                               <span key={t} className="px-2 py-0.5 rounded bg-secondary/10 text-secondary text-[10px] font-mono border border-secondary/20">{t}</span>
                             ))}
                           </div>
@@ -750,7 +750,18 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                             <span className="text-xs font-mono text-tertiary font-bold block">{proj.stat}</span>
                           </div>
 
-                          <div className="flex gap-2 w-full sm:w-auto">
+                          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+                            {liveUrl && (
+                              <a
+                                href={liveUrl}
+                                target={liveUrl.startsWith('/') ? '_self' : '_blank'}
+                                rel="noopener noreferrer"
+                                className="w-full sm:w-auto px-4 py-2 rounded bg-emerald-500/15 border border-emerald-500/40 text-xs font-mono font-bold uppercase tracking-wider text-emerald-600 dark:text-[#00e476] hover:bg-emerald-500/25 transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                              >
+                                <span>Visit Live Site</span>
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </a>
+                            )}
                             <button
                               onClick={() => setSelectedProject(proj)}
                               className="w-full sm:w-auto px-4 py-2 rounded bg-tertiary/10 border border-tertiary/30 text-xs font-mono font-bold uppercase tracking-wider text-tertiary hover:bg-tertiary/20 transition-all cursor-pointer"
@@ -997,54 +1008,61 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
           </div>
 
           {/* Full-Page Projects Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
-            {filteredProjects.map((proj) => (
-              <div 
-                key={proj.id}
-                onClick={() => setSelectedProject(proj)}
-                className="group glass-panel rounded-xl border border-outline/15 hover:border-[#00e476]/50 bg-surface-container-low/30 cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-[0_4px_30px_rgba(0,228,118,0.08)] flex flex-col justify-between"
-              >
-                <div>
-                  {/* Decorative glowing project banner */}
-                  <div className="h-44 bg-zinc-900 flex items-center justify-center relative select-none">
-                    <img 
-                      alt={proj.title} 
-                      className="fluid-img w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
-                      referrerPolicy="no-referrer"
-                      src={proj.imageSrc}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {filteredProjects.map((proj) => {
+              const liveUrl = getProjectLiveUrl(proj);
+              return (
+                <div 
+                  key={proj.id}
+                  onClick={() => setSelectedProject(proj)}
+                  className="group glass-panel rounded-2xl border border-outline/15 hover:border-[#00e476]/50 bg-surface-container-low/30 cursor-pointer overflow-hidden transition-all duration-300 hover:shadow-[0_8px_40px_rgba(0,228,118,0.1)] flex flex-col justify-between p-4 sm:p-5 gap-4"
+                >
+                  <div className="space-y-4">
+                    {/* Realistic Browser Showcase Frame */}
+                    <ProjectBrowserMockup
+                      project={proj}
+                      aspectRatio="card"
+                      className="w-full shadow-md"
+                      showLiveButton={false}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-[#131315]/90 via-transparent to-transparent"></div>
-                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur border border-white/5 rounded px-2.5 py-0.5 text-[9px] font-mono text-[#00e476]">
-                      {proj.segment}
-                    </div>
-                    
-                    {/* Floating architectural wireframe icon */}
-                    <div className="absolute bottom-4 left-6 flex items-center gap-2">
-                      <div className="w-8 h-8 rounded-full bg-[#1c1b1d] border border-outline/40 flex items-center justify-center">
-                        <span className="material-symbols-outlined text-[#74f5ff] text-sm">{proj.blueprintSymbol}</span>
+
+                    <div className="space-y-2 px-1">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-sans font-bold text-xl text-white group-hover:text-[#00e476] transition-colors">{proj.title}</h3>
+                        <span className="font-mono text-[9px] uppercase tracking-widest text-[#ebb2ff] bg-surface-container px-2 py-0.5 rounded border border-outline/10">
+                          {proj.id}
+                        </span>
                       </div>
-                      <span className="font-mono text-[9px] uppercase tracking-widest text-[#ebb2ff]">{proj.id}</span>
+                      <p className="text-xs text-[#b9cacb] leading-relaxed line-clamp-2">{proj.description}</p>
                     </div>
                   </div>
 
-                  <div className="p-4 sm:p-6 space-y-3">
-                    <h3 className="font-sans font-bold text-lg text-white group-hover:text-[#00e476] transition-colors">{proj.title}</h3>
-                    <p className="text-xs text-[#b9cacb] leading-relaxed">{proj.description}</p>
+                  <div className="px-1 pt-3 flex flex-wrap items-center justify-between border-t border-outline/10 text-[10px] font-mono gap-2">
+                    <div className="flex flex-wrap gap-1.5">
+                      {proj.techs.slice(0, 3).map((t) => (
+                        <span key={t} className="px-2 py-0.5 rounded bg-secondary/10 text-secondary border border-secondary/20">{t}</span>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      {liveUrl && (
+                        <a
+                          href={liveUrl}
+                          target={liveUrl.startsWith('/') ? '_self' : '_blank'}
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-emerald-500 hover:text-emerald-400 font-bold flex items-center gap-1 hover:underline"
+                        >
+                          Visit Live <ExternalLink className="w-3 h-3" />
+                        </a>
+                      )}
+                      <span className="text-[#00e476] flex items-center group-hover:translate-x-1 transition-transform font-bold">
+                        Specs <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
+                      </span>
+                    </div>
                   </div>
                 </div>
-
-                <div className="px-6 pb-6 pt-2 flex items-center justify-between border-t border-outline/10 text-[10px] font-mono">
-                  <div className="flex flex-wrap gap-1.5 max-w-[70%]">
-                    {proj.techs.slice(0, 3).map((t) => (
-                      <span key={t} className="px-1.5 py-0.5 rounded bg-[#201f21] text-on-surface-variant">{t}</span>
-                    ))}
-                  </div>
-                  <span className="text-[#00e476] flex items-center group-hover:translate-x-1 transition-transform">
-                    Inspect Spec Sheet <ChevronRight className="w-3.5 h-3.5 ml-0.5" />
-                  </span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Corporate Agency Consultation Inquiry block */}
@@ -1281,6 +1299,15 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
             {/* Case Details Body */}
             <div className="p-4 sm:p-6 space-y-6">
               
+              {/* Full-Fidelity Live Browser Mockup View */}
+              <div className="rounded-xl overflow-hidden shadow-2xl border border-outline/20">
+                <ProjectBrowserMockup
+                  project={selectedProject}
+                  aspectRatio="modal"
+                  showLiveButton={true}
+                />
+              </div>
+
               {/* Visual case stats board */}
               <div className="p-4 rounded-xl border border-dashed border-tertiary/25 bg-surface-container-low flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
@@ -1329,22 +1356,35 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
             </div>
 
             {/* Specs Footer Drawer Actions */}
-            <div className="p-4 border-t border-outline/20 bg-surface-container-low flex items-center justify-between">
+            <div className="p-4 border-t border-outline/20 bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-3">
               <span className="text-[10px] font-mono text-on-surface-variant/60 flex items-center gap-1.5">
                 <ShieldCheck className="w-3.5 h-3.5 text-on-surface-variant/60" />
-                Credentials Authenticated
+                Verified Production Infrastructure
               </span>
               
-              <button
-                type="button"
-                onClick={() => {
-                  setSelectedProject(null);
-                  onLaunch();
-                }}
-                className="px-5 py-2 rounded bg-primary text-on-primary font-semibold hover:brightness-110 text-xs transition-all flex items-center gap-1 cursor-pointer font-sans border-none"
-              >
-                Inspect Platform Infrastructure <ChevronRight className="w-3.5 h-3.5" />
-              </button>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                {getProjectLiveUrl(selectedProject) && (
+                  <a
+                    href={getProjectLiveUrl(selectedProject)!}
+                    target={getProjectLiveUrl(selectedProject)!.startsWith('/') ? '_self' : '_blank'}
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-[#00e476] hover:bg-emerald-500/25 font-bold text-xs transition-all flex items-center gap-1.5 font-mono shadow-xs"
+                  >
+                    <span>Visit Live Website</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedProject(null);
+                    onLaunch();
+                  }}
+                  className="px-5 py-2 rounded bg-primary text-on-primary font-semibold hover:brightness-110 text-xs transition-all flex items-center gap-1 cursor-pointer font-sans border-none"
+                >
+                  Launch Workspace <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
           </div>
