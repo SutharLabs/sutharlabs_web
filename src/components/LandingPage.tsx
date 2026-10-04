@@ -1242,7 +1242,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
               <div className="space-y-2">
                 <span className="px-2 py-0.5 rounded bg-[#00e476]/20 border border-[#00e476]/30 text-[#00e476] text-[9px] font-mono uppercase tracking-wider">Enterprise &amp; Agency Funnel</span>
                 <h3 className="text-lg font-bold text-white">Start a Project Consultation</h3>
-                <p className="text-xs text-[#b9cacb] font-sans">Submit your project parameters and our elite engineering studio will get back to you within 24 hours.</p>
+                <p className="text-xs text-[#b9cacb] font-sans">Submit your project parameters and our engineering studio will get back to you within a few business days.</p>
               </div>
 
               {/* Form State */}
@@ -1255,7 +1255,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                   <div className="space-y-2">
                     <h4 className="text-base sm:text-lg font-bold text-on-surface">Thank You for Reaching Out</h4>
                     <p className="text-xs text-on-surface-variant max-w-md mx-auto leading-relaxed">
-                      We have received your inquiry and our team is currently reviewing your project details. An engineering lead will contact you within one business day.
+                      We have received your inquiry and our team is currently reviewing your project details. An engineering lead will contact you within a few business days.
                     </p>
                   </div>
 
