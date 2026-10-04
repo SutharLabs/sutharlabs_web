@@ -42,10 +42,62 @@ export interface PortfolioProject {
   blueprintSymbol: string;
   imageSrc: string;
   liveUrl?: string;
+  feedback?: string;
 }
 
+interface ProjectFeedbackData {
+  quote: string;
+  author: string;
+  authorTitle: string;
+}
+
+const getProjectFeedbackDetails = (project: PortfolioProject): ProjectFeedbackData => {
+  const id = (project.id || '').toLowerCase();
+  const title = (project.title || '').toLowerCase();
+
+  // 1. Driven Enterprise: Feedback from director regarding look & feel and ease of adding products/services
+  if (id.includes('proj_1') || title.includes('driven')) {
+    return {
+      quote: project.feedback || "The new website captures the exact premium look and feel we envisioned for Driven Enterprise. Beyond the sleek modern aesthetics, what truly stands out is how effortless it is for our team to add new products, update industrial specs, and publish service offerings on the fly without any technical friction.",
+      author: "Director",
+      authorTitle: "Director, Driven Enterprise"
+    };
+  }
+
+  // 2. Aradhana Dharmika Trust: Feedback from trustee Santhosh regarding reflecting soul of trust, deeply rooted theme, modularity & future proofing
+  if (id.includes('proj_2') || title.includes('aradhana')) {
+    return {
+      quote: project.feedback || "The website truly reflects the sacred soul and values of our trust with its deeply rooted, dignified theme. The modularity and future-proofing allow us to seamlessly expand community seva programs, annadana notices, and educational trust updates.",
+      author: "Santhosh",
+      authorTitle: "Trustee, Aradhana Dharmika Trust"
+    };
+  }
+
+  // 3. GoToxinFree With Tina: Feedback from blog author Dr. Supriti Pramanik (Ph.D.) regarding simplicity and ease of blogging with the framework and continuous support by the team
+  if (id.includes('proj_3') || title.includes('toxin') || title.includes('tina')) {
+    return {
+      quote: project.feedback || "Blogging with this framework is an absolute delight. The workflow is pure simplicity—publishing new health articles, research notes, and stories takes minutes with zero formatting headaches. Most importantly, the continuous support and responsiveness from the SutharLabs team have been exceptional.",
+      author: "Dr. Supriti Pramanik (Ph.D.)",
+      authorTitle: "Blog Author & Creator, Go Toxin Free"
+    };
+  }
+
+  return {
+    quote: project.feedback || project.detailedCase || "Building sovereign agentic execution environments requires unmatched real-time responsiveness. This architecture proves full-stack resilience across high-frequency telemetry and reactive node networks.",
+    author: project.client || "Suresh Suthar",
+    authorTitle: project.clientTitle || "Founder & Principal Architect, SutharLabs"
+  };
+};
+
 export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'light', toggleTheme }: LandingPageProps) {
-  const [currentView, _setCurrentView] = useState<'HOME' | 'STORE' | 'PORTFOLIO' | 'CONTACT'>('HOME');
+  const [currentView, _setCurrentView] = useState<'HOME' | 'STORE' | 'PORTFOLIO' | 'CONTACT'>(() => {
+    if (typeof window === 'undefined') return 'HOME';
+    const path = window.location.pathname;
+    if (path === '/store') return 'STORE';
+    if (path === '/portfolio') return 'PORTFOLIO';
+    if (path === '/contact') return 'CONTACT';
+    return 'HOME';
+  });
   const setCurrentView = (view: 'HOME' | 'STORE' | 'PORTFOLIO' | 'CONTACT') => {
     _setCurrentView(view);
     const path = view === 'HOME' ? '/' : `/${view.toLowerCase()}`;
@@ -1383,13 +1435,13 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                 </div>
 
                 {/* Right Column: Case Details, Metrics, Tech Stack, Feedback */}
-                <div className="lg:col-span-5 xl:col-span-5 space-y-5">
+                <div className="lg:col-span-5 xl:col-span-5 space-y-4">
                   
                   {/* Visual Case Stats Board */}
-                  <div className="p-4 rounded-xl border border-dashed border-tertiary/25 bg-surface-container dark:bg-[#14141a] flex flex-col justify-between gap-3">
+                  <div className="p-3.5 sm:p-4 rounded-xl border border-dashed border-tertiary/25 bg-surface-container dark:bg-[#14141a] flex flex-col justify-between gap-2">
                     <div>
-                      <span className="text-[10px] uppercase font-mono text-secondary tracking-widest block mb-1">Impact Telemetry Metric</span>
-                      <span className="text-2xl font-bold font-mono text-tertiary block tracking-wide">{selectedProject.stat}</span>
+                      <span className="text-[10px] uppercase font-mono text-secondary tracking-widest block mb-0.5">Impact Telemetry Metric</span>
+                      <span className="text-xl sm:text-2xl font-bold font-mono text-tertiary block tracking-wide">{selectedProject.stat}</span>
                       <span className="text-xs text-on-surface-variant/70 font-mono block mt-0.5">{selectedProject.statLabel}</span>
                     </div>
                     <div className="pt-2 border-t border-outline/10 flex items-center justify-between text-[10px] font-mono text-on-surface-variant">
@@ -1399,7 +1451,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                   </div>
 
                   {/* Problem & Solution Implementation Details */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <h4 className="font-mono text-xs uppercase text-on-surface-variant/70 tracking-wider">Solution Architecture & Scope</h4>
                     <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed select-text font-light">
                       {selectedProject.detailedCase}
@@ -1407,11 +1459,11 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                   </div>
 
                   {/* Technologies Grid */}
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <h4 className="font-mono text-xs uppercase text-on-surface-variant/70 tracking-wider">Tech Stack Specifications</h4>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {selectedProject.techs.map((t) => (
-                        <span key={t} className="px-2.5 py-1 rounded bg-secondary/10 border border-secondary/20 text-xs text-secondary font-mono">
+                        <span key={t} className="px-2.5 py-0.5 rounded bg-secondary/10 border border-secondary/20 text-xs text-secondary font-mono">
                           {t}
                         </span>
                       ))}
@@ -1419,16 +1471,21 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                   </div>
 
                   {/* Client Partner Testimonial */}
-                  <div className="p-4 rounded-xl border border-outline/15 bg-surface-container dark:bg-[#14141a] relative italic font-light text-xs text-on-surface-variant leading-relaxed">
-                    <span className="absolute top-2 left-3 font-sans text-2xl font-bold text-on-surface-variant/30 select-none leading-none">“</span>
-                    <p className="pl-4 pr-2">
-                      SutharLabs transformed our execution framework. The responsive mechanics of this platform are flawless on every mobile tablet and desktop screen size we deployed to.
-                    </p>
-                    <div className="mt-2.5 pl-4 text-[10px] font-mono not-italic text-secondary flex items-center gap-1.5">
-                      <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                      <span>{selectedProject.client}, <span className="text-on-surface-variant/60 font-normal">{selectedProject.clientTitle}</span></span>
-                    </div>
-                  </div>
+                  {(() => {
+                    const feedbackData = getProjectFeedbackDetails(selectedProject);
+                    return (
+                      <div className="p-3.5 sm:p-4 rounded-xl border border-outline/15 bg-surface-container dark:bg-[#14141a] relative italic font-light text-xs text-on-surface-variant leading-relaxed">
+                        <span className="absolute top-2 left-3 font-sans text-2xl font-bold text-on-surface-variant/30 select-none leading-none">“</span>
+                        <p className="pl-4 pr-2 text-on-surface font-light leading-relaxed">
+                          {feedbackData.quote}
+                        </p>
+                        <div className="mt-3 pl-4 text-[11px] font-mono not-italic text-secondary flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-secondary shrink-0"></span>
+                          <span className="font-bold text-on-surface">{feedbackData.author}, <span className="text-on-surface-variant/70 font-normal">{feedbackData.authorTitle}</span></span>
+                        </div>
+                      </div>
+                    );
+                  })()}
 
                 </div>
 

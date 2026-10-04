@@ -146,6 +146,15 @@ export default function App() {
           user.isLoggedIn ? <Navigate to="/workspace/stock-tracker" replace /> : 
           <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} theme={theme} toggleTheme={toggleTheme} />
         } />
+        <Route path="/portfolio" element={
+          <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} theme={theme} toggleTheme={toggleTheme} />
+        } />
+        <Route path="/store" element={
+          <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} theme={theme} toggleTheme={toggleTheme} />
+        } />
+        <Route path="/contact" element={
+          <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} theme={theme} toggleTheme={toggleTheme} />
+        } />
         <Route path="/auth" element={
           <AuthPage initialTab={authTab} onLoginSuccess={handleLoginSuccess} onBackToHome={() => navigate('/')} />
         } />

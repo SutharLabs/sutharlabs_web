@@ -266,6 +266,11 @@ async function startServer() {
 // -------------------------------------------------------------
 app.get('/api/portfolios', async (req, res) => {
   try {
+    const dataPath = path.join(process.cwd(), 'data', 'portfolios.json');
+    if (fs.existsSync(dataPath)) {
+      const fileData = JSON.parse(fs.readFileSync(dataPath, 'utf8'));
+      return res.json(fileData);
+    }
     const data = await prisma.developmentProject.findMany();
     // Parse techs back into array for frontend
     const formatted = data.map(p => ({
