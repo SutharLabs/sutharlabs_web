@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { TerminalLog } from '../types';
 import { 
-  PlusCircle, Trash2, CheckCircle, AlertCircle, UploadCloud, Layers,
-  FileCode, Sparkles
+  PlusCircle, Trash2, CheckCircle, AlertCircle, UploadCloud, Layers
 } from 'lucide-react';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
@@ -102,13 +101,14 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
           'Authorization': `Bearer ${userToken}`
         },
         body: JSON.stringify({
+          id: `wp_${pluginName.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now()}`,
           name: pluginName,
-          version: pluginVersion,
           category: pluginCategory,
           type: 'Community',
-          description: pluginDescription || `Workspace extension package ${selectedPluginFile?.name || pluginName}.`,
+          description: pluginDescription || 'Custom developer workspace extension.',
           iconSymbol: pluginIcon || 'extension',
-          changelog: pluginChangelog || `Release v${pluginVersion}`,
+          version: pluginVersion || '0.1.0',
+          changelog: pluginChangelog || `Initial release ${pluginVersion}`,
           checksumSha256,
           packageUrl
         })
@@ -116,16 +116,16 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
 
       if (!pubRes.ok) {
         const err = await pubRes.json();
-        throw new Error(err.error || 'Failed to publish plugin metadata.');
+        throw new Error(err.error || 'Failed to record catalog registration.');
       }
 
       const created = await pubRes.json();
       setNotification({
         type: 'success',
-        message: `Plugin "${created.name}" (v${created.version}) published to workspace catalog.`
+        message: `Successfully published "${created.name}" (v${created.version}) to the workspace catalog.`
       });
 
-        onAddLog({
+      onAddLog({
         timestamp: new Date().toLocaleTimeString(),
         type: 'SUCCESS',
         message: `ADMIN: Uploaded and cataloged workspace plugin: ${created.name} v${created.version}`
@@ -191,8 +191,8 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-outline/20 pb-4">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-[#00dbe7]/10 border border-[#00dbe7]/30 flex items-center justify-center shrink-0">
-            <span className="material-symbols-outlined text-[#00dbe7] text-2xl">extension</span>
+          <div className="w-10 h-10 rounded-lg bg-primary/10 border border-primary/30 flex items-center justify-center shrink-0">
+            <span className="material-symbols-outlined text-primary dark:text-[#00dbe7] text-2xl">extension</span>
           </div>
           <div>
             <h2 className="text-xl font-sans font-bold text-on-surface">Workspace Plugin Administration</h2>
@@ -202,39 +202,39 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/30 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#00e476] animate-pulse"></span>
+          <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-emerald-500/10 text-emerald-700 dark:text-[#00e476] border border-emerald-500/30 flex items-center gap-1.5 font-bold">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-[#00e476] animate-pulse"></span>
             {workspacePlugins.length} Active in Catalog
           </span>
         </div>
       </div>
 
       {notification && (
-        <div className={`p-3.5 rounded text-xs font-mono flex items-center gap-2.5 border transition-all ${
+        <div className={`p-3.5 rounded-xl text-xs font-mono flex items-center gap-2.5 border transition-all ${
           notification.type === 'success' 
-            ? 'bg-[#00e476]/10 border-[#00fb83]/30 text-[#00e476]' 
-            : 'bg-[#ffb4ab]/10 border-[#ffb4ab]/30 text-[#ffb4ab]'
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-800 dark:text-[#00e476]' 
+            : 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-[#ffb4ab]'
         }`}>
           {notification.type === 'success' ? (
-            <CheckCircle className="w-4 h-4 shrink-0" />
+            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-600 dark:text-[#00e476]" />
           ) : (
-            <AlertCircle className="w-4 h-4 shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0 text-red-600 dark:text-[#ffb4ab]" />
           )}
           <span>{notification.message}</span>
         </div>
       )}
 
       {/* Upload & Package Installation Form */}
-      <div className="glass-panel p-5 sm:p-6 rounded-xl border border-outline/30 bg-surface-container-low/40">
+      <div className="glass-panel p-5 sm:p-6 rounded-2xl border border-outline/25 dark:border-outline/30 bg-surface dark:bg-surface-container-low/40 shadow-sm">
         <div className="flex items-center gap-2 text-sm font-bold text-on-surface mb-4">
-          <PlusCircle className="w-4 h-4 text-[#00dbe7]" />
+          <PlusCircle className="w-4 h-4 text-primary dark:text-[#00dbe7]" />
           <span>Upload & Package Workspace Extension</span>
         </div>
 
         <form onSubmit={handleUploadAndPublish} className="space-y-4">
           {/* File Upload Drop Area */}
-          <div className="border border-dashed border-outline/40 hover:border-[#00dbe7]/60 rounded-lg p-5 transition-colors bg-[#0e0e10]/60 text-center flex flex-col items-center justify-center gap-2 cursor-pointer relative">
-            <UploadCloud className="w-8 h-8 text-[#00dbe7]/80" />
+          <div className="border-2 border-dashed border-outline/30 dark:border-outline/40 hover:border-primary dark:hover:border-[#00dbe7]/60 rounded-xl p-6 transition-colors bg-surface-container-lowest dark:bg-[#0e0e10]/60 text-center flex flex-col items-center justify-center gap-2 cursor-pointer relative">
+            <UploadCloud className="w-8 h-8 text-primary dark:text-[#00dbe7]/80" />
             <div>
               <span className="text-xs font-semibold text-on-surface block">
                 {selectedPluginFile ? selectedPluginFile.name : 'Choose a .zip or .vsix plugin package'}
@@ -256,22 +256,22 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
           {/* Metadata Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
             <div>
-              <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">Plugin Name</label>
+              <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1 font-semibold">Plugin Name</label>
               <input
                 type="text"
                 placeholder="e.g. Docker Inspector"
                 value={pluginName}
                 onChange={(e) => setPluginName(e.target.value)}
                 required
-                className="w-full bg-[#131315] border border-outline/40 rounded px-3 py-1.5 text-xs text-on-surface focus:border-[#00dbe7] outline-none"
+                className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs text-on-surface focus:border-primary dark:focus:border-[#00dbe7] outline-none"
               />
             </div>
             <div>
-              <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">Category</label>
+              <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1 font-semibold">Category</label>
               <select
                 value={pluginCategory}
                 onChange={(e) => setPluginCategory(e.target.value)}
-                className="w-full bg-[#131315] border border-outline/40 rounded px-3 py-1.5 text-xs text-on-surface focus:border-[#00dbe7] outline-none cursor-pointer"
+                className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs text-on-surface focus:border-primary dark:focus:border-[#00dbe7] outline-none cursor-pointer"
               >
                 <option value="Finance">Finance</option>
                 <option value="Architecture">Architecture</option>
@@ -283,46 +283,46 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
               </select>
             </div>
             <div>
-              <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">Version</label>
+              <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1 font-semibold">Version</label>
               <input
                 type="text"
                 placeholder="1.0.0"
                 value={pluginVersion}
                 onChange={(e) => setPluginVersion(e.target.value)}
-                className="w-full bg-[#131315] border border-outline/40 rounded px-3 py-1.5 text-xs text-on-surface focus:border-[#00dbe7] outline-none font-mono"
+                className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs text-on-surface focus:border-primary dark:focus:border-[#00dbe7] outline-none font-mono"
               />
             </div>
             <div>
-              <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">Icon Symbol (Material)</label>
+              <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1 font-semibold">Icon Symbol (Material)</label>
               <input
                 type="text"
                 placeholder="extension"
                 value={pluginIcon}
                 onChange={(e) => setPluginIcon(e.target.value)}
-                className="w-full bg-[#131315] border border-outline/40 rounded px-3 py-1.5 text-xs text-on-surface focus:border-[#00dbe7] outline-none font-mono"
+                className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs text-on-surface focus:border-primary dark:focus:border-[#00dbe7] outline-none font-mono"
               />
             </div>
           </div>
 
           <div>
-            <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">Description</label>
+            <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1 font-semibold">Description</label>
             <input
               type="text"
               placeholder="Brief description of the extension capabilities..."
               value={pluginDescription}
               onChange={(e) => setPluginDescription(e.target.value)}
-              className="w-full bg-[#131315] border border-outline/40 rounded px-3 py-1.5 text-xs text-on-surface focus:border-[#00dbe7] outline-none"
+              className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs text-on-surface focus:border-primary dark:focus:border-[#00dbe7] outline-none"
             />
           </div>
 
           <div>
-            <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">Release Notes / Changelog (Markdown)</label>
+            <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1 font-semibold">Release Notes / Changelog (Markdown)</label>
             <textarea
               rows={2}
               placeholder="e.g. Initial v0.1.0 release with real-time analytics and workspace integration."
               value={pluginChangelog}
               onChange={(e) => setPluginChangelog(e.target.value)}
-              className="w-full bg-[#131315] border border-outline/40 rounded px-3 py-1.5 text-xs text-on-surface focus:border-[#00dbe7] outline-none font-mono resize-none"
+              className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs text-on-surface focus:border-primary dark:focus:border-[#00dbe7] outline-none font-mono resize-none"
             />
           </div>
 
@@ -330,7 +330,7 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
             <button
               type="submit"
               disabled={isUploading || (!selectedPluginFile && !pluginName)}
-              className="py-2 px-5 rounded bg-[#00dbe7] text-[#002022] font-mono font-bold text-xs uppercase flex items-center gap-2 hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer"
+              className="py-2.5 px-5 rounded-xl bg-[#00dbe7] text-[#002022] font-mono font-bold text-xs uppercase flex items-center gap-2 hover:brightness-110 disabled:opacity-50 transition-all cursor-pointer shadow-md shadow-[#00dbe7]/15"
             >
               {isUploading ? (
                 <>
@@ -352,7 +352,7 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-[#74f5ff]" />
+            <Layers className="w-4 h-4 text-primary dark:text-[#74f5ff]" />
             <h3 className="text-sm font-bold text-on-surface uppercase tracking-wider font-mono">
               Available Workspace Extensions ({workspacePlugins.length})
             </h3>
@@ -366,31 +366,31 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
           {workspacePlugins.map((wp) => (
             <div 
               key={wp.id} 
-              className="glass-panel p-5 rounded-xl border border-outline/30 bg-[#131315]/80 hover:border-[#00dbe7]/40 transition-all flex flex-col justify-between group"
+              className="glass-panel p-5 rounded-2xl border border-outline/25 dark:border-outline/30 bg-surface dark:bg-[#131315]/80 hover:border-primary/40 dark:hover:border-[#00dbe7]/40 transition-all flex flex-col justify-between group shadow-sm"
             >
               <div>
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-11 h-11 rounded-lg bg-[#0e0e10] border border-outline/50 flex items-center justify-center shrink-0">
-                      <span className="material-symbols-outlined text-[#00dbe7] text-2xl">
+                    <div className="w-11 h-11 rounded-xl bg-surface-container-low dark:bg-[#0e0e10] border border-outline/30 dark:border-outline/50 flex items-center justify-center shrink-0">
+                      <span className="material-symbols-outlined text-primary dark:text-[#00dbe7] text-2xl">
                         {wp.iconSymbol || 'extension'}
                       </span>
                     </div>
                     <div>
-                      <h4 className="text-base font-bold text-on-surface group-hover:text-[#74f5ff] transition-colors">
+                      <h4 className="text-base font-bold text-on-surface group-hover:text-primary dark:group-hover:text-[#74f5ff] transition-colors">
                         {wp.name}
                       </h4>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-[10px] font-mono text-on-surface-variant uppercase px-2 py-0.5 bg-surface-container-low rounded border border-outline/30">
+                        <span className="text-[10px] font-mono text-on-surface-variant uppercase px-2 py-0.5 bg-surface-container rounded border border-outline/25">
                           {wp.category}
                         </span>
-                        <span className="text-[10px] font-mono text-on-surface-variant">
+                        <span className="text-[10px] font-mono text-on-surface-variant font-semibold">
                           v{wp.version}
                         </span>
-                        <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded ${
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
                           wp.type === 'Native' 
-                            ? 'bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/20' 
-                            : 'bg-[#ce5dff]/10 text-[#ebb2ff] border border-[#ce5dff]/20'
+                            ? 'bg-emerald-500/10 text-emerald-700 dark:text-[#00e476] border border-emerald-500/30' 
+                            : 'bg-purple-500/10 text-purple-700 dark:text-[#ebb2ff] border border-purple-500/30'
                         }`}>
                           {wp.type}
                         </span>
@@ -401,22 +401,22 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
                   <button
                     onClick={() => handleDeletePlugin(wp.id, wp.name)}
                     title="Remove from Catalog"
-                    className="p-1.5 rounded text-on-surface-variant hover:text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition-colors cursor-pointer"
+                    className="p-1.5 rounded-lg text-on-surface-variant hover:text-red-600 dark:hover:text-[#ffb4ab] hover:bg-red-500/10 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
 
-                <p className="text-xs text-[#b9cacb] leading-relaxed mt-3 line-clamp-2">
+                <p className="text-xs text-on-surface-variant leading-relaxed mt-3 line-clamp-2">
                   {wp.description}
                 </p>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-outline/20 flex items-center justify-between text-[10px] font-mono text-on-surface-variant">
-                <span className="flex items-center gap-1.5 text-[#00e476]">
+              <div className="mt-4 pt-3 border-t border-outline/15 flex items-center justify-between text-[10px] font-mono text-on-surface-variant">
+                <span className="flex items-center gap-1.5 text-emerald-700 dark:text-[#00e476] font-semibold">
                   <CheckCircle className="w-3.5 h-3.5" /> Published in Store
                 </span>
-                <span className="text-gray-500 truncate max-w-[150px]">
+                <span className="text-on-surface-variant/70 truncate max-w-[150px]">
                   ID: {wp.id}
                 </span>
               </div>

@@ -272,6 +272,21 @@ html:not(.dark) .text-\[\#849495\] {
   color: var(--on-surface-variant-color) !important;
   opacity: 0.7;
 }
+html:not(.dark) .text-\[\#ebb2ff\] {
+  color: var(--secondary-color) !important;
+}
+html:not(.dark) .text-\[\#74f5ff\] {
+  color: var(--primary-color) !important;
+}
+html:not(.dark) .text-\[\#00dbe7\] {
+  color: var(--primary-color) !important;
+}
+html:not(.dark) .text-\[\#00e476\] {
+  color: var(--tertiary-color) !important;
+}
+html:not(.dark) .text-\[\#ffb4ab\] {
+  color: var(--error-color) !important;
+}
 
 html:not(.dark) .border-\[\#3a494b\]\/10,
 html:not(.dark) .border-\[\#3a494b\]\/20,
