@@ -17,6 +17,9 @@ model User {
   mustChangePassword  Boolean               @default(false)
   joinedAt            DateTime              @default(now())
   activityCount       Int                   @default(0)
+  bio                 String?
+  githubHandle        String?
+  company             String?
   portfolio           Portfolio?
   workspacePlugins    UserWorkspacePlugin[]
   pluginReviews       WorkspacePluginReview[]

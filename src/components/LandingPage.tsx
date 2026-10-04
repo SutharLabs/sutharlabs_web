@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { UserProfile, StorePlugin } from '../types';
+import { openCookiePreferencesModal } from './CookieConsentBanner';
 import { 
   Code, 
   Smartphone, 
@@ -90,6 +92,7 @@ const getProjectFeedbackDetails = (project: PortfolioProject): ProjectFeedbackDa
 };
 
 export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'light', toggleTheme }: LandingPageProps) {
+  const navigate = useNavigate();
   const [currentView, _setCurrentView] = useState<'HOME' | 'STORE' | 'PORTFOLIO' | 'CONTACT'>(() => {
     if (typeof window === 'undefined') return 'HOME';
     const path = window.location.pathname;
@@ -1338,16 +1341,45 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
       </main>
 
       {/* Footer */}
-      <footer className="w-full py-4 sm:py-8 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 bg-surface-container dark:bg-surface-container-low border-t border-outline/10 z-10 mt-auto">
-        <div className="text-md font-bold text-primary tracking-tight hover:brightness-110">
-          SutharLabs
+      <footer className="w-full py-6 px-6 md:px-12 flex flex-col md:flex-row justify-between items-center gap-4 bg-surface-container dark:bg-surface-container-low border-t border-outline/10 z-10 mt-auto">
+        <div className="flex items-center gap-3">
+          <div className="text-md font-bold text-primary tracking-tight hover:brightness-110 cursor-pointer" onClick={() => { setCurrentView('HOME'); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
+            SutharLabs
+          </div>
+          <span className="text-xs text-on-surface-variant/50 hidden sm:inline">•</span>
+          <span className="text-xs text-on-surface-variant font-mono">
+            Sovereign Systems Engine
+          </span>
         </div>
-        <div className="text-xs text-on-surface-variant text-center sm:text-left">
-          &copy; 2026 SutharLabs Corp. All rights reserved.
+
+        <div className="text-xs text-on-surface-variant text-center">
+          &copy; 2026 SutharLabs. All rights reserved.
         </div>
-        <div className="flex items-center gap-4 sm:gap-6 text-xs text-on-surface-variant font-mono">
-          <a className="hover:text-primary transition-colors" href="https://github.com" target="_blank" rel="noopener noreferrer">GitHub</a>
-          <a className="hover:text-secondary transition-colors" href="https://google.com" target="_blank" rel="noopener noreferrer">Google</a>
+
+        <div className="flex items-center gap-4 sm:gap-5 text-xs text-on-surface-variant font-mono flex-wrap justify-center">
+          <button 
+            type="button" 
+            onClick={() => navigate('/privacy')} 
+            className="hover:text-primary transition-colors cursor-pointer"
+          >
+            Privacy Policy
+          </button>
+          <span>•</span>
+          <button 
+            type="button" 
+            onClick={() => navigate('/copyright')} 
+            className="hover:text-primary transition-colors cursor-pointer"
+          >
+            Terms &amp; Copyright
+          </button>
+          <span>•</span>
+          <button 
+            type="button" 
+            onClick={openCookiePreferencesModal} 
+            className="hover:text-secondary transition-colors cursor-pointer"
+          >
+            Cookies
+          </button>
         </div>
       </footer>
 

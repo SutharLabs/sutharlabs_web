@@ -576,6 +576,264 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
     }
   });
 
+  // ==================== USER PROFILE & DATA MANAGEMENT (GDPR COMPLIANT) ====================
+
+  // GET /api/user/profile
+  app.get("/api/user/profile", authenticateToken, async (req: any, res: any) => {
+    try {
+      const user = await prisma.user.findUnique({
+        where: { email: req.user.email },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          bio: true,
+          githubHandle: true,
+          company: true,
+          joinedAt: true,
+          activityCount: true,
+          portfolio: {
+            select: { cash: true, shares: true, buyPrice: true }
+          }
+        }
+      });
+
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      const tradesCount = await prisma.trade.count({ where: { userEmail: req.user.email } });
+      const reviewsCount = await prisma.workspacePluginReview.count({ where: { userEmail: req.user.email } });
+      const installedCount = await prisma.userWorkspacePlugin.count({ where: { userEmail: req.user.email } });
+
+      res.json({
+        ...user,
+        stats: {
+          tradesCount,
+          reviewsCount,
+          installedCount
+        }
+      });
+    } catch (error) {
+      console.error("Failed to fetch user profile:", error);
+      res.status(500).json({ error: "Internal Server Error" });
+    }
+  });
+
+  // PUT /api/user/profile (Update display name, bio, company, github)
+  app.put("/api/user/profile", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { name, bio, githubHandle, company } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: "Display name cannot be empty." });
+      }
+
+      const updated = await prisma.user.update({
+        where: { email: req.user.email },
+        data: {
+          name: name.trim(),
+          bio: bio !== undefined ? (bio ? bio.trim() : null) : undefined,
+          githubHandle: githubHandle !== undefined ? (githubHandle ? githubHandle.trim() : null) : undefined,
+          company: company !== undefined ? (company ? company.trim() : null) : undefined
+        },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          bio: true,
+          githubHandle: true,
+          company: true,
+          joinedAt: true,
+          activityCount: true
+        }
+      });
+
+      res.json({ success: true, user: updated });
+    } catch (error) {
+      console.error("Failed to update profile:", error);
+      res.status(500).json({ error: "Failed to update profile details." });
+    }
+  });
+
+  // PUT /api/user/password (Change password)
+  app.put("/api/user/password", authenticateToken, async (req: any, res: any) => {
+    try {
+      const { currentPassword, newPassword } = req.body;
+      if (!newPassword || newPassword.length < 5) {
+        return res.status(400).json({ error: "New password must be at least 5 characters long." });
+      }
+
+      const user = await prisma.user.findUnique({ where: { email: req.user.email } });
+      if (!user) return res.status(404).json({ error: "User not found." });
+
+      if (user.passwordHash) {
+        if (!currentPassword) {
+          return res.status(400).json({ error: "Current password is required." });
+        }
+        const hashedCurrent = hashPassword(currentPassword);
+        if (hashedCurrent !== user.passwordHash) {
+          return res.status(400).json({ error: "Current password does not match." });
+        }
+      }
+
+      const newHash = hashPassword(newPassword);
+      await prisma.user.update({
+        where: { email: req.user.email },
+        data: { passwordHash: newHash, mustChangePassword: false }
+      });
+
+      res.json({ success: true, message: "Password updated successfully." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to change password." });
+    }
+  });
+
+  // GET /api/user/export-data (Export all user data as JSON)
+  app.get("/api/user/export-data", authenticateToken, async (req: any, res: any) => {
+    try {
+      const email = req.user.email;
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          bio: true,
+          githubHandle: true,
+          company: true,
+          joinedAt: true,
+          activityCount: true,
+          portfolio: true,
+          workspacePlugins: {
+            include: { plugin: true }
+          },
+          pluginReviews: {
+            include: { plugin: { select: { id: true, name: true, category: true } } }
+          }
+        }
+      });
+
+      if (!user) return res.status(404).json({ error: "User not found" });
+
+      const trades = await prisma.trade.findMany({
+        where: { userEmail: email },
+        orderBy: { timestamp: "desc" }
+      });
+
+      const exportPayload = {
+        exportMetadata: {
+          exportedAt: new Date().toISOString(),
+          service: "SutharLabs Sovereign Engine",
+          gdprCompliant: true,
+          userEmail: email
+        },
+        profile: {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          bio: user.bio,
+          githubHandle: user.githubHandle,
+          company: user.company,
+          joinedAt: user.joinedAt,
+          activityCount: user.activityCount
+        },
+        portfolio: user.portfolio,
+        trades,
+        installedPlugins: user.workspacePlugins.map(wp => ({
+          pluginId: wp.pluginId,
+          name: wp.plugin.name,
+          category: wp.plugin.category,
+          installedVersion: wp.installedVersion,
+          installedAt: wp.installedAt
+        })),
+        reviews: user.pluginReviews.map(r => ({
+          id: r.id,
+          pluginId: r.pluginId,
+          pluginName: r.plugin.name,
+          rating: r.rating,
+          feedback: r.feedback,
+          createdAt: r.createdAt,
+          updatedAt: r.updatedAt
+        }))
+      };
+
+      res.setHeader("Content-Disposition", `attachment; filename="sutharlabs_export_${Date.now()}.json"`);
+      res.setHeader("Content-Type", "application/json");
+      res.send(JSON.stringify(exportPayload, null, 2));
+    } catch (error) {
+      console.error("Failed to export user data:", error);
+      res.status(500).json({ error: "Failed to compile personal data export." });
+    }
+  });
+
+  // DELETE /api/user/data/trades (Delete all simulated trades and reset balance)
+  app.delete("/api/user/data/trades", authenticateToken, async (req: any, res: any) => {
+    try {
+      const email = req.user.email;
+      const deleteResult = await prisma.trade.deleteMany({ where: { userEmail: email } });
+      await prisma.portfolio.upsert({
+        where: { userEmail: email },
+        update: { cash: 10000.0, shares: 0, buyPrice: 0.0 },
+        create: { userEmail: email, cash: 10000.0, shares: 0, buyPrice: 0.0 }
+      });
+      res.json({
+        success: true,
+        count: deleteResult.count,
+        message: "All paper trading history has been permanently wiped and portfolio balance reset to default."
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to clear trades." });
+    }
+  });
+
+  // DELETE /api/user/data/reviews (Delete all reviews authored by user)
+  app.delete("/api/user/data/reviews", authenticateToken, async (req: any, res: any) => {
+    try {
+      const deleteResult = await prisma.workspacePluginReview.deleteMany({ where: { userEmail: req.user.email } });
+      res.json({
+        success: true,
+        count: deleteResult.count,
+        message: "All plugin reviews and ratings authored by you have been deleted."
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to clear reviews." });
+    }
+  });
+
+  // DELETE /api/user/data/plugins (Reset installed workspace plugins to default)
+  app.delete("/api/user/data/plugins", authenticateToken, async (req: any, res: any) => {
+    try {
+      const email = req.user.email;
+      await prisma.userWorkspacePlugin.deleteMany({ where: { userEmail: email } });
+
+      const defaultPlugins = await prisma.workspacePlugin.findMany({ where: { type: "Native" } });
+      for (const p of defaultPlugins) {
+        await prisma.userWorkspacePlugin.create({
+          data: { userEmail: email, pluginId: p.id, installedVersion: p.version }
+        }).catch(() => {});
+      }
+
+      res.json({ success: true, message: "Workspace plugins reset to default core installation." });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to reset workspace plugins." });
+    }
+  });
+
+  // DELETE /api/user/account (Permanently delete user account and all personal data)
+  app.delete("/api/user/account", authenticateToken, async (req: any, res: any) => {
+    try {
+      const email = req.user.email;
+      await prisma.trade.deleteMany({ where: { userEmail: email } });
+      await prisma.user.delete({ where: { email } });
+      res.json({ success: true, message: "User account and all associated personal data have been permanently erased." });
+    } catch (error) {
+      console.error("Failed to delete user account:", error);
+      res.status(500).json({ error: "Failed to delete account." });
+    }
+  });
+
   // ==================== SYSTEM & HOST TELEMETRY (REAL-TIME) ====================
   // GET /api/admin/telemetry
   app.get("/api/admin/telemetry", async (req, res) => {

@@ -13,6 +13,10 @@ import ManagePluginsView from './components/ManagePluginsView';
 import ManagePortfoliosView from './components/ManagePortfoliosView';
 import WorkspacePluginStore from './components/WorkspacePluginStore';
 import ErrorBoundary from './components/ErrorBoundary';
+import CookieConsentBanner from './components/CookieConsentBanner';
+import PrivacyPolicyView from './components/PrivacyPolicyView';
+import CopyrightView from './components/CopyrightView';
+import UserProfileView from './components/UserProfileView';
 import { getClientPluginByName } from './plugins/clientRegistry.js';
 
 const STORE_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
@@ -33,7 +37,11 @@ const ADMIN_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
   { name: 'Manage Portfolios', icon: 'web', size: '' }
 ];
 
-const ALL_TABS = [...STORE_TOOLS, ...INSTALLED_PLUGINS];
+const ALL_TABS: { name: WorkspaceTab; icon: string; size: string }[] = [
+  ...STORE_TOOLS, 
+  ...INSTALLED_PLUGINS,
+  { name: 'Profile & Settings', icon: 'manage_accounts', size: '' }
+];
 
 
 const ROUTE_MAP: Record<WorkspaceTab, string> = {
@@ -46,7 +54,8 @@ const ROUTE_MAP: Record<WorkspaceTab, string> = {
   'Manage Apps': '/admin/manage-apps',
   'Manage Portfolios': '/admin/manage-portfolios',
   'Plugin Store': '/workspace/plugins',
-  'README': '/workspace/readme'
+  'README': '/workspace/readme',
+  'Profile & Settings': '/workspace/profile'
 };
 
 const URL_TO_TAB: Record<string, WorkspaceTab> = Object.entries(ROUTE_MAP).reduce((acc, [tab, url]) => {
@@ -177,6 +186,7 @@ export default function App() {
   // Application Top Level Routes
   return (
     <>
+      <CookieConsentBanner />
       {user.isLoggedIn && user.mustChangePassword && (
         <PasswordResetModal user={user} setUser={setUser} userToken={user.token || ''} />
       )}
@@ -194,6 +204,8 @@ export default function App() {
         <Route path="/contact" element={
           <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} theme={theme} toggleTheme={toggleTheme} />
         } />
+        <Route path="/privacy" element={<PrivacyPolicyView />} />
+        <Route path="/copyright" element={<CopyrightView />} />
         <Route path="/auth" element={
           <AuthPage initialTab={authTab} onLoginSuccess={handleLoginSuccess} onBackToHome={() => navigate('/')} />
         } />
@@ -281,7 +293,22 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               <span className="text-[#ce5dff] font-bold">Syncing</span>
             </div>
           </div>
-          
+
+          {/* User Profile Button */}
+          <button
+            type="button"
+            onClick={() => setActiveTab('Profile & Settings')}
+            className={`py-1 px-2.5 rounded border transition-all flex items-center gap-1.5 font-mono text-[10px] cursor-pointer ${
+              activeTab === 'Profile & Settings'
+                ? 'bg-[#00dbe7]/15 border-[#00dbe7]/50 text-[#00dbe7] font-bold shadow-sm shadow-[#00dbe7]/10'
+                : 'bg-[#201f21] border-[#3a494b]/30 text-[#e5e1e4] hover:text-[#00dbe7] hover:border-[#00dbe7]/50'
+            }`}
+            title="Profile, Data Governance & Security Settings"
+          >
+            <span className="material-symbols-outlined text-sm">person</span>
+            <span className="hidden sm:inline">Profile</span>
+          </button>
+
           {/* Theme Toggle Button */}
           <button
             type="button"
@@ -469,14 +496,27 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
           </div>
 
           {/* User authenticated credentials footer card */}
-          <div className="p-4 border-t border-[#3a494b]/10 bg-[#0e0e10]/80 flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#ce5dff]/10 border border-[#ce5dff]/40 flex items-center justify-center text-xs font-bold text-[#ebb2ff] uppercase select-none">
+          <div 
+            onClick={() => setActiveTab('Profile & Settings')}
+            className={`p-3.5 border-t border-[#3a494b]/10 flex items-center gap-3 cursor-pointer transition-colors ${
+              activeTab === 'Profile & Settings'
+                ? 'bg-[#00dbe7]/10 border-l-2 border-l-[#00dbe7]'
+                : 'bg-[#0e0e10]/80 hover:bg-[#1a191d]'
+            }`}
+            title="Manage Profile, Sovereign Data, & Settings"
+          >
+            <div className="w-8 h-8 rounded-full bg-[#ce5dff]/10 border border-[#ce5dff]/40 flex items-center justify-center text-xs font-bold text-[#ebb2ff] uppercase select-none shrink-0">
               {user.name.charAt(0)}
             </div>
             <div className="flex-grow min-w-0">
               <span className="font-sans text-xs font-bold text-[#e5e1e4] block truncate">{user.name}</span>
               <span className="font-mono text-[9px] text-[#849495] block truncate">{user.email}</span>
             </div>
+            <span className={`material-symbols-outlined text-sm transition-transform ${
+              activeTab === 'Profile & Settings' ? 'text-[#00dbe7] rotate-45' : 'text-[#849495] hover:text-white'
+            }`}>
+              settings
+            </span>
           </div>
         </div>
 
@@ -537,6 +577,17 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 />
               )}
 
+              {activeTab === 'Profile & Settings' && (
+                <UserProfileView
+                  user={user}
+                  setUser={setUser}
+                  logs={logs}
+                  onAddLog={addLog}
+                  onLogout={handleLogout}
+                  onPluginsChange={fetchInstalledPlugins}
+                />
+              )}
+
               {(activeTab === 'Admin Console' || activeTab === 'Manage Plugins' || activeTab === 'Manage Apps' || activeTab === 'Manage Portfolios') && user.role !== 'Admin' && (
                   <div className="glass-panel p-8 rounded-xl border border-red-900/20 bg-red-950/5 flex flex-col items-center justify-center text-center max-w-lg mx-auto my-12 space-y-4">
                     <div className="w-16 h-16 rounded-full bg-red-950/20 border border-red-900 flex items-center justify-center mb-2">
@@ -572,6 +623,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 'Accounting',
                 'Doc Nexus',
                 'Plugin Store',
+                'Profile & Settings',
                 'Admin Console',
                 'Manage Apps',
                 'Manage Plugins',

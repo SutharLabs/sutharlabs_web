@@ -5,9 +5,13 @@ export interface UserProfile {
   role?: 'Admin' | 'Developer' | 'Banned' | 'Pending';
   token?: string;
   mustChangePassword?: boolean;
+  bio?: string;
+  githubHandle?: string;
+  company?: string;
+  joinedAt?: string;
 }
 
-export type WorkspaceTab = 'Stock Tracker' | 'Custom Flow' | 'Accounting' | 'Admin Console' | 'Manage Plugins' | 'Manage Apps' | 'Manage Portfolios' | 'Doc Nexus' | 'README' | 'Plugin Store';
+export type WorkspaceTab = 'Stock Tracker' | 'Custom Flow' | 'Accounting' | 'Admin Console' | 'Manage Plugins' | 'Manage Apps' | 'Manage Portfolios' | 'Doc Nexus' | 'README' | 'Plugin Store' | 'Profile & Settings';
 
 export interface RegisteredUser {
   id: string;
