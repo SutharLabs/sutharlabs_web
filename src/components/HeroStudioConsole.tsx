@@ -13,9 +13,10 @@ interface PluginSlide {
   accentColor: string;
   tagline: string;
   description: string;
+  hidden?: boolean;
 }
 
-const PLUGIN_SLIDES: PluginSlide[] = [
+const ALL_PLUGIN_SLIDES: PluginSlide[] = [
   {
     id: 'agentic-mcp',
     name: 'Agentic MCP Engine',
@@ -23,7 +24,8 @@ const PLUGIN_SLIDES: PluginSlide[] = [
     icon: 'smart_toy',
     accentColor: '#00dbe7',
     tagline: 'Autonomous AI Tooling & JSON-RPC Orchestration',
-    description: 'Dynamic MCP servers, real-time agent handshakes, and deterministic sandboxed execution.'
+    description: 'Dynamic MCP servers, real-time agent handshakes, and deterministic sandboxed execution.',
+    hidden: true // Hidden per requirement
   },
   {
     id: 'stock-tracker',
@@ -53,6 +55,8 @@ const PLUGIN_SLIDES: PluginSlide[] = [
     description: 'Enterprise markdown indexing, neural vector embeddings, and zero-latency technical documentation search.'
   }
 ];
+
+const PLUGIN_SLIDES = ALL_PLUGIN_SLIDES.filter(s => !s.hidden);
 
 export default function HeroStudioConsole({ theme = 'dark', onLaunch }: HeroStudioConsoleProps) {
   const [currentSlideIndex, setCurrentSlideIndex] = useState(0);
