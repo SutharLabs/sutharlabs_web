@@ -313,11 +313,11 @@ export default function HeroStudioConsole({ theme = 'dark', onLaunch }: HeroStud
               <div className="lg:col-span-8 rounded-xl p-4 border bg-slate-900 dark:bg-black/60 dark:border-white/10 relative overflow-hidden flex flex-col justify-between">
                 <div className="flex items-center justify-between text-xs font-mono mb-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-lg font-bold text-white">RELIANCE.NS</span>
-                    <span className="px-1.5 py-0.5 rounded bg-[#00e476]/20 text-[#00e476] text-[10px] font-bold">NSE LIVE</span>
+                    <span className="text-lg font-bold text-white">BENCHMARK.NSE</span>
+                    <span className="px-1.5 py-0.5 rounded bg-[#00e476]/20 text-[#00e476] text-[10px] font-bold">INDEX LIVE</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-lg font-bold text-[#00e476]">₹2,984.40</span>
+                    <span className="text-lg font-bold text-[#00e476]">24,850.40</span>
                     <span className="text-[10px] text-emerald-400 ml-2 font-semibold">+1.85%</span>
                   </div>
                 </div>
@@ -360,7 +360,7 @@ export default function HeroStudioConsole({ theme = 'dark', onLaunch }: HeroStud
                 <div className="p-3.5 rounded-xl border bg-slate-50/50 dark:bg-white/[0.03] border-slate-200 dark:border-white/10 flex flex-col justify-between">
                   <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400">Predictive Alpha Engine</span>
                   <p className="text-xs text-slate-700 dark:text-slate-200 font-medium my-2">
-                    Autonomous signal generator tracking 50+ NIFTY constituents with sub-second WebSocket pushes.
+                    Autonomous signal generator tracking 50+ benchmark constituents with sub-second WebSocket pushes.
                   </p>
                   <div className="flex items-center justify-between text-xs font-mono font-bold text-slate-900 dark:text-white pt-2 border-t border-slate-200 dark:border-white/10">
                     <span>Average Return:</span>
