@@ -654,7 +654,7 @@ export default function UserProfileView({
                   type="button"
                   disabled={actionLoadingKey === 'trades'}
                   onClick={handleClearTrades}
-                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-semibold border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold border border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-600 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {actionLoadingKey === 'trades' ? 'Purging...' : 'Clear'}
                 </button>
@@ -669,7 +669,7 @@ export default function UserProfileView({
                   type="button"
                   disabled={actionLoadingKey === 'reviews'}
                   onClick={handleClearReviews}
-                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-semibold border border-red-500/30 text-red-400 hover:bg-red-500/10 transition-colors cursor-pointer disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold border border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-600 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {actionLoadingKey === 'reviews' ? 'Purging...' : 'Clear'}
                 </button>
@@ -684,7 +684,7 @@ export default function UserProfileView({
                   type="button"
                   disabled={actionLoadingKey === 'plugins'}
                   onClick={handleResetPlugins}
-                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-semibold border border-amber-500/30 text-amber-300 hover:bg-amber-500/10 transition-colors cursor-pointer disabled:opacity-50"
+                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold border border-amber-600/40 dark:border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 hover:border-amber-600 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   {actionLoadingKey === 'plugins' ? 'Resetting...' : 'Reset'}
                 </button>
@@ -707,17 +707,17 @@ export default function UserProfileView({
             <div className="text-xs text-on-surface-variant space-y-2">
               <div className="flex items-center justify-between font-mono">
                 <span>Essential Storage:</span>
-                <span className="text-[#00e476] font-bold">Enabled</span>
+                <span className="text-emerald-600 dark:text-[#00e476] font-bold">Enabled</span>
               </div>
               <div className="flex items-center justify-between font-mono">
                 <span>Functional State:</span>
-                <span className={cookiePrefs?.functional ? 'text-[#00dbe7] font-bold' : 'text-gray-500'}>
+                <span className={cookiePrefs?.functional ? 'text-primary dark:text-[#00dbe7] font-bold' : 'text-gray-500'}>
                   {cookiePrefs?.functional ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
               <div className="flex items-center justify-between font-mono">
                 <span>Performance Telemetry:</span>
-                <span className={cookiePrefs?.analytics ? 'text-[#00dbe7] font-bold' : 'text-gray-500'}>
+                <span className={cookiePrefs?.analytics ? 'text-primary dark:text-[#00dbe7] font-bold' : 'text-gray-500'}>
                   {cookiePrefs?.analytics ? 'Enabled' : 'Disabled'}
                 </span>
               </div>
@@ -726,32 +726,40 @@ export default function UserProfileView({
             <button
               type="button"
               onClick={openCookiePreferencesModal}
-              className="w-full py-2.5 rounded-xl text-xs font-mono font-semibold border border-[#00dbe7]/30 text-[#00dbe7] hover:bg-[#00dbe7]/10 transition-colors cursor-pointer flex items-center justify-center gap-2"
+              className="w-full py-2.5 rounded-xl text-xs font-mono font-semibold border border-primary/30 dark:border-[#00dbe7]/30 text-primary dark:text-[#00dbe7] hover:bg-primary/10 transition-colors cursor-pointer flex items-center justify-center gap-2"
             >
               <span className="material-symbols-outlined text-sm">settings</span>
               <span>Reconfigure Cookie Consent</span>
             </button>
           </div>
 
-          {/* Danger Zone: Account Erasure */}
-          <div className="rounded-3xl border border-red-500/30 bg-red-950/10 backdrop-blur-xl p-6 space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-red-500/20 text-red-400">
-              <span className="material-symbols-outlined text-lg">warning</span>
-              <h2 className="text-sm font-mono font-bold uppercase tracking-wider">
-                Danger Zone
-              </h2>
+          {/* Danger Zone: Account Erasure (High Visibility) */}
+          <div className="rounded-3xl border-2 border-red-500/40 bg-red-50/80 dark:bg-red-950/20 shadow-lg shadow-red-500/5 backdrop-blur-xl p-6 space-y-4">
+            <div className="flex items-center justify-between pb-2.5 border-b border-red-500/30 dark:border-red-500/20">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-red-500/15 dark:bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+                  <span className="material-symbols-outlined text-lg">warning</span>
+                </div>
+                <h2 className="text-sm font-mono font-extrabold uppercase tracking-wider text-red-700 dark:text-red-400">
+                  Danger Zone
+                </h2>
+              </div>
+              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-red-600/15 text-red-700 dark:text-red-300 border border-red-500/30">
+                Irreversible
+              </span>
             </div>
 
-            <p className="text-xs text-red-200/80 leading-relaxed">
-              Permanently erase your user account, portfolio records, authored reviews, and settings from our database. This action is irreversible.
+            <p className="text-xs text-red-900/85 dark:text-red-200/90 font-medium leading-relaxed">
+              Permanently erase your user account, portfolio records, authored reviews, and settings from our database. This action cannot be undone.
             </p>
 
             <button
               type="button"
               onClick={() => setShowDeleteAccountModal(true)}
-              className="w-full py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-red-600/20 hover:bg-red-600/30 text-red-300 border border-red-500/40 transition-colors cursor-pointer"
+              className="w-full py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/25 hover:shadow-lg hover:shadow-red-600/35 transition-all flex items-center justify-center gap-2 cursor-pointer"
             >
-              Permanently Delete Account
+              <span className="material-symbols-outlined text-sm">delete_forever</span>
+              <span>Permanently Delete Account</span>
             </button>
           </div>
 
