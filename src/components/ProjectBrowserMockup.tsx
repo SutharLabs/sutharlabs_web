@@ -69,7 +69,7 @@ export default function ProjectBrowserMockup({
     video: 'aspect-video md:h-72',
     card: 'aspect-[16/10] h-48 sm:h-56',
     tall: 'h-64 sm:h-80',
-    modal: 'aspect-[16/9] max-h-80'
+    modal: 'aspect-[16/10] w-full min-h-[300px] sm:min-h-[400px] max-h-[560px]'
   }[aspectRatio];
 
   return (

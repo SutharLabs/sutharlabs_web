@@ -70,6 +70,22 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
 
   const [activeFilter, setActiveFilter] = useState<'All' | 'Web Dev' | 'Mobile Apps' | 'AI & Analytics'>('All');
   const [selectedProject, setSelectedProject] = useState<PortfolioProject | null>(null);
+
+  // Prevent background scroll and add Escape key listener when modal is open
+  useEffect(() => {
+    if (!selectedProject) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelectedProject(null);
+    };
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedProject]);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [plugins, setPlugins] = useState<StorePlugin[]>([]);
   const [contactSubmitted, setContactSubmitted] = useState(false);
@@ -1267,130 +1283,6 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
         </div>
       )}
 
-      {/* Dynamic Project Spec Sheet Overlay Drawer/Modal */}
-      {selectedProject && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="glass-panel border border-tertiary/30 max-w-2xl w-full rounded-2xl bg-surface dark:bg-surface-container-low/95 shadow-[0_15px_50px_rgba(0,0,0,0.85)] max-h-[90vh] overflow-y-auto custom-scrollbar flex flex-col justify-between">
-            
-            {/* Drawer Header */}
-            <div className="p-4 sm:p-6 border-b border-outline/20 flex justify-between items-start">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="p-1 rounded bg-tertiary/10 text-tertiary border border-tertiary/25 text-[10px] font-mono">
-                    {selectedProject.segment}
-                  </span>
-                  <span className="font-mono text-[10px] text-on-surface-variant uppercase">{selectedProject.id}</span>
-                </div>
-                <h3 className="text-xl font-bold font-sans text-on-surface flex items-center gap-2">
-                  <span className="material-symbols-outlined text-primary">{selectedProject.blueprintSymbol}</span>
-                  {selectedProject.title}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedProject(null)}
-                className="p-1.5 hover:bg-on-surface/5 rounded-full text-on-surface-variant hover:text-on-surface transition-all cursor-pointer flex items-center justify-center"
-                aria-label="Close details"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Case Details Body */}
-            <div className="p-4 sm:p-6 space-y-6">
-              
-              {/* Full-Fidelity Live Browser Mockup View */}
-              <div className="rounded-xl overflow-hidden shadow-2xl border border-outline/20">
-                <ProjectBrowserMockup
-                  project={selectedProject}
-                  aspectRatio="modal"
-                  showLiveButton={true}
-                />
-              </div>
-
-              {/* Visual case stats board */}
-              <div className="p-4 rounded-xl border border-dashed border-tertiary/25 bg-surface-container-low flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <div>
-                  <span className="text-[10px] uppercase font-mono text-secondary tracking-widest block mb-1">Impact Telemetry Metric</span>
-                  <span className="text-xl font-bold font-mono text-tertiary block tracking-wide">{selectedProject.stat}</span>
-                  <span className="text-[10px] text-on-surface-variant/60 font-mono block">{selectedProject.statLabel}</span>
-                </div>
-                <div className="p-2 sm:p-3 bg-surface-container rounded border border-outline/10 text-[10px] font-mono max-w-xs text-right hidden sm:block">
-                  <span className="text-on-surface-variant block truncate">AUTHORIZED GATEWAY ID</span>
-                  <span className="text-secondary font-bold block truncate">GW_SECURE_{selectedProject.id.toUpperCase()}</span>
-                </div>
-              </div>
-
-              {/* Problem & Refinement text */}
-              <div className="space-y-2">
-                <h4 className="font-mono text-xs uppercase text-on-surface-variant/60 tracking-wider">Solution Implementation Details</h4>
-                <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed select-text font-light">
-                  {selectedProject.detailedCase}
-                </p>
-              </div>
-
-              {/* Technologies Grid */}
-              <div className="space-y-2">
-                <h4 className="font-mono text-xs uppercase text-on-surface-variant/60 tracking-wider">Project Tech Stack Specifications</h4>
-                <div className="flex flex-wrap gap-2">
-                  {selectedProject.techs.map((t) => (
-                    <span key={t} className="px-2.5 py-1 rounded bg-secondary/10 border border-secondary/20 text-xs text-secondary font-mono">
-                      {t}
-                    </span>
-                  ))}
-                </div>
-              </div>
-
-              {/* Corporate Partner Feedback */}
-              <div className="p-4 rounded-xl border border-outline/15 bg-surface-container-low relative italic font-light text-xs text-on-surface-variant leading-relaxed">
-                <span className="absolute top-2 left-3 font-sans text-xl font-bold text-on-surface-variant/40 select-none leading-none">“</span>
-                <p className="pl-4 pr-2">
-                  SutharLabs transformed our execution framework. The responsive mechanics of this platform are flawless on every mobile tablet and desktop screen size we deployed to.
-                </p>
-                <div className="mt-2 pl-4 text-[10px] font-mono not-italic text-secondary flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
-                  <span>{selectedProject.client}, <span className="text-on-surface-variant/60 font-normal">{selectedProject.clientTitle}</span></span>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Specs Footer Drawer Actions */}
-            <div className="p-4 border-t border-outline/20 bg-surface-container-low flex flex-col sm:flex-row items-center justify-between gap-3">
-              <span className="text-[10px] font-mono text-on-surface-variant/60 flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-on-surface-variant/60" />
-                Verified Production Infrastructure
-              </span>
-              
-              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-                {getProjectLiveUrl(selectedProject) && (
-                  <a
-                    href={getProjectLiveUrl(selectedProject)!}
-                    target={getProjectLiveUrl(selectedProject)!.startsWith('/') ? '_self' : '_blank'}
-                    rel="noopener noreferrer"
-                    className="px-4 py-2 rounded bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-[#00e476] hover:bg-emerald-500/25 font-bold text-xs transition-all flex items-center gap-1.5 font-mono shadow-xs"
-                  >
-                    <span>Visit Live Website</span>
-                    <ExternalLink className="w-3.5 h-3.5" />
-                  </a>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedProject(null);
-                    onLaunch();
-                  }}
-                  className="px-5 py-2 rounded bg-primary text-on-primary font-semibold hover:brightness-110 text-xs transition-all flex items-center gap-1 cursor-pointer font-sans border-none"
-                >
-                  Launch Workspace <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </div>
-      )}
-
       </main>
 
       {/* Footer */}
@@ -1406,6 +1298,186 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
           <a className="hover:text-secondary transition-colors" href="https://google.com" target="_blank" rel="noopener noreferrer">Google</a>
         </div>
       </footer>
+
+      {/* Dynamic Project Spec Sheet Overlay Drawer/Modal (Mounted at root level above navbar z-50) */}
+      {selectedProject && (
+        <div 
+          className="fixed inset-0 z-[100] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 lg:p-8"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedProject(null);
+          }}
+        >
+          <div 
+            className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-2xl border border-outline/25 bg-surface dark:bg-[#0c0c10] shadow-[0_25px_80px_rgba(0,0,0,0.95)] overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            
+            {/* Modal Pinned Sticky Header */}
+            <div className="shrink-0 px-5 sm:px-7 py-4 border-b border-outline/15 bg-surface-container dark:bg-[#14141a] flex items-center justify-between gap-4 z-10">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="p-1 px-2.5 rounded-md bg-tertiary/10 text-tertiary border border-tertiary/25 text-xs font-mono shrink-0">
+                  {selectedProject.segment}
+                </span>
+                <span className="font-mono text-xs text-on-surface-variant uppercase shrink-0 hidden sm:inline">
+                  {selectedProject.id}
+                </span>
+                <div className="h-4 w-px bg-outline/20 hidden sm:block shrink-0" />
+                <h3 className="text-lg sm:text-xl font-bold font-sans text-on-surface flex items-center gap-2 truncate">
+                  <span className="material-symbols-outlined text-primary text-xl shrink-0">{selectedProject.blueprintSymbol}</span>
+                  <span className="truncate">{selectedProject.title}</span>
+                </h3>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setSelectedProject(null)}
+                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-white transition-all cursor-pointer border border-white/10 flex items-center justify-center group"
+                  aria-label="Close details"
+                  title="Close (Esc)"
+                >
+                  <X className="w-5 h-5 transition-transform group-hover:scale-110" />
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Scrollable Body - Widescreen 2-Column Desktop Grid */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-5 sm:p-7 space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                
+                {/* Left Column: Full-Fidelity Desktop Browser Showcase */}
+                <div className="lg:col-span-7 xl:col-span-7 space-y-4">
+                  <div className="rounded-xl overflow-hidden shadow-2xl border border-outline/20">
+                    <ProjectBrowserMockup
+                      project={selectedProject}
+                      aspectRatio="modal"
+                      showLiveButton={true}
+                    />
+                  </div>
+
+                  {/* Live URL Quick Bar */}
+                  {getProjectLiveUrl(selectedProject) && (
+                    <div className="p-3.5 rounded-xl border border-outline/15 bg-surface-container/60 dark:bg-[#14141a]/60 flex items-center justify-between gap-3 text-xs font-mono">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                        <span className="text-on-surface-variant truncate">Live Production URL:</span>
+                        <a 
+                          href={getProjectLiveUrl(selectedProject)!} 
+                          target={getProjectLiveUrl(selectedProject)!.startsWith('/') ? '_self' : '_blank'} 
+                          rel="noopener noreferrer" 
+                          className="text-emerald-400 hover:underline font-bold truncate"
+                        >
+                          {getProjectLiveUrl(selectedProject)}
+                        </a>
+                      </div>
+                      <a
+                        href={getProjectLiveUrl(selectedProject)!}
+                        target={getProjectLiveUrl(selectedProject)!.startsWith('/') ? '_self' : '_blank'}
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg bg-emerald-500/15 hover:bg-emerald-500/25 border border-emerald-500/30 text-emerald-600 dark:text-[#00e476] font-bold transition-all shrink-0 flex items-center gap-1.5"
+                      >
+                        <span>Open</span>
+                        <ExternalLink className="w-3.5 h-3.5" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {/* Right Column: Case Details, Metrics, Tech Stack, Feedback */}
+                <div className="lg:col-span-5 xl:col-span-5 space-y-5">
+                  
+                  {/* Visual Case Stats Board */}
+                  <div className="p-4 rounded-xl border border-dashed border-tertiary/25 bg-surface-container dark:bg-[#14141a] flex flex-col justify-between gap-3">
+                    <div>
+                      <span className="text-[10px] uppercase font-mono text-secondary tracking-widest block mb-1">Impact Telemetry Metric</span>
+                      <span className="text-2xl font-bold font-mono text-tertiary block tracking-wide">{selectedProject.stat}</span>
+                      <span className="text-xs text-on-surface-variant/70 font-mono block mt-0.5">{selectedProject.statLabel}</span>
+                    </div>
+                    <div className="pt-2 border-t border-outline/10 flex items-center justify-between text-[10px] font-mono text-on-surface-variant">
+                      <span>GATEWAY AUTH ID</span>
+                      <span className="text-secondary font-bold">GW_SECURE_{selectedProject.id.toUpperCase()}</span>
+                    </div>
+                  </div>
+
+                  {/* Problem & Solution Implementation Details */}
+                  <div className="space-y-2">
+                    <h4 className="font-mono text-xs uppercase text-on-surface-variant/70 tracking-wider">Solution Architecture & Scope</h4>
+                    <p className="text-xs sm:text-sm text-on-surface-variant leading-relaxed select-text font-light">
+                      {selectedProject.detailedCase}
+                    </p>
+                  </div>
+
+                  {/* Technologies Grid */}
+                  <div className="space-y-2">
+                    <h4 className="font-mono text-xs uppercase text-on-surface-variant/70 tracking-wider">Tech Stack Specifications</h4>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedProject.techs.map((t) => (
+                        <span key={t} className="px-2.5 py-1 rounded bg-secondary/10 border border-secondary/20 text-xs text-secondary font-mono">
+                          {t}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Client Partner Testimonial */}
+                  <div className="p-4 rounded-xl border border-outline/15 bg-surface-container dark:bg-[#14141a] relative italic font-light text-xs text-on-surface-variant leading-relaxed">
+                    <span className="absolute top-2 left-3 font-sans text-2xl font-bold text-on-surface-variant/30 select-none leading-none">“</span>
+                    <p className="pl-4 pr-2">
+                      SutharLabs transformed our execution framework. The responsive mechanics of this platform are flawless on every mobile tablet and desktop screen size we deployed to.
+                    </p>
+                    <div className="mt-2.5 pl-4 text-[10px] font-mono not-italic text-secondary flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+                      <span>{selectedProject.client}, <span className="text-on-surface-variant/60 font-normal">{selectedProject.clientTitle}</span></span>
+                    </div>
+                  </div>
+
+                </div>
+
+              </div>
+            </div>
+
+            {/* Modal Pinned Sticky Footer */}
+            <div className="shrink-0 px-5 sm:px-7 py-3.5 border-t border-outline/15 bg-surface-container dark:bg-[#14141a] flex flex-col sm:flex-row items-center justify-between gap-3 z-10">
+              <span className="text-[11px] font-mono text-on-surface-variant/70 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>Verified Production Infrastructure • Enterprise Certified</span>
+              </span>
+              
+              <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+                {getProjectLiveUrl(selectedProject) && (
+                  <a
+                    href={getProjectLiveUrl(selectedProject)!}
+                    target={getProjectLiveUrl(selectedProject)!.startsWith('/') ? '_self' : '_blank'}
+                    rel="noopener noreferrer"
+                    className="px-4 py-2 rounded-lg bg-emerald-500/15 border border-emerald-500/40 text-emerald-600 dark:text-[#00e476] hover:bg-emerald-500/25 font-bold text-xs transition-all flex items-center gap-1.5 font-mono shadow-xs"
+                  >
+                    <span>Visit Live Website</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedProject(null);
+                    onLaunch();
+                  }}
+                  className="px-5 py-2 rounded-lg bg-primary text-on-primary font-semibold hover:brightness-110 text-xs transition-all flex items-center gap-1 cursor-pointer font-sans border-none shadow-sm"
+                >
+                  <span>Launch Workspace</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedProject(null)}
+                  className="px-4 py-2 rounded-lg border border-outline/30 hover:border-outline/60 text-on-surface-variant hover:text-on-surface text-xs font-mono transition-all cursor-pointer bg-transparent"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
     </div>
   );
 }
