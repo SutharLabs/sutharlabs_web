@@ -48,6 +48,8 @@ const STOCK_API = '/api/workspace/stock-analyzer';
 
 interface Quote {
   symbol: string;
+  display_symbol?: string;
+  clean_symbol?: string;
   name: string;
   currency?: string;
   currency_symbol?: string;
@@ -134,10 +136,13 @@ const DEFAULT_UNIVERSES: Record<string, MarketUniverse> = {
     exchange: 'NSE',
     stocks: [
       { symbol: 'RELIANCE.NS',   name: 'Reliance Industries', sector: 'Energy' },
+      { symbol: 'ATHERENERG.NS', name: 'Ather Energy Limited', sector: 'Automobile / EV' },
       { symbol: 'TCS.NS',        name: 'Tata Consultancy Services', sector: 'IT Services' },
       { symbol: 'HDFCBANK.NS',   name: 'HDFC Bank', sector: 'Banking' },
       { symbol: 'INFY.NS',       name: 'Infosys', sector: 'IT Services' },
       { symbol: 'ICICIBANK.NS',  name: 'ICICI Bank', sector: 'Banking' },
+      { symbol: 'ETERNAL.NS',     name: 'Eternal / Zomato', sector: 'Food Tech & Quick Commerce' },
+      { symbol: 'TATAMOTORS.NS', name: 'Tata Motors', sector: 'Automobile' },
       { symbol: 'HINDUNILVR.NS', name: 'Hindustan Unilever', sector: 'FMCG' },
       { symbol: 'ITC.NS',        name: 'ITC Limited', sector: 'FMCG' },
       { symbol: 'SBIN.NS',       name: 'State Bank of India', sector: 'Banking' },
@@ -212,6 +217,116 @@ const DEFAULT_UNIVERSES: Record<string, MarketUniverse> = {
   }
 };
 
+export interface StockSearchResult {
+  symbol: string;
+  displaySymbol: string;
+  cleanSymbol: string;
+  name: string;
+  exchange: string;
+  sector?: string;
+  quoteType?: string;
+}
+
+export function formatTickerDisplay(rawSymbol: string, exchangeName?: string): { displaySymbol: string; cleanSymbol: string; exchange: string } {
+  if (!rawSymbol) return { displaySymbol: '', cleanSymbol: '', exchange: '' };
+  const sym = rawSymbol.trim();
+
+  // If already formatted like "ATHERENERG (NSE)"
+  const parenMatch = sym.match(/^(.*?)\s*\((.*?)\)$/);
+  if (parenMatch) {
+    return { displaySymbol: sym, cleanSymbol: parenMatch[1].trim(), exchange: parenMatch[2].trim() };
+  }
+
+  if (sym.endsWith('.NS')) {
+    const clean = sym.replace(/\.NS$/i, '');
+    return { displaySymbol: `${clean} (NSE)`, cleanSymbol: clean, exchange: 'NSE' };
+  }
+  if (sym.endsWith('.BO')) {
+    const clean = sym.replace(/\.BO$/i, '');
+    return { displaySymbol: `${clean} (BSE)`, cleanSymbol: clean, exchange: 'BSE' };
+  }
+  if (sym.endsWith('.L')) {
+    const clean = sym.replace(/\.L$/i, '');
+    return { displaySymbol: `${clean} (LSE)`, cleanSymbol: clean, exchange: 'LSE' };
+  }
+  if (sym.endsWith('.DE')) {
+    const clean = sym.replace(/\.DE$/i, '');
+    return { displaySymbol: `${clean} (XETRA)`, cleanSymbol: clean, exchange: 'XETRA' };
+  }
+  if (sym.endsWith('.PA') || sym.endsWith('.AS')) {
+    const clean = sym.replace(/\.(PA|AS)$/i, '');
+    return { displaySymbol: `${clean} (Euronext)`, cleanSymbol: clean, exchange: 'Euronext' };
+  }
+  if (sym.endsWith('.HK')) {
+    const clean = sym.replace(/\.HK$/i, '');
+    return { displaySymbol: `${clean} (HKEX)`, cleanSymbol: clean, exchange: 'HKEX' };
+  }
+  if (sym.endsWith('.SS')) {
+    const clean = sym.replace(/\.SS$/i, '');
+    return { displaySymbol: `${clean} (SSE)`, cleanSymbol: clean, exchange: 'SSE' };
+  }
+  if (sym.endsWith('.SZ')) {
+    const clean = sym.replace(/\.SZ$/i, '');
+    return { displaySymbol: `${clean} (SZSE)`, cleanSymbol: clean, exchange: 'SZSE' };
+  }
+  if (sym.endsWith('.T')) {
+    const clean = sym.replace(/\.T$/i, '');
+    return { displaySymbol: `${clean} (TSE)`, cleanSymbol: clean, exchange: 'TSE' };
+  }
+
+  const exch = (exchangeName && exchangeName !== 'UNKNOWN') ? exchangeName : 'NASDAQ';
+  return { displaySymbol: `${sym} (${exch})`, cleanSymbol: sym, exchange: exch };
+}
+
+export function normalizeTicker(symbol: string, defaultRegion: string = 'IN'): string {
+  if (!symbol) return '';
+  let clean = symbol.trim();
+
+  if (/\s*\((NSE)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((NSE)\)$/i, '').trim().toUpperCase() + '.NS';
+  }
+  if (/\s*\((BSE|BOMBAY)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((BSE|BOMBAY)\)$/i, '').trim().toUpperCase() + '.BO';
+  }
+  if (/\s*\((LSE)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((LSE)\)$/i, '').trim().toUpperCase() + '.L';
+  }
+  if (/\s*\((XETRA|DAX)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((XETRA|DAX)\)$/i, '').trim().toUpperCase() + '.DE';
+  }
+  if (/\s*\((EURONEXT|PARIS)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((EURONEXT|PARIS)\)$/i, '').trim().toUpperCase() + '.PA';
+  }
+  if (/\s*\((HKEX)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((HKEX)\)$/i, '').trim().toUpperCase() + '.HK';
+  }
+  if (/\s*\((SSE)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((SSE)\)$/i, '').trim().toUpperCase() + '.SS';
+  }
+  if (/\s*\((SZSE)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((SZSE)\)$/i, '').trim().toUpperCase() + '.SZ';
+  }
+  if (/\s*\((TSE)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((TSE)\)$/i, '').trim().toUpperCase() + '.T';
+  }
+  if (/\s*\((NASDAQ|NYSE|NYSE\/NASDAQ|AMEX|OTC)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((NASDAQ|NYSE|NYSE\/NASDAQ|AMEX|OTC)\)$/i, '').trim().toUpperCase();
+  }
+
+  if (/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i.test(clean)) {
+    return clean.toUpperCase();
+  }
+
+  if (/^ATHER/i.test(clean)) return 'ATHERENERG.NS';
+  if (/^ZOMATO/i.test(clean)) return 'ETERNAL.NS';
+
+  if (defaultRegion === 'IN') {
+    return clean.toUpperCase() + '.NS';
+  }
+
+  return clean.toUpperCase();
+}
+
 const DEFAULT_SYMBOL = 'RELIANCE.NS';
 
 // Mathematical continuous Exponential Moving Average helper
@@ -241,8 +356,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [activeMarketKey, setActiveMarketKey] = useState<string>('IN');
 
   const [symbol, setSymbol] = useState(DEFAULT_SYMBOL);
-  const [symbolInput, setSymbolInput] = useState(DEFAULT_SYMBOL);
+  const [symbolInput, setSymbolInput] = useState('RELIANCE (NSE)');
   const [showDropdown, setShowDropdown] = useState(false);
+  const [searchResults, setSearchResults] = useState<StockSearchResult[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [candles, setCandles] = useState<Candle[]>([]);
@@ -384,33 +501,37 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       .catch(() => {});
   }, [userEmail, userToken]);
 
-  // ── 3. Core Data Fetch Pipeline with Editable Parameters ──────────────────
+  // ── 3. Core Data Fetch Pipeline with Real Exchange Formatting ──────────────────
   const fetchAll = useCallback(async (sym: string, period: string) => {
     setLoading(true);
     try {
+      const normalizedSym = normalizeTicker(sym, activeMarketKey);
+      const displaySym = formatTickerDisplay(normalizedSym).displaySymbol;
+
       // 1. Quote
-      const qRes = await fetch(`${STOCK_API}/quote?symbol=${encodeURIComponent(sym)}`);
+      const qRes = await fetch(`${STOCK_API}/quote?symbol=${encodeURIComponent(normalizedSym)}&region=${activeMarketKey}`);
       let fetchedQuote: Quote | null = null;
       if (qRes.ok) {
         fetchedQuote = await qRes.json();
         setQuote(fetchedQuote);
         const curr = fetchedQuote?.currency_symbol || '$';
+        const qDisplay = fetchedQuote?.display_symbol || displaySym;
         onAddLogRef.current({
           timestamp: new Date().toLocaleTimeString(),
           type: 'DATA',
-          message: `Tick → ${fetchedQuote?.symbol}: ${curr}${fetchedQuote?.current_price?.toFixed(2)} (${(fetchedQuote?.change_percent ?? 0) >= 0 ? '+' : ''}${fetchedQuote?.change_percent?.toFixed(2)}%) [${fetchedQuote?.exchange || 'MARKET'}]`
+          message: `Tick → ${qDisplay}: ${curr}${fetchedQuote?.current_price?.toFixed(2)} (${(fetchedQuote?.change_percent ?? 0) >= 0 ? '+' : ''}${fetchedQuote?.change_percent?.toFixed(2)}%) [${fetchedQuote?.exchange || 'MARKET'}]`
         });
       }
 
       // 2. History for Candlestick Chart
-      const hRes = await fetch(`${STOCK_API}/history?symbol=${encodeURIComponent(sym)}&period=${period}`);
+      const hRes = await fetch(`${STOCK_API}/history?symbol=${encodeURIComponent(normalizedSym)}&period=${period}&region=${activeMarketKey}`);
       if (hRes.ok) {
         const h = await hRes.json();
         setCandles(h.candles || []);
       }
 
       // 3. Indicator Analysis with Configurable Params
-      const aUrl = `${STOCK_API}/analysis?symbol=${encodeURIComponent(sym)}&rsiPeriod=${rsiPeriod}&bbPeriod=${bbPeriod}&bbStdDev=${bbStdDev}&ema20Period=${ema20Period}&ema50Period=${ema50Period}&macdFast=${macdFast}&macdSlow=${macdSlow}&macdSignal=${macdSignal}`;
+      const aUrl = `${STOCK_API}/analysis?symbol=${encodeURIComponent(normalizedSym)}&region=${activeMarketKey}&rsiPeriod=${rsiPeriod}&bbPeriod=${bbPeriod}&bbStdDev=${bbStdDev}&ema20Period=${ema20Period}&ema50Period=${ema50Period}&macdFast=${macdFast}&macdSlow=${macdSlow}&macdSignal=${macdSignal}`;
       const aRes = await fetch(aUrl);
       if (aRes.ok) {
         const a: Analysis = await aRes.json();
@@ -419,13 +540,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           onAddLogRef.current({
             timestamp: new Date().toLocaleTimeString(),
             type: 'AGENT',
-            message: `INDICATOR MATRIX: ${sym} RSI(${rsiPeriod})=${a.rsi?.toFixed(1)} | MACD(${macdFast},${macdSlow},${macdSignal})=${a.macd?.toFixed(3)} | ADX=${a.adx?.toFixed(1)} | ATR=${a.atr?.toFixed(2)}`
+            message: `INDICATOR MATRIX: ${displaySym} RSI(${rsiPeriod})=${a.rsi?.toFixed(1)} | MACD(${macdFast},${macdSlow},${macdSignal})=${a.macd?.toFixed(3)} | ADX=${a.adx?.toFixed(1)} | ATR=${a.atr?.toFixed(2)}`
           });
         }
       }
 
       // 4. Algorithmic Trade Suggestion
-      const sUrl = `${STOCK_API}/suggestion?symbol=${encodeURIComponent(sym)}&rsiPeriod=${rsiPeriod}&bbPeriod=${bbPeriod}&bbStdDev=${bbStdDev}&ema20Period=${ema20Period}&ema50Period=${ema50Period}&macdFast=${macdFast}&macdSlow=${macdSlow}&macdSignal=${macdSignal}`;
+      const sUrl = `${STOCK_API}/suggestion?symbol=${encodeURIComponent(normalizedSym)}&region=${activeMarketKey}&rsiPeriod=${rsiPeriod}&bbPeriod=${bbPeriod}&bbStdDev=${bbStdDev}&ema20Period=${ema20Period}&ema50Period=${ema50Period}&macdFast=${macdFast}&macdSlow=${macdSlow}&macdSignal=${macdSignal}`;
       const sRes = await fetch(sUrl);
       if (sRes.ok) {
         const s: Suggestion = await sRes.json();
@@ -433,19 +554,79 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         onAddLogRef.current({
           timestamp: new Date().toLocaleTimeString(),
           type: s.action === 'BUY' ? 'SUCCESS' : s.action === 'SELL' ? 'ALERT' : 'INFO',
-          message: `STRATEGY SIGNAL: ${sym} → ${s.action} | Confidence: ${((s.confidence || 0) * 100).toFixed(0)}%`
+          message: `STRATEGY SIGNAL: ${displaySym} → ${s.action} | Confidence: ${((s.confidence || 0) * 100).toFixed(0)}%`
         });
       }
     } catch (e) {
       onAddLogRef.current({
         timestamp: new Date().toLocaleTimeString(),
         type: 'ERROR',
-        message: `API fetch error for ${sym}: ${e}`
+        message: `API fetch error for ${formatTickerDisplay(sym).displaySymbol}: ${e}`
       });
     } finally {
       setLoading(false);
     }
-  }, [rsiPeriod, bbPeriod, bbStdDev, ema20Period, ema50Period, macdFast, macdSlow, macdSignal]);
+  }, [activeMarketKey, rsiPeriod, bbPeriod, bbStdDev, ema20Period, ema50Period, macdFast, macdSlow, macdSignal]);
+
+  // Real-time debounced autocomplete search covering Indian & Global equities on keypress
+  useEffect(() => {
+    const q = symbolInput.trim();
+    if (!q) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    // 1. Instant local search across all registered universes
+    const localMatches: StockSearchResult[] = [];
+    const seen = new Set<string>();
+    const allStocks = Object.values(universes).flatMap(u => u.stocks);
+    const qLower = q.toLowerCase();
+    const fuzzyQ = qLower.length > 4 ? qLower.slice(0, -1) : qLower;
+
+    for (const s of allStocks) {
+      const clean = s.symbol.replace(/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i, '').toLowerCase();
+      const nLower = s.name.toLowerCase();
+      if (clean.includes(qLower) || nLower.includes(qLower) || clean.includes(fuzzyQ) || nLower.includes(fuzzyQ)) {
+        const fmt = formatTickerDisplay(s.symbol);
+        localMatches.push({
+          symbol: s.symbol,
+          displaySymbol: fmt.displaySymbol,
+          cleanSymbol: fmt.cleanSymbol,
+          name: s.name,
+          exchange: fmt.exchange,
+          sector: s.sector
+        });
+        seen.add(s.symbol);
+      }
+    }
+    setSearchResults(localMatches);
+
+    // 2. Debounced remote API search across exchange directories
+    setIsSearching(true);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`${STOCK_API}/search?q=${encodeURIComponent(q)}&region=${activeMarketKey}`);
+        if (!res.ok) return;
+        const remoteData: StockSearchResult[] = await res.json();
+        
+        const merged = [...localMatches];
+        for (const item of remoteData) {
+          if (!seen.has(item.symbol)) {
+            merged.push(item);
+            seen.add(item.symbol);
+          }
+        }
+        setSearchResults(merged.slice(0, 15));
+      } catch {
+        // preserve local results on network error
+      } finally {
+        setIsSearching(false);
+      }
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [symbolInput, activeMarketKey, universes]);
 
   // Initial fetch and on symbol/period/parameter change
   useEffect(() => {
@@ -802,56 +983,107 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           )}
         </div>
 
-        {/* Center: Search & Ticker Input */}
-        <div className="flex items-center gap-2">
-          <div className="relative w-48 sm:w-60">
+        {/* Center: Search & Ticker Input with Real-Time Suggestions */}
+        <div className="relative flex-1 max-w-md">
+          <div className="relative flex items-center">
             <input
               value={symbolInput}
-              onChange={e => { setSymbolInput(e.target.value); setShowDropdown(true); }}
+              onChange={e => {
+                setSymbolInput(e.target.value);
+                setShowDropdown(true);
+              }}
               onFocus={() => setShowDropdown(true)}
-              onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+              onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
               onKeyDown={e => {
                 if (e.key === 'Enter') {
-                  setSymbol(symbolInput.trim().toUpperCase());
-                  setShowDropdown(false);
+                  if (searchResults.length > 0) {
+                    const chosen = searchResults[0];
+                    setSymbol(chosen.symbol);
+                    setSymbolInput(chosen.displaySymbol);
+                    setShowDropdown(false);
+                  } else {
+                    const norm = normalizeTicker(symbolInput, activeMarketKey);
+                    setSymbol(norm);
+                    setSymbolInput(formatTickerDisplay(norm).displaySymbol);
+                    setShowDropdown(false);
+                  }
                 }
               }}
-              placeholder="Search ticker..."
-              className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] uppercase tracking-wider"
+              placeholder="Search symbol or company (e.g. Ather, Reliance, Apple)..."
+              className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg pl-3 pr-16 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] tracking-wider"
             />
-            {showDropdown && filteredStocks.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-1 bg-surface-container border border-outline/30 rounded-lg shadow-2xl z-50 overflow-hidden backdrop-blur-xl max-h-60 overflow-y-auto custom-scrollbar">
-                {filteredStocks.map(s => (
-                  <button
-                    key={s.symbol}
-                    onMouseDown={() => {
-                      setSymbol(s.symbol);
-                      setSymbolInput(s.symbol);
-                      setShowDropdown(false);
-                    }}
-                    className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-[#00dbe7]/10 transition-colors flex justify-between items-center border-b border-outline/10 last:border-none bg-transparent cursor-pointer"
-                  >
-                    <div className="flex flex-col">
-                      <span className="text-[#00dbe7] font-bold">{s.symbol}</span>
-                      <span className="text-[10px] text-on-surface-variant truncate max-w-[140px]">{s.name}</span>
-                    </div>
-                    {s.sector && (
-                      <span className="text-[9px] px-1 py-0.5 rounded bg-surface-container-high text-on-surface-variant">
-                        {s.sector}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
+            {isSearching && (
+              <span className="absolute right-14 w-2 h-2 rounded-full bg-[#00dbe7] animate-ping" />
             )}
+            <button
+              onClick={() => {
+                if (searchResults.length > 0) {
+                  const chosen = searchResults[0];
+                  setSymbol(chosen.symbol);
+                  setSymbolInput(chosen.displaySymbol);
+                } else {
+                  const norm = normalizeTicker(symbolInput, activeMarketKey);
+                  setSymbol(norm);
+                  setSymbolInput(formatTickerDisplay(norm).displaySymbol);
+                }
+                setShowDropdown(false);
+              }}
+              className="absolute right-1 top-1 bottom-1 px-3 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-md hover:brightness-110 transition-all cursor-pointer whitespace-nowrap"
+            >
+              Load
+            </button>
           </div>
 
-          <button
-            onClick={() => { setSymbol(symbolInput.trim().toUpperCase()); setShowDropdown(false); }}
-            className="px-3 py-1.5 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-lg hover:brightness-110 transition-all cursor-pointer whitespace-nowrap shadow-sm"
-          >
-            Load
-          </button>
+          {/* Autocomplete Suggestions Dropdown */}
+          {showDropdown && (
+            <div className="absolute top-full left-0 right-0 mt-1 bg-surface-container border border-outline/30 rounded-xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl max-h-72 overflow-y-auto custom-scrollbar">
+              {searchResults.length > 0 ? (
+                searchResults.map(item => (
+                  <div
+                    key={item.symbol}
+                    onMouseDown={() => {
+                      setSymbol(item.symbol);
+                      setSymbolInput(item.displaySymbol);
+                      setShowDropdown(false);
+                    }}
+                    className="w-full text-left px-3.5 py-2.5 text-xs font-mono hover:bg-[#00dbe7]/10 transition-colors flex justify-between items-center border-b border-outline/10 last:border-none cursor-pointer group"
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="text-on-surface font-bold group-hover:text-[#00dbe7] transition-colors">
+                          {item.name}
+                        </span>
+                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-mono">
+                          {item.cleanSymbol}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-on-surface-variant truncate max-w-[280px]">
+                        {item.sector || 'Listed Equity'}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                      <span className={`text-[11px] px-2 py-0.5 rounded font-mono font-bold border ${
+                        item.exchange === 'NSE' ? 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/40' :
+                        item.exchange === 'BSE' ? 'bg-amber-500/15 text-amber-400 border-amber-500/40' :
+                        'bg-purple-500/15 text-purple-400 border-purple-500/40'
+                      }`}>
+                        {item.displaySymbol}
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : symbolInput.trim().length > 0 ? (
+                <div className="p-3 text-center text-xs font-mono text-on-surface-variant">
+                  {isSearching ? 'Searching exchange directory...' : (
+                    <span>
+                      Press <kbd className="px-1.5 py-0.5 rounded bg-surface-container-high border border-outline/20">Enter</kbd> to load <strong className="text-[#00dbe7]">{symbolInput}</strong>
+                    </span>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
         </div>
 
         {/* Right: Live Quote Pill & Sliding Settings Overlay Trigger */}
@@ -879,6 +1111,38 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </button>
         </div>
 
+      </div>
+
+      {/* ── QUICK WATCHLIST ASSET TICKER STRIP ── */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
+        <span className="text-[10px] font-mono text-on-surface-variant uppercase shrink-0">Watchlist:</span>
+        {currentStockList.map(s => {
+          const fmt = formatTickerDisplay(s.symbol);
+          const isSelected = symbol === s.symbol;
+          return (
+            <button
+              key={s.symbol}
+              onClick={() => {
+                setSymbol(s.symbol);
+                setSymbolInput(fmt.displaySymbol);
+              }}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer whitespace-nowrap flex items-center gap-1.5 ${
+                isSelected
+                  ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7] font-bold shadow-[0_0_8px_rgba(0,219,231,0.25)]'
+                  : 'bg-surface-container-low text-on-surface-variant border border-outline/20 hover:text-on-surface hover:border-outline/40'
+              }`}
+            >
+              <span>{fmt.cleanSymbol}</span>
+              <span className={`text-[9px] px-1 py-0.2 rounded font-semibold ${
+                fmt.exchange === 'NSE' ? 'bg-[#00dbe7]/15 text-[#00dbe7]' :
+                fmt.exchange === 'BSE' ? 'bg-amber-500/15 text-amber-400' :
+                'bg-purple-500/15 text-purple-400'
+              }`}>
+                {fmt.exchange}
+              </span>
+            </button>
+          );
+        })}
       </div>
 
       {/* ── 2. BALANCED WORKSPACE (SUPPORTING FULL GRAPH EXPANDED VIEW) ──────── */}
@@ -964,19 +1228,33 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             </div>
 
             {/* Hovered Bar Inspection Strip with Exact Volume */}
-            <div className="px-3 py-1.5 bg-surface-container-low border-b border-outline/10 font-mono text-[11px] flex flex-wrap gap-4 text-on-surface-variant min-h-[30px] items-center">
+            <div className="px-3 py-2 bg-surface-container-low border-b border-outline/10 font-mono text-[11px] flex flex-wrap justify-between items-center gap-2">
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-on-surface text-sm">
+                  {quote?.name || formatTickerDisplay(symbol).cleanSymbol}
+                </span>
+                <span className="px-2 py-0.5 rounded font-mono text-xs font-bold bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30">
+                  {quote?.display_symbol || formatTickerDisplay(symbol, quote?.exchange).displaySymbol}
+                </span>
+                {quote?.exchange && (
+                  <span className="text-[10px] text-on-surface-variant font-mono">
+                    [{quote.exchange}]
+                  </span>
+                )}
+              </div>
+
               {hoveredBar ? (
-                <>
-                  <span className="font-semibold text-on-surface">{hoveredBar.time}</span>
-                  <span>O: <span className="text-on-surface font-bold">{curSymbol}{hoveredBar.open.toFixed(2)}</span></span>
-                  <span>H: <span className="text-[#00e476] font-bold">{curSymbol}{hoveredBar.high.toFixed(2)}</span></span>
-                  <span>L: <span className="text-[#ff6b6b] font-bold">{curSymbol}{hoveredBar.low.toFixed(2)}</span></span>
-                  <span>C: <span className="text-[#00dbe7] font-bold">{curSymbol}{hoveredBar.close.toFixed(2)}</span></span>
-                  <span>Vol: <span className="text-on-surface font-bold">{hoveredBar.volume.toLocaleString()}</span></span>
-                </>
+                <div className="flex items-center gap-3 text-on-surface-variant">
+                  <span className="text-on-surface font-semibold">{hoveredBar.time}</span>
+                  <span>O: <strong className="text-on-surface">{curSymbol}{hoveredBar.open.toFixed(2)}</strong></span>
+                  <span>H: <strong className="text-[#00e476]">{curSymbol}{hoveredBar.high.toFixed(2)}</strong></span>
+                  <span>L: <strong className="text-[#ff6b6b]">{curSymbol}{hoveredBar.low.toFixed(2)}</strong></span>
+                  <span>C: <strong className="text-[#00dbe7]">{curSymbol}{hoveredBar.close.toFixed(2)}</strong></span>
+                  <span>Vol: <strong className="text-on-surface">{hoveredBar.volume.toLocaleString()}</strong></span>
+                </div>
               ) : (
-                <span className="text-on-surface-variant/70">
-                  {quote?.name || symbol} • Hover over candles to inspect OHLCV parameters
+                <span className="text-on-surface-variant/70 text-[10px]">
+                  Hover across candles for tick telemetry
                 </span>
               )}
             </div>
@@ -1052,9 +1330,14 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
           {/* Box 2: Instant Paper Order Ticket */}
           <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-3 shadow-sm">
-            <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
-              Paper Order Ticket
-            </span>
+            <div className="flex justify-between items-center">
+              <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
+                Paper Order Ticket
+              </span>
+              <span className="text-[10px] font-mono text-[#00dbe7] font-bold">
+                {quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
+              </span>
+            </div>
 
             <div className="grid grid-cols-2 gap-2 text-xs font-mono">
               <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
@@ -1087,13 +1370,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 onClick={() => executeTrade('BUY')}
                 className="flex-1 bg-[#00e476] text-[#002812] font-mono text-xs py-2 rounded-lg font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_10px_rgba(0,228,118,0.3)] transition-all cursor-pointer"
               >
-                BUY
+                BUY {formatTickerDisplay(symbol).cleanSymbol}
               </button>
               <button
                 onClick={() => executeTrade('SELL')}
                 className="flex-1 bg-[#ff6b6b] text-[#2c0000] font-mono text-xs py-2 rounded-lg font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_10px_rgba(255,107,107,0.3)] transition-all cursor-pointer"
               >
-                SELL
+                SELL {formatTickerDisplay(symbol).cleanSymbol}
               </button>
             </div>
           </div>
@@ -1353,7 +1636,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
                         <div className="flex justify-between items-center text-[10px] text-on-surface-variant border-t border-outline/10 pt-2 font-mono">
                           <span>Currency: <strong className="text-on-surface">{u.currencyCode} ({u.currencySymbol})</strong></span>
-                          <span>Lead: <strong className="text-[#00dbe7]">{u.stocks[0]?.symbol}</strong></span>
+                          <span>Lead: <strong className="text-[#00dbe7]">{formatTickerDisplay(u.stocks[0]?.symbol).displaySymbol}</strong></span>
                         </div>
                       </div>
                     ))}
@@ -1366,7 +1649,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <div>
                       <span className="text-on-surface font-semibold text-sm">Custom Symbol Registration & Watchlist Manager</span>
                       <p className="text-[11px] text-on-surface-variant font-sans">
-                        Add any global equity ticker (e.g. TATAMOTORS.NS, COALINDIA.NS, NVDA, ASML.AS) to your {activeUniverse.name} universe.
+                        Add any global equity ticker (e.g. ATHERENERG (NSE), TATAMOTORS (NSE), NVDA (NASDAQ)) to your {activeUniverse.name} universe.
                       </p>
                     </div>
                   </div>
@@ -1375,7 +1658,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <input
                       value={symbolInput}
                       onChange={e => setSymbolInput(e.target.value.toUpperCase())}
-                      placeholder="Enter ticker (e.g. BAJFINANCE.NS)..."
+                      placeholder="Enter ticker or company name..."
                       className="w-64 bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface uppercase focus:outline-none focus:border-[#00dbe7]"
                     />
                     <button
@@ -1388,7 +1671,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     </button>
                     <button
                       onClick={() => {
-                        setSymbol(symbolInput.trim().toUpperCase());
+                        const norm = normalizeTicker(symbolInput, activeMarketKey);
+                        setSymbol(norm);
+                        setSymbolInput(formatTickerDisplay(norm).displaySymbol);
                         setShowSettingsDrawer(false);
                       }}
                       className="px-4 py-2 bg-[#00dbe7] text-[#002022] font-bold rounded-lg uppercase cursor-pointer hover:brightness-110"
@@ -1403,37 +1688,40 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       Active {activeUniverse.name} Watchlist ({activeUniverse.stocks.length} assets):
                     </span>
                     <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto custom-scrollbar p-1">
-                      {activeUniverse.stocks.map(s => (
-                        <div
-                          key={s.symbol}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-mono transition-all ${
-                            symbol === s.symbol
-                              ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#00dbe7] font-bold shadow-sm'
-                              : 'bg-surface-container border-outline/20 text-on-surface hover:border-outline/40'
-                          }`}
-                        >
-                          <button
-                            onClick={() => {
-                              setSymbol(s.symbol);
-                              setSymbolInput(s.symbol);
-                            }}
-                            className="cursor-pointer hover:underline"
-                            title={`Click to load ${s.name}`}
+                      {activeUniverse.stocks.map(s => {
+                        const fmt = formatTickerDisplay(s.symbol);
+                        return (
+                          <div
+                            key={s.symbol}
+                            className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-mono transition-all ${
+                              symbol === s.symbol
+                                ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#00dbe7] font-bold shadow-sm'
+                                : 'bg-surface-container border-outline/20 text-on-surface hover:border-outline/40'
+                            }`}
                           >
-                            {s.symbol}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleRemoveStockFromWatchlist(s.symbol);
-                            }}
-                            className="text-on-surface-variant hover:text-[#ff6b6b] p-0.5 rounded transition-colors cursor-pointer"
-                            title={`Remove ${s.symbol} from watchlist`}
-                          >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </div>
-                      ))}
+                            <button
+                              onClick={() => {
+                                setSymbol(s.symbol);
+                                setSymbolInput(fmt.displaySymbol);
+                              }}
+                              className="cursor-pointer hover:underline"
+                              title={`Click to load ${s.name}`}
+                            >
+                              {fmt.displaySymbol}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleRemoveStockFromWatchlist(s.symbol);
+                              }}
+                              className="text-on-surface-variant hover:text-[#ff6b6b] p-0.5 rounded transition-colors cursor-pointer"
+                              title={`Remove ${fmt.displaySymbol} from watchlist`}
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

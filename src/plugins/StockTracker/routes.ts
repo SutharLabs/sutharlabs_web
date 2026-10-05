@@ -4,6 +4,9 @@ import {
   getHistory,
   getAnalysis,
   getSuggestion,
+  searchStocks,
+  formatTickerDisplay,
+  normalizeTicker,
   MARKET_UNIVERSES
 } from "../StockAnalyzer/index.js";
 
@@ -17,6 +20,18 @@ export function registerRoutes(router: Router) {
     res.json(MARKET_UNIVERSES);
   });
 
+  // Real-time stock symbol and company search with exchange normalization
+  router.get("/search", async (req: any, res: any) => {
+    try {
+      const q = (req.query.q as string || '').trim();
+      const region = (req.query.region as string || 'IN').toUpperCase();
+      const results = await searchStocks(q, region);
+      res.json(results);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   // Backward compatibility endpoint for Nifty 50
   router.get("/nifty50", (_req: any, res: any) => {
     res.json(MARKET_UNIVERSES.IN.stocks);
@@ -24,7 +39,8 @@ export function registerRoutes(router: Router) {
 
   router.get("/quote", async (req: any, res: any) => {
     try {
-      const data = await getQuote(req.query.symbol as string);
+      const region = req.query.region as string || 'IN';
+      const data = await getQuote(req.query.symbol as string, region);
       res.json(data);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -33,10 +49,12 @@ export function registerRoutes(router: Router) {
 
   router.get("/history", async (req: any, res: any) => {
     try {
+      const region = req.query.region as string || 'IN';
       const data = await getHistory(
         req.query.symbol as string,
         req.query.period as string,
-        req.query.interval as string
+        req.query.interval as string,
+        region
       );
       res.json(data);
     } catch (e: any) {
@@ -46,7 +64,9 @@ export function registerRoutes(router: Router) {
 
   router.get("/analysis", async (req: any, res: any) => {
     try {
+      const region = req.query.region as string || 'IN';
       const options = {
+        region,
         rsiPeriod: req.query.rsiPeriod ? parseInt(req.query.rsiPeriod as string, 10) : undefined,
         macdFast: req.query.macdFast ? parseInt(req.query.macdFast as string, 10) : undefined,
         macdSlow: req.query.macdSlow ? parseInt(req.query.macdSlow as string, 10) : undefined,
@@ -65,7 +85,9 @@ export function registerRoutes(router: Router) {
 
   router.get("/suggestion", async (req: any, res: any) => {
     try {
+      const region = req.query.region as string || 'IN';
       const options = {
+        region,
         rsiPeriod: req.query.rsiPeriod ? parseInt(req.query.rsiPeriod as string, 10) : undefined,
         macdFast: req.query.macdFast ? parseInt(req.query.macdFast as string, 10) : undefined,
         macdSlow: req.query.macdSlow ? parseInt(req.query.macdSlow as string, 10) : undefined,

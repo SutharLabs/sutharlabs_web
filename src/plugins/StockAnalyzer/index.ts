@@ -45,7 +45,9 @@ export const MARKET_UNIVERSES: Record<string, MarketUniverse> = {
       { symbol: 'AXISBANK.NS',   name: 'Axis Bank', sector: 'Banking' },
       { symbol: 'TATAMOTORS.NS', name: 'Tata Motors', sector: 'Automobile' },
       { symbol: 'MARUTI.NS',     name: 'Maruti Suzuki India', sector: 'Automobile' },
-      { symbol: 'BAJFINANCE.NS', name: 'Bajaj Finance', sector: 'NBFC' }
+      { symbol: 'BAJFINANCE.NS', name: 'Bajaj Finance', sector: 'NBFC' },
+      { symbol: 'ATHERENERG.NS', name: 'Ather Energy Limited', sector: 'Automobile / EV' },
+      { symbol: 'ETERNAL.NS',     name: 'Eternal / Zomato', sector: 'Quick Commerce & Food Tech' }
     ]
   },
   US: {
@@ -124,6 +126,216 @@ export const MARKET_UNIVERSES: Record<string, MarketUniverse> = {
   }
 };
 
+export interface StockSearchResult {
+  symbol: string;        // e.g. "ATHERENERG.NS"
+  displaySymbol: string; // e.g. "ATHERENERG (NSE)"
+  cleanSymbol: string;   // e.g. "ATHERENERG"
+  name: string;          // e.g. "Ather Energy Limited"
+  exchange: string;      // e.g. "NSE"
+  sector?: string;
+  quoteType?: string;
+}
+
+export function formatTickerDisplay(rawSymbol: string, exchangeName?: string): { displaySymbol: string; cleanSymbol: string; exchange: string } {
+  if (!rawSymbol) return { displaySymbol: '', cleanSymbol: '', exchange: '' };
+  const sym = rawSymbol.trim();
+
+  // If already formatted like "ATHERENERG (NSE)"
+  const parenMatch = sym.match(/^(.*?)\s*\((.*?)\)$/);
+  if (parenMatch) {
+    return { displaySymbol: sym, cleanSymbol: parenMatch[1].trim(), exchange: parenMatch[2].trim() };
+  }
+
+  if (sym.endsWith('.NS')) {
+    const clean = sym.replace(/\.NS$/i, '');
+    return { displaySymbol: `${clean} (NSE)`, cleanSymbol: clean, exchange: 'NSE' };
+  }
+  if (sym.endsWith('.BO')) {
+    const clean = sym.replace(/\.BO$/i, '');
+    return { displaySymbol: `${clean} (BSE)`, cleanSymbol: clean, exchange: 'BSE' };
+  }
+  if (sym.endsWith('.L')) {
+    const clean = sym.replace(/\.L$/i, '');
+    return { displaySymbol: `${clean} (LSE)`, cleanSymbol: clean, exchange: 'LSE' };
+  }
+  if (sym.endsWith('.DE')) {
+    const clean = sym.replace(/\.DE$/i, '');
+    return { displaySymbol: `${clean} (XETRA)`, cleanSymbol: clean, exchange: 'XETRA' };
+  }
+  if (sym.endsWith('.PA')) {
+    const clean = sym.replace(/\.PA$/i, '');
+    return { displaySymbol: `${clean} (Euronext)`, cleanSymbol: clean, exchange: 'Euronext' };
+  }
+  if (sym.endsWith('.AS')) {
+    const clean = sym.replace(/\.AS$/i, '');
+    return { displaySymbol: `${clean} (Euronext)`, cleanSymbol: clean, exchange: 'Euronext' };
+  }
+  if (sym.endsWith('.HK')) {
+    const clean = sym.replace(/\.HK$/i, '');
+    return { displaySymbol: `${clean} (HKEX)`, cleanSymbol: clean, exchange: 'HKEX' };
+  }
+  if (sym.endsWith('.SS')) {
+    const clean = sym.replace(/\.SS$/i, '');
+    return { displaySymbol: `${clean} (SSE)`, cleanSymbol: clean, exchange: 'SSE' };
+  }
+  if (sym.endsWith('.SZ')) {
+    const clean = sym.replace(/\.SZ$/i, '');
+    return { displaySymbol: `${clean} (SZSE)`, cleanSymbol: clean, exchange: 'SZSE' };
+  }
+  if (sym.endsWith('.T')) {
+    const clean = sym.replace(/\.T$/i, '');
+    return { displaySymbol: `${clean} (TSE)`, cleanSymbol: clean, exchange: 'TSE' };
+  }
+
+  // Default e.g. US stocks like AAPL, MSFT, NVDA
+  const exch = (exchangeName && exchangeName !== 'UNKNOWN') ? exchangeName : 'NASDAQ';
+  return { displaySymbol: `${sym} (${exch})`, cleanSymbol: sym, exchange: exch };
+}
+
+export function normalizeTicker(symbol: string, defaultRegion: string = 'IN'): string {
+  if (!symbol) return '';
+  let clean = symbol.trim();
+
+  // 1. If symbol ends with (NSE), (BSE), etc.
+  if (/\s*\((NSE)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((NSE)\)$/i, '').trim().toUpperCase() + '.NS';
+  }
+  if (/\s*\((BSE|BOMBAY)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((BSE|BOMBAY)\)$/i, '').trim().toUpperCase() + '.BO';
+  }
+  if (/\s*\((LSE)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((LSE)\)$/i, '').trim().toUpperCase() + '.L';
+  }
+  if (/\s*\((XETRA|DAX)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((XETRA|DAX)\)$/i, '').trim().toUpperCase() + '.DE';
+  }
+  if (/\s*\((EURONEXT|PARIS)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((EURONEXT|PARIS)\)$/i, '').trim().toUpperCase() + '.PA';
+  }
+  if (/\s*\((HKEX)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((HKEX)\)$/i, '').trim().toUpperCase() + '.HK';
+  }
+  if (/\s*\((SSE)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((SSE)\)$/i, '').trim().toUpperCase() + '.SS';
+  }
+  if (/\s*\((SZSE)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((SZSE)\)$/i, '').trim().toUpperCase() + '.SZ';
+  }
+  if (/\s*\((TSE)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((TSE)\)$/i, '').trim().toUpperCase() + '.T';
+  }
+  if (/\s*\((NASDAQ|NYSE|NYSE\/NASDAQ|AMEX|OTC)\)$/i.test(clean)) {
+    return clean.replace(/\s*\((NASDAQ|NYSE|NYSE\/NASDAQ|AMEX|OTC)\)$/i, '').trim().toUpperCase();
+  }
+
+  // 2. Already has standard exchange dot suffix
+  if (/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i.test(clean)) {
+    return clean.toUpperCase();
+  }
+
+  // 3. Known special name aliases
+  if (/^ATHER/i.test(clean)) return 'ATHERENERG.NS';
+  if (/^ZOMATO/i.test(clean)) return 'ETERNAL.NS';
+
+  // 4. If defaultRegion is IN and no dot is present, append .NS
+  if (defaultRegion === 'IN') {
+    return clean.toUpperCase() + '.NS';
+  }
+
+  return clean.toUpperCase();
+}
+
+export async function searchStocks(query: string, region: string = 'IN'): Promise<StockSearchResult[]> {
+  const qClean = (query || '').trim();
+  if (!qClean) return [];
+
+  const results: StockSearchResult[] = [];
+  const seenSymbols = new Set<string>();
+
+  // 1. Instant local index lookup
+  const allUniverseStocks = Object.values(MARKET_UNIVERSES).flatMap(u => u.stocks);
+  const qLower = qClean.toLowerCase();
+  const fuzzyQ = qLower.length > 4 ? qLower.slice(0, -1) : qLower;
+
+  for (const s of allUniverseStocks) {
+    const sSymClean = s.symbol.replace(/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i, '').toLowerCase();
+    const sNameLower = s.name.toLowerCase();
+
+    if (
+      sSymClean.includes(qLower) || sNameLower.includes(qLower) ||
+      sSymClean.includes(fuzzyQ) || sNameLower.includes(fuzzyQ)
+    ) {
+      const formatted = formatTickerDisplay(s.symbol);
+      results.push({
+        symbol: s.symbol,
+        displaySymbol: formatted.displaySymbol,
+        cleanSymbol: formatted.cleanSymbol,
+        name: s.name,
+        exchange: formatted.exchange,
+        sector: s.sector
+      });
+      seenSymbols.add(s.symbol);
+    }
+  }
+
+  // 2. Live search from Yahoo Finance Search API
+  try {
+    const fetchYahoo = async (term: string) => {
+      const url = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(term)}&quotesCount=15&newsCount=0`;
+      const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+      if (!res.ok) return [];
+      const json: any = await res.json();
+      return json.quotes || [];
+    };
+
+    let quotes = await fetchYahoo(qClean);
+
+    // If no quotes and query is > 4 chars, try fuzzy search (e.g. "Athere" -> "Ather")
+    if (quotes.length === 0 && qClean.length > 4) {
+      quotes = await fetchYahoo(qClean.slice(0, -1));
+    }
+
+    for (const item of quotes) {
+      if (!item.symbol || seenSymbols.has(item.symbol)) continue;
+
+      const formatted = formatTickerDisplay(item.symbol, item.exchDisp || item.exchange);
+      const name = item.longname || item.shortname || formatted.cleanSymbol;
+
+      results.push({
+        symbol: item.symbol,
+        displaySymbol: formatted.displaySymbol,
+        cleanSymbol: formatted.cleanSymbol,
+        name,
+        exchange: formatted.exchange,
+        sector: item.sectorDisp || item.sector || item.industryDisp || 'Equity',
+        quoteType: item.quoteType
+      });
+      seenSymbols.add(item.symbol);
+    }
+  } catch (err) {
+    console.error('Yahoo search lookup error:', err);
+  }
+
+  // 3. Priority Sort:
+  // If region === 'IN', rank NSE/BSE first;
+  // If region === 'US', rank NASDAQ/NYSE first.
+  results.sort((a, b) => {
+    if (region === 'IN') {
+      const aIsIndian = a.exchange === 'NSE' || a.exchange === 'BSE';
+      const bIsIndian = b.exchange === 'NSE' || b.exchange === 'BSE';
+      if (aIsIndian && !bIsIndian) return -1;
+      if (!aIsIndian && bIsIndian) return 1;
+    }
+    const aStarts = a.name.toLowerCase().startsWith(qLower) || a.cleanSymbol.toLowerCase().startsWith(qLower);
+    const bStarts = b.name.toLowerCase().startsWith(qLower) || b.cleanSymbol.toLowerCase().startsWith(qLower);
+    if (aStarts && !bStarts) return -1;
+    if (!aStarts && bStarts) return 1;
+    return 0;
+  });
+
+  return results.slice(0, 15);
+}
+
 export function getCurrencySymbol(symbol: string, currencyCode?: string): string {
   const code = (currencyCode || '').toUpperCase();
   if (code === 'INR' || symbol.endsWith('.NS') || symbol.endsWith('.BO')) return '₹';
@@ -136,18 +348,22 @@ export function getCurrencySymbol(symbol: string, currencyCode?: string): string
   return '$';
 }
 
-export async function getQuote(symbol: string) {
+export async function getQuote(symbol: string, defaultRegion: string = 'IN') {
+  const normalizedSymbol = normalizeTicker(symbol, defaultRegion);
   try {
-    const quote: any = await yahooFinance.quote(symbol);
-    const currency = quote.currency || (symbol.endsWith('.NS') ? 'INR' : 'USD');
-    const currencySymbol = getCurrencySymbol(symbol, currency);
+    const quote: any = await yahooFinance.quote(normalizedSymbol);
+    const currency = quote.currency || (normalizedSymbol.endsWith('.NS') ? 'INR' : 'USD');
+    const currencySymbol = getCurrencySymbol(normalizedSymbol, currency);
+    const formatted = formatTickerDisplay(normalizedSymbol, quote.exchange || quote.fullExchangeName);
 
     return {
-      symbol,
-      name: quote.longName || quote.shortName || symbol,
+      symbol: normalizedSymbol,
+      display_symbol: formatted.displaySymbol,
+      clean_symbol: formatted.cleanSymbol,
+      name: quote.longName || quote.shortName || formatted.cleanSymbol,
       currency,
       currency_symbol: currencySymbol,
-      exchange: quote.exchange || quote.fullExchangeName || 'UNKNOWN',
+      exchange: formatted.exchange,
       current_price: quote.regularMarketPrice,
       open: quote.regularMarketOpen,
       high: quote.regularMarketDayHigh,
@@ -163,11 +379,12 @@ export async function getQuote(symbol: string) {
       market_state: quote.marketState || 'CLOSED',
     };
   } catch (e) {
-    throw new Error(`Failed to fetch quote for ${symbol}: ${e}`);
+    throw new Error(`Failed to fetch quote for ${normalizedSymbol}: ${e}`);
   }
 }
 
-export async function getHistory(symbol: string, period: string = '5d', interval: any = '15m') {
+export async function getHistory(symbol: string, period: string = '5d', interval: any = '15m', defaultRegion: string = 'IN') {
+  const normalizedSymbol = normalizeTicker(symbol, defaultRegion);
   try {
     const pMap: any = {
       '1D':  { period1: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), interval: '5m' },
@@ -181,7 +398,7 @@ export async function getHistory(symbol: string, period: string = '5d', interval
     
     const queryOpts = pMap[period] || pMap['1W'];
     
-    const result: any = await yahooFinance.chart(symbol, queryOpts);
+    const result: any = await yahooFinance.chart(normalizedSymbol, queryOpts);
     const rawCandles = (result.quotes || [])
       .filter((q: any) => q.close != null && q.open != null && q.high != null && q.low != null)
       .map((q: any) => {
@@ -208,13 +425,15 @@ export async function getHistory(symbol: string, period: string = '5d', interval
       }
     }
     
-    return { symbol, period, candles };
+    const formatted = formatTickerDisplay(normalizedSymbol);
+    return { symbol: normalizedSymbol, display_symbol: formatted.displaySymbol, period, candles };
   } catch (e) {
-    throw new Error(`Failed to fetch history for ${symbol}: ${e}`);
+    throw new Error(`Failed to fetch history for ${normalizedSymbol}: ${e}`);
   }
 }
 
 export interface AnalysisOptions {
+  region?: string;
   rsiPeriod?: number;
   macdFast?: number;
   macdSlow?: number;
@@ -226,6 +445,7 @@ export interface AnalysisOptions {
 }
 
 export async function getAnalysis(symbol: string, options: AnalysisOptions = {}) {
+  const normalizedSymbol = normalizeTicker(symbol, options.region || 'IN');
   try {
     const {
       rsiPeriod = 14,
@@ -238,7 +458,7 @@ export async function getAnalysis(symbol: string, options: AnalysisOptions = {})
       ema50Period = 50
     } = options;
 
-    const result: any = await yahooFinance.chart(symbol, {
+    const result: any = await yahooFinance.chart(normalizedSymbol, {
       period1: new Date(Date.now() - 180 * 24 * 60 * 60 * 1000), // ~6 months (125+ trading sessions)
       interval: '1d'
     });
@@ -296,8 +516,10 @@ export async function getAnalysis(symbol: string, options: AnalysisOptions = {})
       signals.trend = lastEma20 > lastEma50 ? 'Bullish Uptrend' : 'Bearish Downtrend';
     }
 
+    const formatted = formatTickerDisplay(normalizedSymbol);
     return {
-      symbol,
+      symbol: normalizedSymbol,
+      display_symbol: formatted.displaySymbol,
       rsi: latestRsi,
       rsi_period: rsiPeriod,
       macd: latestMacd?.MACD,
@@ -316,14 +538,15 @@ export async function getAnalysis(symbol: string, options: AnalysisOptions = {})
       ema50Series
     };
   } catch (e) {
-    throw new Error(`Failed to run analysis for ${symbol}: ${e}`);
+    throw new Error(`Failed to run analysis for ${normalizedSymbol}: ${e}`);
   }
 }
 
 export async function getSuggestion(symbol: string, options: AnalysisOptions = {}) {
+  const normalizedSymbol = normalizeTicker(symbol, options.region || 'IN');
   try {
-    const quote = await getQuote(symbol);
-    const analysis = await getAnalysis(symbol, options);
+    const quote = await getQuote(normalizedSymbol, options.region || 'IN');
+    const analysis = await getAnalysis(normalizedSymbol, options);
     
     let score = 0;
     let strength = 0;
@@ -383,8 +606,10 @@ export async function getSuggestion(symbol: string, options: AnalysisOptions = {
       reasoning.push(`EMA 20/50 indicates ${analysis.signals.trend}`);
     }
 
+    const formatted = formatTickerDisplay(normalizedSymbol);
     return {
-      symbol,
+      symbol: normalizedSymbol,
+      display_symbol: formatted.displaySymbol,
       action: confidence > 0.3 ? action : 'HOLD',
       confidence: Math.min(confidence, 1.0),
       target_price: target,
@@ -393,6 +618,6 @@ export async function getSuggestion(symbol: string, options: AnalysisOptions = {
       reasoning
     };
   } catch (e) {
-    throw new Error(`Failed to get suggestion for ${symbol}: ${e}`);
+    throw new Error(`Failed to get suggestion for ${normalizedSymbol}: ${e}`);
   }
 }
