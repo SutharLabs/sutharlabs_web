@@ -28,7 +28,13 @@ import {
   Plus,
   Trash2,
   Edit2,
-  ListFilter
+  ListFilter,
+  Cpu,
+  Wand2,
+  Copy,
+  Play,
+  ArrowRight,
+  Filter
 } from 'lucide-react';
 import {
   createChart,
@@ -41,6 +47,9 @@ import {
   UTCTimestamp
 } from 'lightweight-charts';
 import { TerminalLog, UserPortfolio } from '../types';
+import { IStrategy, StrategySignal, StrategyRuleCondition, StrategyParameter } from '../plugins/StockTracker/strategies/types';
+import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
+
 
 interface StockTrackerViewProps {
   logs: TerminalLog[];
@@ -563,6 +572,196 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [editingWatchlistName, setEditingWatchlistName] = useState('');
   const [addSymbolInputs, setAddSymbolInputs] = useState<Record<string, string>>({});
 
+  // ── Database Fetch on Mount: Load Registered Strategies ───
+  const fetchStrategies = useCallback(async () => {
+    try {
+      const res = await fetch(`${STOCK_API}/strategies`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data) && data.length > 0) {
+          setStrategies(data);
+        }
+      }
+    } catch (e) {
+      console.warn('[Strategies DB] Using local preset strategies:', e);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStrategies();
+  }, [fetchStrategies]);
+
+  // Strategy Builder Helper Handlers
+  const handleCreateNewStrategy = useCallback(() => {
+    setBuilderEditingId(null);
+    setBuilderName('Custom Multi-Indicator Momentum');
+    setBuilderDesc('Enters when RSI is oversold and Fast EMA is above Slow EMA.');
+    setBuilderMarket('GLOBAL');
+    setBuilderTimeframe('1D');
+    setBuilderParameters([
+      { id: 'rsiPeriod', name: 'RSI Period', type: 'number', default: 14, min: 2, max: 50, step: 1, description: 'RSI Lookback periods' },
+      { id: 'fastPeriod', name: 'Fast EMA Period', type: 'number', default: 20, min: 5, max: 100, step: 1, description: 'Short-term momentum EMA' },
+      { id: 'slowPeriod', name: 'Slow EMA Period', type: 'number', default: 50, min: 10, max: 200, step: 1, description: 'Baseline trend EMA' }
+    ]);
+    setBuilderEntryConditions([
+      { indicator: 'rsi', operator: '<', value: 35 },
+      { indicator: 'ema_fast', operator: 'crosses_above', value: 'ema_slow' }
+    ]);
+    setBuilderExitConditions([
+      { indicator: 'rsi', operator: '>', value: 70 }
+    ]);
+    setSandboxSignal(null);
+    setBuilderMode('BUILDER');
+  }, []);
+
+  const handleEditStrategy = useCallback((strat: IStrategy) => {
+    setBuilderEditingId(strat.id);
+    setBuilderName(strat.name);
+    setBuilderDesc(strat.description);
+    setBuilderMarket(strat.market);
+    setBuilderTimeframe(strat.timeframe);
+    setBuilderParameters(strat.parameters ? JSON.parse(JSON.stringify(strat.parameters)) : []);
+    setBuilderEntryConditions(strat.rules?.entryConditions ? JSON.parse(JSON.stringify(strat.rules.entryConditions)) : []);
+    setBuilderExitConditions(strat.rules?.exitConditions ? JSON.parse(JSON.stringify(strat.rules.exitConditions)) : []);
+    setSandboxSignal(null);
+    setBuilderMode('BUILDER');
+  }, []);
+
+  const handleCloneStrategy = useCallback((strat: IStrategy) => {
+    setBuilderEditingId(null);
+    setBuilderName(`${strat.name} (Custom Fork)`);
+    setBuilderDesc(strat.description);
+    setBuilderMarket(strat.market);
+    setBuilderTimeframe(strat.timeframe);
+    setBuilderParameters(strat.parameters ? JSON.parse(JSON.stringify(strat.parameters)) : []);
+    setBuilderEntryConditions(strat.rules?.entryConditions ? JSON.parse(JSON.stringify(strat.rules.entryConditions)) : []);
+    setBuilderExitConditions(strat.rules?.exitConditions ? JSON.parse(JSON.stringify(strat.rules.exitConditions)) : []);
+    setSandboxSignal(null);
+    setBuilderMode('BUILDER');
+  }, []);
+
+  const handleDeleteStrategy = useCallback(async (id: string) => {
+    if (!confirm('Are you sure you want to delete this custom strategy?')) return;
+    try {
+      const res = await fetch(`${STOCK_API}/strategies/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setStrategies(prev => prev.filter(s => s.id !== id));
+        if (selectedStrategyId === id) {
+          setSelectedStrategyId('strat-ema-cross');
+        }
+        setStrategyActionFeedback('Strategy removed successfully');
+        setTimeout(() => setStrategyActionFeedback(null), 3000);
+      }
+    } catch (e) {
+      console.error('Failed to delete strategy:', e);
+    }
+  }, [selectedStrategyId]);
+
+  const handleSaveStrategy = useCallback(async () => {
+    if (!builderName.trim()) {
+      alert('Please enter a strategy name');
+      return;
+    }
+    if (builderEntryConditions.length === 0) {
+      alert('Please add at least 1 entry condition');
+      return;
+    }
+    setIsSavingStrategy(true);
+    try {
+      const payload = {
+        name: builderName.trim(),
+        description: builderDesc.trim(),
+        market: builderMarket,
+        timeframe: builderTimeframe,
+        parameters: builderParameters,
+        rules: {
+          indicators: {},
+          entryConditions: builderEntryConditions,
+          exitConditions: builderExitConditions
+        }
+      };
+
+      let savedStrategy: IStrategy;
+      if (builderEditingId) {
+        const res = await fetch(`${STOCK_API}/strategies/${builderEditingId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Failed to update strategy');
+        savedStrategy = await res.json();
+        setStrategies(prev => prev.map(s => s.id === savedStrategy.id ? savedStrategy : s));
+      } else {
+        const res = await fetch(`${STOCK_API}/strategies`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        if (!res.ok) throw new Error('Failed to create strategy');
+        savedStrategy = await res.json();
+        setStrategies(prev => [...prev, savedStrategy]);
+      }
+
+      setSelectedStrategyId(savedStrategy.id);
+      try {
+        localStorage.setItem('sutharlabs_active_strategy_id', savedStrategy.id);
+      } catch {}
+      setStrategyActionFeedback(`Strategy "${savedStrategy.name}" saved & activated!`);
+      setTimeout(() => setStrategyActionFeedback(null), 4000);
+      setBuilderMode('CATALOG');
+    } catch (e: any) {
+      alert(`Error saving strategy: ${e.message}`);
+    } finally {
+      setIsSavingStrategy(false);
+    }
+  }, [builderName, builderDesc, builderMarket, builderTimeframe, builderParameters, builderEntryConditions, builderExitConditions, builderEditingId]);
+
+  const handleTestSandbox = useCallback(async () => {
+    if (!symbol) return;
+    setIsEvaluatingSandbox(true);
+    try {
+      const draftStrategy = {
+        id: builderEditingId || 'strat-draft',
+        name: builderName || 'Draft Strategy',
+        description: builderDesc,
+        isPreset: false,
+        isPublic: false,
+        market: builderMarket,
+        timeframe: builderTimeframe,
+        parameters: builderParameters,
+        rules: {
+          indicators: {},
+          entryConditions: builderEntryConditions,
+          exitConditions: builderExitConditions
+        },
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      const res = await fetch(`${STOCK_API}/strategy-eval`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          strategy: draftStrategy,
+          symbol,
+          region: activeMarketKey
+        })
+      });
+      if (res.ok) {
+        const sig: StrategySignal = await res.json();
+        setSandboxSignal(sig);
+      } else {
+        const err = await res.json();
+        alert(`Evaluation error: ${err.error || 'Failed to evaluate'}`);
+      }
+    } catch (e: any) {
+      alert(`Sandbox error: ${e.message}`);
+    } finally {
+      setIsEvaluatingSandbox(false);
+    }
+  }, [symbol, activeMarketKey, builderEditingId, builderName, builderDesc, builderMarket, builderTimeframe, builderParameters, builderEntryConditions, builderExitConditions]);
+
+
   // Main Workspace Right Panel View Mode: WATCHLIST (Default) | TELEMETRY | ORDER
   const [rightPanelTab, setRightPanelTab] = useState<'WATCHLIST' | 'TELEMETRY' | 'ORDER'>('WATCHLIST');
   const [watchlistQuotes, setWatchlistQuotes] = useState<Record<string, Quote>>({});
@@ -572,7 +771,41 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
   // Sliding Settings Overlay
   const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
-  const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'FEEDS' | 'INDICATORS' | 'TRADING' | 'PERFORMANCE'>('WATCHLISTS');
+  const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'FEEDS' | 'INDICATORS' | 'STRATEGIES' | 'TRADING' | 'PERFORMANCE'>('WATCHLISTS');
+
+  // Algorithmic Strategy Registry & Execution State (Stage 2)
+  const [strategies, setStrategies] = useState<IStrategy[]>(PRESET_STRATEGIES);
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('sutharlabs_active_strategy_id') || 'strat-ema-cross';
+    } catch {
+      return 'strat-ema-cross';
+    }
+  });
+  const [strategySignal, setStrategySignal] = useState<StrategySignal | null>(null);
+  const [loadingStrategySignal, setLoadingStrategySignal] = useState<boolean>(false);
+
+  // Visual Strategy Builder & Catalog State
+  const [builderMode, setBuilderMode] = useState<'CATALOG' | 'BUILDER'>('CATALOG');
+  const [builderEditingId, setBuilderEditingId] = useState<string | null>(null);
+  const [builderName, setBuilderName] = useState<string>('');
+  const [builderDesc, setBuilderDesc] = useState<string>('');
+  const [builderMarket, setBuilderMarket] = useState<'IN' | 'US' | 'BOTH' | 'GLOBAL'>('GLOBAL');
+  const [builderTimeframe, setBuilderTimeframe] = useState<'5m' | '15m' | '1h' | '1D'>('1D');
+  const [builderParameters, setBuilderParameters] = useState<StrategyParameter[]>([]);
+  const [builderEntryConditions, setBuilderEntryConditions] = useState<StrategyRuleCondition[]>([
+    { indicator: 'rsi', operator: '<', value: 30 }
+  ]);
+  const [builderExitConditions, setBuilderExitConditions] = useState<StrategyRuleCondition[]>([
+    { indicator: 'rsi', operator: '>', value: 70 }
+  ]);
+  const [sandboxSignal, setSandboxSignal] = useState<StrategySignal | null>(null);
+  const [isEvaluatingSandbox, setIsEvaluatingSandbox] = useState<boolean>(false);
+  const [isSavingStrategy, setIsSavingStrategy] = useState<boolean>(false);
+  const [strategyActionFeedback, setStrategyActionFeedback] = useState<string | null>(null);
+  const [strategySearchQuery, setStrategySearchQuery] = useState<string>('');
+  const [strategyMarketFilter, setStrategyMarketFilter] = useState<'ALL' | 'IN' | 'US' | 'GLOBAL'>('ALL');
+
   
   // Editable Data Feed Settings
   const [selectedDataSource, setSelectedDataSource] = useState<string>('YAHOO');
@@ -825,17 +1058,35 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         }
       }
 
-      // 4. Algorithmic Trade Suggestion
-      const sUrl = `${STOCK_API}/suggestion?symbol=${encodeURIComponent(normalizedSym)}&region=${activeMarketKey}&rsiPeriod=${rsiPeriod}&bbPeriod=${bbPeriod}&bbStdDev=${bbStdDev}&ema20Period=${ema20Period}&ema50Period=${ema50Period}&macdFast=${macdFast}&macdSlow=${macdSlow}&macdSignal=${macdSignal}`;
-      const sRes = await fetch(sUrl);
-      if (sRes.ok) {
-        const s: Suggestion = await sRes.json();
-        setSuggestion(s);
-        onAddLogRef.current({
-          timestamp: new Date().toLocaleTimeString(),
-          type: s.action === 'BUY' ? 'SUCCESS' : s.action === 'SELL' ? 'ALERT' : 'INFO',
-          message: `STRATEGY SIGNAL: ${displaySym} → ${s.action} | Confidence: ${((s.confidence || 0) * 100).toFixed(0)}%`
-        });
+      // 4. Algorithmic Strategy Signal Execution
+      try {
+        const stratRes = await fetch(`${STOCK_API}/strategy-signal?symbol=${encodeURIComponent(normalizedSym)}&strategyId=${selectedStrategyId}&region=${activeMarketKey}`);
+        if (stratRes.ok) {
+          const sig: StrategySignal = await stratRes.json();
+          setStrategySignal(sig);
+          setSuggestion({
+            action: sig.action,
+            confidence: sig.confidence,
+            target_price: sig.targetPrice ?? null,
+            stop_loss: sig.stopLoss ?? null,
+            risk_reward_ratio: sig.riskRewardRatio ?? null,
+            reasoning: sig.reasoning
+          });
+          onAddLogRef.current({
+            timestamp: new Date().toLocaleTimeString(),
+            type: sig.action === 'BUY' ? 'SUCCESS' : sig.action === 'SELL' ? 'ALERT' : 'INFO',
+            message: `STRATEGY SIGNAL [${sig.strategyName}]: ${displaySym} → ${sig.action} | Confidence: ${((sig.confidence || 0) * 100).toFixed(0)}%`
+          });
+        } else {
+          // Fallback to basic suggestion if strategy endpoint fails
+          const sRes = await fetch(`${STOCK_API}/suggestion?symbol=${encodeURIComponent(normalizedSym)}&region=${activeMarketKey}&rsiPeriod=${rsiPeriod}&bbPeriod=${bbPeriod}&bbStdDev=${bbStdDev}&ema20Period=${ema20Period}&ema50Period=${ema50Period}&macdFast=${macdFast}&macdSlow=${macdSlow}&macdSignal=${macdSignal}`);
+          if (sRes.ok) {
+            const s: Suggestion = await sRes.json();
+            setSuggestion(s);
+          }
+        }
+      } catch (err) {
+        console.warn('Strategy signal error:', err);
       }
     } catch (e) {
       onAddLogRef.current({
@@ -846,7 +1097,43 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     } finally {
       setLoading(false);
     }
-  }, [activeMarketKey, rsiPeriod, bbPeriod, bbStdDev, ema20Period, ema50Period, macdFast, macdSlow, macdSignal]);
+  }, [activeMarketKey, selectedStrategyId, rsiPeriod, bbPeriod, bbStdDev, ema20Period, ema50Period, macdFast, macdSlow, macdSignal]);
+
+  // Re-evaluate strategy signal immediately whenever user switches active strategy in the dropdown
+  useEffect(() => {
+    if (!symbol) return;
+    const normalizedSym = normalizeTicker(symbol, activeMarketKey);
+    const displaySym = formatTickerDisplay(symbol).displaySymbol;
+    let isCancelled = false;
+    setLoadingStrategySignal(true);
+    fetch(`${STOCK_API}/strategy-signal?symbol=${encodeURIComponent(normalizedSym)}&strategyId=${selectedStrategyId}&region=${activeMarketKey}`)
+      .then(res => res.ok ? res.json() : null)
+      .then((sig: StrategySignal | null) => {
+        if (isCancelled || !sig) return;
+        setStrategySignal(sig);
+        setSuggestion({
+          action: sig.action,
+          confidence: sig.confidence,
+          target_price: sig.targetPrice ?? null,
+          stop_loss: sig.stopLoss ?? null,
+          risk_reward_ratio: sig.riskRewardRatio ?? null,
+          reasoning: sig.reasoning
+        });
+        onAddLogRef.current({
+          timestamp: new Date().toLocaleTimeString(),
+          type: sig.action === 'BUY' ? 'SUCCESS' : sig.action === 'SELL' ? 'ALERT' : 'INFO',
+          message: `STRATEGY SWITCH [${sig.strategyName}]: ${displaySym} → ${sig.action} (${((sig.confidence || 0) * 100).toFixed(0)}% Conf, SL: ${sig.stopLoss ? sig.stopLoss.toFixed(1) : '—'}, TP: ${sig.targetPrice ? sig.targetPrice.toFixed(1) : '—'})`
+        });
+      })
+      .catch(err => {
+        console.warn('Strategy signal evaluation error:', err);
+      })
+      .finally(() => {
+        if (!isCancelled) setLoadingStrategySignal(false);
+      });
+    return () => { isCancelled = true; };
+  }, [selectedStrategyId, symbol, activeMarketKey]);
+
 
   // Real-time debounced autocomplete search covering Indian & Global equities on keypress
   useEffect(() => {
@@ -2261,20 +2548,81 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               {/* Box 1: Algorithmic Strategy Signal */}
               <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-2.5 shadow-sm">
                 <div className="flex justify-between items-center">
-                  <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
-                    Strategy Recommendation
+                  <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold flex items-center gap-1.5">
+                    <Cpu className="w-3.5 h-3.5 text-[#00dbe7]" />
+                    Strategy Signal Engine
                   </span>
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                    Rule-Based Engine
-                  </span>
+                  <button
+                    onClick={() => {
+                      setSettingsActiveTab('STRATEGIES');
+                      setBuilderMode('CATALOG');
+                      setShowSettingsDrawer(true);
+                    }}
+                    className="text-[10px] font-mono px-2 py-0.5 rounded bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30 hover:bg-[#00dbe7]/25 transition-all flex items-center gap-1 cursor-pointer"
+                    title="Open Visual Strategy Condition Builder"
+                  >
+                    <Sliders className="w-3 h-3" />
+                    Builder Hub
+                  </button>
                 </div>
 
-                {suggestion ? (
+                {/* Strategy Selector Dropdown */}
+                <div className="flex items-center gap-1.5">
+                  <select
+                    value={selectedStrategyId}
+                    onChange={e => {
+                      setSelectedStrategyId(e.target.value);
+                      try {
+                        localStorage.setItem('sutharlabs_active_strategy_id', e.target.value);
+                      } catch {}
+                    }}
+                    className="flex-1 bg-surface-container-low border border-outline/25 rounded-lg px-2.5 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer"
+                  >
+                    {strategies.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.isPreset ? '⚡ ' : '🔧 '}
+                        {s.name}
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={() => {
+                      const strat = strategies.find(s => s.id === selectedStrategyId);
+                      if (strat) {
+                        if (strat.isPreset) {
+                          handleCloneStrategy(strat);
+                        } else {
+                          handleEditStrategy(strat);
+                        }
+                      } else {
+                        handleCreateNewStrategy();
+                      }
+                      setSettingsActiveTab('STRATEGIES');
+                      setShowSettingsDrawer(true);
+                    }}
+                    className="p-1.5 rounded-lg bg-surface-container-low border border-outline/25 hover:border-[#00dbe7] hover:text-[#00dbe7] text-on-surface-variant transition-all cursor-pointer"
+                    title="Edit or customize this strategy in Builder"
+                  >
+                    <Wand2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {loadingStrategySignal ? (
+                  <div className="p-4 text-center font-mono text-xs text-on-surface-variant animate-pulse flex items-center justify-center gap-2">
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#00dbe7]" />
+                    Evaluating {strategies.find(s => s.id === selectedStrategyId)?.name || 'Strategy'}...
+                  </div>
+                ) : suggestion ? (
                   <div className={`p-3 rounded-lg border ${actionColor.bg} ${actionColor.border} flex flex-col gap-2`}>
                     <div className="flex justify-between items-center">
-                      <span className={`text-2xl font-mono font-black ${actionColor.text}`}>
-                        {suggestion.action}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-2xl font-mono font-black ${actionColor.text}`}>
+                          {suggestion.action}
+                        </span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">
+                          {strategies.find(s => s.id === selectedStrategyId)?.isPreset ? 'Quant Preset' : 'Custom Model'}
+                        </span>
+                      </div>
                       <span className="font-mono text-xs text-on-surface-variant font-bold">
                         {((suggestion.confidence ?? 0) * 100).toFixed(0)}% Confidence
                       </span>
@@ -2303,6 +2651,37 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                         <span className="text-[#00dbe7] font-bold">{suggestion.risk_reward_ratio ? suggestion.risk_reward_ratio.toFixed(2) : '—'}</span>
                       </div>
                     </div>
+
+                    {/* Computed Strategy Indicators Sub-Metrics */}
+                    {strategySignal?.metrics && Object.keys(strategySignal.metrics).length > 0 && (
+                      <div className="border-t border-outline/10 pt-2 flex flex-wrap gap-1.5 text-[9px] font-mono">
+                        {strategySignal.metrics.supertrend != null && (
+                          <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">
+                            ST: <strong className="text-on-surface">{curSymbol}{Number(strategySignal.metrics.supertrend).toFixed(1)}</strong>
+                          </span>
+                        )}
+                        {strategySignal.metrics.ema_fast != null && (
+                          <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">
+                            Fast EMA: <strong className="text-on-surface">{curSymbol}{Number(strategySignal.metrics.ema_fast).toFixed(1)}</strong>
+                          </span>
+                        )}
+                        {strategySignal.metrics.ema_slow != null && (
+                          <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">
+                            Slow EMA: <strong className="text-on-surface">{curSymbol}{Number(strategySignal.metrics.ema_slow).toFixed(1)}</strong>
+                          </span>
+                        )}
+                        {strategySignal.metrics.rsi != null && (
+                          <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">
+                            RSI: <strong className="text-on-surface">{Number(strategySignal.metrics.rsi).toFixed(1)}</strong>
+                          </span>
+                        )}
+                        {strategySignal.metrics.bb_upper != null && (
+                          <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">
+                            BBU: <strong className="text-on-surface">{curSymbol}{Number(strategySignal.metrics.bb_upper).toFixed(1)}</strong>
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-4 text-center font-mono text-xs text-on-surface-variant animate-pulse">
@@ -2310,6 +2689,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   </div>
                 )}
               </div>
+
 
               {/* Box 2: Compact Technical Indicators Matrix */}
               <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-2.5 shadow-sm">
@@ -2558,7 +2938,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 }}
                 className="flex items-center gap-2 overflow-x-auto overflow-y-hidden custom-scrollbar py-1 shrink-0"
               >
-                {(['WATCHLISTS', 'MARKET', 'FEEDS', 'INDICATORS', 'TRADING', 'PERFORMANCE'] as const).map(tab => (
+                {(['WATCHLISTS', 'MARKET', 'FEEDS', 'INDICATORS', 'STRATEGIES', 'TRADING', 'PERFORMANCE'] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setSettingsActiveTab(tab)}
@@ -2572,6 +2952,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     {tab === 'MARKET' && <Globe className="w-3.5 h-3.5" />}
                     {tab === 'FEEDS' && <Database className="w-3.5 h-3.5" />}
                     {tab === 'INDICATORS' && <Layers className="w-3.5 h-3.5" />}
+                    {tab === 'STRATEGIES' && <Cpu className="w-3.5 h-3.5" />}
                     {tab === 'TRADING' && <Shield className="w-3.5 h-3.5" />}
                     {tab === 'PERFORMANCE' && <Award className="w-3.5 h-3.5" />}
                     <span>
@@ -2579,6 +2960,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       {tab === 'MARKET' && 'Market Universes'}
                       {tab === 'FEEDS' && 'Data Feeds & Brokers'}
                       {tab === 'INDICATORS' && 'Indicator Mathematics'}
+                      {tab === 'STRATEGIES' && 'Strategy Builder'}
                       {tab === 'TRADING' && 'Order & Risk Rules'}
                       {tab === 'PERFORMANCE' && 'Performance Analytics'}
                     </span>
@@ -3257,6 +3639,670 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   <RefreshCw className="w-4 h-4" />
                   Apply Parameters & Re-run Algorithm
                 </button>
+              </div>
+            )}
+
+            {/* TAB: ALGORITHMIC STRATEGIES & VISUAL CONDITION BUILDER (STAGE 2) */}
+            {settingsActiveTab === 'STRATEGIES' && (
+              <div className="flex flex-col gap-6 text-xs font-mono">
+                {/* Mode 1: STRATEGY CATALOG */}
+                {builderMode === 'CATALOG' && (
+                  <div className="flex flex-col gap-5">
+                    {/* Header */}
+                    <div className="flex justify-between items-start gap-4 flex-wrap pb-3 border-b border-outline/15">
+                      <div>
+                        <span className="text-on-surface font-semibold text-base flex items-center gap-2">
+                          <Cpu className="w-5 h-5 text-[#00dbe7]" />
+                          Algorithmic Strategies & Visual Condition Builder
+                        </span>
+                        <p className="text-xs text-on-surface-variant font-sans mt-0.5">
+                          Battle-tested quant algorithms and visual rule builder for deterministic signal generation with zero AI latency.
+                        </p>
+                      </div>
+
+                      <button
+                        onClick={handleCreateNewStrategy}
+                        className="px-4 py-2 bg-[#00dbe7] text-[#002022] font-bold rounded-xl flex items-center gap-2 hover:brightness-110 transition-all cursor-pointer shadow-md text-xs font-mono"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Create Custom Strategy
+                      </button>
+                    </div>
+
+                    {/* Filter & Search Bar */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <div className="flex-1 min-w-[200px] relative">
+                        <input
+                          value={strategySearchQuery}
+                          onChange={e => setStrategySearchQuery(e.target.value)}
+                          placeholder="Search strategies by name, rule or indicator..."
+                          className="w-full bg-surface-container-lowest border border-outline/25 rounded-xl px-3 py-2 text-xs font-mono text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-[#00dbe7]"
+                        />
+                      </div>
+
+                      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-low border border-outline/20">
+                        {(['ALL', 'GLOBAL', 'IN', 'US'] as const).map(reg => (
+                          <button
+                            key={reg}
+                            onClick={() => setStrategyMarketFilter(reg)}
+                            className={`px-3 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer ${
+                              strategyMarketFilter === reg
+                                ? 'bg-[#00dbe7]/20 text-[#00dbe7] font-bold border border-[#00dbe7]/40'
+                                : 'text-on-surface-variant hover:text-on-surface'
+                            }`}
+                          >
+                            {reg === 'ALL' ? 'All Markets' : reg === 'IN' ? '🇮🇳 India' : reg === 'US' ? '🇺🇸 US' : '🌐 Global'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Feedback Toast */}
+                    {strategyActionFeedback && (
+                      <div className="p-3 rounded-xl bg-[#00e476]/15 border border-[#00e476]/40 text-[#00e476] flex items-center gap-2 animate-in fade-in duration-200">
+                        <CheckCircle2 className="w-4 h-4 shrink-0" />
+                        <span>{strategyActionFeedback}</span>
+                      </div>
+                    )}
+
+                    {/* Strategy Cards Grid */}
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                      {strategies
+                        .filter(s => {
+                          const matchesQuery = !strategySearchQuery || 
+                            s.name.toLowerCase().includes(strategySearchQuery.toLowerCase()) ||
+                            s.description.toLowerCase().includes(strategySearchQuery.toLowerCase()) ||
+                            (s.parameters || []).some(p => p.name.toLowerCase().includes(strategySearchQuery.toLowerCase()));
+                          const matchesMarket = strategyMarketFilter === 'ALL' || s.market === 'GLOBAL' || s.market === strategyMarketFilter || s.market === 'BOTH';
+                          return matchesQuery && matchesMarket;
+                        })
+                        .map(strat => {
+                          const isActive = selectedStrategyId === strat.id;
+                          return (
+                            <div
+                              key={strat.id}
+                              className={`rounded-xl p-5 border transition-all flex flex-col justify-between gap-4 ${
+                                isActive
+                                  ? 'bg-[#00dbe7]/5 border-[#00dbe7]/60 shadow-[0_0_15px_rgba(0,219,231,0.15)] ring-1 ring-[#00dbe7]/30'
+                                  : 'bg-surface-container-low border-outline/20 hover:border-outline/40'
+                              }`}
+                            >
+                              <div className="flex flex-col gap-3">
+                                {/* Title and Type Badges */}
+                                <div className="flex justify-between items-start gap-2">
+                                  <div>
+                                    <h4 className="font-bold text-sm text-on-surface flex items-center gap-2">
+                                      {strat.isPreset ? '⚡' : '🔧'} {strat.name}
+                                    </h4>
+                                    <span className="text-[10px] text-on-surface-variant font-mono">
+                                      v{strat.version} • {strat.authorName || 'Quant Core'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
+                                      strat.isPreset
+                                        ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
+                                        : 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/30'
+                                    }`}>
+                                      {strat.isPreset ? 'Quant Preset' : 'Custom'}
+                                    </span>
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-container-high border border-outline/20 text-on-surface-variant">
+                                      {strat.timeframe}
+                                    </span>
+                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-container-high border border-outline/20 text-on-surface-variant">
+                                      {strat.market}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Description */}
+                                <p className="text-xs text-on-surface-variant/90 font-sans leading-relaxed">
+                                  {strat.description}
+                                </p>
+
+                                {/* Parameters Badges */}
+                                {strat.parameters && strat.parameters.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 pt-1">
+                                    {strat.parameters.map(p => (
+                                      <span key={p.id} className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-container border border-outline/15 text-on-surface-variant">
+                                        <span className="opacity-70">{p.id}:</span> <strong className="text-on-surface">{String(p.default)}</strong>
+                                      </span>
+                                    ))}
+                                  </div>
+                                )}
+
+                                {/* Rules Summary */}
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] font-mono bg-surface-container-lowest/80 p-3 rounded-lg border border-outline/10">
+                                  <div>
+                                    <span className="text-[#00e476] font-bold block mb-1">Entry Rules (BUY):</span>
+                                    {strat.rules?.entryConditions && strat.rules.entryConditions.length > 0 ? (
+                                      <ul className="space-y-0.5 text-on-surface-variant">
+                                        {strat.rules.entryConditions.map((c, i) => (
+                                          <li key={i} className="truncate">
+                                            • {c.indicator} {c.operator} {c.value}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <span className="text-on-surface-variant opacity-60">Quant mathematical formula</span>
+                                    )}
+                                  </div>
+
+                                  <div>
+                                    <span className="text-[#ff6b6b] font-bold block mb-1">Exit Rules (SELL):</span>
+                                    {strat.rules?.exitConditions && strat.rules.exitConditions.length > 0 ? (
+                                      <ul className="space-y-0.5 text-on-surface-variant">
+                                        {strat.rules.exitConditions.map((c, i) => (
+                                          <li key={i} className="truncate">
+                                            • {c.indicator} {c.operator} {c.value}
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    ) : (
+                                      <span className="text-on-surface-variant opacity-60">Trailing SL / Risk Targets</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Card Actions Footer */}
+                              <div className="flex items-center justify-between gap-2 pt-3 border-t border-outline/15 flex-wrap">
+                                <div>
+                                  {isActive ? (
+                                    <span className="px-3 py-1.5 rounded-lg bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30 font-bold flex items-center gap-1.5 text-xs">
+                                      <Check className="w-3.5 h-3.5" />
+                                      Active on Chart
+                                    </span>
+                                  ) : (
+                                    <button
+                                      onClick={() => {
+                                        setSelectedStrategyId(strat.id);
+                                        try {
+                                          localStorage.setItem('sutharlabs_active_strategy_id', strat.id);
+                                        } catch {}
+                                        setStrategyActionFeedback(`Activated "${strat.name}" for live chart signals.`);
+                                        setTimeout(() => setStrategyActionFeedback(null), 3000);
+                                      }}
+                                      className="px-3 py-1.5 rounded-lg bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30 hover:bg-[#00dbe7]/25 font-bold flex items-center gap-1.5 text-xs transition-all cursor-pointer"
+                                    >
+                                      <Play className="w-3 h-3" />
+                                      Activate for Live Signals
+                                    </button>
+                                  )}
+                                </div>
+
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    onClick={() => handleCloneStrategy(strat)}
+                                    className="px-2.5 py-1.5 rounded-lg bg-surface-container border border-outline/20 hover:border-[#00dbe7] text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1.5 text-xs cursor-pointer"
+                                    title="Clone strategy into custom condition builder"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                    Clone
+                                  </button>
+
+                                  {!strat.isPreset && (
+                                    <>
+                                      <button
+                                        onClick={() => handleEditStrategy(strat)}
+                                        className="px-2.5 py-1.5 rounded-lg bg-surface-container border border-outline/20 hover:border-[#00dbe7] text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1.5 text-xs cursor-pointer"
+                                        title="Edit this custom strategy"
+                                      >
+                                        <Edit2 className="w-3.5 h-3.5" />
+                                        Edit
+                                      </button>
+                                      <button
+                                        onClick={() => handleDeleteStrategy(strat.id)}
+                                        className="p-1.5 rounded-lg bg-surface-container border border-outline/20 hover:border-[#ff6b6b] text-on-surface-variant hover:text-[#ff6b6b] transition-all cursor-pointer"
+                                        title="Delete custom strategy"
+                                      >
+                                        <Trash2 className="w-3.5 h-3.5" />
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Mode 2: VISUAL CONDITION BUILDER FORM */}
+                {builderMode === 'BUILDER' && (
+                  <div className="flex flex-col gap-6">
+                    {/* Header */}
+                    <div className="flex justify-between items-center pb-3 border-b border-outline/15">
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={() => setBuilderMode('CATALOG')}
+                          className="px-3 py-1.5 rounded-xl bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] text-on-surface font-mono text-xs flex items-center gap-1.5 cursor-pointer"
+                        >
+                          ← Back to Catalog
+                        </button>
+                        <div>
+                          <h3 className="font-bold text-base text-on-surface flex items-center gap-2">
+                            <Wand2 className="w-4 h-4 text-[#00dbe7]" />
+                            {builderEditingId ? 'Edit Custom Strategy' : 'Visual Strategy Condition Builder'}
+                          </h3>
+                          <p className="text-xs text-on-surface-variant font-sans">
+                            Configure indicators, mathematical operators, and live risk targets.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => setBuilderMode('CATALOG')}
+                          className="px-3 py-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:text-on-surface text-xs font-mono cursor-pointer"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          onClick={handleSaveStrategy}
+                          disabled={isSavingStrategy}
+                          className="px-4 py-2 rounded-xl bg-[#00dbe7] text-[#002022] font-bold text-xs font-mono flex items-center gap-1.5 hover:brightness-110 cursor-pointer shadow-md disabled:opacity-50"
+                        >
+                          <Save className="w-4 h-4" />
+                          {isSavingStrategy ? 'Saving...' : 'Save Strategy'}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Section 1: Metadata */}
+                    <div className="bg-surface-container-low p-5 rounded-xl border border-outline/20 flex flex-col gap-4">
+                      <span className="text-on-surface font-semibold text-sm">Strategy Identification & Scope</span>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-2 flex flex-col gap-1.5">
+                          <label className="text-[11px] text-on-surface-variant uppercase">Strategy Name</label>
+                          <input
+                            value={builderName}
+                            onChange={e => setBuilderName(e.target.value)}
+                            placeholder="e.g. Dual Moving Average Crossover"
+                            className="bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7]"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[11px] text-on-surface-variant uppercase">Target Market</label>
+                          <select
+                            value={builderMarket}
+                            onChange={e => setBuilderMarket(e.target.value as any)}
+                            className="bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer"
+                          >
+                            <option value="GLOBAL">GLOBAL (All Exchanges)</option>
+                            <option value="IN">IN (NSE / BSE India)</option>
+                            <option value="US">US (NYSE / NASDAQ)</option>
+                            <option value="BOTH">BOTH (India & US)</option>
+                          </select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="md:col-span-2 flex flex-col gap-1.5">
+                          <label className="text-[11px] text-on-surface-variant uppercase">Description</label>
+                          <input
+                            value={builderDesc}
+                            onChange={e => setBuilderDesc(e.target.value)}
+                            placeholder="Briefly describe the quantitative logic behind this algorithm..."
+                            className="bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7]"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-1.5">
+                          <label className="text-[11px] text-on-surface-variant uppercase">Execution Timeframe</label>
+                          <select
+                            value={builderTimeframe}
+                            onChange={e => setBuilderTimeframe(e.target.value as any)}
+                            className="bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer"
+                          >
+                            <option value="1D">1D (Daily Candles - Recommended)</option>
+                            <option value="1h">1h (Hourly Swing)</option>
+                            <option value="15m">15m (Intraday Momentum)</option>
+                            <option value="5m">5m (Scalping)</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Section 2: Parameters Builder */}
+                    <div className="bg-surface-container-low p-5 rounded-xl border border-outline/20 flex flex-col gap-3">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-on-surface font-semibold text-sm">Strategy Parameters (Tunable Variables)</span>
+                          <p className="text-[11px] text-on-surface-variant font-sans">
+                            Define numerical variables that can be overridden in scans and backtests.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => {
+                            const newId = `param_${Date.now()}`;
+                            setBuilderParameters(prev => [
+                              ...prev,
+                              { id: newId, name: 'Custom Parameter', type: 'number', default: 20, min: 1, max: 200, step: 1, description: 'User-defined parameter' }
+                            ]);
+                          }}
+                          className="px-3 py-1.5 bg-surface-container border border-outline/25 hover:border-[#00dbe7] text-[#00dbe7] rounded-lg text-xs font-mono cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Add Parameter
+                        </button>
+                      </div>
+
+                      {builderParameters.length === 0 ? (
+                        <div className="p-3 text-center text-on-surface-variant opacity-70 bg-surface-container-lowest rounded-lg border border-dashed border-outline/20">
+                          No custom parameters defined. Standard indicator lookbacks will apply.
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-2">
+                          {builderParameters.map((p, idx) => (
+                            <div key={idx} className="flex items-center gap-2 p-2.5 bg-surface-container-lowest rounded-lg border border-outline/15 flex-wrap sm:flex-nowrap">
+                              <input
+                                value={p.name}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setBuilderParameters(prev => prev.map((item, i) => i === idx ? { ...item, name: val } : item));
+                                }}
+                                placeholder="Parameter Name"
+                                className="flex-1 min-w-[120px] bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-on-surface focus:outline-none focus:border-[#00dbe7]"
+                              />
+                              <input
+                                value={p.id}
+                                onChange={e => {
+                                  const val = e.target.value;
+                                  setBuilderParameters(prev => prev.map((item, i) => i === idx ? { ...item, id: val } : item));
+                                }}
+                                placeholder="Variable ID"
+                                className="w-28 bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-on-surface focus:outline-none focus:border-[#00dbe7]"
+                              />
+                              <div className="flex items-center gap-1">
+                                <span className="text-[10px] text-on-surface-variant">Default:</span>
+                                <input
+                                  type="number"
+                                  value={Number(p.default)}
+                                  onChange={e => {
+                                    const val = Number(e.target.value);
+                                    setBuilderParameters(prev => prev.map((item, i) => i === idx ? { ...item, default: val } : item));
+                                  }}
+                                  className="w-16 bg-surface-container border border-outline/20 rounded px-2 py-1 text-xs text-on-surface text-center focus:outline-none focus:border-[#00dbe7]"
+                                />
+                              </div>
+                              <button
+                                onClick={() => setBuilderParameters(prev => prev.filter((_, i) => i !== idx))}
+                                className="p-1 text-on-surface-variant hover:text-[#ff6b6b] transition-colors cursor-pointer"
+                                title="Remove parameter"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Section 3: Entry Conditions (WHEN TO BUY) */}
+                    <div className="bg-surface-container-low p-5 rounded-xl border border-outline/20 flex flex-col gap-3">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-[#00e476] font-semibold text-sm flex items-center gap-1.5">
+                            <TrendingUp className="w-4 h-4" />
+                            Entry Conditions (WHEN TO BUY / GO LONG)
+                          </span>
+                          <p className="text-[11px] text-on-surface-variant font-sans">
+                            A high-conviction BUY signal triggers when ALL conditions below evaluate to TRUE simultaneously.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setBuilderEntryConditions(prev => [
+                            ...prev,
+                            { indicator: 'rsi', operator: '<', value: 30 }
+                          ])}
+                          className="px-3 py-1.5 bg-[#00e476]/15 border border-[#00e476]/30 text-[#00e476] hover:bg-[#00e476]/25 rounded-lg text-xs font-mono cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Add BUY Condition
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        {builderEntryConditions.map((cond, idx) => (
+                          <div key={idx} className="flex items-center gap-2 p-2.5 bg-surface-container-lowest rounded-lg border border-outline/15 flex-wrap sm:flex-nowrap">
+                            <span className="text-[11px] font-bold text-[#00e476] w-6 text-center">{idx + 1}.</span>
+                            
+                            {/* Left Indicator */}
+                            <select
+                              value={cond.indicator}
+                              onChange={e => {
+                                const val = e.target.value as any;
+                                setBuilderEntryConditions(prev => prev.map((c, i) => i === idx ? { ...c, indicator: val } : c));
+                              }}
+                              className="bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer"
+                            >
+                              <option value="rsi">RSI (Relative Strength Index)</option>
+                              <option value="macd">MACD Line</option>
+                              <option value="macd_signal">MACD Signal Line</option>
+                              <option value="ema_fast">Fast EMA (20)</option>
+                              <option value="ema_slow">Slow EMA (50)</option>
+                              <option value="price">Current Close Price</option>
+                              <option value="bb_upper">Bollinger Band Upper</option>
+                              <option value="bb_lower">Bollinger Band Lower</option>
+                              <option value="supertrend">Supertrend Line</option>
+                              <option value="volume">Trading Volume</option>
+                            </select>
+
+                            {/* Operator */}
+                            <select
+                              value={cond.operator}
+                              onChange={e => {
+                                const val = e.target.value as any;
+                                setBuilderEntryConditions(prev => prev.map((c, i) => i === idx ? { ...c, operator: val } : c));
+                              }}
+                              className="bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-[#00dbe7] font-bold focus:outline-none focus:border-[#00dbe7] cursor-pointer"
+                            >
+                              <option value=">">&gt; (Is Greater Than)</option>
+                              <option value="<">&lt; (Is Less Than)</option>
+                              <option value=">=">&gt;= (Greater or Equal)</option>
+                              <option value="<=">&lt;= (Less or Equal)</option>
+                              <option value="crosses_above">crosses_above (Crosses Above)</option>
+                              <option value="crosses_below">crosses_below (Crosses Below)</option>
+                              <option value="==">== (Equals)</option>
+                            </select>
+
+                            {/* Right Value or Indicator */}
+                            <input
+                              value={String(cond.value)}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setBuilderEntryConditions(prev => prev.map((c, i) => i === idx ? { ...c, value: val } : c));
+                              }}
+                              placeholder="Value or indicator (e.g. 30, ema_slow, supertrend)"
+                              className="flex-1 min-w-[140px] bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-on-surface focus:outline-none focus:border-[#00dbe7]"
+                            />
+
+                            <button
+                              onClick={() => setBuilderEntryConditions(prev => prev.filter((_, i) => i !== idx))}
+                              className="p-1 text-on-surface-variant hover:text-[#ff6b6b] transition-colors cursor-pointer"
+                              title="Remove condition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Section 4: Exit Conditions (WHEN TO SELL) */}
+                    <div className="bg-surface-container-low p-5 rounded-xl border border-outline/20 flex flex-col gap-3">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <span className="text-[#ff6b6b] font-semibold text-sm flex items-center gap-1.5">
+                            <TrendingDown className="w-4 h-4" />
+                            Exit Conditions (WHEN TO SELL / CLOSE POSITION)
+                          </span>
+                          <p className="text-[11px] text-on-surface-variant font-sans">
+                            A SELL signal triggers when ANY exit condition below evaluates to TRUE.
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setBuilderExitConditions(prev => [
+                            ...prev,
+                            { indicator: 'rsi', operator: '>', value: 70 }
+                          ])}
+                          className="px-3 py-1.5 bg-[#ff6b6b]/15 border border-[#ff6b6b]/30 text-[#ff6b6b] hover:bg-[#ff6b6b]/25 rounded-lg text-xs font-mono cursor-pointer flex items-center gap-1.5"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          Add SELL Condition
+                        </button>
+                      </div>
+
+                      <div className="flex flex-col gap-2">
+                        {builderExitConditions.map((cond, idx) => (
+                          <div key={idx} className="flex items-center gap-2 p-2.5 bg-surface-container-lowest rounded-lg border border-outline/15 flex-wrap sm:flex-nowrap">
+                            <span className="text-[11px] font-bold text-[#ff6b6b] w-6 text-center">{idx + 1}.</span>
+                            
+                            {/* Left Indicator */}
+                            <select
+                              value={cond.indicator}
+                              onChange={e => {
+                                const val = e.target.value as any;
+                                setBuilderExitConditions(prev => prev.map((c, i) => i === idx ? { ...c, indicator: val } : c));
+                              }}
+                              className="bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer"
+                            >
+                              <option value="rsi">RSI (Relative Strength Index)</option>
+                              <option value="macd">MACD Line</option>
+                              <option value="macd_signal">MACD Signal Line</option>
+                              <option value="ema_fast">Fast EMA (20)</option>
+                              <option value="ema_slow">Slow EMA (50)</option>
+                              <option value="price">Current Close Price</option>
+                              <option value="bb_upper">Bollinger Band Upper</option>
+                              <option value="bb_lower">Bollinger Band Lower</option>
+                              <option value="supertrend">Supertrend Line</option>
+                              <option value="volume">Trading Volume</option>
+                            </select>
+
+                            {/* Operator */}
+                            <select
+                              value={cond.operator}
+                              onChange={e => {
+                                const val = e.target.value as any;
+                                setBuilderExitConditions(prev => prev.map((c, i) => i === idx ? { ...c, operator: val } : c));
+                              }}
+                              className="bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-[#00dbe7] font-bold focus:outline-none focus:border-[#00dbe7] cursor-pointer"
+                            >
+                              <option value=">">&gt; (Is Greater Than)</option>
+                              <option value="<">&lt; (Is Less Than)</option>
+                              <option value=">=">&gt;= (Greater or Equal)</option>
+                              <option value="<=">&lt;= (Less or Equal)</option>
+                              <option value="crosses_above">crosses_above (Crosses Above)</option>
+                              <option value="crosses_below">crosses_below (Crosses Below)</option>
+                              <option value="==">== (Equals)</option>
+                            </select>
+
+                            {/* Right Value or Indicator */}
+                            <input
+                              value={String(cond.value)}
+                              onChange={e => {
+                                const val = e.target.value;
+                                setBuilderExitConditions(prev => prev.map((c, i) => i === idx ? { ...c, value: val } : c));
+                              }}
+                              placeholder="Value or indicator (e.g. 70, ema_slow, supertrend)"
+                              className="flex-1 min-w-[140px] bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-on-surface focus:outline-none focus:border-[#00dbe7]"
+                            />
+
+                            <button
+                              onClick={() => setBuilderExitConditions(prev => prev.filter((_, i) => i !== idx))}
+                              className="p-1 text-on-surface-variant hover:text-[#ff6b6b] transition-colors cursor-pointer"
+                              title="Remove condition"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Section 5: Live Test Sandbox */}
+                    <div className="bg-surface-container-low p-5 rounded-xl border border-outline/20 flex flex-col gap-4">
+                      <div className="flex justify-between items-center flex-wrap gap-2">
+                        <div>
+                          <span className="text-on-surface font-semibold text-sm flex items-center gap-2">
+                            <Activity className="w-4 h-4 text-[#00dbe7]" />
+                            Live Test Sandbox
+                          </span>
+                          <p className="text-[11px] text-on-surface-variant font-sans">
+                            Evaluate these draft conditions instantly against current candles of <strong className="text-on-surface">{formatTickerDisplay(symbol).displaySymbol}</strong> before saving.
+                          </p>
+                        </div>
+                        <button
+                          onClick={handleTestSandbox}
+                          disabled={isEvaluatingSandbox}
+                          className="px-4 py-2 bg-surface-container-high border border-[#00dbe7]/40 hover:border-[#00dbe7] text-[#00dbe7] rounded-xl font-bold flex items-center gap-2 transition-all cursor-pointer disabled:opacity-50"
+                        >
+                          <Play className="w-3.5 h-3.5" />
+                          {isEvaluatingSandbox ? 'Evaluating...' : 'Test on Active Stock'}
+                        </button>
+                      </div>
+
+                      {sandboxSignal && (
+                        <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline/20 flex flex-col gap-3 animate-in fade-in duration-200">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-3">
+                              <span className={`text-xl font-black font-mono px-3 py-1 rounded-lg ${
+                                sandboxSignal.action === 'BUY'
+                                  ? 'bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30'
+                                  : sandboxSignal.action === 'SELL'
+                                  ? 'bg-[#ff6b6b]/15 text-[#ff6b6b] border border-[#ff6b6b]/30'
+                                  : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
+                              }`}>
+                                {sandboxSignal.action}
+                              </span>
+                              <span className="font-mono text-xs text-on-surface-variant font-bold">
+                                Confidence: {((sandboxSignal.confidence || 0) * 100).toFixed(0)}%
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-4 text-xs font-mono">
+                              <span>Entry: <strong className="text-on-surface">{curSymbol}{sandboxSignal.entryPrice?.toFixed(1) || '—'}</strong></span>
+                              <span>Target: <strong className="text-[#00e476]">{curSymbol}{sandboxSignal.targetPrice?.toFixed(1) || '—'}</strong></span>
+                              <span>Stop Loss: <strong className="text-[#ff6b6b]">{curSymbol}{sandboxSignal.stopLoss?.toFixed(1) || '—'}</strong></span>
+                              <span>R/R: <strong className="text-[#00dbe7]">{sandboxSignal.riskRewardRatio?.toFixed(2) || '—'}</strong></span>
+                            </div>
+                          </div>
+
+                          {/* Reasoning */}
+                          {sandboxSignal.reasoning && sandboxSignal.reasoning.length > 0 && (
+                            <div className="border-t border-outline/10 pt-2 flex flex-col gap-1 text-[11px] font-mono text-on-surface-variant">
+                              <span className="text-[10px] uppercase font-bold text-on-surface">Execution Trace:</span>
+                              {sandboxSignal.reasoning.map((r, i) => (
+                                <div key={i} className="flex items-center gap-1.5">
+                                  <span className="text-[#00dbe7]">›</span>
+                                  <span>{r}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Section 6: Action Footer */}
+                    <div className="flex justify-end items-center gap-3 pt-4 border-t border-outline/20">
+                      <button
+                        onClick={() => setBuilderMode('CATALOG')}
+                        className="px-4 py-2.5 rounded-xl bg-surface-container-low text-on-surface-variant hover:text-on-surface text-xs font-mono cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveStrategy}
+                        disabled={isSavingStrategy}
+                        className="px-6 py-2.5 rounded-xl bg-[#00dbe7] text-[#002022] font-bold text-xs font-mono flex items-center gap-2 hover:brightness-110 cursor-pointer shadow-lg disabled:opacity-50"
+                      >
+                        <Save className="w-4 h-4" />
+                        {isSavingStrategy ? 'Saving to Engine...' : 'Save Strategy to Database'}
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 

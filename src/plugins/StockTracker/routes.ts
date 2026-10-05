@@ -13,6 +13,16 @@ import {
   MARKET_UNIVERSES,
   KNOWN_US_TICKERS
 } from "../StockAnalyzer/index.js";
+import {
+  loadStrategiesFromDisk,
+  saveStrategiesToDisk,
+  getStrategyById,
+  createStrategy,
+  updateStrategy,
+  deleteStrategy
+} from "./strategies/store.js";
+import { evaluateStrategy } from "./strategies/engine.js";
+import { PRESET_STRATEGIES } from "./strategies/presets.js";
 
 export interface WatchlistItem {
   symbol: string;
@@ -459,4 +469,156 @@ export function registerRoutes(router: Router) {
       res.status(500).json({ error: e.message });
     }
   });
+
+  // ── Strategy Architecture & Builder Endpoints (Phase 2) ───────────────────
+  // GET /strategies
+  router.get("/strategies", (req: any, res: any) => {
+    try {
+      const userEmail = (req.query.email as string || '').toLowerCase().trim();
+      const all = loadStrategiesFromDisk();
+      if (!userEmail) return res.json(all);
+      const filtered = all.filter(s => s.isPreset || !s.authorEmail || s.authorEmail === userEmail);
+      res.json(filtered);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /strategies
+  router.post("/strategies", (req: any, res: any) => {
+    try {
+      const { name, description, authorEmail, authorName, market, timeframe, parameters, rules } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: "Strategy name is required" });
+      }
+      const created = createStrategy({
+        name,
+        description,
+        authorEmail,
+        authorName,
+        market,
+        timeframe,
+        parameters,
+        rules
+      });
+      res.status(201).json(created);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // GET /strategies/:id
+  router.get("/strategies/:id", (req: any, res: any) => {
+    try {
+      const strategy = getStrategyById(req.params.id);
+      if (!strategy) {
+        return res.status(404).json({ error: "Strategy not found" });
+      }
+      res.json(strategy);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // PUT /strategies/:id
+  router.put("/strategies/:id", (req: any, res: any) => {
+    try {
+      const updated = updateStrategy(req.params.id, req.body);
+      if (!updated) {
+        return res.status(404).json({ error: "Strategy not found" });
+      }
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // DELETE /strategies/:id
+  router.delete("/strategies/:id", (req: any, res: any) => {
+    try {
+      const success = deleteStrategy(req.params.id);
+      if (!success) {
+        return res.status(400).json({ error: "Cannot delete preset strategy or strategy not found" });
+      }
+      res.json({ success: true, removedId: req.params.id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // GET /strategy-signal (Real-time algorithmic execution on target stock)
+  router.get("/strategy-signal", async (req: any, res: any) => {
+    try {
+      const symbol = req.query.symbol as string;
+      const strategyId = (req.query.strategyId as string) || 'strat-ema-cross';
+      const region = (req.query.region as string) || 'IN';
+
+      if (!symbol) {
+        return res.status(400).json({ error: "Stock symbol is required" });
+      }
+
+      const strategy = getStrategyById(strategyId) || PRESET_STRATEGIES[0];
+      const normalizedSym = normalizeTicker(symbol, region);
+      const quote = await getQuote(normalizedSym, region);
+      const history = await getHistory(normalizedSym, '1Y', '1d', region);
+
+      const candles = (history.candles || []).map((c: any) => ({
+        time: c.time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume
+      }));
+
+      // Parse custom parameter overrides if provided in query
+      const paramOverrides: Record<string, any> = {};
+      for (const key of Object.keys(req.query)) {
+        if (key.startsWith('param_')) {
+          const paramName = key.replace('param_', '');
+          const val = Number(req.query[key]);
+          paramOverrides[paramName] = isNaN(val) ? req.query[key] : val;
+        }
+      }
+
+      const signal = evaluateStrategy(strategy, candles, quote, paramOverrides);
+      res.json(signal);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /strategy-eval (Evaluate custom or draft strategy in sandbox before saving)
+  router.post("/strategy-eval", async (req: any, res: any) => {
+    try {
+      const { strategy, symbol, region, paramOverrides } = req.body;
+      const targetRegion = region || 'IN';
+
+      if (!symbol) {
+        return res.status(400).json({ error: "Stock symbol is required" });
+      }
+      if (!strategy) {
+        return res.status(400).json({ error: "Strategy definition is required" });
+      }
+
+      const normalizedSym = normalizeTicker(symbol, targetRegion);
+      const quote = await getQuote(normalizedSym, targetRegion);
+      const history = await getHistory(normalizedSym, '1Y', '1d', targetRegion);
+
+      const candles = (history.candles || []).map((c: any) => ({
+        time: c.time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+        volume: c.volume
+      }));
+
+      const signal = evaluateStrategy(strategy, candles, quote, paramOverrides || {});
+      res.json(signal);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
 }
+
