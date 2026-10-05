@@ -148,7 +148,7 @@ const DEFAULT_UNIVERSES: Record<string, MarketUniverse> = {
       { symbol: 'INFY.NS',       name: 'Infosys', sector: 'IT Services' },
       { symbol: 'ICICIBANK.NS',  name: 'ICICI Bank', sector: 'Banking' },
       { symbol: 'ETERNAL.NS',     name: 'Eternal / Zomato', sector: 'Food Tech & Quick Commerce' },
-      { symbol: 'TATAMOTORS.NS', name: 'Tata Motors', sector: 'Automobile' },
+      { symbol: 'TMCV.NS',       name: 'Tata Motors Limited', sector: 'Automobile' },
       { symbol: 'HINDUNILVR.NS', name: 'Hindustan Unilever', sector: 'FMCG' },
       { symbol: 'ITC.NS',        name: 'ITC Limited', sector: 'FMCG' },
       { symbol: 'SBIN.NS',       name: 'State Bank of India', sector: 'Banking' },
@@ -222,6 +222,15 @@ const DEFAULT_UNIVERSES: Record<string, MarketUniverse> = {
     ]
   }
 };
+
+export const KNOWN_US_TICKERS = new Set([
+  'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'GOOG', 'AMZN', 'META', 'TSLA', 'AMD', 'NFLX',
+  'BRK-B', 'BRK.B', 'BRK-A', 'JPM', 'V', 'MA', 'DIS', 'INTC', 'CSCO', 'ADBE',
+  'CRM', 'ORCL', 'QCOM', 'TXN', 'AVGO', 'COST', 'WMT', 'PG', 'JNJ', 'UNH',
+  'HD', 'BAC', 'XOM', 'CVX', 'LLY', 'NKE', 'KO', 'PEP', 'ABBV', 'MRK',
+  'PFE', 'T', 'VZ', 'PYPL', 'UBER', 'ABNB', 'COIN', 'PLTR', 'SNOW', 'BABA',
+  'ARM', 'SMCI', 'PANW', 'CRWD', 'NOW', 'SQ', 'SHOP', 'SE', 'PDD', 'BIDU'
+]);
 
 export interface StockSearchResult {
   symbol: string;
@@ -345,12 +354,19 @@ export function normalizeTicker(symbol: string, defaultRegion: string = 'IN'): s
     return clean.replace(/\s*\((NASDAQ|NYSE|NYSE\/NASDAQ|AMEX|OTC)\)$/i, '').trim().toUpperCase();
   }
 
+  // Known special name aliases (must check before generic dot suffix)
+  if (/^ATHER/i.test(clean)) return 'ATHERENERG.NS';
+  if (/^ZOMATO/i.test(clean)) return 'ETERNAL.NS';
+  if (/^TATAMOTORS(\.NS)?$/i.test(clean)) return 'TMCV.NS';
+
   if (/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i.test(clean)) {
     return clean.toUpperCase();
   }
 
-  if (/^ATHER/i.test(clean)) return 'ATHERENERG.NS';
-  if (/^ZOMATO/i.test(clean)) return 'ETERNAL.NS';
+  // Known US tickers (do not append .NS)
+  if (KNOWN_US_TICKERS.has(clean.toUpperCase())) {
+    return clean.toUpperCase();
+  }
 
   if (defaultRegion === 'IN') {
     return clean.toUpperCase() + '.NS';
@@ -570,6 +586,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             map[fmt.cleanSymbol] = q;
             if (q.clean_symbol) map[q.clean_symbol] = q;
             if (q.display_symbol) map[q.display_symbol] = q;
+            if (q.clean_symbol === 'TMCV' || q.symbol === 'TMCV.NS') {
+              map['TATAMOTORS'] = q;
+              map['TATAMOTORS.NS'] = q;
+            }
           }
         }
         setWatchlistQuotes(map);
@@ -1171,7 +1191,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       )}
 
       {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (CLEAN, ONLY ACTIVE MARKET) ── */}
-      <div className="relative z-30 glass-panel rounded-xl p-3 border border-outline/20 flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest/80 shadow-sm">
+      <div className="relative z-50 glass-panel rounded-xl p-3 border border-outline/20 flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest/80 shadow-sm">
         
         {/* Left: Active Market Badge (Click to open Market Settings in Drawer) */}
         <div className="flex items-center gap-2">
@@ -1199,7 +1219,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         </div>
 
         {/* Center: Search & Ticker Input with Real-Time Suggestions */}
-        <div className="relative flex-1 max-w-md z-40">
+        <div className="relative flex-1 max-w-md z-50">
           <div className="relative flex items-center">
             <input
               value={symbolInput}
@@ -1251,7 +1271,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
           {/* Autocomplete Suggestions Dropdown */}
           {showDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/40 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-50 overflow-hidden backdrop-blur-2xl max-h-72 overflow-y-auto custom-scrollbar">
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/40 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-[100] overflow-hidden backdrop-blur-2xl max-h-72 overflow-y-auto custom-scrollbar">
               {searchResults.length > 0 ? (
                 searchResults.map(item => (
                   <div
@@ -1344,10 +1364,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       </div>
 
       {/* ── QUICK WATCHLIST ASSET TICKER STRIP & WATCHLIST SWITCHER ── */}
-      <div className="relative z-30 flex flex-wrap items-center justify-between gap-2 p-1.5 rounded-xl bg-surface-container-lowest/80 border border-outline/20 shadow-sm">
+      <div className="relative z-20 flex flex-wrap items-center justify-between gap-2 p-1.5 rounded-xl bg-surface-container-lowest/80 border border-outline/20 shadow-sm">
         
         {/* Left: Unclipped Watchlist Switcher Dropdown */}
-        <div className="relative z-50">
+        <div className="relative z-30">
           <button
             type="button"
             onClick={() => setShowWatchlistDropdown(!showWatchlistDropdown)}
@@ -1362,9 +1382,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             <ChevronDown className="w-3 h-3 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors" />
           </button>
 
-          {/* All Watchlists Dropdown Menu (Guaranteed Unclipped with z-[90]) */}
+          {/* All Watchlists Dropdown Menu (Guaranteed Unclipped with z-40) */}
           {showWatchlistDropdown && (
-            <div className="absolute top-full left-0 mt-1.5 w-72 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/50 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-[90] p-2.5 flex flex-col gap-1.5 backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-150">
+            <div className="absolute top-full left-0 mt-1.5 w-72 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/50 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-40 p-2.5 flex flex-col gap-1.5 backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="flex justify-between items-center px-2 py-1 border-b border-outline/10 text-[10px] text-on-surface-variant font-mono uppercase">
                 <span>All Watchlists ({watchlists.length})</span>
                 <button

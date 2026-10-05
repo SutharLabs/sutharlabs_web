@@ -21,6 +21,15 @@ export interface MarketUniverse {
   stocks: MarketStock[];
 }
 
+export const KNOWN_US_TICKERS = new Set([
+  'AAPL', 'MSFT', 'NVDA', 'GOOGL', 'GOOG', 'AMZN', 'META', 'TSLA', 'AMD', 'NFLX',
+  'BRK-B', 'BRK.B', 'BRK-A', 'JPM', 'V', 'MA', 'DIS', 'INTC', 'CSCO', 'ADBE',
+  'CRM', 'ORCL', 'QCOM', 'TXN', 'AVGO', 'COST', 'WMT', 'PG', 'JNJ', 'UNH',
+  'HD', 'BAC', 'XOM', 'CVX', 'LLY', 'NKE', 'KO', 'PEP', 'ABBV', 'MRK',
+  'PFE', 'T', 'VZ', 'PYPL', 'UBER', 'ABNB', 'COIN', 'PLTR', 'SNOW', 'BABA',
+  'ARM', 'SMCI', 'PANW', 'CRWD', 'NOW', 'SQ', 'SHOP', 'SE', 'PDD', 'BIDU'
+]);
+
 export const MARKET_UNIVERSES: Record<string, MarketUniverse> = {
   IN: {
     id: 'IN',
@@ -43,7 +52,7 @@ export const MARKET_UNIVERSES: Record<string, MarketUniverse> = {
       { symbol: 'KOTAKBANK.NS',  name: 'Kotak Mahindra Bank', sector: 'Banking' },
       { symbol: 'LT.NS',         name: 'Larsen & Toubro', sector: 'Engineering & Infra' },
       { symbol: 'AXISBANK.NS',   name: 'Axis Bank', sector: 'Banking' },
-      { symbol: 'TATAMOTORS.NS', name: 'Tata Motors', sector: 'Automobile' },
+      { symbol: 'TMCV.NS',       name: 'Tata Motors Limited', sector: 'Automobile' },
       { symbol: 'MARUTI.NS',     name: 'Maruti Suzuki India', sector: 'Automobile' },
       { symbol: 'BAJFINANCE.NS', name: 'Bajaj Finance', sector: 'NBFC' },
       { symbol: 'ATHERENERG.NS', name: 'Ather Energy Limited', sector: 'Automobile / EV' },
@@ -228,16 +237,22 @@ export function normalizeTicker(symbol: string, defaultRegion: string = 'IN'): s
     return clean.replace(/\s*\((NASDAQ|NYSE|NYSE\/NASDAQ|AMEX|OTC)\)$/i, '').trim().toUpperCase();
   }
 
-  // 2. Already has standard exchange dot suffix
+  // 2. Known special name aliases (must check before generic dot suffix)
+  if (/^ATHER/i.test(clean)) return 'ATHERENERG.NS';
+  if (/^ZOMATO/i.test(clean)) return 'ETERNAL.NS';
+  if (/^TATAMOTORS(\.NS)?$/i.test(clean)) return 'TMCV.NS';
+
+  // 3. Already has standard exchange dot suffix
   if (/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i.test(clean)) {
     return clean.toUpperCase();
   }
 
-  // 3. Known special name aliases
-  if (/^ATHER/i.test(clean)) return 'ATHERENERG.NS';
-  if (/^ZOMATO/i.test(clean)) return 'ETERNAL.NS';
+  // 4. Known US tickers (do not append .NS)
+  if (KNOWN_US_TICKERS.has(clean.toUpperCase())) {
+    return clean.toUpperCase();
+  }
 
-  // 4. If defaultRegion is IN and no dot is present, append .NS
+  // 5. If defaultRegion is IN and no dot is present, append .NS
   if (defaultRegion === 'IN') {
     return clean.toUpperCase() + '.NS';
   }
@@ -349,9 +364,37 @@ export function getCurrencySymbol(symbol: string, currencyCode?: string): string
 }
 
 export async function getQuote(symbol: string, defaultRegion: string = 'IN') {
-  const normalizedSymbol = normalizeTicker(symbol, defaultRegion);
+  let normalizedSymbol = normalizeTicker(symbol, defaultRegion);
   try {
-    const quote: any = await yahooFinance.quote(normalizedSymbol);
+    let quote: any;
+    try {
+      quote = await yahooFinance.quote(normalizedSymbol);
+    } catch (primaryErr) {
+      // Smart cross-market recovery:
+      // 1. If normalizedSymbol ends with .NS but failed, try without .NS (e.g. US or international stock)
+      if (normalizedSymbol.endsWith('.NS')) {
+        const cleanSym = normalizedSymbol.replace(/\.NS$/i, '');
+        try {
+          quote = await yahooFinance.quote(cleanSym);
+          if (quote) normalizedSymbol = cleanSym;
+        } catch {}
+      }
+      // 2. If normalizedSymbol had no dot and failed, try with .NS
+      else if (!normalizedSymbol.includes('.')) {
+        try {
+          const withNs = `${normalizedSymbol}.NS`;
+          quote = await yahooFinance.quote(withNs);
+          if (quote) normalizedSymbol = withNs;
+        } catch {}
+      }
+
+      if (!quote) throw primaryErr;
+    }
+
+    if (!quote) {
+      throw new Error(`Quote not available for ${normalizedSymbol}`);
+    }
+
     const currency = quote.currency || (normalizedSymbol.endsWith('.NS') ? 'INR' : 'USD');
     const currencySymbol = getCurrencySymbol(normalizedSymbol, currency);
     const formatted = formatTickerDisplay(normalizedSymbol, quote.exchange || quote.fullExchangeName);
