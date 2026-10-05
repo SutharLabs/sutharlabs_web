@@ -818,69 +818,71 @@ export default function WorkspacePluginStore({
             return (
               <div
                 key={p.id}
-                className="group relative flex flex-col rounded-2xl border border-outline/30 bg-surface-container-lowest/80 backdrop-blur-xl p-5 sm:p-6 transition-all duration-300 hover:border-[#00dbe7]/60 hover:shadow-xl hover:shadow-[#00dbe7]/5 hover:-translate-y-1 overflow-hidden"
+                className="group relative flex flex-col rounded-2xl border border-outline/30 bg-surface-container-lowest/80 backdrop-blur-xl p-4 sm:p-5 transition-all duration-300 hover:border-[#00dbe7]/60 hover:shadow-xl hover:shadow-[#00dbe7]/5 hover:-translate-y-1 overflow-hidden"
               >
-                {/* Status corner badge: Uniformly styled for all plugins */}
-                <div className="absolute top-3.5 right-3.5 pointer-events-none">
-                  {isInstalled ? (
-                    hasUpdate ? (
-                      <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#00dbe7]/15 border border-[#00dbe7]/40 text-[#00838f] dark:text-[#00dbe7] text-[10px] font-mono font-bold shadow-sm animate-pulse">
-                        <span className="material-symbols-outlined text-xs leading-none">upgrade</span>
-                        Update Available
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#00e476]/15 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] text-[10px] font-mono font-bold shadow-sm">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#00e476]" />
-                        Installed
-                      </div>
-                    )
-                  ) : (
-                    <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-high/60 border border-outline/20 text-on-surface-variant text-[10px] font-mono font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-outline/50" />
-                      Available
+                {/* Top Row: Icon, Title & Meta + Vertically Aligned Status Badge */}
+                <div className="flex items-start justify-between gap-2.5">
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div
+                      style={{
+                        background: meta.accentBg,
+                        borderColor: meta.accentBorder,
+                        color: meta.accentColor
+                      }}
+                      className="w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-105"
+                    >
+                      <span className="material-symbols-outlined text-[22px] leading-none select-none flex items-center justify-center">
+                        {p.iconSymbol}
+                      </span>
                     </div>
-                  )}
-                </div>
 
-                {/* Top Row: Icon, Title & Meta */}
-                <div className="flex items-start gap-3.5">
-                  <div
-                    style={{
-                      background: meta.accentBg,
-                      borderColor: meta.accentBorder,
-                      color: meta.accentColor
-                    }}
-                    className="w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-105"
-                  >
-                    <span className="material-symbols-outlined text-[24px] leading-none select-none flex items-center justify-center">
-                      {p.iconSymbol}
-                    </span>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-base font-bold text-on-surface group-hover:text-[#74f5ff] transition-colors leading-tight truncate">
+                          {p.name}
+                        </h3>
+                        <span
+                          className="material-symbols-outlined text-xs text-[#00dbe7] shrink-0"
+                          title="Verified SutharLabs Native Extension"
+                        >
+                          verified
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-container border border-outline/20 text-on-surface-variant font-medium">
+                          {p.category}
+                        </span>
+                        <span className="text-[10px] font-mono text-on-surface-variant">v{p.version}</span>
+                        {isBetaVersion(p.version) && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase bg-amber-400/15 text-amber-500 dark:text-amber-300 border border-amber-400/30">
+                            Beta
+                          </span>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex-1 pr-20">
-                    <div className="flex items-center gap-1.5">
-                      <h3 className="text-base font-bold text-on-surface group-hover:text-[#74f5ff] transition-colors leading-tight">
-                        {p.name}
-                      </h3>
-                      <span
-                        className="material-symbols-outlined text-xs text-[#00dbe7]"
-                        title="Verified SutharLabs Native Extension"
-                      >
-                        verified
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-container border border-outline/20 text-on-surface-variant font-medium">
-                        {p.category}
-                      </span>
-                      <span className="text-[10px] font-mono text-on-surface-variant">v{p.version}</span>
-                      {isBetaVersion(p.version) && (
-                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase bg-amber-400/15 text-amber-500 dark:text-amber-300 border border-amber-400/30">
-                          Beta
-                        </span>
-                      )}
-                    </div>
+                  {/* Status Badge: Vertically aligned with plugin title */}
+                  <div className="shrink-0 flex items-center pt-0.5">
+                    {isInstalled ? (
+                      hasUpdate ? (
+                        <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#00dbe7]/15 border border-[#00dbe7]/40 text-[#00838f] dark:text-[#00dbe7] text-[10px] font-mono font-bold shadow-sm animate-pulse">
+                          <span className="material-symbols-outlined text-xs leading-none">upgrade</span>
+                          <span>Update</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#00e476]/15 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] text-[10px] font-mono font-bold shadow-sm">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#00e476]" />
+                          <span>Installed</span>
+                        </div>
+                      )
+                    ) : (
+                      <div className="flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-surface-container-high/60 border border-outline/20 text-on-surface-variant text-[10px] font-mono font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-outline/50" />
+                        <span>Available</span>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -931,14 +933,14 @@ export default function WorkspacePluginStore({
                 </div>
 
                 {/* Card Actions: Uniformly sized buttons across all states */}
-                <div className="mt-auto pt-5 flex items-center gap-2">
+                <div className="mt-auto pt-5 flex items-center gap-2 w-full">
                   <button
                     type="button"
                     onClick={() => {
                       setActiveModalPlugin(p);
                       setModalTab('overview');
                     }}
-                    className="h-9 px-3.5 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] bg-surface-container-low/50 hover:bg-surface-container transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm"
+                    className="h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] bg-surface-container-low/50 hover:bg-surface-container transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm"
                     title={`View full details for ${p.name}`}
                   >
                     <span className="material-symbols-outlined text-[15px] leading-none text-on-surface-variant">info</span>
@@ -952,7 +954,7 @@ export default function WorkspacePluginStore({
                           type="button"
                           disabled={isActing}
                           onClick={() => handleInstall(p.id, p.name)}
-                          className="flex-1 h-9 px-3 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-sm shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                          className="flex-1 min-w-0 h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-sm shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                           title={`Upgrade from v${userInstalled?.installedVersion} to v${p.version}`}
                         >
                           {isActing ? (
@@ -961,12 +963,11 @@ export default function WorkspacePluginStore({
                             <>
                               <span className="material-symbols-outlined text-[15px] leading-none">upgrade</span>
                               <span>Update</span>
-                              <span className="text-[10px] opacity-80 font-mono">v{p.version}</span>
                             </>
                           )}
                         </button>
                       ) : (
-                        <div className="flex-1 h-9 px-3 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
+                        <div className="flex-1 min-w-0 h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
                           <span className="material-symbols-outlined text-[15px] leading-none text-[#00a854] dark:text-[#00fb83]">check_circle</span>
                           <span>Installed</span>
                         </div>
@@ -977,7 +978,7 @@ export default function WorkspacePluginStore({
                         disabled={isActing}
                         onClick={() => handleUninstall(p.id, p.name)}
                         title={`Uninstall ${p.name} from workspace`}
-                        className="h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
+                        className="h-9 px-2.5 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-1 shrink-0 cursor-pointer disabled:opacity-50"
                       >
                         {isActing ? (
                           <span className="material-symbols-outlined text-[15px] leading-none animate-spin">progress_activity</span>
@@ -994,7 +995,7 @@ export default function WorkspacePluginStore({
                       type="button"
                       disabled={isActing}
                       onClick={() => handleInstall(p.id, p.name)}
-                      className="flex-1 h-9 px-4 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-md hover:shadow-[#00dbe7]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="flex-1 min-w-0 h-9 px-4 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-md hover:shadow-[#00dbe7]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {isActing ? (
                         <>
