@@ -600,14 +600,15 @@ export default function WorkspacePluginStore({
 
               <div className="flex items-center gap-2.5 w-full sm:w-auto">
                 <button
+                  type="button"
                   onClick={() => {
                     setActiveModalPlugin(spotlightPlugin);
                     setModalTab('overview');
                   }}
-                  className="px-4 py-2.5 rounded-xl text-xs font-mono font-medium border border-outline/40 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] transition-all bg-surface-container-low/60 flex items-center gap-1.5"
+                  className="h-10 px-4 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] transition-all bg-surface-container-low/60 hover:bg-surface-container flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                 >
-                  <span className="material-symbols-outlined text-sm">visibility</span>
-                  Details
+                  <span className="material-symbols-outlined text-[16px] leading-none text-on-surface-variant">info</span>
+                  <span>Details</span>
                 </button>
 
                 {installedIds.has(spotlightPlugin.id) ? (() => {
@@ -618,51 +619,57 @@ export default function WorkspacePluginStore({
                     <div className="flex items-center gap-2">
                       {hasSpotlightUpdate ? (
                         <button
+                          type="button"
                           disabled={loadingPluginId === spotlightPlugin.id}
                           onClick={() => handleInstall(spotlightPlugin.id, spotlightPlugin.name)}
-                          className="px-4 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-110 shadow-md shadow-[#00dbe7]/20 flex items-center gap-1.5 transition-all disabled:opacity-50"
+                          className="h-10 px-4 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-md shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                           title={`Upgrade from v${inst?.installedVersion} to v${spotlightPlugin.version}`}
                         >
                           {loadingPluginId === spotlightPlugin.id ? (
-                            <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                            <span className="material-symbols-outlined text-[16px] leading-none animate-spin">progress_activity</span>
                           ) : (
                             <>
-                              <span className="material-symbols-outlined text-sm">upgrade</span>
-                              Update to v{spotlightPlugin.version}
+                              <span className="material-symbols-outlined text-[16px] leading-none">upgrade</span>
+                              <span>Update to v{spotlightPlugin.version}</span>
                             </>
                           )}
                         </button>
                       ) : (
-                        <span className="px-3.5 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-[#00e476]/15 border border-[#00fb83]/40 text-[#00e476] flex items-center gap-1.5">
-                          <span className="material-symbols-outlined text-sm">check_circle</span>
-                          Installed
+                        <span className="h-10 px-3.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
+                          <span className="material-symbols-outlined text-[16px] leading-none text-[#00a854] dark:text-[#00fb83]">check_circle</span>
+                          <span>Installed</span>
                         </span>
                       )}
                       <button
+                        type="button"
                         disabled={loadingPluginId === spotlightPlugin.id}
                         onClick={() => handleUninstall(spotlightPlugin.id, spotlightPlugin.name)}
-                        className="px-4 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider border border-[#ffb4ab]/40 text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                        className="h-10 px-3.5 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
                         {loadingPluginId === spotlightPlugin.id ? (
-                          <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                          <span className="material-symbols-outlined text-[16px] leading-none animate-spin">progress_activity</span>
                         ) : (
-                          'Uninstall'
+                          <>
+                            <span className="material-symbols-outlined text-[16px] leading-none">delete_outline</span>
+                            <span>Uninstall</span>
+                          </>
                         )}
                       </button>
                     </div>
                   );
                 })() : (
                   <button
+                    type="button"
                     disabled={loadingPluginId === spotlightPlugin.id}
                     onClick={() => handleInstall(spotlightPlugin.id, spotlightPlugin.name)}
-                    className="px-6 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-lg hover:shadow-[#00dbe7]/30 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                    className="h-10 px-5 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-lg hover:shadow-[#00dbe7]/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     {loadingPluginId === spotlightPlugin.id ? (
-                      <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                      <span className="material-symbols-outlined text-[16px] leading-none animate-spin">progress_activity</span>
                     ) : (
-                      <span className="material-symbols-outlined text-sm">download</span>
+                      <span className="material-symbols-outlined text-[16px] leading-none">download</span>
                     )}
-                    Install
+                    <span>Install to Workspace</span>
                   </button>
                 )}
               </div>
@@ -813,37 +820,44 @@ export default function WorkspacePluginStore({
                 key={p.id}
                 className="group relative flex flex-col rounded-2xl border border-outline/30 bg-surface-container-lowest/80 backdrop-blur-xl p-5 sm:p-6 transition-all duration-300 hover:border-[#00dbe7]/60 hover:shadow-xl hover:shadow-[#00dbe7]/5 hover:-translate-y-1 overflow-hidden"
               >
-                {/* Installed ambient corner badge */}
-                {isInstalled && (
-                  <div className="absolute top-0 right-0 w-36 h-24 overflow-hidden pointer-events-none">
-                    {hasUpdate ? (
-                      <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#00dbe7]/20 border border-[#00dbe7]/50 text-[#00dbe7] text-[10px] font-mono font-bold animate-pulse">
-                        <span className="material-symbols-outlined text-xs">upgrade</span>
+                {/* Status corner badge: Uniformly styled for all plugins */}
+                <div className="absolute top-3.5 right-3.5 pointer-events-none">
+                  {isInstalled ? (
+                    hasUpdate ? (
+                      <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#00dbe7]/15 border border-[#00dbe7]/40 text-[#00838f] dark:text-[#00dbe7] text-[10px] font-mono font-bold shadow-sm animate-pulse">
+                        <span className="material-symbols-outlined text-xs leading-none">upgrade</span>
                         Update Available
                       </div>
                     ) : (
-                      <div className="absolute top-2.5 right-2.5 flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#00e476]/15 border border-[#00fb83]/30 text-[#00e476] text-[10px] font-mono font-bold">
+                      <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#00e476]/15 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] text-[10px] font-mono font-bold shadow-sm">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#00e476]" />
                         Installed
                       </div>
-                    )}
-                  </div>
-                )}
+                    )
+                  ) : (
+                    <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-surface-container-high/60 border border-outline/20 text-on-surface-variant text-[10px] font-mono font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-outline/50" />
+                      Available
+                    </div>
+                  )}
+                </div>
 
                 {/* Top Row: Icon, Title & Meta */}
-                <div className="flex items-start gap-4">
+                <div className="flex items-start gap-3.5">
                   <div
                     style={{
                       background: meta.accentBg,
                       borderColor: meta.accentBorder,
                       color: meta.accentColor
                     }}
-                    className="w-14 h-14 rounded-2xl border flex items-center justify-center shrink-0 shadow-md transition-transform duration-300 group-hover:scale-105"
+                    className="w-12 h-12 rounded-xl border flex items-center justify-center shrink-0 shadow-sm transition-transform duration-300 group-hover:scale-105"
                   >
-                    <span className="material-symbols-outlined text-3xl">{p.iconSymbol}</span>
+                    <span className="material-symbols-outlined text-[24px] leading-none select-none flex items-center justify-center">
+                      {p.iconSymbol}
+                    </span>
                   </div>
 
-                  <div className="flex-1 pr-12">
+                  <div className="flex-1 pr-20">
                     <div className="flex items-center gap-1.5">
                       <h3 className="text-base font-bold text-on-surface group-hover:text-[#74f5ff] transition-colors leading-tight">
                         {p.name}
@@ -916,71 +930,81 @@ export default function WorkspacePluginStore({
                   )}
                 </div>
 
-                {/* Card Actions: Details, Installed, Uninstall */}
-                <div className="mt-auto pt-5 flex items-center gap-2.5">
+                {/* Card Actions: Uniformly sized buttons across all states */}
+                <div className="mt-auto pt-5 flex items-center gap-2">
                   <button
+                    type="button"
                     onClick={() => {
                       setActiveModalPlugin(p);
                       setModalTab('overview');
                     }}
-                    className="px-3.5 py-2 rounded-xl text-xs font-mono font-medium border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] transition-all bg-surface-container-low/40 flex items-center justify-center gap-1"
+                    className="h-9 px-3.5 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] bg-surface-container-low/50 hover:bg-surface-container transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm"
+                    title={`View full details for ${p.name}`}
                   >
-                    <span className="material-symbols-outlined text-sm">info</span>
-                    Details
+                    <span className="material-symbols-outlined text-[15px] leading-none text-on-surface-variant">info</span>
+                    <span>Details</span>
                   </button>
 
                   {isInstalled ? (
-                    <div className="flex-1 flex items-center gap-2">
+                    <>
                       {hasUpdate ? (
                         <button
+                          type="button"
                           disabled={isActing}
                           onClick={() => handleInstall(p.id, p.name)}
-                          className="flex-1 py-2 px-3 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-110 shadow-md shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                          className="flex-1 h-9 px-3 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-sm shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                           title={`Upgrade from v${userInstalled?.installedVersion} to v${p.version}`}
                         >
                           {isActing ? (
-                            <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                            <span className="material-symbols-outlined text-[15px] leading-none animate-spin">progress_activity</span>
                           ) : (
                             <>
-                              <span className="material-symbols-outlined text-sm">upgrade</span>
-                              Update to v{p.version}
+                              <span className="material-symbols-outlined text-[15px] leading-none">upgrade</span>
+                              <span>Update</span>
+                              <span className="text-[10px] opacity-80 font-mono">v{p.version}</span>
                             </>
                           )}
                         </button>
                       ) : (
-                        <div className="flex-1 py-2 px-3 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00fb83]/30 text-[#00e476] flex items-center justify-center gap-1.5">
-                          <span className="material-symbols-outlined text-sm">check_circle</span>
-                          Installed
+                        <div className="flex-1 h-9 px-3 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
+                          <span className="material-symbols-outlined text-[15px] leading-none text-[#00a854] dark:text-[#00fb83]">check_circle</span>
+                          <span>Installed</span>
                         </div>
                       )}
+
                       <button
+                        type="button"
                         disabled={isActing}
                         onClick={() => handleUninstall(p.id, p.name)}
-                        title="Uninstall from workspace"
-                        className="py-2 px-3 rounded-xl text-xs font-mono font-bold uppercase border border-[#ffb4ab]/30 text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition-colors disabled:opacity-50"
+                        title={`Uninstall ${p.name} from workspace`}
+                        className="h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
                       >
                         {isActing ? (
-                          <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                          <span className="material-symbols-outlined text-[15px] leading-none animate-spin">progress_activity</span>
                         ) : (
-                          'Uninstall'
+                          <>
+                            <span className="material-symbols-outlined text-[15px] leading-none">delete_outline</span>
+                            <span>Uninstall</span>
+                          </>
                         )}
                       </button>
-                    </div>
+                    </>
                   ) : (
                     <button
+                      type="button"
                       disabled={isActing}
                       onClick={() => handleInstall(p.id, p.name)}
-                      className="flex-1 py-2 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-lg hover:shadow-[#00dbe7]/20 transition-all flex items-center justify-center gap-1.5 disabled:opacity-50"
+                      className="flex-1 h-9 px-4 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-md hover:shadow-[#00dbe7]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {isActing ? (
                         <>
-                          <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
-                          Installing...
+                          <span className="material-symbols-outlined text-[15px] leading-none animate-spin">progress_activity</span>
+                          <span>Installing...</span>
                         </>
                       ) : (
                         <>
-                          <span className="material-symbols-outlined text-sm">download</span>
-                          Install
+                          <span className="material-symbols-outlined text-[15px] leading-none">download</span>
+                          <span>Install</span>
                         </>
                       )}
                     </button>
@@ -1083,41 +1107,45 @@ export default function WorkspacePluginStore({
                     <div className="flex items-center gap-2">
                       {hasUpdate && (
                         <button
+                          type="button"
                           disabled={isActing}
                           onClick={() => handleInstall(activeModalPlugin.id, activeModalPlugin.name)}
-                          className="px-4 py-1.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-110 shadow-md shadow-[#00dbe7]/20 flex items-center gap-1.5 transition-all disabled:opacity-50"
+                          className="h-9 px-3.5 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-sm shadow-[#00dbe7]/20 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                           title={`Upgrade from v${userInstalled?.installedVersion} to v${activeModalPlugin.version}`}
                         >
-                          <span className="material-symbols-outlined text-xs">upgrade</span>
+                          <span className="material-symbols-outlined text-[15px] leading-none">upgrade</span>
                           {isActing ? 'Updating...' : `Update to v${activeModalPlugin.version}`}
                         </button>
                       )}
-                      <span className="px-3 py-1.5 rounded-xl bg-[#00e476]/10 text-[#00e476] border border-[#00fb83]/30 text-xs font-mono font-bold flex items-center gap-1">
-                        <span className="material-symbols-outlined text-sm">check</span>
+                      <span className="h-9 px-3 rounded-xl bg-[#00e476]/10 text-[#008744] dark:text-[#00fb83] border border-[#00e476]/30 text-xs font-mono font-semibold flex items-center gap-1.5 select-none shadow-sm">
+                        <span className="material-symbols-outlined text-[15px] leading-none text-[#00a854] dark:text-[#00fb83]">check_circle</span>
                         Installed {userInstalled?.installedVersion ? `(v${userInstalled.installedVersion})` : ''}
                       </span>
                       <button
+                        type="button"
                         disabled={isActing}
                         onClick={() => handleUninstall(activeModalPlugin.id, activeModalPlugin.name)}
-                        className="px-4 py-1.5 rounded-xl text-xs font-mono font-bold uppercase border border-[#ffb4ab]/30 text-[#ffb4ab] hover:bg-[#ffb4ab]/10 transition-colors disabled:opacity-50"
+                        className="h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
+                        <span className="material-symbols-outlined text-[15px] leading-none">delete_outline</span>
                         {isActing ? 'Uninstalling...' : 'Uninstall'}
                       </button>
                     </div>
                   ) : (
                     <button
+                      type="button"
                       disabled={isActing}
                       onClick={() => handleInstall(activeModalPlugin.id, activeModalPlugin.name)}
-                      className="px-6 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-lg transition-all flex items-center gap-1.5 disabled:opacity-50"
+                      className="h-9 px-5 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {isActing ? (
                         <>
-                          <span className="material-symbols-outlined text-sm animate-spin">progress_activity</span>
+                          <span className="material-symbols-outlined text-[15px] leading-none animate-spin">progress_activity</span>
                           Installing...
                         </>
                       ) : (
                         <>
-                          <span className="material-symbols-outlined text-sm">download</span>
+                          <span className="material-symbols-outlined text-[15px] leading-none">download</span>
                           Install to Workspace
                         </>
                       )}
