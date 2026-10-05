@@ -2,8 +2,8 @@
 ## Comprehensive Architectural Review, Industry Benchmark & Implementation Roadmap
 
 > **Author**: SutharLabs Software Research & Engineering Studio  
-> **Document Version**: 1.0.0  
-> **Scope**: Equity & Derivatives Market Analytics, Algorithmic Signal Generation, Multi-Timeframe Backtesting, Community Strategy Marketplace, and End-of-Day (EOD) Trade Simulation for Indian (NSE/BSE) and US (NYSE/NASDAQ) Markets.
+> **Document Version**: 1.1.0  
+> **Scope**: Equity & Derivatives Market Analytics, Algorithmic Signal Generation, Multi-Timeframe Backtesting, Community Strategy Marketplace, and End-of-Day (EOD) Trade Simulation across Global Markets (India NSE/BSE, US NYSE/NASDAQ, Europe LSE/Euronext/DAX, and East Asia HKEX/China CSI 300/Japan TSE).
 
 ---
 
@@ -14,14 +14,15 @@ The SutharLabs Developer Platform currently includes a native **Stock Tracker** 
 While the current implementation demonstrates core viability (real-time quote retrieval, SVG sparkline rendering, basic RSI/MACD/Bollinger Band calculation, and rudimentary manual paper trading), it remains a **crude prototype** compared to production-grade algorithmic trading systems.
 
 This document presents:
-1. **Industry Benchmarks**: Deep architectural review of top-rated open-source and free tools across US and Indian markets.
+1. **Industry Benchmarks**: Deep architectural review of top-rated open-source and free tools across US, Indian, and Global markets.
 2. **Current Implementation Audit**: Line-by-line gap analysis of our existing plugin.
 3. **Target Architecture & Capability Blueprint**:
+   - **Pluggable Global Market Architecture**: Unified adapter system supporting India (NSE/BSE), US (NYSE/NASDAQ), Europe (LSE/Euronext/DAX), China/HK (CSI 300/Hang Seng), and Japan (Nikkei 225).
    - **Pluggable Algorithm Engine**: User-definable strategies with parameter schemas and visual condition builder.
    - **Strategy Rating & Community Marketplace**: Publishing, community reviews, backtest verification badges, and strategy forks.
-   - **Historical Backtesting Engine**: Multi-year simulation, realistic slippage & brokerage models (STT, GST, SEBI charges for NSE; SEC/FINRA fees for US), and institutional metrics (Sharpe, Sortino, Max Drawdown, Calmar, Win Rate).
-   - **Real-Time News & AI Sentiment Engine**: Live financial news stream (Yahoo/Finnhub/Google News) synthesized by Google Gemini AI to extract catalyst classifications, sentiment confidence scores, and qualitative signal circuit breakers.
-   - **Market Scanner & Screener**: Multi-asset scanning across NIFTY 50, NIFTY 500, Bank Nifty, and S&P 500 with real-time buy/sell alerts.
+   - **Historical Backtesting Engine**: Multi-year simulation, realistic localized slippage & tax friction models (STT/GST for India, SEC for US, SDRT for UK, FTT for Europe, Stamp Duty for HK/China), and institutional metrics.
+   - **Real-Time News & AI Sentiment Engine**: Live financial news stream (Yahoo/Finnhub/Google News) synthesized by Google Gemini AI with strict non-AI autonomous fallback.
+   - **Market Scanner & Screener**: Multi-asset scanning across global benchmark universes with real-time buy/sell alerts.
    - **End-of-Day (EOD) Trade Simulator**: Automated daily closing candle / Bhavcopy trade execution with risk management (Take Profit, Stop Loss, Trailing Stop).
 
 ---
@@ -367,11 +368,102 @@ export interface NewsSentimentAnalysis {
 
 ---
 
+### 5.8. Pluggable Global Market Adapter Architecture (Europe, China, Hong Kong, Japan & Beyond)
+
+To ensure SutharLabs is not locked strictly to Indian and US equities, the engine employs a modular **Global Market Adapter** pattern. Each market is encapsulated inside a self-contained `IMarketAdapter` provider defining exchange schedules, symbol formatting, local currency formatting, regulatory trading constraints, and localized tax/friction calculations.
+
+#### 1. The `IMarketAdapter` Contract
+
+```typescript
+export type MarketRegion = 'IN' | 'US' | 'UK' | 'EU' | 'CN' | 'HK' | 'JP';
+
+export interface MarketHours {
+  timezone: string;           // IANA format: 'Asia/Kolkata', 'Europe/London', etc.
+  openTime: string;           // '09:00'
+  closeTime: string;          // '17:30'
+  hasLunchBreak: boolean;     // e.g. China (11:30 - 13:00) & Japan (11:30 - 12:30)
+  lunchBreak?: { start: string; end: string };
+  tradingDays: number[];      // [1, 2, 3, 4, 5] (Monday to Friday)
+}
+
+export interface MarketFrictionRules {
+  turnoverFeeRate: number;    // e.g. SEBI, SEC, SFC fee
+  stampDutyBuy: number;       // e.g. UK SDRT 0.5%, HK 0.1%
+  stampDutySell: number;      // e.g. India STT 0.1%, China 0.05%, HK 0.1%
+  gstOrVatRate: number;       // e.g. India GST 18% on brokerage
+  minCommission: number;      // Minimum ticket fee in local currency
+  settlementDays: number;     // T+1 or T+2
+  canIntradayShort: boolean;  // False for China A-shares (T+1 rule)
+  dailyPriceBandPct?: number; // e.g. China ±10% / ±20%, India 5/10/20% circuit bands
+  boardLotSize: number;       // e.g. 100 in HK/Japan, 1 in US/India
+}
+
+export interface IMarketAdapter {
+  readonly id: MarketRegion;
+  readonly name: string;
+  readonly primaryExchange: string;
+  readonly currencyCode: string;     // 'INR', 'USD', 'EUR', 'GBP', 'CNY', 'HKD', 'JPY'
+  readonly currencySymbol: string;   // '₹', '$', '€', '£', '¥', 'HK$'
+  readonly marketHours: MarketHours;
+  readonly friction: MarketFrictionRules;
+  readonly defaultBenchmarks: { symbol: string; name: string }[];
+  
+  // Symbol notation & normalization
+  formatSymbolForFeed(ticker: string): string;       // e.g. 'TCS' -> 'TCS.NS', '700' -> '0700.HK'
+  formatDisplaySymbol(feedSymbol: string): string;    // 'TCS.NS' -> 'TCS'
+  
+  // Session checks
+  isMarketOpen(timestamp?: Date): boolean;
+  getNextMarketOpen(timestamp?: Date): Date;
+  
+  // Localized Friction Calculator
+  calculateTransactionFriction(params: {
+    side: 'BUY' | 'SELL';
+    price: number;
+    quantity: number;
+    isDelivery: boolean;
+  }): {
+    grossAmount: number;
+    brokerage: number;
+    taxes: number; // STT, Stamp Duty, SEC/SFC levies
+    netAmount: number;
+    frictionPct: number;
+  };
+}
+```
+
+#### 2. Registered Regional Market Profiles
+
+| Region | Primary Exchanges | Currency | Ticker Suffix | Benchmark Indices | Regulatory Constraints & Friction Rules |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **India (`IN`)** | NSE, BSE | INR (`₹`) | `.NS`, `.BO` | NIFTY 50, SENSEX, NIFTY Bank | STT 0.1% delivery, SEBI turnover, 0.015% stamp duty buy, 18% GST on charges. Circuit filters: 5%, 10%, 20%. |
+| **United States (`US`)** | NYSE, NASDAQ | USD (`$`) | *None* (`AAPL`, `NVDA`) | S&P 500, Nasdaq 100, Dow 30 | SEC Section 31 ($0.0000278/sell $), FINRA TAF ($0.000166/share). Pattern Day Trader (PDT) margin rules. |
+| **United Kingdom (`UK`)** | London Stock Exchange (LSE) | GBP (`£`) | `.L` (`SHEL.L`, `AZN.L`) | FTSE 100, FTSE 250 | UK Stamp Duty Reserve Tax (SDRT) of 0.50% on all electronic share purchases. Trading hours: 08:00 - 16:30 GMT. |
+| **Europe (`EU`)** | Euronext (Paris, Amsterdam), Deutsche Börse (XETRA) | EUR (`€`) | `.PA`, `.AS`, `.DE` | CAC 40, DAX 40, Euro Stoxx 50 | French/Italian Financial Transaction Tax (FTT 0.3% on large cap purchases). Trading hours: 09:00 - 17:30 CET. |
+| **Greater China (`CN`)** | Shanghai (SSE), Shenzhen (SZSE) | CNY (`¥`) | `.SS`, `.SZ` (`600519.SS`, `002594.SZ`) | CSI 300, SSE Composite | **T+1 Settlement Rule**: Stocks bought on Day T cannot be sold on Day T. **Daily Price Limit Bands**: ±10% main board, ±20% ChiNext/STAR. Stamp duty 0.05% on sell. |
+| **Hong Kong (`HK`)** | Hong Kong Exchanges (HKEX) | HKD (`HK$`) | `.HK` (`0700.HK`, `9988.HK`) | Hang Seng Index (HSI) | Board lot trading (e.g. 100 share lots). Stamp Duty 0.1% on both buy and sell. Trading session with lunch break (12:00 - 13:00 HKT). |
+| **Japan (`JP`)** | Tokyo Stock Exchange (TSE) | JPY (`¥`) | `.T` (`7203.T`, `6758.T`) | Nikkei 225, TOPIX | Standard 100-share trading unit (*toushi tan'i*). Morning session (09:00 - 11:30) & Afternoon session (12:30 - 15:30 JST). |
+
+#### 3. Handling Global Market Rules in the Trading Engine
+1. **T+1 Settlement Constraints (China A-Shares)**:
+   - In the backtesting and paper trading state machine, if `market.friction.canIntradayShort === false`, any buy order executed on bar date $D$ locks the inventory until $D+1$. The backtester rejects or defers any intraday exit signal, preventing unrealistic simulation results.
+2. **Daily Price Limit Bands**:
+   - For China (±10%/±20%) and India circuit limits, orders cannot be executed above the upper limit price or below the lower limit price. The simulation flags orders as *Unfilled (Circuit Hit)* if the high/low touches the band.
+3. **Multi-Currency Portfolio & FX Normalization**:
+   - The user can select their sovereign **Reporting Currency** (`baseCurrency: 'USD' | 'INR' | 'EUR' | 'GBP'`).
+   - The portfolio engine automatically queries real-time FX pairs (`USDINR=X`, `EURUSD=X`, `GBPUSD=X`, `USDCNY=X`, `USDHKD=X`, `USDJPY=X`) to compute consolidated Net Asset Value (NAV), unrealized PnL, and cross-border currency exposure.
+4. **Pluggable Data Feed Matrix**:
+   - **Yahoo Finance Engine**: Free global coverage across all suffixes (`.NS`, `.L`, `.PA`, `.DE`, `.SS`, `.SZ`, `.HK`, `.T`).
+   - **Alpha Vantage & EODHD**: Fallback historical and real-time feeds with institutional worldwide coverage.
+   - **Local Broker Gateway**: Connects via OpenAlgo (India) or Interactive Brokers Web API (US/Europe/Asia) when deploying live orders.
+
+---
+
 ## 6. Phased Implementation Roadmap
 
-### Phase 1: Core Foundation & Professional Charting (Immediate)
+### Phase 1: Core Foundation, Professional Charting & Global Universe Switcher (Immediate)
 - Replace static SVG sparkline with **TradingView Lightweight Charts** (interactive candlesticks, zoom, pan, volume bars).
-- Add asset universe selector (NSE NIFTY 50 vs. US S&P Top 20) with live search and symbol switching.
+- Add **Global Market Universe Switcher** supporting India (NIFTY 50), US (S&P 500 / Nasdaq), Europe (FTSE 100, DAX 40), and China/HK (CSI 300, Hang Seng).
 - Decouple technical indicator calculations into extensible modules with customizable parameters (RSI, MACD, BB, ATR, ADX, Supertrend).
 
 ### Phase 2: Strategy Architecture & Builder
@@ -384,13 +476,13 @@ export interface NewsSentimentAnalysis {
 - Create a visual **Strategy Condition Builder** UI allowing users to configure custom indicators, entry conditions, and exit rules.
 
 ### Phase 3: Real-Time News Stream & AI Sentiment Intelligence
-- Integrate real-time financial news RSS/API feeds for active symbols (NSE & US).
+- Integrate real-time financial news RSS/API feeds for active symbols across global markets (NSE, US, Europe, Asia).
 - Implement Gemini AI (`@google/genai`) sentiment scoring endpoint (`/api/workspace/stock-analyzer/news-sentiment`).
-- Add News Ticker drawer and sentiment badges to the Stock Tracker UI.
+- Add Live News Ticker drawer and sentiment badges to the Stock Tracker UI.
 - Incorporate AI Sentiment Confluence Factor into algorithmic signal calculations and emergency circuit breakers.
 
-### Phase 4: High-Performance Backtesting Engine
-- Implement historical bar replay backtester with full transaction friction modeling (NSE STT/GST/charges and US SEC fees).
+### Phase 4: High-Performance Backtesting Engine & Global Friction Models
+- Implement historical bar replay backtester with full transaction friction modeling (NSE STT/GST, US SEC fees, UK Stamp Duty SDRT, China A-Share T+1 and stamp duty).
 - Generate institutional statistics (CAGR, Sharpe, Sortino, Max Drawdown, Win Rate, Profit Factor).
 - Render interactive Equity Curve and Trade Log table with trade-by-trade entry/exit points plotted on the chart.
 
@@ -400,12 +492,12 @@ export interface NewsSentimentAnalysis {
 - Strategy Forking: Allow users to clone any published strategy, tweak parameters, and re-test.
 
 ### Phase 6: Market Scanner & Automated EOD Simulation
-- Multi-symbol scanner running strategies across NIFTY 50 and S&P 500.
-- Daily EOD simulation daemon executing paper trades on closing data with automatic SL/TP tracking.
-- Webhook alert integration (exporting signals to Telegram/Discord or OpenAlgo broker endpoints).
+- Multi-symbol scanner running strategies across NIFTY 50, S&P 500, FTSE 100, DAX, and CSI 300.
+- Daily EOD simulation daemon executing paper trades on closing data with automatic SL/TP tracking and multi-currency portfolio conversion.
+- Webhook alert integration (exporting signals to Telegram/Discord or OpenAlgo/Interactive Brokers endpoints).
 
 ---
 
 ## 7. Conclusion
 
-By evolving our Stock Tracker plugin from a basic quote viewer into a comprehensive **AI-Augmented Algorithmic Trading & Backtesting Suite**, SutharLabs will deliver a state-of-the-art capability surpassing retail platforms like Streak and Chartink, seamlessly integrated into our sovereign developer workspace.
+By evolving our Stock Tracker plugin from a basic quote viewer into a comprehensive, **multi-market AI-Augmented Algorithmic Trading & Backtesting Suite**, SutharLabs will deliver a state-of-the-art capability surpassing retail platforms like Streak and Chartink, seamlessly integrated into our sovereign developer workspace with native global exchange reach.
