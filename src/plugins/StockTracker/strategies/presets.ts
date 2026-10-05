@@ -1,4 +1,4 @@
-import { IStrategy } from './types';
+import { IStrategy } from './types.js';
 
 export const PRESET_STRATEGIES: IStrategy[] = [
   {

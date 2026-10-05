@@ -1,8 +1,8 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import { IStrategy } from './types';
-import { PRESET_STRATEGIES } from './presets';
+import { IStrategy } from './types.js';
+import { PRESET_STRATEGIES } from './presets.js';
 
 const STRATEGIES_DATA_PATH = path.join(process.cwd(), 'data', 'strategies.json');
 

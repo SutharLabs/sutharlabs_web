@@ -1,5 +1,5 @@
 import { RSI, MACD, BollingerBands, ATR, EMA, SMA } from 'technicalindicators';
-import { IStrategy, StrategySignal, StrategyRuleCondition } from './types';
+import { IStrategy, StrategySignal, StrategyRuleCondition } from './types.js';
 
 export interface CandleData {
   time: number;
