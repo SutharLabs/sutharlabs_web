@@ -1,5 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ChevronDown, Sliders, Eye, EyeOff, Globe, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
+import {
+  ChevronDown,
+  Sliders,
+  Eye,
+  EyeOff,
+  Globe,
+  TrendingUp,
+  TrendingDown,
+  RefreshCw,
+  X,
+  Database,
+  Shield,
+  Activity,
+  Award,
+  RotateCcw,
+  CheckCircle2,
+  AlertCircle
+} from 'lucide-react';
 import {
   createChart,
   CandlestickSeries,
@@ -97,6 +114,8 @@ interface MarketUniverse {
   stocks: MarketStock[];
 }
 
+type TimeframePeriod = '1D' | '1W' | '1M' | '1Y' | '5Y' | 'ALL';
+
 const DEFAULT_UNIVERSES: Record<string, MarketUniverse> = {
   IN: {
     id: 'IN',
@@ -188,7 +207,7 @@ const DEFAULT_UNIVERSES: Record<string, MarketUniverse> = {
 
 const DEFAULT_SYMBOL = 'RELIANCE.NS';
 
-// Mathematical continuous Exponential Moving Average helper calculated on loaded candle stream
+// Mathematical continuous Exponential Moving Average helper
 function calculateEMA(data: Candle[], period: number): { time: UTCTimestamp; value: number }[] {
   if (!data || data.length < 2) return [];
   const k = 2 / (period + 1);
@@ -224,15 +243,20 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [suggestion, setSuggestion] = useState<Suggestion | null>(null);
 
   const [loading, setLoading] = useState(true);
-  const [activePeriod, setActivePeriod] = useState<'1D' | '1W' | '1M' | '1Y'>('1W');
+  const [activePeriod, setActivePeriod] = useState<TimeframePeriod>('1W');
 
   // Chart Overlay Toggles
   const [showEma20, setShowEma20] = useState<boolean>(true);
   const [showEma50, setShowEma50] = useState<boolean>(true);
   const [showVolume, setShowVolume] = useState<boolean>(true);
 
-  // Indicator Settings Drawer
+  // Sliding Settings Overlay
   const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
+  const [settingsActiveTab, setSettingsActiveTab] = useState<'FEEDS' | 'INDICATORS' | 'TRADING' | 'PERFORMANCE'>('FEEDS');
+  const [selectedDataSource, setSelectedDataSource] = useState<string>('YAHOO');
+  const [pollIntervalSec, setPollIntervalSec] = useState<number>(30);
+
+  // Indicator Parameters
   const [rsiPeriod, setRsiPeriod] = useState<number>(14);
   const [bbPeriod, setBbPeriod] = useState<number>(20);
   const [bbStdDev, setBbStdDev] = useState<number>(2);
@@ -243,7 +267,6 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
   // Paper Trading Portfolio
   const [portfolio, setPortfolio] = useState<UserPortfolio>({ cash: 10000, shares: 0, buyPrice: 0 });
-  const [selectedAction, setSelectedAction] = useState<'BUY' | 'SELL' | null>(null);
   const [actionQuantity, setActionQuantity] = useState<number>(1);
   const [notification, setNotification] = useState('');
 
@@ -257,7 +280,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     volume: number;
   } | null>(null);
 
-  // Detect dark vs light theme cleanly
+  // Detect dark vs light theme
   const [isDark, setIsDark] = useState<boolean>(() => {
     if (typeof document !== 'undefined') {
       return document.documentElement.classList.contains('dark');
@@ -273,7 +296,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     }
   }, [theme]);
 
-  // Observer for document classList changes (when user toggles theme in navbar)
+  // Observer for document classList changes
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const observer = new MutationObserver(() => {
@@ -294,6 +317,19 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
   // Currency helper
   const curSymbol = quote?.currency_symbol || universes[activeMarketKey]?.currencySymbol || '$';
+
+  // Fast map lookup for exact volume retrieval on hover
+  const candleLookup = useMemo(() => {
+    const map = new Map<number, Candle>();
+    for (const c of candles) {
+      map.set(c.time, c);
+    }
+    return map;
+  }, [candles]);
+
+  // Continuous full-length EMA series calculated directly on current candle stream
+  const continuousEma20 = useMemo(() => calculateEMA(candles, 20), [candles]);
+  const continuousEma50 = useMemo(() => calculateEMA(candles, 50), [candles]);
 
   // ── 1. Fetch Global Market Universes ───────────────────────────────────────
   useEffect(() => {
@@ -385,8 +421,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     fetchAll(symbol, activePeriod);
   }, [symbol, activePeriod, fetchAll]);
 
-  // Auto-refresh quote every 30s
+  // Auto-refresh quote based on configured poll interval
   useEffect(() => {
+    if (pollIntervalSec <= 0) return;
     const id = setInterval(() => {
       fetch(`${STOCK_API}/quote?symbol=${encodeURIComponent(symbol)}`)
         .then(r => r.ok ? r.json() : null)
@@ -401,13 +438,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           });
         })
         .catch(() => {});
-    }, 30000);
+    }, pollIntervalSec * 1000);
     return () => clearInterval(id);
-  }, [symbol]);
-
-  // Pre-calculate full-length continuous EMA series directly on current candle stream
-  const continuousEma20 = useMemo(() => calculateEMA(candles, 20), [candles]);
-  const continuousEma50 = useMemo(() => calculateEMA(candles, 50), [candles]);
+  }, [symbol, pollIntervalSec]);
 
   // ── 4. TradingView Lightweight Charts Engine ───────────────────────────────
   useEffect(() => {
@@ -433,9 +466,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
     const chart = createChart(container, {
       width: container.clientWidth || 800,
-      height: 380,
+      height: 440,
       layout: {
-        attributionLogo: false, // Removes the TradingView logo from the bottom-left corner
+        attributionLogo: false, // Disables TradingView logo from the bottom-left corner
         background: { type: ColorType.Solid, color: chartBg },
         textColor: textColor,
         fontSize: 11,
@@ -538,7 +571,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       ema50Line.setData(continuousEma50);
     }
 
-    // Crosshair hover inspection
+    // Crosshair hover inspection - uses candleLookup map for 100% accurate volume
     chart.subscribeCrosshairMove((param) => {
       if (!param.time || !param.seriesData) {
         setHoveredBar(null);
@@ -546,16 +579,21 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       }
       const data = param.seriesData.get(candleSeries) as any;
       if (data) {
+        const timeKey = Number(param.time);
+        const matchedCandle = candleLookup.get(timeKey);
+        const volumeVal = matchedCandle ? matchedCandle.volume : 0;
+
         const dateStr = typeof param.time === 'number'
           ? new Date(param.time * 1000).toLocaleString()
           : String(param.time);
+
         setHoveredBar({
           time: dateStr,
           open: data.open,
           high: data.high,
           low: data.low,
           close: data.close,
-          volume: data.volume || 0,
+          volume: volumeVal,
         });
       }
     });
@@ -579,7 +617,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       chart.remove();
       chartInstanceRef.current = null;
     };
-  }, [candles, showVolume, showEma20, showEma50, continuousEma20, continuousEma50, activePeriod, isDark]);
+  }, [candles, showVolume, showEma20, showEma50, continuousEma20, continuousEma50, activePeriod, isDark, candleLookup]);
 
   // ── 5. Terminal Internal Auto-Scroll ──────────────────────────────────────
   useEffect(() => {
@@ -606,14 +644,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         message: `${action}: ${actionQuantity} × ${symbol} @ ${curSymbol}${quote.current_price?.toFixed(2)}`
       });
       setNotification(`${action} order executed — ${actionQuantity} × ${quote.name || symbol}`);
-      setSelectedAction(null);
       setTimeout(() => setNotification(''), 4000);
     } catch {
       setNotification('Server error. Order execution failed.');
     }
   };
 
-  // Current market watchlist
+  // Watchlist filter
   const activeUniverse = universes[activeMarketKey] || universes['IN'];
   const currentStockList = activeUniverse?.stocks || [];
 
@@ -643,24 +680,23 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     : 'Neutral';
 
   return (
-    <div className="flex-grow flex flex-col gap-4">
+    <div className="flex-grow flex flex-col gap-3">
 
       {/* Notification Toast */}
       {notification && (
         <div className="bg-[#00e476]/10 border border-[#00fb83]/30 text-[#00e476] p-3 rounded-xl text-xs font-mono flex items-center gap-2 shadow-lg">
-          <span className="material-symbols-outlined text-sm select-none">check_circle</span>
-          {notification}
+          <CheckCircle2 className="w-4 h-4" />
+          <span>{notification}</span>
         </div>
       )}
 
-      {/* ── 1. GLOBAL MARKET UNIVERSE SELECTOR ───────────────────────────────── */}
-      <div className="glass-panel rounded-xl p-3 border border-outline/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
-        <div className="flex items-center gap-2">
+      {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR ─────────────────────────── */}
+      <div className="glass-panel rounded-xl p-3 border border-outline/20 flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest/80">
+        
+        {/* Left: Market Universe Selector Pills */}
+        <div className="flex items-center gap-2 flex-wrap">
           <Globe className="w-4 h-4 text-[#00dbe7]" />
-          <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
-            Market Universe:
-          </span>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {Object.entries(universes).map(([key, u]) => (
               <button
                 key={key}
@@ -685,454 +721,332 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </div>
         </div>
 
-        {/* Market State Badge */}
-        {quote?.market_state && (
-          <div className="flex items-center gap-2 font-mono text-[11px] self-end md:self-auto">
-            <span className={`w-2 h-2 rounded-full ${quote.market_open ? 'bg-[#00e476] animate-pulse' : 'bg-slate-400'}`} />
-            <span className={quote.market_open ? 'text-[#00e476] font-bold' : 'text-on-surface-variant'}>
-              {quote.exchange || 'EXCHANGE'} • {quote.market_open ? 'SESSION ACTIVE' : `CLOSED (${quote.market_state})`}
-            </span>
-          </div>
-        )}
-      </div>
-
-      {/* ── 2. TICKER SEARCH & CONTROLS BAR ─────────────────────────────────── */}
-      <div className="glass-panel rounded-xl p-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center border border-outline/20">
-        <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest whitespace-nowrap">
-          Active Instrument
-        </span>
-        <div className="relative flex-grow max-w-sm">
-          <input
-            value={symbolInput}
-            onChange={e => { setSymbolInput(e.target.value); setShowDropdown(true); }}
-            onFocus={() => setShowDropdown(true)}
-            onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                setSymbol(symbolInput.trim().toUpperCase());
-                setShowDropdown(false);
-              }
-            }}
-            placeholder="e.g. RELIANCE.NS, AAPL, SHEL.L"
-            className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] uppercase tracking-wider"
-          />
-          {showDropdown && filteredStocks.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-surface-container border border-outline/30 rounded-lg shadow-2xl z-50 overflow-hidden backdrop-blur-xl max-h-64 overflow-y-auto custom-scrollbar">
-              {filteredStocks.map(s => (
-                <button
-                  key={s.symbol}
-                  onMouseDown={() => {
-                    setSymbol(s.symbol);
-                    setSymbolInput(s.symbol);
-                    setShowDropdown(false);
-                  }}
-                  className="w-full text-left px-3 py-2.5 text-xs font-mono hover:bg-[#00dbe7]/10 transition-colors flex justify-between items-center border-b border-outline/10 last:border-none bg-transparent cursor-pointer"
-                >
-                  <div className="flex flex-col">
-                    <span className="text-[#00dbe7] font-bold">{s.symbol}</span>
-                    <span className="text-[10px] text-on-surface-variant">{s.name}</span>
-                  </div>
-                  {s.sector && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">
-                      {s.sector}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-        <button
-          onClick={() => { setSymbol(symbolInput.trim().toUpperCase()); setShowDropdown(false); }}
-          className="px-4 py-2 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-lg hover:brightness-110 transition-all cursor-pointer whitespace-nowrap shadow-[0_0_12px_rgba(0,219,231,0.3)]"
-        >
-          Load Chart
-        </button>
-
-        {/* Quick Indicator Settings Toggle */}
-        <button
-          onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
-          className={`px-3 py-2 border rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ml-auto ${
-            showSettingsDrawer
-              ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#00dbe7]'
-              : 'border-outline/30 text-on-surface-variant hover:text-on-surface bg-surface-container-low'
-          }`}
-          title="Configure Indicator Parameters"
-        >
-          <Sliders className="w-3.5 h-3.5" />
-          <span>Indicator Settings</span>
-        </button>
-      </div>
-
-      {/* ── 2.1 INDICATOR CONFIGURATION DRAWER (COLLAPSIBLE) ────────────────── */}
-      {showSettingsDrawer && (
-        <div className="glass-panel rounded-xl p-4 border border-[#00dbe7]/30 bg-surface-container-low animate-fade-in flex flex-wrap gap-6 items-center">
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-on-surface">RSI Period:</span>
+        {/* Center: Search & Ticker Input */}
+        <div className="flex items-center gap-2">
+          <div className="relative w-48 sm:w-60">
             <input
-              type="number"
-              min="5"
-              max="50"
-              value={rsiPeriod}
-              onChange={e => setRsiPeriod(parseInt(e.target.value) || 14)}
-              className="w-16 bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface text-center"
+              value={symbolInput}
+              onChange={e => { setSymbolInput(e.target.value); setShowDropdown(true); }}
+              onFocus={() => setShowDropdown(true)}
+              onBlur={() => setTimeout(() => setShowDropdown(false), 200)}
+              onKeyDown={e => {
+                if (e.key === 'Enter') {
+                  setSymbol(symbolInput.trim().toUpperCase());
+                  setShowDropdown(false);
+                }
+              }}
+              placeholder="Search ticker..."
+              className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] uppercase tracking-wider"
             />
+            {showDropdown && filteredStocks.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-surface-container border border-outline/30 rounded-lg shadow-2xl z-50 overflow-hidden backdrop-blur-xl max-h-60 overflow-y-auto custom-scrollbar">
+                {filteredStocks.map(s => (
+                  <button
+                    key={s.symbol}
+                    onMouseDown={() => {
+                      setSymbol(s.symbol);
+                      setSymbolInput(s.symbol);
+                      setShowDropdown(false);
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs font-mono hover:bg-[#00dbe7]/10 transition-colors flex justify-between items-center border-b border-outline/10 last:border-none bg-transparent cursor-pointer"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-[#00dbe7] font-bold">{s.symbol}</span>
+                      <span className="text-[10px] text-on-surface-variant truncate max-w-[140px]">{s.name}</span>
+                    </div>
+                    {s.sector && (
+                      <span className="text-[9px] px-1 py-0.5 rounded bg-surface-container-high text-on-surface-variant">
+                        {s.sector}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-on-surface">BB Period:</span>
-            <input
-              type="number"
-              min="10"
-              max="50"
-              value={bbPeriod}
-              onChange={e => setBbPeriod(parseInt(e.target.value) || 20)}
-              className="w-16 bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface text-center"
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-on-surface">BB StdDev:</span>
-            <input
-              type="number"
-              step="0.5"
-              min="1"
-              max="4"
-              value={bbStdDev}
-              onChange={e => setBbStdDev(parseFloat(e.target.value) || 2)}
-              className="w-16 bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface text-center"
-            />
-          </div>
+
           <button
-            onClick={() => fetchAll(symbol, activePeriod)}
-            className="px-3 py-1 bg-[#00dbe7]/20 border border-[#00dbe7]/40 text-[#00dbe7] text-xs font-mono rounded hover:bg-[#00dbe7]/30 transition-all cursor-pointer flex items-center gap-1.5"
+            onClick={() => { setSymbol(symbolInput.trim().toUpperCase()); setShowDropdown(false); }}
+            className="px-3 py-1.5 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-lg hover:brightness-110 transition-all cursor-pointer whitespace-nowrap"
           >
-            <RefreshCw className="w-3 h-3" />
-            Apply Parameters
+            Load
           </button>
         </div>
-      )}
 
-      {/* ── 3. QUOTE HEADER & STATS ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-        {/* Main Price & Strategy Card */}
-        <div className="lg:col-span-8 glass-panel rounded-xl p-5 flex flex-col justify-between neon-border-active relative overflow-hidden bg-surface-container-lowest/80 border border-outline/20">
-          <div className="flex justify-between items-start z-10">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-3xl font-sans font-bold tracking-tight text-on-surface">
-                  {quote?.symbol ?? symbol}
-                </h1>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 leading-none">
-                  {quote?.exchange || activeUniverse?.exchange || 'MARKET'}
-                </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-400 border border-purple-500/30 leading-none">
-                  {quote?.currency || activeUniverse?.currencyCode || 'USD'}
-                </span>
-                {loading && <span className="text-[10px] font-mono text-on-surface-variant animate-pulse">Syncing...</span>}
-              </div>
-              <p className="text-xs text-on-surface-variant mt-1.5 font-light">{quote?.name ?? '—'}</p>
-            </div>
-
-            <div className="text-right">
-              <div className="text-3xl font-sans font-bold text-[#00e476]">
-                {curSymbol}{quote?.current_price?.toFixed(2) ?? '—'}
-              </div>
-              <div className={`flex items-center justify-end gap-1 font-mono text-xs mt-1 ${isPositive ? 'text-[#00e476]' : 'text-[#ff6b6b]'}`}>
-                {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                <span>
-                  {isPositive ? '+' : ''}{quote?.change?.toFixed(2) ?? '0'} ({isPositive ? '+' : ''}{quote?.change_percent?.toFixed(2) ?? '0'}%)
-                </span>
-              </div>
-            </div>
+        {/* Right: Live Quote Pill & Sliding Settings Overlay Trigger */}
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-base font-bold text-on-surface">
+              {curSymbol}{quote?.current_price?.toFixed(2) ?? '—'}
+            </span>
+            <span className={`flex items-center gap-0.5 font-mono text-xs px-2 py-0.5 rounded ${
+              isPositive ? 'bg-[#00e476]/15 text-[#00e476]' : 'bg-[#ff6b6b]/15 text-[#ff6b6b]'
+            }`}>
+              {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+              <span>{isPositive ? '+' : ''}{quote?.change_percent?.toFixed(2) ?? '0'}%</span>
+            </span>
           </div>
 
-          {/* Strategy Signal Banner */}
-          {suggestion && (
-            <div className={`mt-4 p-3 rounded-lg border ${actionColor.bg} ${actionColor.border} flex items-center gap-3`}>
-              <span className={`text-xl font-mono font-black ${actionColor.text}`}>{suggestion.action}</span>
-              <div className="flex-grow">
-                <div className="flex items-center gap-2">
-                  <div className="flex-grow bg-surface-container-high rounded-full h-1.5">
-                    <div
-                      className={`h-1.5 rounded-full ${suggestion.action === 'BUY' ? 'bg-[#00e476]' : suggestion.action === 'SELL' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'}`}
-                      style={{ width: `${(suggestion.confidence ?? 0) * 100}%` }}
-                    />
-                  </div>
-                  <span className="font-mono text-[10px] text-on-surface-variant whitespace-nowrap">
-                    {((suggestion.confidence ?? 0) * 100).toFixed(0)}% confidence
+          {/* Sliding Panel Trigger */}
+          <button
+            onClick={() => setShowSettingsDrawer(true)}
+            className="px-3 py-1.5 border border-outline/30 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer bg-surface-container-low hover:text-[#00dbe7] hover:border-[#00dbe7]/50"
+            title="Open Settings & Workspace Preferences"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Settings</span>
+          </button>
+        </div>
+
+      </div>
+
+      {/* ── 2. BALANCED TWO-COLUMN WORKSPACE ───────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+        
+        {/* LEFT COLUMN: HERO CANDLESTICK CHART (8 Cols) */}
+        <div className="lg:col-span-8 flex flex-col gap-2">
+          <div className="glass-panel rounded-xl flex flex-col overflow-hidden border border-outline/20 bg-surface-container-lowest shadow-md">
+            
+            {/* Chart Toolbar: Timeframe Selector + Indicator Overlays */}
+            <div className="flex flex-wrap justify-between items-center gap-2 p-2.5 border-b border-outline/10 bg-surface-container-low/60">
+              
+              {/* Extended Timeframes: 1D, 1W, 1M, 1Y, 5Y, ALL */}
+              <div className="flex gap-1 items-center">
+                {(['1D', '1W', '1M', '1Y', '5Y', 'ALL'] as const).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setActivePeriod(p)}
+                    className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all cursor-pointer ${
+                      activePeriod === p
+                        ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.2)]'
+                        : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+
+              {/* Indicator Overlay Toggles */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowEma20(!showEma20)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+                    showEma20
+                      ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold'
+                      : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
+                  }`}
+                >
+                  {showEma20 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                  <span>EMA 20</span>
+                </button>
+
+                <button
+                  onClick={() => setShowEma50(!showEma50)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+                    showEma50
+                      ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 font-bold'
+                      : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
+                  }`}
+                >
+                  {showEma50 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                  <span>EMA 50</span>
+                </button>
+
+                <button
+                  onClick={() => setShowVolume(!showVolume)}
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+                    showVolume
+                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40 font-bold'
+                      : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
+                  }`}
+                >
+                  {showVolume ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
+                  <span>Volume</span>
+                </button>
+              </div>
+
+            </div>
+
+            {/* Hovered Bar Inspection Strip with Exact Volume */}
+            <div className="px-3 py-1.5 bg-surface-container-low border-b border-outline/10 font-mono text-[11px] flex flex-wrap gap-4 text-on-surface-variant min-h-[30px] items-center">
+              {hoveredBar ? (
+                <>
+                  <span className="font-semibold text-on-surface">{hoveredBar.time}</span>
+                  <span>O: <span className="text-on-surface font-bold">{curSymbol}{hoveredBar.open.toFixed(2)}</span></span>
+                  <span>H: <span className="text-[#00e476] font-bold">{curSymbol}{hoveredBar.high.toFixed(2)}</span></span>
+                  <span>L: <span className="text-[#ff6b6b] font-bold">{curSymbol}{hoveredBar.low.toFixed(2)}</span></span>
+                  <span>C: <span className="text-[#00dbe7] font-bold">{curSymbol}{hoveredBar.close.toFixed(2)}</span></span>
+                  <span>Vol: <span className="text-on-surface font-bold">{hoveredBar.volume.toLocaleString()}</span></span>
+                </>
+              ) : (
+                <span className="text-on-surface-variant/70">
+                  {quote?.name || symbol} • Hover over candles to inspect OHLCV parameters
+                </span>
+              )}
+            </div>
+
+            {/* Chart Canvas */}
+            <div className="relative flex-1 min-h-[440px] p-2 bg-surface-container-lowest">
+              {loading && candles.length === 0 && (
+                <div className="absolute inset-0 flex items-center justify-center bg-surface-container-lowest/80 z-20 font-mono text-xs text-[#00dbe7] animate-pulse">
+                  Initializing TradingView Candlestick Engine...
+                </div>
+              )}
+              <div ref={chartContainerRef} className="w-full h-full min-h-[440px] [&_a[href*='tradingview']]:!hidden [&_a[title*='TradingView']]:!hidden" />
+            </div>
+
+          </div>
+        </div>
+
+        {/* RIGHT COLUMN: ACTION & METRICS SIDEBAR (4 Cols) */}
+        <div className="lg:col-span-4 flex flex-col gap-3">
+          
+          {/* Box 1: Algorithmic Strategy Signal */}
+          <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-2.5 shadow-sm">
+            <div className="flex justify-between items-center">
+              <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
+                Strategy Recommendation
+              </span>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                Rule-Based Engine
+              </span>
+            </div>
+
+            {suggestion ? (
+              <div className={`p-3 rounded-lg border ${actionColor.bg} ${actionColor.border} flex flex-col gap-2`}>
+                <div className="flex justify-between items-center">
+                  <span className={`text-2xl font-mono font-black ${actionColor.text}`}>
+                    {suggestion.action}
+                  </span>
+                  <span className="font-mono text-xs text-on-surface-variant font-bold">
+                    {((suggestion.confidence ?? 0) * 100).toFixed(0)}% Confidence
                   </span>
                 </div>
-                <div className="flex gap-4 mt-1 text-[10px] font-mono text-on-surface-variant">
-                  {suggestion.target_price && (
-                    <span>Target: <span className="text-[#00e476]">{curSymbol}{suggestion.target_price.toFixed(2)}</span></span>
-                  )}
-                  {suggestion.stop_loss && (
-                    <span>Stop: <span className="text-[#ff6b6b]">{curSymbol}{suggestion.stop_loss.toFixed(2)}</span></span>
-                  )}
-                  {suggestion.risk_reward_ratio && (
-                    <span>R/R: <span className="text-[#00dbe7]">{suggestion.risk_reward_ratio.toFixed(2)}</span></span>
-                  )}
+
+                <div className="w-full bg-surface-container-high rounded-full h-1.5">
+                  <div
+                    className={`h-1.5 rounded-full ${
+                      suggestion.action === 'BUY' ? 'bg-[#00e476]' : suggestion.action === 'SELL' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'
+                    }`}
+                    style={{ width: `${(suggestion.confidence ?? 0) * 100}%` }}
+                  />
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 mt-1 text-[10px] font-mono text-on-surface-variant border-t border-outline/10 pt-2">
+                  <div>
+                    <span className="block opacity-70">Target</span>
+                    <span className="text-[#00e476] font-bold">{suggestion.target_price ? `${curSymbol}${suggestion.target_price.toFixed(1)}` : '—'}</span>
+                  </div>
+                  <div>
+                    <span className="block opacity-70">Stop</span>
+                    <span className="text-[#ff6b6b] font-bold">{suggestion.stop_loss ? `${curSymbol}${suggestion.stop_loss.toFixed(1)}` : '—'}</span>
+                  </div>
+                  <div>
+                    <span className="block opacity-70">R/R</span>
+                    <span className="text-[#00dbe7] font-bold">{suggestion.risk_reward_ratio ? suggestion.risk_reward_ratio.toFixed(2) : '—'}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Trade Actions */}
-          <div className="flex gap-3 mt-4 z-10">
-            <button
-              onClick={() => setSelectedAction('BUY')}
-              className="flex-1 bg-[#00e476] text-[#002812] font-mono text-xs py-2.5 rounded-lg font-bold uppercase tracking-wider hover:brightness-110 hover:shadow-[0_0_12px_rgba(0,228,118,0.4)] transition-all cursor-pointer"
-            >
-              BUY {quote?.symbol ?? symbol}
-            </button>
-            <button
-              onClick={() => setSelectedAction('SELL')}
-              className="flex-1 bg-[#ff6b6b] text-[#2c0000] font-mono text-xs py-2.5 rounded-lg font-bold uppercase tracking-wider hover:brightness-110 hover:shadow-[0_0_12px_rgba(255,107,107,0.4)] transition-all cursor-pointer"
-            >
-              SELL {quote?.symbol ?? symbol}
-            </button>
-          </div>
-        </div>
-
-        {/* Micro Stats Grid */}
-        <div className="lg:col-span-4 grid grid-cols-2 gap-3">
-          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center border border-outline/20 bg-surface-container-low/70">
-            <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1">Volume</span>
-            <span className="font-mono text-sm text-on-surface font-semibold">
-              {quote?.volume != null ? (quote.volume > 1e6 ? `${(quote.volume / 1e6).toFixed(2)}M` : quote.volume.toLocaleString()) : '—'}
-            </span>
-          </div>
-
-          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center border border-outline/20 bg-surface-container-low/70">
-            <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1">Day Range</span>
-            <span className="font-mono text-xs text-on-surface font-semibold truncate">
-              {quote?.low != null ? `${curSymbol}${quote.low.toFixed(1)}` : '—'} – {quote?.high != null ? `${curSymbol}${quote.high.toFixed(1)}` : '—'}
-            </span>
-          </div>
-
-          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center border border-outline/20 bg-surface-container-low/70">
-            <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1">RSI ({rsiPeriod})</span>
-            <span className={`font-mono text-sm font-semibold ${rsiColor}`}>
-              {analysis?.rsi != null ? analysis.rsi.toFixed(1) : '—'} <span className="text-[9px] uppercase font-normal">{rsiLabel}</span>
-            </span>
-          </div>
-
-          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center border border-outline/20 bg-surface-container-low/70">
-            <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1">ADX (14)</span>
-            <span className="font-mono text-xs text-[#00e476] font-semibold">
-              {analysis?.adx != null ? `${analysis.adx.toFixed(1)} (${analysis.adx > 25 ? 'Strong' : 'Ranging'})` : '—'}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* ── 4. TECHNICAL INDICATORS MATRIX ───────────────────────────────────── */}
-      {analysis && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="glass-panel rounded-xl p-3.5 space-y-1 border border-outline/20 bg-surface-container-low/70">
-            <div className="flex justify-between items-center">
-              <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">MACD (12, 26, 9)</span>
-              <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${analysis.macd != null && analysis.macd_signal != null && analysis.macd > analysis.macd_signal ? 'bg-[#00e476]/20 text-[#00e476]' : 'bg-[#ff6b6b]/20 text-[#ff6b6b]'}`}>
-                {analysis.signals.macd || 'Neutral'}
-              </span>
-            </div>
-            <div className="text-xs font-mono">
-              <span className={analysis.macd != null && analysis.macd_signal != null && analysis.macd > analysis.macd_signal ? 'text-[#00e476]' : 'text-[#ff6b6b]'}>
-                {analysis.macd?.toFixed(3) ?? '—'}
-              </span>
-              <span className="text-on-surface-variant"> / {analysis.macd_signal?.toFixed(3) ?? '—'}</span>
-            </div>
-            <div className="text-[10px] font-mono text-on-surface-variant">
-              Hist: {analysis.macd_histogram?.toFixed(3) ?? '—'}
-            </div>
-          </div>
-
-          <div className="glass-panel rounded-xl p-3.5 space-y-1 border border-outline/20 bg-surface-container-low/70">
-            <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Bollinger Bands ({bbPeriod}, {bbStdDev})</span>
-            <div className="text-xs font-mono text-[#00dbe7]">
-              Upper: {curSymbol}{analysis.bb_upper?.toFixed(1) ?? '—'}
-            </div>
-            <div className="text-[10px] font-mono text-on-surface-variant">
-              Mid: {curSymbol}{analysis.bb_middle?.toFixed(1) ?? '—'} | Low: {curSymbol}{analysis.bb_lower?.toFixed(1) ?? '—'}
-            </div>
-          </div>
-
-          <div className="glass-panel rounded-xl p-3.5 space-y-1 border border-outline/20 bg-surface-container-low/70">
-            <div className="flex justify-between items-center">
-              <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">EMA Trend (20/50)</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
-                {analysis.signals.trend || 'Trend'}
-              </span>
-            </div>
-            <div className="text-xs font-mono">
-              <span className="text-[#00dbe7]">EMA20: {curSymbol}{analysis.ema_20?.toFixed(1) ?? '—'}</span>
-            </div>
-            <div className="text-[10px] font-mono text-[#f59e0b]">
-              EMA50: {curSymbol}{analysis.ema_50?.toFixed(1) ?? '—'}
-            </div>
-          </div>
-
-          <div className="glass-panel rounded-xl p-3.5 space-y-1 border border-outline/20 bg-surface-container-low/70">
-            <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">ATR Volatility (14)</span>
-            <div className="text-xs font-mono text-[#00dbe7]">
-              {curSymbol}{analysis.atr?.toFixed(2) ?? '—'}
-            </div>
-            <div className="text-[10px] font-mono text-on-surface-variant">
-              {analysis.atr != null && quote?.current_price
-                ? `${((analysis.atr / quote.current_price) * 100).toFixed(2)}% average true range`
-                : 'Volatility Index'}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── 5. ORDER EXECUTION TERMINAL DRAWER ────────────────────────────────── */}
-      {selectedAction && (
-        <div className="glass-panel rounded-xl p-5 border border-[#00dbe7]/40 bg-surface-container-low animate-fade-in shadow-2xl">
-          <div className="flex justify-between items-center border-b border-outline/20 pb-3 mb-4">
-            <h4 className="font-sans font-bold text-sm text-[#00dbe7] uppercase tracking-wider flex items-center gap-2">
-              <span className="material-symbols-outlined text-[#00dbe7] text-base select-none">bolt</span>
-              Order Terminal — {selectedAction} {quote?.symbol ?? symbol}
-            </h4>
-            <button
-              onClick={() => setSelectedAction(null)}
-              className="text-on-surface-variant hover:text-on-surface rounded-full p-1 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-sm select-none">close</span>
-            </button>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
-            <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline/30">
-              <span className="block font-mono text-[10px] text-on-surface-variant uppercase">Execution Price</span>
-              <span className="font-mono text-sm text-on-surface font-bold block mt-1">
-                {curSymbol}{quote?.current_price?.toFixed(2) ?? '—'}
-              </span>
-            </div>
-            <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline/30">
-              <span className="block font-mono text-[10px] text-on-surface-variant uppercase">Available Cash</span>
-              <span className="font-mono text-sm text-[#00dbe7] font-bold block mt-1">
-                {curSymbol}{portfolio.cash?.toFixed(2)}
-              </span>
-            </div>
-            <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline/30">
-              <span className="block font-mono text-[10px] text-on-surface-variant uppercase">Current Holdings</span>
-              <span className="font-mono text-sm text-[#00e476] font-bold block mt-1">
-                {portfolio.shares} shares @ {curSymbol}{portfolio.buyPrice}
-              </span>
-            </div>
-            <div className="flex gap-2">
-              <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline/30 flex-grow flex flex-col justify-center">
-                <span className="block font-mono text-[9px] text-on-surface-variant uppercase leading-none">QTY</span>
-                <input
-                  type="number"
-                  min="1"
-                  max="10000"
-                  value={actionQuantity}
-                  onChange={e => setActionQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="bg-transparent border-none focus:outline-none text-sm font-mono text-on-surface p-0 mt-1 block w-full"
-                />
+            ) : (
+              <div className="p-4 text-center font-mono text-xs text-on-surface-variant animate-pulse">
+                Analyzing indicators...
               </div>
+            )}
+          </div>
+
+          {/* Box 2: Instant Paper Order Ticket */}
+          <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-3 shadow-sm">
+            <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
+              Paper Order Ticket
+            </span>
+
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                <span className="block text-[9px] text-on-surface-variant uppercase">Cash</span>
+                <span className="font-bold text-[#00dbe7]">{curSymbol}{portfolio.cash?.toFixed(0)}</span>
+              </div>
+              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                <span className="block text-[9px] text-on-surface-variant uppercase">Holdings</span>
+                <span className="font-bold text-[#00e476]">{portfolio.shares} shs</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[10px] text-on-surface-variant uppercase">QTY</span>
+              <input
+                type="number"
+                min="1"
+                max="10000"
+                value={actionQuantity}
+                onChange={e => setActionQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-20 bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1 text-xs font-mono text-on-surface text-center"
+              />
+              <span className="font-mono text-[10px] text-on-surface-variant truncate">
+                Total: {curSymbol}{((quote?.current_price ?? 0) * actionQuantity).toFixed(2)}
+              </span>
+            </div>
+
+            <div className="flex gap-2">
               <button
-                onClick={() => executeTrade(selectedAction)}
-                className={`px-6 rounded-lg font-mono text-xs font-bold uppercase tracking-wider cursor-pointer transition-all ${
-                  selectedAction === 'BUY'
-                    ? 'bg-[#00e476] text-[#002812] hover:brightness-110 shadow-[0_0_12px_rgba(0,228,118,0.4)]'
-                    : 'bg-[#ff6b6b] text-[#2c0000] hover:brightness-110 shadow-[0_0_12px_rgba(255,107,107,0.4)]'
-                }`}
+                onClick={() => executeTrade('BUY')}
+                className="flex-1 bg-[#00e476] text-[#002812] font-mono text-xs py-2 rounded-lg font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_10px_rgba(0,228,118,0.3)] transition-all cursor-pointer"
               >
-                Execute
+                BUY
+              </button>
+              <button
+                onClick={() => executeTrade('SELL')}
+                className="flex-1 bg-[#ff6b6b] text-[#2c0000] font-mono text-xs py-2 rounded-lg font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_10px_rgba(255,107,107,0.3)] transition-all cursor-pointer"
+              >
+                SELL
               </button>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ── 6. TRADINGVIEW LIGHTWEIGHT CANDLESTICK CHART ───────────────────────── */}
-      <div className="glass-panel rounded-xl flex-1 flex flex-col overflow-hidden border border-outline/20 bg-surface-container-lowest shadow-md">
-        {/* Chart Header Bar: Timeframes + Overlay Toggles */}
-        <div className="flex flex-wrap justify-between items-center gap-3 p-3 border-b border-outline/10 bg-surface-container-low/60">
-          {/* Timeframe Selectors */}
-          <div className="flex gap-1.5 items-center">
-            {(['1D', '1W', '1M', '1Y'] as const).map(p => (
-              <button
-                key={p}
-                onClick={() => setActivePeriod(p)}
-                className={`px-3 py-1 rounded-md text-xs font-mono transition-all cursor-pointer ${
-                  activePeriod === p
-                    ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.2)]'
-                    : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
-                }`}
-              >
-                {p}
-              </button>
-            ))}
-          </div>
+          {/* Box 3: Compact Technical Indicators Matrix */}
+          <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-2.5 shadow-sm">
+            <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
+              Technical Metrics
+            </span>
 
-          {/* Interactive Chart Overlays */}
-          <div className="flex flex-wrap items-center gap-2">
-            <button
-              onClick={() => setShowEma20(!showEma20)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
-                showEma20
-                  ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold'
-                  : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
-              }`}
-            >
-              {showEma20 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              <span>EMA 20</span>
-            </button>
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                <span className="block text-[9px] text-on-surface-variant uppercase">RSI ({rsiPeriod})</span>
+                <span className={`font-bold ${rsiColor}`}>
+                  {analysis?.rsi != null ? analysis.rsi.toFixed(1) : '—'} <span className="text-[9px] font-normal">({rsiLabel})</span>
+                </span>
+              </div>
 
-            <button
-              onClick={() => setShowEma50(!showEma50)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
-                showEma50
-                  ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 font-bold'
-                  : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
-              }`}
-            >
-              {showEma50 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              <span>EMA 50</span>
-            </button>
+              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                <span className="block text-[9px] text-on-surface-variant uppercase">ADX (14)</span>
+                <span className="font-bold text-[#00e476]">
+                  {analysis?.adx != null ? `${analysis.adx.toFixed(1)}` : '—'} <span className="text-[9px] font-normal">{analysis?.adx && analysis.adx > 25 ? 'Trend' : 'Range'}</span>
+                </span>
+              </div>
 
-            <button
-              onClick={() => setShowVolume(!showVolume)}
-              className={`px-2.5 py-1 rounded-md text-[11px] font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
-                showVolume
-                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40 font-bold'
-                  : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
-              }`}
-            >
-              {showVolume ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-              <span>Volume</span>
-            </button>
-          </div>
-        </div>
+              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                <span className="block text-[9px] text-on-surface-variant uppercase">MACD</span>
+                <span className={`font-bold ${analysis?.macd && analysis?.macd_signal && analysis.macd > analysis.macd_signal ? 'text-[#00e476]' : 'text-[#ff6b6b]'}`}>
+                  {analysis?.macd != null ? analysis.macd.toFixed(2) : '—'}
+                </span>
+              </div>
 
-        {/* Hovered Bar Inspection Pill */}
-        {hoveredBar && (
-          <div className="px-4 py-1.5 bg-surface-container-low border-b border-outline/10 font-mono text-[11px] flex flex-wrap gap-4 text-on-surface-variant">
-            <span className="font-semibold text-on-surface">{hoveredBar.time}</span>
-            <span>O: <span className="text-on-surface font-bold">{curSymbol}{hoveredBar.open.toFixed(2)}</span></span>
-            <span>H: <span className="text-[#00e476] font-bold">{curSymbol}{hoveredBar.high.toFixed(2)}</span></span>
-            <span>L: <span className="text-[#ff6b6b] font-bold">{curSymbol}{hoveredBar.low.toFixed(2)}</span></span>
-            <span>C: <span className="text-[#00dbe7] font-bold">{curSymbol}{hoveredBar.close.toFixed(2)}</span></span>
-            <span>Vol: <span className="text-on-surface font-bold">{hoveredBar.volume.toLocaleString()}</span></span>
-          </div>
-        )}
-
-        {/* Chart Canvas Container */}
-        <div className="relative flex-1 min-h-[380px] p-2 bg-surface-container-lowest">
-          {loading && candles.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center bg-surface-container-lowest/80 z-20 font-mono text-xs text-[#00dbe7] animate-pulse">
-              Initializing TradingView Candlestick Engine...
+              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                <span className="block text-[9px] text-on-surface-variant uppercase">ATR Volatility</span>
+                <span className="font-bold text-[#00dbe7]">
+                  {curSymbol}{analysis?.atr != null ? analysis.atr.toFixed(2) : '—'}
+                </span>
+              </div>
             </div>
-          )}
-          <div ref={chartContainerRef} className="w-full h-full min-h-[380px] [&_a[href*='tradingview']]:!hidden [&_a[title*='TradingView']]:!hidden" />
+          </div>
+
         </div>
+
       </div>
 
-      {/* ── 7. WORKSPACE TERMINAL CONSOLE ────────────────────────────────────── */}
+      {/* ── 3. WORKSPACE TERMINAL CONSOLE ────────────────────────────────────── */}
       <div className={`border border-outline/20 bg-surface-container-lowest rounded-xl flex flex-col overflow-hidden transition-all duration-300 ${
-        isTerminalCollapsed ? 'h-9 shrink-0' : 'h-48'
+        isTerminalCollapsed ? 'h-9 shrink-0' : 'h-40'
       }`}>
         <div
           onClick={() => setIsTerminalCollapsed(!isTerminalCollapsed)}
@@ -1202,11 +1116,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
             {activeTab === 'OUTPUT' && (
               <div className="text-on-surface-variant space-y-0.5">
-                <div>&gt; SutharLabs Trading Engine v2.0 (Lightweight Charts Edition) connected</div>
-                <div>&gt; Multi-Market Universes active: India (NSE), US (NYSE/NASDAQ), Europe (LSE/DAX), China/HK, Japan (TSE)</div>
-                <div>&gt; Technical Indicator Engine: RSI, MACD, Bollinger Bands, ATR, ADX, EMA (20/50 overlays)</div>
-                <div>&gt; Signal Engine: Pluggable Multi-Strategy Condition Matrix</div>
-                <div className="text-[#00e476]">&gt; Status: All global market feed adapters online</div>
+                <div>&gt; SutharLabs Trading Engine v2.0 connected</div>
+                <div>&gt; Data Feed Source: {selectedDataSource} (Multi-Market Feed Router)</div>
+                <div>&gt; Indicators: RSI({rsiPeriod}), MACD, BB({bbPeriod}, {bbStdDev}), ATR, ADX, EMA (20/50 Overlays)</div>
+                <div>&gt; Active Period: {activePeriod} (Extended History Enabled)</div>
+                <div className="text-[#00e476]">&gt; Status: Real-time tick engine running normally</div>
               </div>
             )}
 
@@ -1230,6 +1144,247 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </div>
         )}
       </div>
+
+      {/* ── 4. STATE-OF-THE-ART SLIDING SETTINGS OVERLAY PANEL ───────────────── */}
+      {showSettingsDrawer && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          {/* Backdrop blur */}
+          <div
+            onClick={() => setShowSettingsDrawer(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
+          />
+
+          {/* Drawer container */}
+          <div className="relative w-full max-w-md bg-surface-container border-l border-outline/30 p-6 flex flex-col shadow-2xl z-10 overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-300">
+            
+            {/* Header */}
+            <div className="flex justify-between items-center border-b border-outline/20 pb-4 mb-5">
+              <div className="flex items-center gap-2.5">
+                <Sliders className="w-5 h-5 text-[#00dbe7]" />
+                <h3 className="font-sans font-bold text-base text-on-surface">
+                  Tracker Settings & Config
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowSettingsDrawer(false)}
+                className="p-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Drawer Navigation Tabs */}
+            <div className="flex gap-2 border-b border-outline/20 pb-3 mb-5 overflow-x-auto custom-scrollbar">
+              {(['FEEDS', 'INDICATORS', 'TRADING', 'PERFORMANCE'] as const).map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setSettingsActiveTab(tab)}
+                  className={`px-3 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer whitespace-nowrap ${
+                    settingsActiveTab === tab
+                      ? 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/40 font-bold'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  {tab === 'FEEDS' && 'Data Feeds'}
+                  {tab === 'INDICATORS' && 'Indicators'}
+                  {tab === 'TRADING' && 'Order Rules'}
+                  {tab === 'PERFORMANCE' && 'Performance'}
+                </button>
+              ))}
+            </div>
+
+            {/* TAB 1: DATA FEEDS & PROVIDER TOGGLE */}
+            {settingsActiveTab === 'FEEDS' && (
+              <div className="flex flex-col gap-4 text-xs font-mono">
+                <div className="flex flex-col gap-2">
+                  <span className="text-on-surface font-semibold flex items-center gap-1.5">
+                    <Database className="w-3.5 h-3.5 text-[#00dbe7]" />
+                    Primary Market Feed Engine
+                  </span>
+                  <p className="text-[11px] text-on-surface-variant font-sans">
+                    Choose which provider feed to route market queries through. Indian NSE/BSE symbols can be routed through Yahoo Finance or direct Broker APIs.
+                  </p>
+
+                  <div className="flex flex-col gap-2 mt-2">
+                    {[
+                      { id: 'YAHOO', name: 'Yahoo Finance Engine', badge: 'Active (Global Free)', desc: 'Global multi-asset coverage across NSE, US, LSE, HKEX, TSE' },
+                      { id: 'UPSTOX', name: 'Upstox Uplink API', badge: 'Configurable', desc: 'Direct Indian broker streaming WebSocket ticks' },
+                      { id: 'ANGELONE', name: 'Angel One SmartAPI', badge: 'Configurable', desc: 'Direct Indian broker WebSocket tick stream' },
+                      { id: 'DHAN', name: 'DhanHQ Developer API', badge: 'Configurable', desc: 'Low-latency tick-by-tick feed for Indian markets' },
+                      { id: 'FINNHUB', name: 'Finnhub Realtime', badge: 'Configurable', desc: 'US Real-time IEX & WebSocket feed' }
+                    ].map(src => (
+                      <div
+                        key={src.id}
+                        onClick={() => setSelectedDataSource(src.id)}
+                        className={`p-3 rounded-lg border transition-all cursor-pointer flex flex-col gap-1 ${
+                          selectedDataSource === src.id
+                            ? 'bg-[#00dbe7]/10 border-[#00dbe7] shadow-[0_0_8px_rgba(0,219,231,0.2)]'
+                            : 'bg-surface-container-low border-outline/20 hover:border-outline/40'
+                        }`}
+                      >
+                        <div className="flex justify-between items-center">
+                          <span className="font-bold text-on-surface">{src.name}</span>
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded ${selectedDataSource === src.id ? 'bg-[#00dbe7]/20 text-[#00dbe7] font-bold' : 'bg-surface-container-high text-on-surface-variant'}`}>
+                            {src.badge}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-on-surface-variant font-sans">{src.desc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2 border-t border-outline/10 pt-4">
+                  <span className="text-on-surface font-semibold">Quote Polling Refresh Rate</span>
+                  <div className="flex gap-2">
+                    {[10, 30, 60, 0].map(sec => (
+                      <button
+                        key={sec}
+                        onClick={() => setPollIntervalSec(sec)}
+                        className={`flex-1 py-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer ${
+                          pollIntervalSec === sec
+                            ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#00dbe7] font-bold'
+                            : 'bg-surface-container-low border-outline/20 text-on-surface-variant'
+                        }`}
+                      >
+                        {sec === 0 ? 'Manual' : `${sec}s`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: INDICATOR PARAMETERS */}
+            {settingsActiveTab === 'INDICATORS' && (
+              <div className="flex flex-col gap-4 text-xs font-mono">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-on-surface font-semibold">RSI Period ({rsiPeriod})</label>
+                  <input
+                    type="range"
+                    min="5"
+                    max="35"
+                    value={rsiPeriod}
+                    onChange={e => setRsiPeriod(parseInt(e.target.value) || 14)}
+                    className="w-full accent-[#00dbe7]"
+                  />
+                  <div className="flex justify-between text-[10px] text-on-surface-variant">
+                    <span>5 (Fast/Sensitive)</span>
+                    <span>14 (Standard)</span>
+                    <span>35 (Slow)</span>
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-on-surface font-semibold">Bollinger Bands Period ({bbPeriod})</label>
+                  <input
+                    type="range"
+                    min="10"
+                    max="50"
+                    value={bbPeriod}
+                    onChange={e => setBbPeriod(parseInt(e.target.value) || 20)}
+                    className="w-full accent-[#00dbe7]"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-on-surface font-semibold">Bollinger StdDev ({bbStdDev})</label>
+                  <input
+                    type="range"
+                    step="0.5"
+                    min="1"
+                    max="3.5"
+                    value={bbStdDev}
+                    onChange={e => setBbStdDev(parseFloat(e.target.value) || 2)}
+                    className="w-full accent-[#00dbe7]"
+                  />
+                </div>
+
+                <button
+                  onClick={() => {
+                    fetchAll(symbol, activePeriod);
+                    setNotification('Parameters recalculated!');
+                    setTimeout(() => setNotification(''), 3000);
+                  }}
+                  className="mt-2 py-2 bg-[#00dbe7] text-[#002022] font-bold rounded-lg uppercase tracking-wider hover:brightness-110 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Recalculate Indicator Matrix
+                </button>
+              </div>
+            )}
+
+            {/* TAB 3: TRADING & RISK RULES */}
+            {settingsActiveTab === 'TRADING' && (
+              <div className="flex flex-col gap-4 text-xs font-mono">
+                <div className="bg-surface-container-low p-3 rounded-lg border border-outline/20">
+                  <span className="block text-[10px] text-on-surface-variant uppercase">Sovereign Reporting Currency</span>
+                  <span className="font-bold text-on-surface text-sm mt-1 block">
+                    {universes[activeMarketKey]?.currencyCode} ({curSymbol})
+                  </span>
+                </div>
+
+                <div className="bg-surface-container-low p-3 rounded-lg border border-outline/20 flex flex-col gap-2">
+                  <span className="text-[10px] text-on-surface-variant uppercase">Risk Management Safeguards</span>
+                  <div className="flex justify-between items-center text-on-surface">
+                    <span>Default Stop Loss %</span>
+                    <span className="font-bold text-[#ff6b6b]">3.0%</span>
+                  </div>
+                  <div className="flex justify-between items-center text-on-surface">
+                    <span>Default Profit Target %</span>
+                    <span className="font-bold text-[#00e476]">6.0%</span>
+                  </div>
+                  <div className="flex justify-between items-center text-on-surface">
+                    <span>Calculated R/R Ratio</span>
+                    <span className="font-bold text-[#00dbe7]">2.00 (1:2)</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 4: PERFORMANCE & USER TRACKING */}
+            {settingsActiveTab === 'PERFORMANCE' && (
+              <div className="flex flex-col gap-4 text-xs font-mono">
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-surface-container-low p-3 rounded-lg border border-outline/20">
+                    <span className="block text-[10px] text-on-surface-variant uppercase">Account Value</span>
+                    <span className="font-bold text-on-surface text-sm mt-1 block">
+                      {curSymbol}{(portfolio.cash + (portfolio.shares * (quote?.current_price ?? 0))).toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="bg-surface-container-low p-3 rounded-lg border border-outline/20">
+                    <span className="block text-[10px] text-on-surface-variant uppercase">Paper Trades</span>
+                    <span className="font-bold text-[#00e476] text-sm mt-1 block">
+                      {logs.filter(l => l.message.includes('order executed') || l.message.includes('BUY:') || l.message.includes('SELL:')).length}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="bg-surface-container-low p-3 rounded-lg border border-outline/20">
+                  <span className="block text-[10px] text-on-surface-variant uppercase mb-1">Execution Quality</span>
+                  <div className="flex items-center gap-2 text-xs">
+                    <Activity className="w-4 h-4 text-[#00e476]" />
+                    <span className="text-on-surface">Zero Slippage Simulation • 100% Instant Fill</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setPortfolio({ cash: 10000, shares: 0, buyPrice: 0 });
+                    setNotification('Paper portfolio reset to default!');
+                    setTimeout(() => setNotification(''), 3000);
+                  }}
+                  className="py-2 border border-outline/30 text-on-surface hover:text-white rounded-lg uppercase tracking-wider hover:bg-surface-container-high transition-all cursor-pointer flex items-center justify-center gap-2 mt-4"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Reset Paper Balance
+                </button>
+              </div>
+            )}
+
+          </div>
+        </div>
+      )}
 
     </div>
   );

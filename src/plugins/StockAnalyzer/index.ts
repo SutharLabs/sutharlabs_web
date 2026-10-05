@@ -170,10 +170,13 @@ export async function getQuote(symbol: string) {
 export async function getHistory(symbol: string, period: string = '5d', interval: any = '15m') {
   try {
     const pMap: any = {
-      '1D': { period1: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), interval: '5m' },
-      '1W': { period1: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), interval: '15m' },
-      '1M': { period1: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), interval: '1h' },
-      '1Y': { period1: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), interval: '1d' },
+      '1D':  { period1: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), interval: '5m' },
+      '1W':  { period1: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), interval: '15m' },
+      '1M':  { period1: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), interval: '1h' },
+      '1Y':  { period1: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), interval: '1d' },
+      '5Y':  { period1: new Date(Date.now() - 5 * 365 * 24 * 60 * 60 * 1000), interval: '1wk' },
+      'ALL': { period1: new Date(Date.now() - 25 * 365 * 24 * 60 * 60 * 1000), interval: '1mo' },
+      'MAX': { period1: new Date(Date.now() - 25 * 365 * 24 * 60 * 60 * 1000), interval: '1mo' },
     };
     
     const queryOpts = pMap[period] || pMap['1W'];
