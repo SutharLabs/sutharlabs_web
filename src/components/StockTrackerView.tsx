@@ -2521,63 +2521,76 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           />
 
           {/* Drawer container: Covers 3/4 (75%) of usable space with max-w-6xl */}
-          <div className="relative w-full sm:w-[85vw] md:w-[75vw] lg:w-[75vw] max-w-6xl bg-surface-container border-l border-outline/30 p-6 sm:p-8 flex flex-col shadow-2xl z-10 overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-300">
+          <div className="relative w-full sm:w-[85vw] md:w-[75vw] lg:w-[75vw] max-w-6xl h-full max-h-screen bg-surface-container border-l border-outline/30 flex flex-col shadow-2xl z-10 animate-in slide-in-from-right duration-300">
             
-            {/* Header */}
-            <div className="flex justify-between items-center border-b border-outline/20 pb-4 mb-5">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30">
-                  <Sliders className="w-5 h-5" />
+            {/* Pinned Top Bar: Header & Horizontal Option Tabs (Never scrolled away or hidden) */}
+            <div className="shrink-0 bg-surface-container px-6 sm:px-8 pt-6 sm:pt-7 pb-3 border-b border-outline/20 z-20 flex flex-col gap-4">
+              {/* Header */}
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-xl bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30">
+                    <Sliders className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-sans font-bold text-lg text-on-surface">
+                      Tracker Settings & Workspace Architecture
+                    </h3>
+                    <p className="text-xs text-on-surface-variant font-mono">
+                      All parameters, data feeds, exchange rules, and indicator formulas below are live and editable.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-sans font-bold text-lg text-on-surface">
-                    Tracker Settings & Workspace Architecture
-                  </h3>
-                  <p className="text-xs text-on-surface-variant font-mono">
-                    All parameters, data feeds, exchange rules, and indicator formulas below are live and editable.
-                  </p>
-                </div>
-              </div>
-              <button
-                onClick={() => setShowSettingsDrawer(false)}
-                className="p-1.5 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Drawer Navigation Tabs */}
-            <div className="flex gap-2 border-b border-outline/20 pb-3 mb-6 overflow-x-auto custom-scrollbar">
-              {(['WATCHLISTS', 'MARKET', 'FEEDS', 'INDICATORS', 'TRADING', 'PERFORMANCE'] as const).map(tab => (
                 <button
-                  key={tab}
-                  onClick={() => setSettingsActiveTab(tab)}
-                  className={`px-4 py-2 rounded-xl text-xs font-mono transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
-                    settingsActiveTab === tab
-                      ? 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/40 font-bold shadow-sm'
-                      : 'text-on-surface-variant hover:text-on-surface bg-surface-container-low border border-transparent'
-                  }`}
+                  onClick={() => setShowSettingsDrawer(false)}
+                  className="p-1.5 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+                  title="Close settings"
                 >
-                  {tab === 'WATCHLISTS' && <Bookmark className="w-3.5 h-3.5" />}
-                  {tab === 'MARKET' && <Globe className="w-3.5 h-3.5" />}
-                  {tab === 'FEEDS' && <Database className="w-3.5 h-3.5" />}
-                  {tab === 'INDICATORS' && <Layers className="w-3.5 h-3.5" />}
-                  {tab === 'TRADING' && <Shield className="w-3.5 h-3.5" />}
-                  {tab === 'PERFORMANCE' && <Award className="w-3.5 h-3.5" />}
-                  <span>
-                    {tab === 'WATCHLISTS' && 'Custom Watchlists'}
-                    {tab === 'MARKET' && 'Market Universes'}
-                    {tab === 'FEEDS' && 'Data Feeds & Brokers'}
-                    {tab === 'INDICATORS' && 'Indicator Mathematics'}
-                    {tab === 'TRADING' && 'Order & Risk Rules'}
-                    {tab === 'PERFORMANCE' && 'Performance Analytics'}
-                  </span>
+                  <X className="w-5 h-5" />
                 </button>
-              ))}
+              </div>
+
+              {/* Horizontal Option Tabs Bar (Protected against vertical shift & smoothly scrollable) */}
+              <div
+                onWheel={(e) => {
+                  if (e.deltaY !== 0 && e.currentTarget) {
+                    e.currentTarget.scrollLeft += e.deltaY;
+                  }
+                }}
+                className="flex items-center gap-2 overflow-x-auto overflow-y-hidden custom-scrollbar py-1 shrink-0"
+              >
+                {(['WATCHLISTS', 'MARKET', 'FEEDS', 'INDICATORS', 'TRADING', 'PERFORMANCE'] as const).map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setSettingsActiveTab(tab)}
+                    className={`px-4 py-2 rounded-xl text-xs font-mono transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 shrink-0 ${
+                      settingsActiveTab === tab
+                        ? 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/40 font-bold shadow-sm'
+                        : 'text-on-surface-variant hover:text-on-surface bg-surface-container-low border border-transparent'
+                    }`}
+                  >
+                    {tab === 'WATCHLISTS' && <Bookmark className="w-3.5 h-3.5" />}
+                    {tab === 'MARKET' && <Globe className="w-3.5 h-3.5" />}
+                    {tab === 'FEEDS' && <Database className="w-3.5 h-3.5" />}
+                    {tab === 'INDICATORS' && <Layers className="w-3.5 h-3.5" />}
+                    {tab === 'TRADING' && <Shield className="w-3.5 h-3.5" />}
+                    {tab === 'PERFORMANCE' && <Award className="w-3.5 h-3.5" />}
+                    <span>
+                      {tab === 'WATCHLISTS' && 'Custom Watchlists'}
+                      {tab === 'MARKET' && 'Market Universes'}
+                      {tab === 'FEEDS' && 'Data Feeds & Brokers'}
+                      {tab === 'INDICATORS' && 'Indicator Mathematics'}
+                      {tab === 'TRADING' && 'Order & Risk Rules'}
+                      {tab === 'PERFORMANCE' && 'Performance Analytics'}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
-            {/* TAB: CUSTOM WATCHLISTS MANAGEMENT HUB */}
-            {settingsActiveTab === 'WATCHLISTS' && (
+            {/* Scrollable Content Body for Active Tab */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-6 sm:p-8">
+              {/* TAB: CUSTOM WATCHLISTS MANAGEMENT HUB */}
+              {settingsActiveTab === 'WATCHLISTS' && (
               <div className="flex flex-col gap-6 text-xs font-mono">
                 {/* Header & New Watchlist Form */}
                 <div className="flex flex-col gap-2">
@@ -3503,6 +3516,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
             )}
 
+            </div>
           </div>
         </div>
       )}
