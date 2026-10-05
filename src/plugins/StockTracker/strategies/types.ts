@@ -31,6 +31,24 @@ export interface StrategySignal {
   timestamp: string;
   reasoning: string[];
   metrics?: Record<string, number | string | boolean | undefined>;
+  sentimentConfluence?: {
+    originalSignal: 'BUY' | 'SELL' | 'HOLD';
+    originalConfidence: number;
+    finalSignal: 'BUY' | 'SELL' | 'HOLD';
+    finalConfidence: number;
+    sentimentScore: number;
+    sentimentVerdict: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+    confluenceEffect: 'BOOST' | 'PENALTY' | 'CIRCUIT_BREAKER' | 'NEUTRAL';
+    explanation: string;
+  };
+  sentimentReport?: {
+    score: number;
+    verdict: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+    catalystSummary: string;
+    primaryCatalyst: string;
+    circuitBreakerRecommended: boolean;
+    analyzedBy: 'GEMINI_AI' | 'AUTONOMOUS_RULE_ENGINE';
+  };
 }
 
 export interface IStrategy {

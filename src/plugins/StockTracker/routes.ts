@@ -23,6 +23,7 @@ import {
 } from "./strategies/store.js";
 import { evaluateStrategy } from "./strategies/engine.js";
 import { PRESET_STRATEGIES } from "./strategies/presets.js";
+import { fetchStockNews, analyzeStockSentiment } from "./news/index.js";
 
 export interface WatchlistItem {
   symbol: string;
@@ -546,12 +547,74 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // GET /strategy-signal (Real-time algorithmic execution on target stock)
+  // GET /news (Real-time financial headlines from Yahoo Finance & Google News)
+  router.get("/news", async (req: any, res: any) => {
+    try {
+      const symbol = req.query.symbol as string;
+      const market = (req.query.market as string) || (req.query.region as string) || 'GLOBAL';
+      const companyName = req.query.companyName as string;
+
+      if (!symbol) {
+        return res.status(400).json({ error: "Stock symbol is required" });
+      }
+
+      const articles = await fetchStockNews({
+        symbol,
+        companyName,
+        market
+      });
+
+      res.json({
+        symbol,
+        count: articles.length,
+        articles
+      });
+    } catch (e: any) {
+      console.error("[Stock News API] Error:", e);
+      res.status(500).json({ error: e.message || "Failed to fetch stock news" });
+    }
+  });
+
+  // GET /news-sentiment (Gemini AI or Autonomous Lexicon polarity and catalyst analysis)
+  router.get("/news-sentiment", async (req: any, res: any) => {
+    try {
+      const symbol = req.query.symbol as string;
+      const market = (req.query.market as string) || (req.query.region as string) || 'GLOBAL';
+      const companyName = req.query.companyName as string;
+
+      if (!symbol) {
+        return res.status(400).json({ error: "Stock symbol is required" });
+      }
+
+      const articles = await fetchStockNews({
+        symbol,
+        companyName,
+        market
+      });
+
+      const sentiment = await analyzeStockSentiment({
+        symbol,
+        articles
+      });
+
+      res.json({
+        symbol,
+        sentiment,
+        articles
+      });
+    } catch (e: any) {
+      console.error("[Stock Sentiment API] Error:", e);
+      res.status(500).json({ error: e.message || "Failed to analyze stock news sentiment" });
+    }
+  });
+
+  // GET /strategy-signal (Real-time algorithmic execution on target stock with AI Sentiment Confluence)
   router.get("/strategy-signal", async (req: any, res: any) => {
     try {
       const symbol = req.query.symbol as string;
       const strategyId = (req.query.strategyId as string) || 'strat-ema-cross';
       const region = (req.query.region as string) || 'IN';
+      const includeSentiment = req.query.includeSentiment === 'true' || req.query.withSentiment === 'true';
 
       if (!symbol) {
         return res.status(400).json({ error: "Stock symbol is required" });
@@ -581,7 +644,25 @@ export function registerRoutes(router: Router) {
         }
       }
 
-      const signal = evaluateStrategy(strategy, candles, quote, paramOverrides);
+      // Optionally fetch and incorporate news sentiment
+      let sentimentReport;
+      if (includeSentiment) {
+        try {
+          const articles = await fetchStockNews({
+            symbol: normalizedSym,
+            companyName: quote?.name,
+            market: region
+          });
+          sentimentReport = await analyzeStockSentiment({
+            symbol: normalizedSym,
+            articles
+          });
+        } catch (sentErr) {
+          console.warn("[Strategy Signal] Failed to load news sentiment for confluence:", sentErr);
+        }
+      }
+
+      const signal = evaluateStrategy(strategy, candles, quote, paramOverrides, sentimentReport);
       res.json(signal);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -591,7 +672,7 @@ export function registerRoutes(router: Router) {
   // POST /strategy-eval (Evaluate custom or draft strategy in sandbox before saving)
   router.post("/strategy-eval", async (req: any, res: any) => {
     try {
-      const { strategy, symbol, region, paramOverrides } = req.body;
+      const { strategy, symbol, region, paramOverrides, includeSentiment } = req.body;
       const targetRegion = region || 'IN';
 
       if (!symbol) {
@@ -614,7 +695,24 @@ export function registerRoutes(router: Router) {
         volume: c.volume
       }));
 
-      const signal = evaluateStrategy(strategy, candles, quote, paramOverrides || {});
+      let sentimentReport;
+      if (includeSentiment) {
+        try {
+          const articles = await fetchStockNews({
+            symbol: normalizedSym,
+            companyName: quote?.name,
+            market: targetRegion
+          });
+          sentimentReport = await analyzeStockSentiment({
+            symbol: normalizedSym,
+            articles
+          });
+        } catch (sentErr) {
+          console.warn("[Strategy Eval] Sentiment analysis skipped:", sentErr);
+        }
+      }
+
+      const signal = evaluateStrategy(strategy, candles, quote, paramOverrides || {}, sentimentReport);
       res.json(signal);
     } catch (e: any) {
       res.status(500).json({ error: e.message });

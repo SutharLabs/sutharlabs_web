@@ -34,7 +34,12 @@ import {
   Copy,
   Play,
   ArrowRight,
-  Filter
+  Filter,
+  Newspaper,
+  Sparkles,
+  ExternalLink,
+  Zap,
+  AlertTriangle
 } from 'lucide-react';
 import {
   createChart,
@@ -49,6 +54,7 @@ import {
 import { TerminalLog, UserPortfolio } from '../types';
 import { IStrategy, StrategySignal, StrategyRuleCondition, StrategyParameter } from '../plugins/StockTracker/strategies/types';
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
+import { StockNewsArticle, StockSentimentReport } from '../plugins/StockTracker/news/types';
 
 
 interface StockTrackerViewProps {
@@ -384,6 +390,22 @@ export function formatTickerDisplay(rawSymbol: string, exchangeName?: string): {
 
   const exch = (exchangeName && exchangeName !== 'UNKNOWN') ? exchangeName : 'NASDAQ';
   return { displaySymbol: `${sym} (${exch})`, cleanSymbol: sym, exchange: exch };
+}
+
+export function formatRelativeTime(isoString: string): string {
+  try {
+    const diffMs = Date.now() - new Date(isoString).getTime();
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return `${Math.max(1, diffSec)}s ago`;
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHrs = Math.floor(diffMin / 60);
+    if (diffHrs < 24) return `${diffHrs}h ago`;
+    const diffDays = Math.floor(diffHrs / 24);
+    return `${diffDays}d ago`;
+  } catch {
+    return 'Recently';
+  }
 }
 
 export function normalizeTicker(symbol: string, defaultRegion: string = 'IN'): string {
@@ -795,16 +817,22 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   }, [symbol, activeMarketKey, builderEditingId, builderName, builderDesc, builderMarket, builderTimeframe, builderParameters, builderEntryConditions, builderExitConditions]);
 
 
-  // Main Workspace Right Panel View Mode: WATCHLIST (Default) | TELEMETRY | ORDER
-  const [rightPanelTab, setRightPanelTab] = useState<'WATCHLIST' | 'TELEMETRY' | 'ORDER'>('WATCHLIST');
+  // Main Workspace Right Panel View Mode: WATCHLIST (Default) | TELEMETRY | NEWS | ORDER
+  const [rightPanelTab, setRightPanelTab] = useState<'WATCHLIST' | 'TELEMETRY' | 'NEWS' | 'ORDER'>('WATCHLIST');
   const [watchlistQuotes, setWatchlistQuotes] = useState<Record<string, Quote>>({});
   const [loadingWatchlistQuotes, setLoadingWatchlistQuotes] = useState<boolean>(false);
   const [watchlistSearchFilter, setWatchlistSearchFilter] = useState<string>('');
   const [watchlistSortBy, setWatchlistSortBy] = useState<'DEFAULT' | 'CHANGE_DESC' | 'CHANGE_ASC' | 'PRICE_DESC'>('DEFAULT');
 
+  // ── Real-Time Financial News & AI Sentiment Stream (Stage 3) ──
+  const [newsArticles, setNewsArticles] = useState<StockNewsArticle[]>([]);
+  const [sentimentReport, setSentimentReport] = useState<StockSentimentReport | null>(null);
+  const [loadingNews, setLoadingNews] = useState<boolean>(false);
+  const [newsSearchFilter, setNewsSearchFilter] = useState<string>('');
+
   // Sliding Settings Overlay
   const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
-  const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'FEEDS' | 'INDICATORS' | 'STRATEGIES' | 'TRADING' | 'PERFORMANCE'>('WATCHLISTS');
+  const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'STRATEGIES' | 'NEWS_AI' | 'INDICATORS' | 'TRADING' | 'FEEDS' | 'PERFORMANCE'>('WATCHLISTS');
 
   // Editable Data Feed Settings
   const [selectedDataSource, setSelectedDataSource] = useState<string>('YAHOO');
@@ -1013,6 +1041,33 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       .catch(() => {});
   }, [userEmail, userToken]);
 
+  // ── Stage 3: Real-Time News & AI Sentiment Fetcher ─────────
+  const fetchNewsAndSentiment = useCallback(async (sym: string, marketKey: string, company?: string) => {
+    if (!sym) return;
+    setLoadingNews(true);
+    try {
+      const normalizedSym = normalizeTicker(sym, marketKey);
+      const url = `${STOCK_API}/news-sentiment?symbol=${encodeURIComponent(normalizedSym)}&market=${marketKey}${company ? `&companyName=${encodeURIComponent(company)}` : ''}`;
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        setNewsArticles(data.articles || []);
+        setSentimentReport(data.sentiment || null);
+        if (data.sentiment) {
+          onAddLogRef.current({
+            timestamp: new Date().toLocaleTimeString(),
+            type: data.sentiment.verdict === 'BULLISH' ? 'SUCCESS' : data.sentiment.verdict === 'BEARISH' ? 'ALERT' : 'INFO',
+            message: `AI SENTIMENT [${data.sentiment.analyzedBy === 'GEMINI_AI' ? 'Gemini AI' : 'Autonomous Engine'}]: ${data.sentiment.cleanSymbol} → ${data.sentiment.verdict} (${data.sentiment.score > 0 ? '+' : ''}${data.sentiment.score}) | Catalyst: ${data.sentiment.primaryCatalyst}`
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[StockTracker] News sentiment fetch error:', err);
+    } finally {
+      setLoadingNews(false);
+    }
+  }, []);
+
   // ── 3. Core Data Fetch Pipeline with Real Exchange Formatting ──────────────────
   const fetchAll = useCallback(async (sym: string, period: string) => {
     setLoading(true);
@@ -1057,9 +1112,12 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         }
       }
 
-      // 4. Algorithmic Strategy Signal Execution
+      // 4. Real-Time News & AI Sentiment Stream (Stage 3)
+      fetchNewsAndSentiment(sym, activeMarketKey, fetchedQuote?.name);
+
+      // 5. Algorithmic Strategy Signal Execution with AI Sentiment Confluence
       try {
-        const stratRes = await fetch(`${STOCK_API}/strategy-signal?symbol=${encodeURIComponent(normalizedSym)}&strategyId=${selectedStrategyId}&region=${activeMarketKey}`);
+        const stratRes = await fetch(`${STOCK_API}/strategy-signal?symbol=${encodeURIComponent(normalizedSym)}&strategyId=${selectedStrategyId}&region=${activeMarketKey}&includeSentiment=true`);
         if (stratRes.ok) {
           const sig: StrategySignal = await stratRes.json();
           setStrategySignal(sig);
@@ -1105,7 +1163,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     const displaySym = formatTickerDisplay(symbol).displaySymbol;
     let isCancelled = false;
     setLoadingStrategySignal(true);
-    fetch(`${STOCK_API}/strategy-signal?symbol=${encodeURIComponent(normalizedSym)}&strategyId=${selectedStrategyId}&region=${activeMarketKey}`)
+    fetch(`${STOCK_API}/strategy-signal?symbol=${encodeURIComponent(normalizedSym)}&strategyId=${selectedStrategyId}&region=${activeMarketKey}&includeSentiment=true`)
       .then(res => res.ok ? res.json() : null)
       .then((sig: StrategySignal | null) => {
         if (isCancelled || !sig) return;
@@ -2217,6 +2275,28 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     [{quote.exchange}]
                   </span>
                 )}
+                {sentimentReport && (
+                  <button
+                    onClick={() => setRightPanelTab('NEWS')}
+                    className={`px-2 py-0.5 rounded-full font-mono text-[10px] font-bold border flex items-center gap-1 transition-all cursor-pointer ${
+                      sentimentReport.verdict === 'BULLISH'
+                        ? 'bg-[#00e476]/15 text-[#00e476] border-[#00e476]/30 hover:bg-[#00e476]/25'
+                        : sentimentReport.verdict === 'BEARISH'
+                        ? 'bg-[#ff6b6b]/15 text-[#ff6b6b] border-[#ff6b6b]/30 hover:bg-[#ff6b6b]/25'
+                        : 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/30 hover:bg-[#00dbe7]/25'
+                    }`}
+                    title={`Live News Sentiment: ${sentimentReport.verdict} (${sentimentReport.score > 0 ? '+' : ''}${sentimentReport.score}). Click to open News & AI Drawer.`}
+                  >
+                    <Newspaper className="w-3 h-3" />
+                    <span>{sentimentReport.verdict} ({sentimentReport.score > 0 ? '+' : ''}${sentimentReport.score.toFixed(2)})</span>
+                    {sentimentReport.circuitBreakerRecommended && (
+                      <span className="text-[#ffb74d] ml-0.5 flex items-center gap-0.5">
+                        <AlertTriangle className="w-2.5 h-2.5 text-[#ffb74d]" />
+                        <span>Circuit Breaker</span>
+                      </span>
+                    )}
+                  </button>
+                )}
               </div>
 
               {hoveredBar ? (
@@ -2251,7 +2331,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         {/* SIDEBAR COLUMN: Stacks on right in Standard View (4 cols); Moves below in 3-col row when Full View (12 cols) */}
         <div className={`${isChartExpanded ? 'lg:col-span-12' : 'lg:col-span-4'} flex flex-col gap-3 transition-all duration-300`}>
           
-          {/* Right Column Mode Switcher: WATCHLIST (Default) | TECHNICALS | ORDER */}
+          {/* Right Column Mode Switcher: WATCHLIST (Default) | TECHNICALS | NEWS & AI | ORDER */}
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-low border border-outline/20 select-none">
             <button
               onClick={() => setRightPanelTab('WATCHLIST')}
@@ -2262,7 +2342,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               }`}
             >
               <Bookmark className="w-3.5 h-3.5" />
-              <span>Watchlist ({activeWatchlist.symbols.length})</span>
+              <span>Watchlist</span>
             </button>
             <button
               onClick={() => setRightPanelTab('TELEMETRY')}
@@ -2276,6 +2356,21 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               <span>Technicals</span>
             </button>
             <button
+              onClick={() => setRightPanelTab('NEWS')}
+              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                rightPanelTab === 'NEWS'
+                  ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+              }`}
+            >
+              <Newspaper className="w-3.5 h-3.5" />
+              <span>News & AI {sentimentReport && (
+                <span className={`w-2 h-2 rounded-full inline-block ${
+                  sentimentReport.verdict === 'BULLISH' ? 'bg-[#00e476]' : sentimentReport.verdict === 'BEARISH' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'
+                }`} />
+              )}</span>
+            </button>
+            <button
               onClick={() => setRightPanelTab('ORDER')}
               className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 rightPanelTab === 'ORDER'
@@ -2284,7 +2379,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               }`}
             >
               <Shield className="w-3.5 h-3.5" />
-              <span>Trade Order</span>
+              <span>Order</span>
             </button>
           </div>
 
@@ -2698,6 +2793,32 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                         )}
                       </div>
                     )}
+
+                    {/* AI Sentiment Confluence Factor (Stage 3 Integration) */}
+                    {strategySignal?.sentimentConfluence && (
+                      <div className="border-t border-outline/10 pt-2 flex flex-col gap-1.5 text-[10px] font-mono">
+                        <div className="flex justify-between items-center">
+                          <span className="text-on-surface-variant flex items-center gap-1 font-semibold">
+                            <Sparkles className="w-3 h-3 text-[#00dbe7]" />
+                            AI News Confluence:
+                          </span>
+                          <span className={`px-1.5 py-0.5 rounded font-bold ${
+                            strategySignal.sentimentConfluence.confluenceEffect === 'BOOST'
+                              ? 'bg-[#00e476]/20 text-[#00e476]'
+                              : strategySignal.sentimentConfluence.confluenceEffect === 'CIRCUIT_BREAKER'
+                              ? 'bg-[#ff6b6b]/25 text-[#ff6b6b] animate-pulse'
+                              : strategySignal.sentimentConfluence.confluenceEffect === 'PENALTY'
+                              ? 'bg-[#ffb74d]/20 text-[#ffb74d]'
+                              : 'bg-surface-container-high text-on-surface-variant'
+                          }`}>
+                            {strategySignal.sentimentConfluence.confluenceEffect} ({strategySignal.sentimentConfluence.sentimentScore > 0 ? '+' : ''}{strategySignal.sentimentConfluence.sentimentScore.toFixed(2)})
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-on-surface-variant/90 leading-relaxed italic">
+                          {strategySignal.sentimentConfluence.explanation}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="p-4 text-center font-mono text-xs text-on-surface-variant animate-pulse">
@@ -2746,7 +2867,240 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             </div>
           )}
 
-          {/* ── TAB 3: INSTANT PAPER ORDER TICKET & PORTFOLIO ── */}
+          {/* ── TAB 3: LIVE FINANCIAL NEWS & AI SENTIMENT STREAM (STAGE 3) ── */}
+          {rightPanelTab === 'NEWS' && (
+            <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/95 flex flex-col gap-3.5 shadow-md">
+              
+              {/* Header with Stock Symbol and Live Refresh Button */}
+              <div className="flex justify-between items-center pb-2 border-b border-outline/10">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 rounded-lg bg-[#00dbe7]/15 text-[#00dbe7]">
+                    <Newspaper className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-mono font-bold text-on-surface">
+                      News & AI Sentiment
+                    </h4>
+                    <span className="text-[10px] font-mono text-on-surface-variant">
+                      {quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => fetchNewsAndSentiment(symbol, activeMarketKey, quote?.name)}
+                    disabled={loadingNews}
+                    className="p-1.5 rounded-lg bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] text-on-surface-variant hover:text-[#00dbe7] transition-all cursor-pointer"
+                    title="Refresh Live Financial News & Re-analyze Sentiment"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingNews ? 'animate-spin text-[#00dbe7]' : ''}`} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSettingsActiveTab('NEWS_AI');
+                      setShowSettingsDrawer(true);
+                    }}
+                    className="text-[10px] font-mono px-2 py-1 rounded bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/30 hover:bg-[#00dbe7]/20 transition-all flex items-center gap-1 cursor-pointer"
+                    title="Open Detailed Sentiment & Catalyst Hub"
+                  >
+                    <Sparkles className="w-3 h-3" />
+                    <span>Deep Dive</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Overall Sentiment Polarity & Catalyst Summary Card */}
+              {sentimentReport ? (
+                <div className={`p-3.5 rounded-xl border flex flex-col gap-2.5 transition-all ${
+                  sentimentReport.verdict === 'BULLISH'
+                    ? 'bg-[#00e476]/10 border-[#00e476]/30'
+                    : sentimentReport.verdict === 'BEARISH'
+                    ? 'bg-[#ff6b6b]/10 border-[#ff6b6b]/30'
+                    : 'bg-[#00dbe7]/10 border-[#00dbe7]/30'
+                }`}>
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase tracking-wider text-on-surface-variant block">
+                        Net Market Polarity
+                      </span>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className={`text-2xl font-mono font-black ${
+                          sentimentReport.verdict === 'BULLISH'
+                            ? 'text-[#00e476]'
+                            : sentimentReport.verdict === 'BEARISH'
+                            ? 'text-[#ff6b6b]'
+                            : 'text-[#00dbe7]'
+                        }`}>
+                          {sentimentReport.verdict}
+                        </span>
+                        <span className="text-xs font-mono font-bold text-on-surface px-1.5 py-0.5 rounded bg-surface-container">
+                          {sentimentReport.score > 0 ? '+' : ''}{sentimentReport.score.toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant flex items-center gap-1">
+                        {sentimentReport.analyzedBy === 'GEMINI_AI' ? (
+                          <>
+                            <Sparkles className="w-3 h-3 text-[#00dbe7]" />
+                            <span>Gemini AI</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-3 h-3 text-amber-400" />
+                            <span>Autonomous Engine</span>
+                          </>
+                        )}
+                      </span>
+                      <span className="text-[10px] font-mono text-on-surface-variant">
+                        {((sentimentReport.confidence || 0) * 100).toFixed(0)}% Confidence
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Dual-sided Polarity Gauge Bar (-1.0 to +1.0) */}
+                  <div className="flex flex-col gap-1">
+                    <div className="relative w-full bg-surface-container-high h-2 rounded-full overflow-hidden flex">
+                      {/* Negative half */}
+                      <div className="w-1/2 h-full flex justify-end">
+                        <div
+                          className="h-full bg-[#ff6b6b] transition-all duration-500 rounded-l-full"
+                          style={{
+                            width: sentimentReport.score < 0 ? `${Math.min(100, Math.abs(sentimentReport.score) * 100)}%` : '0%'
+                          }}
+                        />
+                      </div>
+                      {/* Center divider */}
+                      <div className="w-[2px] h-full bg-outline z-10" />
+                      {/* Positive half */}
+                      <div className="w-1/2 h-full flex justify-start">
+                        <div
+                          className="h-full bg-[#00e476] transition-all duration-500 rounded-r-full"
+                          style={{
+                            width: sentimentReport.score > 0 ? `${Math.min(100, sentimentReport.score * 100)}%` : '0%'
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className="flex justify-between text-[9px] font-mono text-on-surface-variant/70">
+                      <span>-1.0 Bearish</span>
+                      <span>0.0 Neutral</span>
+                      <span>+1.0 Bullish</span>
+                    </div>
+                  </div>
+
+                  {/* Emergency Circuit Breaker Alert Banner */}
+                  {sentimentReport.circuitBreakerRecommended && (
+                    <div className="p-2.5 rounded-lg bg-[#ff6b6b]/20 border border-[#ff6b6b]/50 text-[#ff6b6b] text-xs font-mono flex items-start gap-2 animate-pulse">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <div className="flex-1">
+                        <strong className="block font-bold">EMERGENCY CIRCUIT BREAKER ACTIVATED</strong>
+                        <p className="text-[11px] text-on-surface-variant mt-0.5">
+                          {sentimentReport.circuitBreakerReason || 'Severe downside catalyst detected in recent headlines. Algorithmic BUY entries are locked to protect capital.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Catalyst Summary */}
+                  <div className="bg-surface-container-low/80 p-2.5 rounded-lg border border-outline/10 text-xs font-mono flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-[10px] text-on-surface-variant">
+                      <span className="font-semibold uppercase tracking-wider">Primary Catalyst:</span>
+                      <span className="px-1.5 py-0.5 rounded font-bold bg-[#00dbe7]/15 text-[#00dbe7]">
+                        {sentimentReport.primaryCatalyst.replace('_', ' ')}
+                      </span>
+                    </div>
+                    <p className="text-on-surface-variant text-[11px] leading-relaxed mt-0.5">
+                      {sentimentReport.catalystSummary}
+                    </p>
+                  </div>
+                </div>
+              ) : loadingNews ? (
+                <div className="p-6 text-center font-mono text-xs text-on-surface-variant animate-pulse flex flex-col items-center gap-2">
+                  <RefreshCw className="w-5 h-5 animate-spin text-[#00dbe7]" />
+                  <span>Synthesizing live news streams & AI sentiment...</span>
+                </div>
+              ) : null}
+
+              {/* News Search & Filter */}
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    placeholder="Search articles..."
+                    value={newsSearchFilter}
+                    onChange={e => setNewsSearchFilter(e.target.value)}
+                    className="w-full bg-surface-container-low border border-outline/25 rounded-lg px-2.5 py-1 text-xs font-mono text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-[#00dbe7]"
+                  />
+                  {newsSearchFilter && (
+                    <button
+                      onClick={() => setNewsSearchFilter('')}
+                      className="absolute right-2 top-1.5 text-on-surface-variant hover:text-on-surface cursor-pointer"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+                <span className="text-[10px] font-mono text-on-surface-variant whitespace-nowrap">
+                  {newsArticles.length} stories
+                </span>
+              </div>
+
+              {/* Scrollable News Articles Stream */}
+              <div className="flex flex-col gap-2 max-h-[460px] overflow-y-auto custom-scrollbar pr-1">
+                {newsArticles.length === 0 ? (
+                  <div className="p-6 text-center text-xs font-mono text-on-surface-variant/70 border border-dashed border-outline/20 rounded-xl">
+                    {loadingNews ? 'Fetching live news...' : 'No news stories found for this symbol.'}
+                  </div>
+                ) : (
+                  newsArticles
+                    .filter(a => {
+                      if (!newsSearchFilter.trim()) return true;
+                      const q = newsSearchFilter.toLowerCase();
+                      return a.title.toLowerCase().includes(q) || a.publisher.toLowerCase().includes(q) || (a.summary && a.summary.toLowerCase().includes(q));
+                    })
+                    .slice(0, 25)
+                    .map(art => {
+                      return (
+                        <a
+                          key={art.id}
+                          href={art.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-2.5 rounded-lg bg-surface-container-low/70 border border-outline/15 hover:border-[#00dbe7]/50 hover:bg-surface-container-low transition-all flex flex-col gap-1.5 group cursor-pointer"
+                        >
+                          <div className="flex items-center justify-between text-[10px] font-mono text-on-surface-variant">
+                            <span className="font-semibold text-on-surface flex items-center gap-1">
+                              <Newspaper className="w-3 h-3 text-[#00dbe7]" />
+                              {art.publisher}
+                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span>{formatRelativeTime(art.publishedAt)}</span>
+                              <ExternalLink className="w-3 h-3 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors" />
+                            </div>
+                          </div>
+
+                          <h5 className="text-xs font-sans font-medium text-on-surface group-hover:text-[#00dbe7] transition-colors leading-snug line-clamp-2">
+                            {art.title}
+                          </h5>
+
+                          {art.summary && art.summary !== art.title && (
+                            <p className="text-[11px] text-on-surface-variant line-clamp-2 leading-relaxed">
+                              {art.summary}
+                            </p>
+                          )}
+                        </a>
+                      );
+                    })
+                )}
+              </div>
+
+            </div>
+          )}
+
+          {/* ── TAB 4: INSTANT PAPER ORDER TICKET & PORTFOLIO ── */}
           {rightPanelTab === 'ORDER' && (
             <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-3 shadow-sm">
               <div className="flex justify-between items-center">
@@ -2954,7 +3308,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 }}
                 className="flex items-center gap-2 overflow-x-auto overflow-y-hidden custom-scrollbar py-1 shrink-0"
               >
-                {(['WATCHLISTS', 'MARKET', 'FEEDS', 'INDICATORS', 'STRATEGIES', 'TRADING', 'PERFORMANCE'] as const).map(tab => (
+                {(['WATCHLISTS', 'MARKET', 'STRATEGIES', 'NEWS_AI', 'INDICATORS', 'TRADING', 'FEEDS', 'PERFORMANCE'] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setSettingsActiveTab(tab)}
@@ -2966,18 +3320,20 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   >
                     {tab === 'WATCHLISTS' && <Bookmark className="w-3.5 h-3.5" />}
                     {tab === 'MARKET' && <Globe className="w-3.5 h-3.5" />}
-                    {tab === 'FEEDS' && <Database className="w-3.5 h-3.5" />}
-                    {tab === 'INDICATORS' && <Layers className="w-3.5 h-3.5" />}
                     {tab === 'STRATEGIES' && <Cpu className="w-3.5 h-3.5" />}
+                    {tab === 'NEWS_AI' && <Newspaper className="w-3.5 h-3.5 text-[#00dbe7]" />}
+                    {tab === 'INDICATORS' && <Layers className="w-3.5 h-3.5" />}
                     {tab === 'TRADING' && <Shield className="w-3.5 h-3.5" />}
+                    {tab === 'FEEDS' && <Database className="w-3.5 h-3.5" />}
                     {tab === 'PERFORMANCE' && <Award className="w-3.5 h-3.5" />}
                     <span>
                       {tab === 'WATCHLISTS' && 'Custom Watchlists'}
                       {tab === 'MARKET' && 'Market Universes'}
-                      {tab === 'FEEDS' && 'Data Feeds & Brokers'}
-                      {tab === 'INDICATORS' && 'Indicator Mathematics'}
                       {tab === 'STRATEGIES' && 'Strategy Builder'}
+                      {tab === 'NEWS_AI' && 'News & AI Sentiment'}
+                      {tab === 'INDICATORS' && 'Indicator Mathematics'}
                       {tab === 'TRADING' && 'Order & Risk Rules'}
+                      {tab === 'FEEDS' && 'Data Feeds & Brokers'}
                       {tab === 'PERFORMANCE' && 'Performance Analytics'}
                     </span>
                   </button>
@@ -4319,6 +4675,299 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* TAB: REAL-TIME NEWS STREAM & AI SENTIMENT INTELLIGENCE (STAGE 3) */}
+            {settingsActiveTab === 'NEWS_AI' && (
+              <div className="flex flex-col gap-6 text-xs font-mono">
+                {/* Header & Overview */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex justify-between items-start gap-4 flex-wrap">
+                    <div>
+                      <h4 className="text-sm font-bold text-on-surface flex items-center gap-2">
+                        <Newspaper className="w-4 h-4 text-[#00dbe7]" />
+                        Real-Time News Stream & AI Sentiment Intelligence
+                      </h4>
+                      <p className="text-on-surface-variant text-[11px] mt-0.5 max-w-3xl leading-relaxed">
+                        Continuous financial news ingestion across global exchanges (NSE/BSE India, US S&P 500, Europe & East Asia).
+                        Headlines are evaluated using <strong>Google Gemini AI</strong> with a deterministic <strong>Autonomous Financial Lexicon Engine</strong> fallback.
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => fetchNewsAndSentiment(symbol, activeMarketKey, quote?.name)}
+                        disabled={loadingNews}
+                        className="px-3 py-1.5 rounded-lg bg-surface-container-low border border-outline/25 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${loadingNews ? 'animate-spin text-[#00dbe7]' : ''}`} />
+                        <span>{loadingNews ? 'Synthesizing...' : 'Refresh Live Stream'}</span>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active Stock Sentiment Card */}
+                {sentimentReport ? (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {/* Polarity Gauge Card */}
+                    <div className="md:col-span-1 p-4 rounded-xl bg-surface-container-low border border-outline/20 flex flex-col justify-between gap-3">
+                      <div>
+                        <span className="text-[10px] text-on-surface-variant uppercase tracking-wider block">
+                          Current Stock Polarity ({quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol})
+                        </span>
+                        <div className="flex items-baseline gap-2 mt-1">
+                          <span className={`text-3xl font-black ${
+                            sentimentReport.verdict === 'BULLISH'
+                              ? 'text-[#00e476]'
+                              : sentimentReport.verdict === 'BEARISH'
+                              ? 'text-[#ff6b6b]'
+                              : 'text-[#00dbe7]'
+                          }`}>
+                            {sentimentReport.verdict}
+                          </span>
+                          <span className="text-sm font-bold text-on-surface">
+                            {sentimentReport.score > 0 ? '+' : ''}{sentimentReport.score.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Dual-sided gauge bar */}
+                      <div className="flex flex-col gap-1">
+                        <div className="relative w-full bg-surface-container-high h-2.5 rounded-full overflow-hidden flex">
+                          <div className="w-1/2 h-full flex justify-end">
+                            <div
+                              className="h-full bg-[#ff6b6b] rounded-l-full transition-all duration-500"
+                              style={{ width: sentimentReport.score < 0 ? `${Math.min(100, Math.abs(sentimentReport.score) * 100)}%` : '0%' }}
+                            />
+                          </div>
+                          <div className="w-[2px] h-full bg-outline z-10" />
+                          <div className="w-1/2 h-full flex justify-start">
+                            <div
+                              className="h-full bg-[#00e476] rounded-r-full transition-all duration-500"
+                              style={{ width: sentimentReport.score > 0 ? `${Math.min(100, sentimentReport.score * 100)}%` : '0%' }}
+                            />
+                          </div>
+                        </div>
+                        <div className="flex justify-between text-[9px] text-on-surface-variant/70">
+                          <span>-1.0 Bearish</span>
+                          <span>0.0 Neutral</span>
+                          <span>+1.0 Bullish</span>
+                        </div>
+                      </div>
+
+                      <div className="pt-2 border-t border-outline/10 flex justify-between items-center text-[10px]">
+                        <span className="text-on-surface-variant">Evaluator Model:</span>
+                        <span className="font-bold text-on-surface flex items-center gap-1">
+                          {sentimentReport.analyzedBy === 'GEMINI_AI' ? (
+                            <>
+                              <Sparkles className="w-3 h-3 text-[#00dbe7]" />
+                              <span>Gemini 2.5 Flash</span>
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="w-3 h-3 text-amber-400" />
+                              <span>Autonomous Lexicon Engine</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Catalyst & Summary Card */}
+                    <div className="md:col-span-2 p-4 rounded-xl bg-surface-container-low border border-outline/20 flex flex-col justify-between gap-3">
+                      <div className="flex flex-col gap-2">
+                        <div className="flex justify-between items-center flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-on-surface-variant uppercase tracking-wider">
+                              Primary Catalyst Theme:
+                            </span>
+                            <span className="px-2 py-0.5 rounded font-bold text-xs bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30">
+                              {sentimentReport.primaryCatalyst.replace('_', ' ')}
+                            </span>
+                          </div>
+
+                          <span className="text-[10px] text-on-surface-variant">
+                            {((sentimentReport.confidence || 0) * 100).toFixed(0)}% Algorithmic Confidence
+                          </span>
+                        </div>
+
+                        <div className="p-3 rounded-lg bg-surface-container text-xs text-on-surface leading-relaxed">
+                          {sentimentReport.catalystSummary}
+                        </div>
+                      </div>
+
+                      {/* Emergency Circuit Breaker Callout */}
+                      {sentimentReport.circuitBreakerRecommended ? (
+                        <div className="p-3 rounded-lg bg-[#ff6b6b]/15 border border-[#ff6b6b]/40 text-[#ff6b6b] flex items-center gap-2.5">
+                          <AlertTriangle className="w-5 h-5 shrink-0" />
+                          <div>
+                            <strong className="block text-xs font-bold">EMERGENCY CIRCUIT BREAKER ADVISORY</strong>
+                            <span className="text-[11px] text-on-surface-variant">
+                              {sentimentReport.circuitBreakerReason || 'Downside risk detected. Halts automatic BUY executions until news dust settles.'}
+                            </span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 text-[10px] text-[#00e476] bg-[#00e476]/10 px-3 py-1.5 rounded-lg border border-[#00e476]/20">
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                          <span>Circuit Breaker Clear: No catastrophic legal, fraud, or bankruptcy headlines flagged.</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : loadingNews ? (
+                  <div className="p-8 text-center bg-surface-container-low rounded-xl border border-outline/20 animate-pulse flex flex-col items-center gap-2">
+                    <RefreshCw className="w-5 h-5 animate-spin text-[#00dbe7]" />
+                    <span>Analyzing live financial news stream...</span>
+                  </div>
+                ) : null}
+
+                {/* Architectural Explanation: Sentiment Confluence Model */}
+                <div className="p-4 rounded-xl bg-surface-container-low border border-outline/20 flex flex-col gap-3">
+                  <h5 className="font-bold text-xs text-on-surface flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#00dbe7]" />
+                    AI Sentiment Confluence Mechanics (How News Blends with Quantitative Algorithms)
+                  </h5>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[11px] leading-relaxed">
+                    <div className="p-2.5 rounded-lg bg-surface-container border border-outline/10 flex flex-col gap-1">
+                      <span className="font-bold text-[#00e476] flex items-center gap-1">
+                        <span>↑</span> Positive Confluence (+20%)
+                      </span>
+                      <p className="text-on-surface-variant">
+                        When a technical BUY occurs during bullish news sentiment (Score &ge; +0.30), confidence is boosted up to +20%, signaling high-conviction continuation.
+                      </p>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-surface-container border border-outline/10 flex flex-col gap-1">
+                      <span className="font-bold text-[#ffb74d] flex items-center gap-1">
+                        <span>↓</span> Divergence Penalty (-35%)
+                      </span>
+                      <p className="text-on-surface-variant">
+                        When technical indicators indicate BUY but news headlines are adverse (Score &le; -0.35), signal confidence is reduced or converted to cautious HOLD.
+                      </p>
+                    </div>
+
+                    <div className="p-2.5 rounded-lg bg-surface-container border border-outline/10 flex flex-col gap-1">
+                      <span className="font-bold text-[#ff6b6b] flex items-center gap-1">
+                        <span>⚠</span> Emergency Circuit Breaker
+                      </span>
+                      <p className="text-on-surface-variant">
+                        Sudden regulatory probes, accounting fraud, or credit default events immediately override all technical signals to HOLD to prevent catastrophic drawdowns.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Headline Sentiment Breakdown Table */}
+                {sentimentReport?.headlines && sentimentReport.headlines.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    <span className="font-bold text-xs text-on-surface uppercase tracking-wider">
+                      Headline-by-Headline Polarity Audit
+                    </span>
+                    <div className="border border-outline/20 rounded-xl overflow-hidden bg-surface-container-low">
+                      <table className="w-full text-left border-collapse text-[11px]">
+                        <thead>
+                          <tr className="bg-surface-container-high/60 border-b border-outline/20 text-on-surface-variant text-[10px] uppercase">
+                            <th className="p-3">Headline Title</th>
+                            <th className="p-3 w-32">Thematic Catalyst</th>
+                            <th className="p-3 w-24 text-center">Polarity Score</th>
+                            <th className="p-3 w-24 text-right">Verdict</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-outline/10">
+                          {sentimentReport.headlines.map((h, idx) => (
+                            <tr key={idx} className="hover:bg-surface-container/50 transition-colors">
+                              <td className="p-3 font-sans text-on-surface font-medium leading-snug">
+                                {h.title}
+                              </td>
+                              <td className="p-3 text-on-surface-variant">
+                                <span className="px-1.5 py-0.5 rounded text-[10px] bg-surface-container">
+                                  {h.catalyst.replace('_', ' ')}
+                                </span>
+                              </td>
+                              <td className="p-3 text-center font-bold">
+                                <span className={h.score > 0 ? 'text-[#00e476]' : h.score < 0 ? 'text-[#ff6b6b]' : 'text-on-surface-variant'}>
+                                  {h.score > 0 ? '+' : ''}{h.score.toFixed(2)}
+                                </span>
+                              </td>
+                              <td className="p-3 text-right">
+                                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                  h.verdict === 'BULLISH'
+                                    ? 'bg-[#00e476]/15 text-[#00e476]'
+                                    : h.verdict === 'BEARISH'
+                                    ? 'bg-[#ff6b6b]/15 text-[#ff6b6b]'
+                                    : 'bg-surface-container text-on-surface-variant'
+                                }`}>
+                                  {h.verdict}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+
+                {/* Full Live News Feed */}
+                <div className="flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <span className="font-bold text-xs text-on-surface uppercase tracking-wider">
+                      Live News Stream ({newsArticles.length} Verified Stories)
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto custom-scrollbar pr-1">
+                    {newsArticles.length === 0 ? (
+                      <div className="col-span-2 p-8 text-center text-xs text-on-surface-variant/70 border border-dashed border-outline/20 rounded-xl">
+                        {loadingNews ? 'Fetching live news articles...' : 'No news articles available for this ticker.'}
+                      </div>
+                    ) : (
+                      newsArticles.slice(0, 30).map(art => (
+                        <a
+                          key={art.id}
+                          href={art.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-3 rounded-xl bg-surface-container-low border border-outline/15 hover:border-[#00dbe7]/50 hover:bg-surface-container transition-all flex flex-col justify-between gap-2 group cursor-pointer"
+                        >
+                          <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center justify-between text-[10px] text-on-surface-variant">
+                              <span className="font-bold text-on-surface flex items-center gap-1">
+                                <Newspaper className="w-3 h-3 text-[#00dbe7]" />
+                                {art.publisher}
+                              </span>
+                              <div className="flex items-center gap-1.5">
+                                <span>{formatRelativeTime(art.publishedAt)}</span>
+                                <ExternalLink className="w-3 h-3 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors" />
+                              </div>
+                            </div>
+
+                            <h6 className="text-xs font-sans font-medium text-on-surface group-hover:text-[#00dbe7] transition-colors leading-snug line-clamp-2">
+                              {art.title}
+                            </h6>
+
+                            {art.summary && art.summary !== art.title && (
+                              <p className="text-[11px] text-on-surface-variant line-clamp-2 leading-relaxed">
+                                {art.summary}
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="pt-2 border-t border-outline/10 flex justify-between items-center text-[10px] text-on-surface-variant/80">
+                            <span>Source: {art.source === 'YAHOO_FINANCE' ? 'Yahoo Finance Feed' : 'Google News Global'}</span>
+                            <span className="text-[#00dbe7] group-hover:underline flex items-center gap-1">
+                              Read Full Article &rarr;
+                            </span>
+                          </div>
+                        </a>
+                      ))
+                    )}
+                  </div>
+                </div>
+
               </div>
             )}
 

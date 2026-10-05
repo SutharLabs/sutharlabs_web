@@ -1,5 +1,7 @@
 import { RSI, MACD, BollingerBands, ATR, EMA, SMA } from 'technicalindicators';
 import { IStrategy, StrategySignal, StrategyRuleCondition } from './types.js';
+import { StockSentimentReport } from '../news/types.js';
+import { calculateSentimentConfluence } from '../news/sentimentEngine.js';
 
 export interface CandleData {
   time: number;
@@ -61,7 +63,8 @@ export function evaluateStrategy(
   strategy: IStrategy,
   candles: CandleData[],
   quote: QuoteData,
-  paramOverrides: Record<string, any> = {}
+  paramOverrides: Record<string, any> = {},
+  sentimentReport?: StockSentimentReport
 ): StrategySignal {
   const currentPrice = quote.current_price || candles[candles.length - 1]?.close || 100;
   const timestamp = new Date().toISOString();
@@ -273,6 +276,15 @@ export function evaluateStrategy(
     }
   }
 
+  // AI Sentiment Confluence Factor (Stage 3 Integration)
+  let sentimentConfluence;
+  if (sentimentReport) {
+    sentimentConfluence = calculateSentimentConfluence(action, confidence, sentimentReport);
+    action = sentimentConfluence.finalSignal;
+    confidence = sentimentConfluence.finalConfidence;
+    reasoning.push(`AI Sentiment Confluence (${sentimentReport.analyzedBy === 'GEMINI_AI' ? 'Gemini AI' : 'Autonomous Engine'}): ${sentimentConfluence.explanation}`);
+  }
+
   // Derive risk management levels
   let targetPrice: number | null = null;
   let stopLoss: number | null = null;
@@ -305,6 +317,15 @@ export function evaluateStrategy(
     riskRewardRatio,
     timestamp,
     reasoning,
-    metrics: indicatorsMap
+    metrics: indicatorsMap,
+    sentimentConfluence,
+    sentimentReport: sentimentReport ? {
+      score: sentimentReport.score,
+      verdict: sentimentReport.verdict,
+      catalystSummary: sentimentReport.catalystSummary,
+      primaryCatalyst: sentimentReport.primaryCatalyst,
+      circuitBreakerRecommended: sentimentReport.circuitBreakerRecommended,
+      analyzedBy: sentimentReport.analyzedBy
+    } : undefined
   };
 }
