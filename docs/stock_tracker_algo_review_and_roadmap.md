@@ -20,6 +20,7 @@ This document presents:
    - **Pluggable Algorithm Engine**: User-definable strategies with parameter schemas and visual condition builder.
    - **Strategy Rating & Community Marketplace**: Publishing, community reviews, backtest verification badges, and strategy forks.
    - **Historical Backtesting Engine**: Multi-year simulation, realistic slippage & brokerage models (STT, GST, SEBI charges for NSE; SEC/FINRA fees for US), and institutional metrics (Sharpe, Sortino, Max Drawdown, Calmar, Win Rate).
+   - **Real-Time News & AI Sentiment Engine**: Live financial news stream (Yahoo/Finnhub/Google News) synthesized by Google Gemini AI to extract catalyst classifications, sentiment confidence scores, and qualitative signal circuit breakers.
    - **Market Scanner & Screener**: Multi-asset scanning across NIFTY 50, NIFTY 500, Bank Nifty, and S&P 500 with real-time buy/sell alerts.
    - **End-of-Day (EOD) Trade Simulator**: Automated daily closing candle / Bhavcopy trade execution with risk management (Take Profit, Stop Loss, Trailing Stop).
 
@@ -53,6 +54,7 @@ This document presents:
 | **Brokerage & Friction Costs** | Zero modeling. Instant fills at current market price without fees or slippage. | Realistic friction model: STT (0.1%), GST (18%), Exchange turnover charges, SEBI charges, Stamp duty for India; slippage buffer (0.05% - 0.1%). | Backtest and simulation results will be unrealistically optimistic without fee modeling. |
 | **Strategy Marketplace & Community** | None. Strategies cannot be created, saved, published, rated, or shared. | Strategy Catalog with public/private visibility, user ratings (1-5 stars), verified backtest badges, strategy forks, and author attribution. | Missing core collaborative platform capability requested by the user. |
 | **Market Scanner & Screener** | None. Single symbol search only. | Background screener running strategies across watchlists (NIFTY 50, NIFTY IT, S&P 100), outputting filtered candidate stocks with live signal triggers. | Users must manually type symbols one by one. |
+| **Real-Time News & AI Sentiment** | **Completely absent**. No market news stream, zero qualitative context. | Live news feed (Yahoo Finance, Finnhub, Google News) analyzed via Google Gemini AI (`@google/genai`) for catalyst extraction, sentiment scoring, and circuit-breaker triggers. | Traders fly blind during sudden earnings surprises, RBI/Fed interest rate announcements, regulatory probes, or corporate actions. |
 | **EOD Trade Simulation** | Primitive manual BUY/SELL click updating a single `shares` and `cash` scalar in DB. | End-of-Day Batch Execution Simulator: scans closing candles, triggers entries/exits, manages open positions with automated SL/TP brackets, records ledger. | No automated position management, trailing stops, or daily portfolio summary. |
 
 ---
@@ -63,15 +65,23 @@ This document presents:
 +---------------------------------------------------------------------------------------------------+
 |                                 SUTHARLABS TRADING SUITE 2.0                                     |
 +---------------------------------------------------------------------------------------------------+
-|  [Market Data Ingestion Gateway]                                                                  |
-|   ├── US Feeds: Yahoo Finance / Alpaca Free Tier / Finnhub (S&P 500, NASDAQ, Dow)                |
-|   └── Indian Feeds: NSE Bhavcopy EOD / Yahoo (.NS, .BO) / OpenAlgo Webhooks (NIFTY 50/500/Bank)   |
+|  [Market Data & News Ingestion Gateway]                                                           |
+|   ├── Market Feeds: Yahoo Finance / Alpaca Free Tier / NSE Bhavcopy EOD / OpenAlgo Webhooks       |
+|   └── Real-Time News Stream: Yahoo Finance RSS / Finnhub / Google News (NSE & US Equities)        |
++---------------------------------------------------------------------------------------------------+
+                                                  │
+                                                  ▼
++---------------------------------------------------------------------------------------------------+
+|  [AI-Driven Sentiment & Catalyst Engine] (Google Gemini @google/genai)                            |
+|   ├── Headline & Summary Tokenization & Financial Polarity Scoring (-1.0 Bearish to +1.0 Bullish) |
+|   ├── Catalyst Classification: Earnings, Regulatory/Legal, M&A, Management, Macro/Rates          |
+|   └── Circuit Breaker & Urgency Detection (Emergency Stop Tightening / Long Pause)               |
 +---------------------------------------------------------------------------------------------------+
                                                   │
                                                   ▼
 +---------------------------------------------------------------------------------------------------+
 |  [Modular Strategy Execution Engine (Core)]                                                      |
-|   ├── Base Strategy Interface (IStrategy)                                                         |
+|   ├── Base Strategy Interface (IStrategy) with Qualitative AI Sentiment Confluence Factor         |
 |   ├── Built-in Presets: RSI Mean-Reversion, EMA Golden Cross, MACD Breakout, Supertrend Trend     |
 |   ├── Custom Script Engine: JSON Rule Builder + JavaScript/Sandboxed Formula Evaluator            |
 |   └── Risk Manager: Position Sizing (Fixed %, Kelly, Risk-per-trade), Trailing Stop Loss, Take TP  |
@@ -282,6 +292,60 @@ The backtesting calculator must report key quantitative finance metrics:
   4. Checks for new Entry signals $\rightarrow$ Computes position sizing based on available paper cash balance, creates new open trade record.
   5. Generates **Daily Simulation PnL Digest** sent to user terminal logs and dashboard summary.
 
+### 5.6. Real-Time News Stream & AI Catalyst Sentiment Engine
+
+Financial markets do not move on pure technical indicators alone; quarterly earnings surprises, management shifts, regulatory interventions, and macroeconomic announcements frequently overpower technical signals.
+
+To provide a state-of-the-art sovereign advantage, SutharLabs integrates an **AI-driven Real-Time News & Catalyst Intelligence Engine** powered by Google Gemini (`@google/genai`):
+
+#### 1. Ingestion Pipeline
+- **Indian Equities (NSE/BSE)**: Aggregates real-time feeds from Google News RSS / Moneycontrol / Economic Times / LiveMint and official corporate announcements.
+- **US Equities (NYSE/NASDAQ)**: Aggregates feeds from Finnhub Financial News API, Yahoo Finance News RSS, and SEC EDGAR 8-K filings.
+- **Deduplication & Ticker Tagging**: Automatically correlates articles against symbol tickers (e.g. `RELIANCE.NS`, `TCS.NS`, `AAPL`, `NVDA`).
+
+#### 2. Gemini AI Financial Extraction Schema
+When news hits the stream, the AI engine evaluates the headline and content against a strict JSON schema:
+
+```typescript
+export interface NewsSentimentAnalysis {
+  id: string;
+  symbol: string;
+  headline: string;
+  source: string;
+  url: string;
+  publishedAt: string;
+  sentimentScore: number;       // Range: -1.0 (Strongly Bearish) to +1.0 (Strongly Bullish)
+  sentimentLabel: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
+  confidence: number;           // 0.0 to 1.0
+  catalystType: 
+    | 'EARNINGS' 
+    | 'REGULATORY_LEGAL' 
+    | 'MACRO_POLICY' 
+    | 'M_AND_A' 
+    | 'MANAGEMENT_CHANGE' 
+    | 'PRODUCT_INNOVATION' 
+    | 'ANALYST_RATING' 
+    | 'GENERAL';
+  urgency: 'IMMEDIATE_CIRCUIT_BREAKER' | 'HIGH' | 'MEDIUM' | 'LOW';
+  aiSummary: string;            // 2-sentence executive summary explaining market impact
+  keyQuotes: string[];
+}
+```
+
+#### 3. Signal Modulation & Circuit Breakers
+- **Confluence Scoring**: Pure technical signals are cross-referenced with recent 24h AI sentiment:
+  $$\text{Adjusted Confidence} = \text{Technical Confidence} \times \left(1 + 0.35 \times \text{Sentiment Score}\right)$$
+  - *Example*: An RSI oversold signal (0.65 confidence) combined with a strongly positive earnings surprise (+0.80 sentiment) generates an adjusted **High-Conviction Buy (0.83 confidence)**.
+- **Emergency Circuit Breaker**: If breaking news produces a sentiment score $< -0.75$ flagged with `IMMEDIATE_CIRCUIT_BREAKER` (e.g., regulatory probe, fraud investigation, credit downgrade):
+  - Suspends any pending or triggered long algorithm entries immediately.
+  - Automatically tightens trailing stop-loss orders on active paper positions by 50% to shield capital.
+  - Emits high-priority terminal alerts (`type: 'ALERT'`) in the workspace console.
+
+#### 4. Frontend Workspace Presentation
+- **Live News Ticker Bar**: Displays breaking headlines with real-time sentiment color pills (`[🟢 +0.82 BULLISH - EARNINGS BEAT]`, `[🔴 -0.78 BEARISH - SEBI PROBE]`).
+- **AI Catalyst Drawer**: Clicking any news item opens an executive briefing detailing why the AI categorized the news as bullish/bearish, key risks, and projected price reaction timeframe.
+- **Chart Timeline Overlay**: Renders sentiment markers along the bottom of the candlestick chart, visually displaying whether news events triggered historical breakouts or selloffs.
+
 ---
 
 ## 6. Phased Implementation Roadmap
@@ -300,17 +364,23 @@ The backtesting calculator must report key quantitative finance metrics:
   4. *Supertrend Trend-Following (ATR Multiplier 3, Period 10)*
 - Create a visual **Strategy Condition Builder** UI allowing users to configure custom indicators, entry conditions, and exit rules.
 
-### Phase 3: High-Performance Backtesting Engine
+### Phase 3: Real-Time News Stream & AI Sentiment Intelligence
+- Integrate real-time financial news RSS/API feeds for active symbols (NSE & US).
+- Implement Gemini AI (`@google/genai`) sentiment scoring endpoint (`/api/workspace/stock-analyzer/news-sentiment`).
+- Add News Ticker drawer and sentiment badges to the Stock Tracker UI.
+- Incorporate AI Sentiment Confluence Factor into algorithmic signal calculations and emergency circuit breakers.
+
+### Phase 4: High-Performance Backtesting Engine
 - Implement historical bar replay backtester with full transaction friction modeling (NSE STT/GST/charges and US SEC fees).
 - Generate institutional statistics (CAGR, Sharpe, Sortino, Max Drawdown, Win Rate, Profit Factor).
 - Render interactive Equity Curve and Trade Log table with trade-by-trade entry/exit points plotted on the chart.
 
-### Phase 4: Community Algorithm Marketplace & Ratings
+### Phase 5: Community Algorithm Marketplace & Ratings
 - Allow users to publish their custom strategies to the SutharLabs catalog (`isPublic: true`).
 - Community rating modal (1-5 stars, reviews, paper trading verification).
 - Strategy Forking: Allow users to clone any published strategy, tweak parameters, and re-test.
 
-### Phase 5: Market Scanner & Automated EOD Simulation
+### Phase 6: Market Scanner & Automated EOD Simulation
 - Multi-symbol scanner running strategies across NIFTY 50 and S&P 500.
 - Daily EOD simulation daemon executing paper trades on closing data with automatic SL/TP tracking.
 - Webhook alert integration (exporting signals to Telegram/Discord or OpenAlgo broker endpoints).
@@ -319,4 +389,4 @@ The backtesting calculator must report key quantitative finance metrics:
 
 ## 7. Conclusion
 
-By evolving our Stock Tracker plugin from a basic quote viewer into a comprehensive **Algorithmic Trading & Backtesting Suite**, SutharLabs will deliver a state-of-the-art capability comparable to Streak, Chartink, and Freqtrade, seamlessly integrated into our sovereign developer workspace.
+By evolving our Stock Tracker plugin from a basic quote viewer into a comprehensive **AI-Augmented Algorithmic Trading & Backtesting Suite**, SutharLabs will deliver a state-of-the-art capability surpassing retail platforms like Streak and Chartink, seamlessly integrated into our sovereign developer workspace.
