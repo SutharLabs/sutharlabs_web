@@ -19,6 +19,7 @@ function decodeHtmlEntities(str: string): string {
     .replace(/&#39;/g, "'")
     .replace(/&apos;/g, "'")
     .replace(/&#x2F;/g, '/')
+    .replace(/&nbsp;/g, ' ')
     .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
     .trim();
 }
@@ -26,6 +27,21 @@ function decodeHtmlEntities(str: string): string {
 function stripHtmlTags(str: string): string {
   if (!str) return '';
   return str.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+/**
+ * Robustly sanitizes raw RSS text by resolving entities, CDATA blocks, and HTML tags.
+ */
+function cleanRssText(raw: string): string {
+  if (!raw) return '';
+  // 1. Unpack CDATA wrappers if present
+  let text = raw.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/gi, '$1');
+  // 2. Decode HTML entities (so &lt;a href...&gt; becomes <a href...>)
+  text = decodeHtmlEntities(text);
+  // 3. Strip any HTML markup
+  text = stripHtmlTags(text);
+  // 4. Decode any remaining entities and collapse extra spaces
+  return decodeHtmlEntities(text).replace(/\s+/g, ' ').trim();
 }
 
 /**
@@ -43,16 +59,21 @@ function parseGoogleNewsRss(xmlText: string): StockNewsArticle[] {
     const descMatch = itemXml.match(/<description>([\s\S]*?)<\/description>/i);
 
     let rawTitle = titleMatch ? titleMatch[1] : '';
-    let publisher = sourceMatch ? sourceMatch[1].trim() : '';
+    let publisher = sourceMatch ? cleanRssText(sourceMatch[1]) : '';
 
-    // Google news titles often end with " - Publisher Name"
-    if (!publisher && rawTitle.includes(' - ')) {
-      const parts = rawTitle.split(' - ');
-      publisher = parts.pop() || '';
-      rawTitle = parts.join(' - ');
+    // First sanitize raw title text
+    let cleanTitle = cleanRssText(rawTitle);
+
+    // Google News titles format as: "Headline Text - Publisher Name"
+    if (cleanTitle.includes(' - ')) {
+      const parts = cleanTitle.split(' - ');
+      const candidatePub = parts.pop()?.trim();
+      if (!publisher && candidatePub) {
+        publisher = candidatePub;
+      }
+      cleanTitle = parts.join(' - ').trim();
     }
 
-    const title = decodeHtmlEntities(stripHtmlTags(rawTitle));
     const url = linkMatch ? linkMatch[1].trim() : '';
     const rawDate = pubDateMatch ? pubDateMatch[1].trim() : '';
     let publishedAt = new Date().toISOString();
@@ -63,14 +84,24 @@ function parseGoogleNewsRss(xmlText: string): StockNewsArticle[] {
       }
     }
 
-    const summary = descMatch ? decodeHtmlEntities(stripHtmlTags(descMatch[1])) : '';
+    // Google News RSS description often embeds raw <a href="...">Headline</a> with font tags.
+    // Clean it completely to prevent showing raw link markup to users.
+    const rawDesc = descMatch ? descMatch[1] : '';
+    let cleanSummary = cleanRssText(rawDesc);
 
-    if (title && url) {
-      const id = `gn-${crypto.createHash('md5').update(url + title).digest('hex').slice(0, 12)}`;
+    // If description is identical to title, or only contains title and publisher, provide a clean context note
+    if (!cleanSummary || cleanSummary === cleanTitle || cleanSummary.startsWith(cleanTitle)) {
+      cleanSummary = `Financial report published by ${publisher || 'Verified Financial Media'}. Click headline to verify full source coverage.`;
+    } else if (cleanSummary.length > 280) {
+      cleanSummary = cleanSummary.slice(0, 277) + '...';
+    }
+
+    if (cleanTitle && url) {
+      const id = `gn-${crypto.createHash('md5').update(url + cleanTitle).digest('hex').slice(0, 12)}`;
       articles.push({
         id,
-        title,
-        summary: summary && summary !== title ? summary.slice(0, 300) : `${title} - Published by ${publisher || 'Financial Media'}`,
+        title: cleanTitle,
+        summary: cleanSummary,
         publisher: publisher || 'Financial News',
         url,
         publishedAt,
@@ -112,10 +143,13 @@ async function fetchYahooNews(query: string): Promise<StockNewsArticle[]> {
         thumbUrl = item.thumbnail.resolutions[0].url;
       }
 
+      const cleanTitle = cleanRssText(item.title);
+      const cleanSummary = item.summary ? cleanRssText(item.summary) : cleanTitle;
+
       articles.push({
         id: item.uuid || `yf-${crypto.createHash('md5').update(item.link).digest('hex').slice(0, 12)}`,
-        title: decodeHtmlEntities(item.title),
-        summary: item.summary ? decodeHtmlEntities(item.summary) : item.title,
+        title: cleanTitle,
+        summary: cleanSummary,
         publisher: item.publisher || 'Yahoo Finance',
         url: item.link,
         publishedAt,
@@ -132,7 +166,7 @@ async function fetchYahooNews(query: string): Promise<StockNewsArticle[]> {
 }
 
 /**
- * Fetches news from Google News RSS Search
+ * Fetches news from Google News RSS Search with regional locale parameters
  */
 async function fetchGoogleNews(searchTerm: string, market: string = 'GLOBAL'): Promise<StockNewsArticle[]> {
   try {
@@ -153,7 +187,7 @@ async function fetchGoogleNews(searchTerm: string, market: string = 'GLOBAL'): P
     const url = `https://news.google.com/rss/search?q=${encodeURIComponent(searchTerm)}&hl=${hl}&gl=${gl}&ceid=${ceid}`;
     const res = await fetch(url, {
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       }
     });
 
@@ -164,6 +198,48 @@ async function fetchGoogleNews(searchTerm: string, market: string = 'GLOBAL'): P
     console.warn(`[News Fetcher] Google News fetch failed for ${searchTerm}:`, err);
     return [];
   }
+}
+
+/**
+ * Builds regional high-trust news search queries targeting institutional outlets:
+ * - India: Moneycontrol, The Economic Times, Livemint, Business Standard, SEBI, NDTV Profit
+ * - US: MarketWatch, CNBC, Bloomberg, Reuters, SEC Edgar
+ * - UK / Europe: Reuters, Financial Times, London Stock Exchange, FCA
+ */
+function buildRegionalQueries(params: {
+  clean: string;
+  companyName?: string;
+  market: string;
+  symbol: string;
+}): string[] {
+  const { clean, companyName, market, symbol } = params;
+  const queries: string[] = [];
+  const subject = companyName ? `"${companyName}"` : clean;
+
+  if (market === 'IN' || symbol.endsWith('.NS') || symbol.endsWith('.BO')) {
+    // 1. India Top Tier Financial Outlets
+    queries.push(`${subject} (site:moneycontrol.com OR site:economictimes.indiatimes.com OR site:livemint.com OR site:business-standard.com OR site:ndtvprofit.com)`);
+    // 2. Regulatory & Corporate Governance (SEBI / Stock Exchange / Insider / Results)
+    queries.push(`${clean} (SEBI OR site:sebi.gov.in OR "quarterly results" OR "board meeting" OR "block deal")`);
+    // 3. Broader Indian Market Query
+    queries.push(`${clean} share price NSE`);
+  } else if (market === 'US' || !symbol.includes('.')) {
+    // 1. US Top Tier Financial Outlets
+    queries.push(`${subject} (site:marketwatch.com OR site:cnbc.com OR site:reuters.com OR site:bloomberg.com)`);
+    // 2. US Regulatory & Filings (SEC / 10-K / 10-Q / Earnings)
+    queries.push(`${clean} (SEC OR site:sec.gov OR "quarterly results" OR "earnings beat" OR "guidance")`);
+    // 3. Broader US Query
+    queries.push(`${clean} stock news`);
+  } else if (market === 'UK' || symbol.endsWith('.L')) {
+    // 1. UK Top Tier Outlets
+    queries.push(`${subject} (site:reuters.com OR site:ft.com OR site:londonstockexchange.com)`);
+    queries.push(`${clean} (FCA OR "London Stock Exchange" OR "regulatory news service")`);
+  } else {
+    // Global fallback
+    queries.push(`${subject} financial stock news`);
+  }
+
+  return queries;
 }
 
 /**
@@ -186,21 +262,20 @@ export async function fetchStockNews(params: {
     return cached.articles;
   }
 
-  // Determine optimal search terms
-  const searchQueries: string[] = [];
-  if (companyName) {
-    searchQueries.push(`${companyName} share`);
-  }
-  searchQueries.push(`${clean} stock news`);
-  if (market === 'IN' || symbol.endsWith('.NS')) {
-    searchQueries.push(`${clean} share price NSE`);
+  const queries = buildRegionalQueries({ clean, companyName, market, symbol });
+
+  // Fetch concurrently from Yahoo & regional Google News feeds
+  const fetchPromises: Promise<StockNewsArticle[]>[] = [
+    fetchYahooNews(symbol),
+    fetchGoogleNews(queries[0], market)
+  ];
+
+  // If a secondary regulatory/governance query exists, fetch it concurrently as well
+  if (queries[1]) {
+    fetchPromises.push(fetchGoogleNews(queries[1], market));
   }
 
-  // Fetch concurrently from Yahoo & Google News
-  const [yahooArticles, googleArticles] = await Promise.all([
-    fetchYahooNews(symbol),
-    fetchGoogleNews(searchQueries[0], market)
-  ]);
+  const results = await Promise.all(fetchPromises);
 
   // Combine and deduplicate by clean title and link
   const combined: StockNewsArticle[] = [];
@@ -208,6 +283,7 @@ export async function fetchStockNews(params: {
   const seenTitles = new Set<string>();
 
   const addArticle = (art: StockNewsArticle) => {
+    // Strip query tracking parameters from URL
     const normUrl = art.url.split('?')[0].toLowerCase();
     const normTitle = art.title.toLowerCase().replace(/[^a-z0-9]/g, '');
 
@@ -217,13 +293,22 @@ export async function fetchStockNews(params: {
     combined.push(art);
   };
 
-  // Prioritize Yahoo Finance direct articles, then Google News
-  for (const art of yahooArticles) addArticle(art);
-  for (const art of googleArticles) addArticle(art);
+  // 1. Add regional targeted articles (Economic Times, Moneycontrol, Livemint, SEBI, MarketWatch, etc.)
+  if (results[1]) {
+    for (const art of results[1]) addArticle(art);
+  }
+  // 2. Add regulatory filings & governance articles
+  if (results[2]) {
+    for (const art of results[2]) addArticle(art);
+  }
+  // 3. Add Yahoo Finance ticker feed
+  if (results[0]) {
+    for (const art of results[0]) addArticle(art);
+  }
 
-  // If still fewer than 5 articles and we have a second query, try fetching more
-  if (combined.length < 5 && searchQueries[1]) {
-    const extraGoogle = await fetchGoogleNews(searchQueries[1], market);
+  // If still fewer than 5 stories and we have a 3rd fallback query, fetch more
+  if (combined.length < 5 && queries[2]) {
+    const extraGoogle = await fetchGoogleNews(queries[2], market);
     for (const art of extraGoogle) addArticle(art);
   }
 

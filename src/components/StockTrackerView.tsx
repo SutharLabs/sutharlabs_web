@@ -39,7 +39,8 @@ import {
   Sparkles,
   ExternalLink,
   Zap,
-  AlertTriangle
+  AlertTriangle,
+  Clock
 } from 'lucide-react';
 import {
   createChart,
@@ -830,6 +831,100 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [loadingNews, setLoadingNews] = useState<boolean>(false);
   const [newsSearchFilter, setNewsSearchFilter] = useState<string>('');
 
+  // ── Google Gemini API Key & Usage Tracking (Stage 3) ──
+  const [geminiApiKey, setGeminiApiKey] = useState<string>(() => {
+    try {
+      return localStorage.getItem('sutharlabs_gemini_api_key') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [showApiKey, setShowApiKey] = useState<boolean>(false);
+  const [testingApiKey, setTestingApiKey] = useState<boolean>(false);
+  const [apiKeyTestResult, setApiKeyTestResult] = useState<{ success: boolean; message: string } | null>(null);
+
+  // Daily AI & News Usage Tracker (Reset daily at midnight)
+  const [aiUsageStats, setAiUsageStats] = useState<{
+    date: string;
+    totalRequests: number;
+    geminiRequests: number;
+    lexiconRequests: number;
+    cacheHits: number;
+  }>(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    try {
+      const raw = localStorage.getItem('sutharlabs_news_ai_usage');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed.date === today) return parsed;
+      }
+    } catch {}
+    return { date: today, totalRequests: 0, geminiRequests: 0, lexiconRequests: 0, cacheHits: 0 };
+  });
+
+  const recordAiUsage = useCallback((type: 'GEMINI' | 'LEXICON' | 'CACHE') => {
+    setAiUsageStats(prev => {
+      const today = new Date().toISOString().slice(0, 10);
+      const base = prev.date === today ? prev : { date: today, totalRequests: 0, geminiRequests: 0, lexiconRequests: 0, cacheHits: 0 };
+      const next = {
+        ...base,
+        totalRequests: base.totalRequests + 1,
+        geminiRequests: type === 'GEMINI' ? base.geminiRequests + 1 : base.geminiRequests,
+        lexiconRequests: type === 'LEXICON' ? base.lexiconRequests + 1 : base.lexiconRequests,
+        cacheHits: type === 'CACHE' ? base.cacheHits + 1 : base.cacheHits
+      };
+      try {
+        localStorage.setItem('sutharlabs_news_ai_usage', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const handleSaveApiKey = useCallback((key: string) => {
+    const trimmed = key.trim();
+    setGeminiApiKey(trimmed);
+    try {
+      localStorage.setItem('sutharlabs_gemini_api_key', trimmed);
+    } catch {}
+    setApiKeyTestResult(null);
+  }, []);
+
+  const handleTestApiKey = useCallback(async () => {
+    if (!geminiApiKey.trim()) {
+      setApiKeyTestResult({ success: false, message: 'Please enter a Gemini API Key to test.' });
+      return;
+    }
+    setTestingApiKey(true);
+    setApiKeyTestResult(null);
+    try {
+      const res = await fetch(`${STOCK_API}/test-gemini-key`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apiKey: geminiApiKey.trim() })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setApiKeyTestResult({ success: true, message: data.message || 'Key valid! Successfully connected to Gemini 2.5 Flash.' });
+        handleSaveApiKey(geminiApiKey.trim());
+      } else {
+        setApiKeyTestResult({ success: false, message: data.error || 'Authentication failed. Check your API key.' });
+      }
+    } catch (err: any) {
+      setApiKeyTestResult({ success: false, message: err.message || 'Network error while testing key' });
+    } finally {
+      setTestingApiKey(false);
+    }
+  }, [geminiApiKey, handleSaveApiKey]);
+
+  const handleResetUsageStats = useCallback(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    const reset = { date: today, totalRequests: 0, geminiRequests: 0, lexiconRequests: 0, cacheHits: 0 };
+    setAiUsageStats(reset);
+    try {
+      localStorage.setItem('sutharlabs_news_ai_usage', JSON.stringify(reset));
+    } catch {}
+  }, []);
+
   // Sliding Settings Overlay
   const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
   const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'STRATEGIES' | 'NEWS_AI' | 'INDICATORS' | 'TRADING' | 'FEEDS' | 'PERFORMANCE'>('WATCHLISTS');
@@ -1048,12 +1143,17 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     try {
       const normalizedSym = normalizeTicker(sym, marketKey);
       const url = `${STOCK_API}/news-sentiment?symbol=${encodeURIComponent(normalizedSym)}&market=${marketKey}${company ? `&companyName=${encodeURIComponent(company)}` : ''}`;
-      const res = await fetch(url);
+      const headers: Record<string, string> = {};
+      if (geminiApiKey.trim()) {
+        headers['x-gemini-key'] = geminiApiKey.trim();
+      }
+      const res = await fetch(url, { headers });
       if (res.ok) {
         const data = await res.json();
         setNewsArticles(data.articles || []);
         setSentimentReport(data.sentiment || null);
         if (data.sentiment) {
+          recordAiUsage(data.sentiment.analyzedBy === 'GEMINI_AI' ? 'GEMINI' : 'LEXICON');
           onAddLogRef.current({
             timestamp: new Date().toLocaleTimeString(),
             type: data.sentiment.verdict === 'BULLISH' ? 'SUCCESS' : data.sentiment.verdict === 'BEARISH' ? 'ALERT' : 'INFO',
@@ -1066,7 +1166,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     } finally {
       setLoadingNews(false);
     }
-  }, []);
+  }, [geminiApiKey, recordAiUsage]);
 
   // ── 3. Core Data Fetch Pipeline with Real Exchange Formatting ──────────────────
   const fetchAll = useCallback(async (sym: string, period: string) => {
@@ -1117,7 +1217,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
       // 5. Algorithmic Strategy Signal Execution with AI Sentiment Confluence
       try {
-        const stratRes = await fetch(`${STOCK_API}/strategy-signal?symbol=${encodeURIComponent(normalizedSym)}&strategyId=${selectedStrategyId}&region=${activeMarketKey}&includeSentiment=true`);
+        const stratHeaders: Record<string, string> = {};
+        if (geminiApiKey.trim()) stratHeaders['x-gemini-key'] = geminiApiKey.trim();
+        const stratRes = await fetch(`${STOCK_API}/strategy-signal?symbol=${encodeURIComponent(normalizedSym)}&strategyId=${selectedStrategyId}&region=${activeMarketKey}&includeSentiment=true`, {
+          headers: stratHeaders
+        });
         if (stratRes.ok) {
           const sig: StrategySignal = await stratRes.json();
           setStrategySignal(sig);
@@ -1154,7 +1258,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     } finally {
       setLoading(false);
     }
-  }, [activeMarketKey, selectedStrategyId, rsiPeriod, bbPeriod, bbStdDev, ema20Period, ema50Period, macdFast, macdSlow, macdSignal]);
+  }, [activeMarketKey, selectedStrategyId, rsiPeriod, bbPeriod, bbStdDev, ema20Period, ema50Period, macdFast, macdSlow, macdSignal, geminiApiKey, fetchNewsAndSentiment]);
 
   // Re-evaluate strategy signal immediately whenever user switches active strategy in the dropdown
   useEffect(() => {
@@ -1163,7 +1267,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     const displaySym = formatTickerDisplay(symbol).displaySymbol;
     let isCancelled = false;
     setLoadingStrategySignal(true);
-    fetch(`${STOCK_API}/strategy-signal?symbol=${encodeURIComponent(normalizedSym)}&strategyId=${selectedStrategyId}&region=${activeMarketKey}&includeSentiment=true`)
+    const stratHeaders: Record<string, string> = {};
+    if (geminiApiKey.trim()) stratHeaders['x-gemini-key'] = geminiApiKey.trim();
+    fetch(`${STOCK_API}/strategy-signal?symbol=${encodeURIComponent(normalizedSym)}&strategyId=${selectedStrategyId}&region=${activeMarketKey}&includeSentiment=true`, {
+      headers: stratHeaders
+    })
       .then(res => res.ok ? res.json() : null)
       .then((sig: StrategySignal | null) => {
         if (isCancelled || !sig) return;
@@ -2941,19 +3049,27 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     </div>
 
                     <div className="flex flex-col items-end gap-1">
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-container text-on-surface-variant flex items-center gap-1">
+                      <button
+                        onClick={() => {
+                          setSettingsActiveTab('NEWS_AI');
+                          setShowSettingsDrawer(true);
+                        }}
+                        className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-container hover:bg-surface-container-high border border-outline/20 text-on-surface flex items-center gap-1.5 transition-colors cursor-pointer"
+                        title="Click to configure Google Gemini API Key and inspect usage"
+                      >
                         {sentimentReport.analyzedBy === 'GEMINI_AI' ? (
                           <>
                             <Sparkles className="w-3 h-3 text-[#00dbe7]" />
-                            <span>Gemini AI</span>
+                            <span className="font-bold">Gemini AI</span>
                           </>
                         ) : (
                           <>
                             <Zap className="w-3 h-3 text-amber-400" />
-                            <span>Autonomous Engine</span>
+                            <span>Lexicon Engine</span>
                           </>
                         )}
-                      </span>
+                        <Key className="w-2.5 h-2.5 opacity-60 text-[#00dbe7]" />
+                      </button>
                       <span className="text-[10px] font-mono text-on-surface-variant">
                         {((sentimentReport.confidence || 0) * 100).toFixed(0)}% Confidence
                       </span>
@@ -3029,7 +3145,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 <div className="relative flex-1">
                   <input
                     type="text"
-                    placeholder="Search articles..."
+                    placeholder="Search articles & publishers..."
                     value={newsSearchFilter}
                     onChange={e => setNewsSearchFilter(e.target.value)}
                     className="w-full bg-surface-container-low border border-outline/25 rounded-lg px-2.5 py-1 text-xs font-mono text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-[#00dbe7]"
@@ -3061,39 +3177,58 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       const q = newsSearchFilter.toLowerCase();
                       return a.title.toLowerCase().includes(q) || a.publisher.toLowerCase().includes(q) || (a.summary && a.summary.toLowerCase().includes(q));
                     })
-                    .slice(0, 25)
-                    .map(art => {
-                      return (
+                    .slice(0, 30)
+                    .map(art => (
+                      <div
+                        key={art.id}
+                        className="p-3 rounded-xl bg-surface-container-low/80 border border-outline/15 hover:border-[#00dbe7]/50 hover:bg-surface-container-low transition-all flex flex-col gap-2 group shadow-sm"
+                      >
+                        {/* Publisher & Timestamp Badge */}
+                        <div className="flex items-center justify-between text-[10px] font-mono text-on-surface-variant">
+                          <span className="font-semibold text-on-surface flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#00dbe7] shrink-0" />
+                            <span className="truncate max-w-[140px]">{art.publisher}</span>
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0 text-on-surface-variant/80">
+                            <Clock className="w-2.5 h-2.5 opacity-70" />
+                            <span>{formatRelativeTime(art.publishedAt)}</span>
+                          </div>
+                        </div>
+
+                        {/* Clickable Headline with Embedded External Verification Link */}
                         <a
-                          key={art.id}
                           href={art.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-2.5 rounded-lg bg-surface-container-low/70 border border-outline/15 hover:border-[#00dbe7]/50 hover:bg-surface-container-low transition-all flex flex-col gap-1.5 group cursor-pointer"
+                          className="text-xs font-sans font-semibold text-on-surface group-hover:text-[#00dbe7] transition-colors leading-snug line-clamp-2 flex items-start justify-between gap-1 group/title cursor-pointer"
+                          title={art.title}
                         >
-                          <div className="flex items-center justify-between text-[10px] font-mono text-on-surface-variant">
-                            <span className="font-semibold text-on-surface flex items-center gap-1">
-                              <Newspaper className="w-3 h-3 text-[#00dbe7]" />
-                              {art.publisher}
-                            </span>
-                            <div className="flex items-center gap-1.5">
-                              <span>{formatRelativeTime(art.publishedAt)}</span>
-                              <ExternalLink className="w-3 h-3 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors" />
-                            </div>
-                          </div>
-
-                          <h5 className="text-xs font-sans font-medium text-on-surface group-hover:text-[#00dbe7] transition-colors leading-snug line-clamp-2">
-                            {art.title}
-                          </h5>
-
-                          {art.summary && art.summary !== art.title && (
-                            <p className="text-[11px] text-on-surface-variant line-clamp-2 leading-relaxed">
-                              {art.summary}
-                            </p>
-                          )}
+                          <span>{art.title}</span>
+                          <ExternalLink className="w-3.5 h-3.5 text-on-surface-variant shrink-0 mt-0.5 opacity-60 group-hover/title:opacity-100 group-hover/title:text-[#00dbe7] transition-all" />
                         </a>
-                      );
-                    })
+
+                        {/* Clean Summary (no raw URLs) */}
+                        {art.summary && art.summary !== art.title && (
+                          <p className="text-[11px] text-on-surface-variant/90 line-clamp-2 leading-relaxed font-sans">
+                            {art.summary}
+                          </p>
+                        )}
+
+                        {/* Verification Direct Action Link */}
+                        <div className="pt-2 border-t border-outline/10 flex justify-between items-center text-[10px] font-mono text-on-surface-variant/80">
+                          <span className="truncate max-w-[130px]">{art.source === 'YAHOO_FINANCE' ? 'Yahoo Finance Feed' : 'Google Regional Feed'}</span>
+                          <a
+                            href={art.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-[#00dbe7] hover:underline font-semibold flex items-center gap-1 shrink-0"
+                          >
+                            <span>Verify at {art.publisher.split(' ')[0]}</span>
+                            <ExternalLink className="w-2.5 h-2.5" />
+                          </a>
+                        </div>
+                      </div>
+                    ))
                 )}
               </div>
 
@@ -4708,6 +4843,178 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   </div>
                 </div>
 
+                {/* Gemini API Key Configuration & Live Usage Tracker Dashboard */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Card 1: Google Gemini 2.5 Flash API Key Integration */}
+                  <div className="p-4 rounded-xl bg-surface-container-low border border-outline/20 flex flex-col justify-between gap-3 shadow-sm">
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between items-start gap-2">
+                        <div>
+                          <span className="font-bold text-xs text-on-surface flex items-center gap-1.5">
+                            <Key className="w-3.5 h-3.5 text-[#00dbe7]" />
+                            Google Gemini 2.5 Flash API Key
+                          </span>
+                          <span className="text-[11px] text-on-surface-variant font-sans">
+                            Powers institutional catalyst summaries & deep financial headline reasoning.
+                          </span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 flex items-center gap-1 ${
+                          geminiApiKey.trim()
+                            ? 'bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30'
+                            : 'bg-surface-container text-on-surface-variant border border-outline/20'
+                        }`}>
+                          {geminiApiKey.trim() ? (
+                            <>
+                              <Sparkles className="w-2.5 h-2.5" />
+                              <span>Gemini Key Active</span>
+                            </>
+                          ) : (
+                            <>
+                              <Zap className="w-2.5 h-2.5 text-amber-400" />
+                              <span>Autonomous Lexicon (Active)</span>
+                            </>
+                          )}
+                        </span>
+                      </div>
+
+                      {/* Input Field with Show/Hide toggle */}
+                      <div className="relative mt-1">
+                        <input
+                          type={showApiKey ? 'text' : 'password'}
+                          value={geminiApiKey}
+                          onChange={e => handleSaveApiKey(e.target.value)}
+                          placeholder="Paste Gemini API Key (e.g. AIzaSy...)"
+                          className="w-full bg-surface-container border border-outline/25 rounded-lg px-3 py-2 pr-10 text-xs font-mono text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:border-[#00dbe7]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowApiKey(!showApiKey)}
+                          className="absolute right-2.5 top-2.5 text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+                          title={showApiKey ? 'Hide key' : 'Show key'}
+                        >
+                          {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+
+                      {/* Test Result Feedback */}
+                      {apiKeyTestResult && (
+                        <div className={`p-2 rounded-lg text-[11px] font-mono flex items-center gap-2 ${
+                          apiKeyTestResult.success
+                            ? 'bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25'
+                            : 'bg-[#ff6b6b]/10 text-[#ff6b6b] border border-[#ff6b6b]/25'
+                        }`}>
+                          {apiKeyTestResult.success ? <CheckCircle2 className="w-3.5 h-3.5 shrink-0" /> : <AlertCircle className="w-3.5 h-3.5 shrink-0" />}
+                          <span>{apiKeyTestResult.message}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="pt-2 border-t border-outline/10 flex items-center justify-between flex-wrap gap-2 text-[10px]">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={handleTestApiKey}
+                          disabled={testingApiKey || !geminiApiKey.trim()}
+                          className="px-3 py-1.5 rounded-lg bg-[#00dbe7] text-[#002022] font-bold hover:brightness-110 transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-40"
+                        >
+                          {testingApiKey ? (
+                            <>
+                              <RefreshCw className="w-3 h-3 animate-spin" />
+                              <span>Validating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <Check className="w-3 h-3" />
+                              <span>Test Connection</span>
+                            </>
+                          )}
+                        </button>
+
+                        {geminiApiKey && (
+                          <button
+                            onClick={() => handleSaveApiKey('')}
+                            className="px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface-variant hover:text-[#ff6b6b] transition-colors cursor-pointer"
+                          >
+                            Clear Key
+                          </button>
+                        )}
+                      </div>
+
+                      <a
+                        href="https://aistudio.google.com/app/apikey"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#00dbe7] hover:underline flex items-center gap-1"
+                      >
+                        <span>Get Free Key at Google AI Studio (1,500 RPD)</span>
+                        <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    </div>
+                  </div>
+
+                  {/* Card 2: AI & News Usage Tracker Widget */}
+                  <div className="p-4 rounded-xl bg-surface-container-low border border-outline/20 flex flex-col justify-between gap-3 shadow-sm">
+                    <div className="flex flex-col gap-2.5">
+                      <div className="flex justify-between items-center">
+                        <span className="font-bold text-xs text-on-surface flex items-center gap-1.5">
+                          <Activity className="w-3.5 h-3.5 text-[#00dbe7]" />
+                          Daily News & AI Usage Tracking
+                        </span>
+                        <span className="text-[10px] text-on-surface-variant font-mono">
+                          Date: {aiUsageStats.date}
+                        </span>
+                      </div>
+
+                      {/* 4 Stat Metric Badges */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center font-mono">
+                        <div className="p-2 rounded-lg bg-surface-container border border-outline/10">
+                          <span className="block text-[9px] text-on-surface-variant uppercase">Total Requests</span>
+                          <span className="text-xs font-bold text-on-surface">{aiUsageStats.totalRequests}</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-surface-container border border-outline/10">
+                          <span className="block text-[9px] text-on-surface-variant uppercase">Gemini AI</span>
+                          <span className="text-xs font-bold text-[#00dbe7]">{aiUsageStats.geminiRequests}</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-surface-container border border-outline/10">
+                          <span className="block text-[9px] text-on-surface-variant uppercase">Lexicon</span>
+                          <span className="text-xs font-bold text-amber-400">{aiUsageStats.lexiconRequests}</span>
+                        </div>
+                        <div className="p-2 rounded-lg bg-surface-container border border-outline/10">
+                          <span className="block text-[9px] text-on-surface-variant uppercase">Cache Hits</span>
+                          <span className="text-xs font-bold text-[#00e476]">{aiUsageStats.cacheHits}</span>
+                        </div>
+                      </div>
+
+                      {/* Quota Progress Bar */}
+                      <div className="flex flex-col gap-1 mt-1">
+                        <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
+                          <span>Gemini Free Tier Quota (1,500 RPD)</span>
+                          <span className="font-bold text-on-surface">
+                            {aiUsageStats.geminiRequests} / 1,500 used ({((aiUsageStats.geminiRequests / 1500) * 100).toFixed(1)}%)
+                          </span>
+                        </div>
+                        <div className="w-full bg-surface-container-high h-2 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-[#00dbe7] to-[#00e476] transition-all duration-300"
+                            style={{ width: `${Math.min(100, Math.max(2, (aiUsageStats.geminiRequests / 1500) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-outline/10 flex justify-between items-center text-[10px]">
+                      <span className="text-on-surface-variant">
+                        Autonomous Lexicon fallback operates at <strong>0 cost & unlimited volume</strong>.
+                      </span>
+                      <button
+                        onClick={handleResetUsageStats}
+                        className="text-on-surface-variant hover:text-on-surface underline cursor-pointer"
+                      >
+                        Reset Counters
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Active Stock Sentiment Card */}
                 {sentimentReport ? (
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -4880,7 +5187,24 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                           {sentimentReport.headlines.map((h, idx) => (
                             <tr key={idx} className="hover:bg-surface-container/50 transition-colors">
                               <td className="p-3 font-sans text-on-surface font-medium leading-snug">
-                                {h.title}
+                                {h.url ? (
+                                  <a
+                                    href={h.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-on-surface hover:text-[#00dbe7] hover:underline flex items-start gap-1 group/link"
+                                  >
+                                    <span>{h.title}</span>
+                                    <ExternalLink className="w-3.5 h-3.5 text-[#00dbe7] opacity-60 group-hover/link:opacity-100 shrink-0 mt-0.5" />
+                                  </a>
+                                ) : (
+                                  <span>{h.title}</span>
+                                )}
+                                {h.publisher && (
+                                  <span className="block text-[10px] text-on-surface-variant/75 font-mono mt-0.5">
+                                    Source: {h.publisher}
+                                  </span>
+                                )}
                               </td>
                               <td className="p-3 text-on-surface-variant">
                                 <span className="px-1.5 py-0.5 rounded text-[10px] bg-surface-container">
@@ -4926,43 +5250,55 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       </div>
                     ) : (
                       newsArticles.slice(0, 30).map(art => (
-                        <a
+                        <div
                           key={art.id}
-                          href={art.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="p-3 rounded-xl bg-surface-container-low border border-outline/15 hover:border-[#00dbe7]/50 hover:bg-surface-container transition-all flex flex-col justify-between gap-2 group cursor-pointer"
+                          className="p-3.5 rounded-xl bg-surface-container-low border border-outline/15 hover:border-[#00dbe7]/50 hover:bg-surface-container transition-all flex flex-col justify-between gap-2.5 group shadow-sm"
                         >
-                          <div className="flex flex-col gap-1.5">
-                            <div className="flex items-center justify-between text-[10px] text-on-surface-variant">
-                              <span className="font-bold text-on-surface flex items-center gap-1">
-                                <Newspaper className="w-3 h-3 text-[#00dbe7]" />
-                                {art.publisher}
+                          <div className="flex flex-col gap-2">
+                            <div className="flex items-center justify-between text-[10px] font-mono text-on-surface-variant">
+                              <span className="font-bold text-on-surface flex items-center gap-1.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#00dbe7] shrink-0" />
+                                <span className="truncate max-w-[180px]">{art.publisher}</span>
                               </span>
-                              <div className="flex items-center gap-1.5">
+                              <div className="flex items-center gap-1 text-on-surface-variant/80">
+                                <Clock className="w-2.5 h-2.5 opacity-70" />
                                 <span>{formatRelativeTime(art.publishedAt)}</span>
-                                <ExternalLink className="w-3 h-3 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors" />
                               </div>
                             </div>
 
-                            <h6 className="text-xs font-sans font-medium text-on-surface group-hover:text-[#00dbe7] transition-colors leading-snug line-clamp-2">
-                              {art.title}
-                            </h6>
+                            <a
+                              href={art.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-sans font-semibold text-on-surface group-hover:text-[#00dbe7] transition-colors leading-snug line-clamp-2 flex items-start justify-between gap-1 group/link cursor-pointer"
+                              title={art.title}
+                            >
+                              <span>{art.title}</span>
+                              <ExternalLink className="w-3.5 h-3.5 text-on-surface-variant shrink-0 mt-0.5 opacity-60 group-hover/link:opacity-100 group-hover/link:text-[#00dbe7] transition-all" />
+                            </a>
 
                             {art.summary && art.summary !== art.title && (
-                              <p className="text-[11px] text-on-surface-variant line-clamp-2 leading-relaxed">
+                              <p className="text-[11px] text-on-surface-variant/90 line-clamp-2 leading-relaxed font-sans">
                                 {art.summary}
                               </p>
                             )}
                           </div>
 
-                          <div className="pt-2 border-t border-outline/10 flex justify-between items-center text-[10px] text-on-surface-variant/80">
-                            <span>Source: {art.source === 'YAHOO_FINANCE' ? 'Yahoo Finance Feed' : 'Google News Global'}</span>
-                            <span className="text-[#00dbe7] group-hover:underline flex items-center gap-1">
-                              Read Full Article &rarr;
+                          <div className="pt-2 border-t border-outline/10 flex justify-between items-center text-[10px] font-mono text-on-surface-variant/80">
+                            <span className="truncate max-w-[180px]">
+                              {art.source === 'YAHOO_FINANCE' ? 'Yahoo Finance Feed' : 'Google Regional Feed'}
                             </span>
+                            <a
+                              href={art.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[#00dbe7] hover:underline font-semibold flex items-center gap-1 shrink-0"
+                            >
+                              <span>Verify on {art.publisher.split(' ')[0]}</span>
+                              <ExternalLink className="w-2.5 h-2.5" />
+                            </a>
                           </div>
-                        </a>
+                        </div>
                       ))
                     )}
                   </div>

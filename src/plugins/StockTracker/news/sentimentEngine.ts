@@ -15,11 +15,12 @@ interface SentimentCacheEntry {
 const SENTIMENT_CACHE = new Map<string, SentimentCacheEntry>();
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes cache
 
-// Lexicon for Financial Sentiment Fallback Engine
+// Lexicon for Financial Sentiment Fallback Engine (Loughran-McDonald Domain Methodology)
 const BULLISH_LEXICON = [
   { word: 'record profit', weight: 0.9 },
   { word: 'beats estimates', weight: 0.85 },
   { word: 'beat estimates', weight: 0.85 },
+  { word: 'strong guidance', weight: 0.85 },
   { word: 'surge', weight: 0.75 },
   { word: 'surges', weight: 0.75 },
   { word: 'soars', weight: 0.8 },
@@ -30,9 +31,14 @@ const BULLISH_LEXICON = [
   { word: 'buy rating', weight: 0.7 },
   { word: 'outperform', weight: 0.75 },
   { word: 'contract win', weight: 0.8 },
+  { word: 'order win', weight: 0.8 },
+  { word: 'promoter buying', weight: 0.75 },
+  { word: 'target raised', weight: 0.75 },
+  { word: 'fii buying', weight: 0.7 },
   { word: 'partnership', weight: 0.6 },
   { word: 'expansion', weight: 0.6 },
   { word: 'dividend hike', weight: 0.75 },
+  { word: 'patent granted', weight: 0.75 },
   { word: 'breakout', weight: 0.65 },
   { word: 'bullish', weight: 0.7 },
   { word: 'growth', weight: 0.5 },
@@ -45,10 +51,15 @@ const BEARISH_LEXICON = [
   { word: 'fraud', weight: 1.0, isCircuitBreaker: true },
   { word: 'probe', weight: 0.85, isCircuitBreaker: true },
   { word: 'investigation', weight: 0.85, isCircuitBreaker: true },
-  { word: 'lawsuit', weight: 0.75 },
+  { word: 'sebi notice', weight: 0.9, isCircuitBreaker: true },
+  { word: 'show cause notice', weight: 0.85, isCircuitBreaker: true },
+  { word: 'sec charges', weight: 1.0, isCircuitBreaker: true },
   { word: 'accounting irregularity', weight: 1.0, isCircuitBreaker: true },
   { word: 'bankruptcy', weight: 1.0, isCircuitBreaker: true },
   { word: 'default', weight: 0.9, isCircuitBreaker: true },
+  { word: 'tax evasion', weight: 0.9, isCircuitBreaker: true },
+  { word: 'insider trading', weight: 0.9, isCircuitBreaker: true },
+  { word: 'lawsuit', weight: 0.75 },
   { word: 'downgrade', weight: 0.8 },
   { word: 'downgraded', weight: 0.8 },
   { word: 'misses estimates', weight: 0.85 },
@@ -76,26 +87,27 @@ function detectCatalyst(text: string): NewsCatalystType {
   if (/(earnings|revenue|quarterly|q1|q2|q3|q4|profit|eps|dividend|guidance|ebitda)/i.test(t)) {
     return 'EARNINGS';
   }
-  if (/(probe|investigation|lawsuit|regulat|sebi|sec|court|antitrust|penalty|fine|fraud|legal)/i.test(t)) {
+  if (/(probe|investigation|lawsuit|regulat|sebi|sec|court|antitrust|penalty|fine|fraud|legal|show cause|enforcement)/i.test(t)) {
     return 'REGULATORY_LEGAL';
   }
-  if (/(merger|acquisition|buyout|takeover|acquires|stake|deal|bid)/i.test(t)) {
+  if (/(merger|acquisition|buyout|takeover|acquires|stake|deal|bid|qip|block deal)/i.test(t)) {
     return 'MERGERS_ACQUISITIONS';
   }
-  if (/(ceo|cfo|executive|board|resigns|appointed|ousted|leadership)/i.test(t)) {
+  if (/(ceo|cfo|executive|board|resigns|appointed|ousted|leadership|promoter)/i.test(t)) {
     return 'MANAGEMENT';
   }
-  if (/(fed|rbi|inflation|interest rate|treasury|macro|tariff|central bank|cpi)/i.test(t)) {
+  if (/(fed|rbi|inflation|interest rate|treasury|macro|tariff|central bank|cpi|monetary)/i.test(t)) {
     return 'MACRO_RATES';
   }
-  if (/(launch|patent|ai|product|breakthrough|approval|fda|chip|tech)/i.test(t)) {
+  if (/(launch|patent|ai|product|breakthrough|approval|fda|chip|tech|expansion)/i.test(t)) {
     return 'PRODUCT_INNOVATION';
   }
   return 'GENERAL';
 }
 
 /**
- * Autonomous Rule-Based Sentiment Analysis when Gemini AI is not available.
+ * Autonomous Rule-Based Financial Sentiment Analysis.
+ * Runs 100% in Node.js CPU in <1ms without any external network calls or LLM token costs.
  */
 function analyzeAutonomousFallback(symbol: string, cleanSymbol: string, articles: StockNewsArticle[]): StockSentimentReport {
   if (articles.length === 0) {
@@ -168,7 +180,9 @@ function analyzeAutonomousFallback(symbol: string, cleanSymbol: string, articles
       score: Math.round(itemScore * 100) / 100,
       verdict,
       catalyst,
-      keyPhrases: foundKeywords.slice(0, 3)
+      keyPhrases: foundKeywords.slice(0, 3),
+      url: art.url,
+      publisher: art.publisher
     });
   }
 
@@ -216,12 +230,52 @@ function analyzeAutonomousFallback(symbol: string, cleanSymbol: string, articles
 }
 
 /**
+ * Validates a user-supplied Google Gemini API Key with an ultra-lightweight ping.
+ */
+export async function testGeminiApiKey(apiKey: string): Promise<{
+  success: boolean;
+  model: string;
+  latencyMs: number;
+  message?: string;
+  error?: string;
+}> {
+  const start = Date.now();
+  try {
+    const key = (apiKey || '').trim();
+    if (!key) {
+      return { success: false, model: 'gemini-2.5-flash', latencyMs: 0, error: 'API key is required' };
+    }
+    const ai = new GoogleGenAI({ apiKey: key });
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: 'Ping test for SutharLabs. Respond with one word: READY'
+    });
+    const latencyMs = Date.now() - start;
+    const reply = (response.text || '').trim();
+    return {
+      success: true,
+      model: 'gemini-2.5-flash',
+      latencyMs,
+      message: `Gemini 2.5 Flash connected successfully in ${latencyMs}ms (${reply})`
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      model: 'gemini-2.5-flash',
+      latencyMs: Date.now() - start,
+      error: err.message || 'Gemini API authentication failed'
+    };
+  }
+}
+
+/**
  * Analyzes stock sentiment via Google Gemini AI (@google/genai) with autonomous fallback.
  */
 export async function analyzeStockSentiment(params: {
   symbol: string;
   cleanSymbol?: string;
   articles: StockNewsArticle[];
+  apiKey?: string;
 }): Promise<StockSentimentReport> {
   const { symbol, cleanSymbol = symbol.replace(/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i, ''), articles } = params;
   const cacheKey = symbol.toUpperCase();
@@ -240,11 +294,12 @@ export async function analyzeStockSentiment(params: {
     return fallback;
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  // Check supplied key, then process.env
+  const apiKey = (params.apiKey && params.apiKey.trim()) || process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
 
   if (apiKey && apiKey.trim() !== '') {
     try {
-      const ai = new GoogleGenAI({ apiKey });
+      const ai = new GoogleGenAI({ apiKey: apiKey.trim() });
 
       const headlineSummaries = articles.slice(0, 7).map((a, i) =>
         `${i + 1}. Title: "${a.title}" | Publisher: ${a.publisher} | Summary: "${a.summary.slice(0, 150)}"`
@@ -285,6 +340,26 @@ Analyze the qualitative catalysts and financial polarity. Respond ONLY with a va
       if (cleanJsonMatch) {
         const parsed = JSON.parse(cleanJsonMatch[0]);
 
+        const mappedHeadlines: HeadlineSentimentAnalysis[] = Array.isArray(parsed.headlines)
+          ? parsed.headlines.map((h: any, idx: number) => {
+              // Match headline to corresponding article to preserve direct link & publisher
+              const rawH = String(h.title || '').toLowerCase();
+              const matchedArticle =
+                articles.find(a => a.title.toLowerCase().includes(rawH.slice(0, 25)) || rawH.includes(a.title.slice(0, 25).toLowerCase())) ||
+                articles[idx];
+
+              return {
+                title: h.title || matchedArticle?.title || '',
+                score: Number(h.score) || 0.0,
+                verdict: ['BULLISH', 'BEARISH', 'NEUTRAL'].includes(h.verdict) ? h.verdict : 'NEUTRAL',
+                catalyst: h.catalyst || 'GENERAL',
+                keyPhrases: [],
+                url: matchedArticle?.url,
+                publisher: matchedArticle?.publisher
+              };
+            })
+          : [];
+
         const report: StockSentimentReport = {
           symbol,
           cleanSymbol,
@@ -298,15 +373,7 @@ Analyze the qualitative catalysts and financial polarity. Respond ONLY with a va
           analyzedBy: 'GEMINI_AI',
           analyzedAt: new Date().toISOString(),
           articleCount: articles.length,
-          headlines: Array.isArray(parsed.headlines)
-            ? parsed.headlines.map((h: any) => ({
-                title: h.title || '',
-                score: Number(h.score) || 0.0,
-                verdict: h.verdict || 'NEUTRAL',
-                catalyst: h.catalyst || 'GENERAL',
-                keyPhrases: []
-              }))
-            : []
+          headlines: mappedHeadlines
         };
 
         SENTIMENT_CACHE.set(cacheKey, { timestamp: now, report });
@@ -344,83 +411,78 @@ export function calculateSentimentConfluence(
     };
   }
 
-  const { score, verdict, circuitBreakerRecommended, circuitBreakerReason } = sentiment;
-
-  // 1. Emergency Circuit Breaker check
-  if (circuitBreakerRecommended && strategyAction === 'BUY') {
+  // 1. Emergency Circuit Breaker Trigger
+  if (sentiment.circuitBreakerRecommended) {
     return {
       originalSignal: strategyAction,
       originalConfidence: strategyConfidence,
       finalSignal: 'HOLD',
-      finalConfidence: 0.85,
-      sentimentScore: score,
-      sentimentVerdict: verdict,
+      finalConfidence: 0.2,
+      sentimentScore: sentiment.score,
+      sentimentVerdict: sentiment.verdict,
       confluenceEffect: 'CIRCUIT_BREAKER',
-      explanation: `⚠️ AI Circuit Breaker Activated: Technical BUY signal overridden to HOLD due to high-risk news event (${circuitBreakerReason || 'Severe downside catalyst'}).`
+      explanation: `🚨 EMERGENCY CIRCUIT BREAKER: ${sentiment.circuitBreakerReason || 'Severe headline risk detected'}. Automatic BUY execution aborted to protect capital.`
     };
   }
 
-  // 2. Strong Positive Confluence (BUY + Bullish Sentiment)
-  if (strategyAction === 'BUY' && score >= 0.3) {
-    const boost = Math.min(0.2, score * 0.25);
-    const finalConfidence = Math.min(0.99, strategyConfidence + boost);
+  // 2. High Bullish Confluence (Both Technical Algorithm & News Sentiment are Positive)
+  if (strategyAction === 'BUY' && sentiment.verdict === 'BULLISH' && sentiment.score >= 0.3) {
+    const boost = Math.min(0.20, sentiment.score * 0.25);
+    const boostedConfidence = Math.min(0.99, strategyConfidence + boost);
     return {
-      originalSignal: strategyAction,
+      originalSignal: 'BUY',
       originalConfidence: strategyConfidence,
       finalSignal: 'BUY',
-      finalConfidence: Math.round(finalConfidence * 100) / 100,
-      sentimentScore: score,
-      sentimentVerdict: verdict,
+      finalConfidence: Math.round(boostedConfidence * 100) / 100,
+      sentimentScore: sentiment.score,
+      sentimentVerdict: 'BULLISH',
       confluenceEffect: 'BOOST',
-      explanation: `Positive Confluence: Technical momentum aligned with strong bullish news sentiment (${sentiment.catalystSummary}).`
+      explanation: `🚀 AI CONFLUENCE BOOST: Technical buy signal reinforced by bullish ${sentiment.primaryCatalyst.replace('_', ' ')} news catalysts (+${Math.round(boost * 100)}% confidence).`
     };
   }
 
-  // 3. Positive Confluence on Short/Exit (SELL + Bearish Sentiment)
-  if (strategyAction === 'SELL' && score <= -0.3) {
-    const boost = Math.min(0.2, Math.abs(score) * 0.25);
-    const finalConfidence = Math.min(0.99, strategyConfidence + boost);
+  // 3. Adverse Sentiment Penalty (Technical Algorithm says BUY, but News is Bearish)
+  if (strategyAction === 'BUY' && sentiment.verdict === 'BEARISH' && sentiment.score <= -0.35) {
+    const penalty = Math.abs(sentiment.score) * 0.4;
+    const penalizedConfidence = Math.max(0.1, strategyConfidence - penalty);
+    const finalSignal = penalizedConfidence < 0.45 ? 'HOLD' : 'BUY';
     return {
-      originalSignal: strategyAction,
-      originalConfidence: strategyConfidence,
-      finalSignal: 'SELL',
-      finalConfidence: Math.round(finalConfidence * 100) / 100,
-      sentimentScore: score,
-      sentimentVerdict: verdict,
-      confluenceEffect: 'BOOST',
-      explanation: `Negative Confluence: Technical breakdown confirmed by bearish news headwinds (${sentiment.catalystSummary}).`
-    };
-  }
-
-  // 4. Headwind / Divergence (BUY with Bearish Sentiment)
-  if (strategyAction === 'BUY' && score <= -0.35) {
-    const penalty = Math.abs(score) * 0.35;
-    const finalConfidence = Math.max(0.3, strategyConfidence - penalty);
-    // If sentiment is strongly negative, convert to cautious HOLD
-    const finalSignal = score <= -0.6 ? 'HOLD' : 'BUY';
-    return {
-      originalSignal: strategyAction,
+      originalSignal: 'BUY',
       originalConfidence: strategyConfidence,
       finalSignal,
-      finalConfidence: Math.round(finalConfidence * 100) / 100,
-      sentimentScore: score,
-      sentimentVerdict: verdict,
+      finalConfidence: Math.round(penalizedConfidence * 100) / 100,
+      sentimentScore: sentiment.score,
+      sentimentVerdict: 'BEARISH',
       confluenceEffect: 'PENALTY',
-      explanation: finalSignal === 'HOLD'
-        ? `Cautious Hold: Technical BUY signal neutralized to HOLD due to conflicting adverse news catalysts (${sentiment.catalystSummary}).`
-        : `Divergence Warning: Technical BUY signal weakened by negative news sentiment headwinds.`
+      explanation: `⚠️ SENTIMENT ADVISORY PENALTY: Adverse ${sentiment.primaryCatalyst.replace('_', ' ')} headlines conflict with technical buy signal. Confidence reduced.`
     };
   }
 
-  // 5. Default Neutral Confluence
+  // 4. Short / Sell Confluence Boost
+  if (strategyAction === 'SELL' && sentiment.verdict === 'BEARISH' && sentiment.score <= -0.3) {
+    const boost = Math.min(0.20, Math.abs(sentiment.score) * 0.25);
+    const boostedConfidence = Math.min(0.99, strategyConfidence + boost);
+    return {
+      originalSignal: 'SELL',
+      originalConfidence: strategyConfidence,
+      finalSignal: 'SELL',
+      finalConfidence: Math.round(boostedConfidence * 100) / 100,
+      sentimentScore: sentiment.score,
+      sentimentVerdict: 'BEARISH',
+      confluenceEffect: 'BOOST',
+      explanation: `📉 SHORT CONFLUENCE BOOST: Technical sell signal reinforced by bearish headline flow.`
+    };
+  }
+
+  // Neutral or aligned without strong amplification
   return {
     originalSignal: strategyAction,
     originalConfidence: strategyConfidence,
     finalSignal: strategyAction,
     finalConfidence: strategyConfidence,
-    sentimentScore: score,
-    sentimentVerdict: verdict,
+    sentimentScore: sentiment.score,
+    sentimentVerdict: sentiment.verdict,
     confluenceEffect: 'NEUTRAL',
-    explanation: 'News sentiment is moderate or neutral; technical algorithmic rule evaluation prevails.'
+    explanation: `Neutral alignment: News sentiment (${sentiment.verdict}) is consistent with normal market fluctuations.`
   };
 }

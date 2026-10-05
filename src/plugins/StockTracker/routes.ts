@@ -23,7 +23,7 @@ import {
 } from "./strategies/store.js";
 import { evaluateStrategy } from "./strategies/engine.js";
 import { PRESET_STRATEGIES } from "./strategies/presets.js";
-import { fetchStockNews, analyzeStockSentiment } from "./news/index.js";
+import { fetchStockNews, analyzeStockSentiment, testGeminiApiKey } from "./news/index.js";
 
 export interface WatchlistItem {
   symbol: string;
@@ -575,12 +575,24 @@ export function registerRoutes(router: Router) {
     }
   });
 
+  // POST /test-gemini-key (Validate user Gemini API Key connection)
+  router.post("/test-gemini-key", async (req: any, res: any) => {
+    try {
+      const apiKey = (req.body?.apiKey || req.headers['x-gemini-key'] || '').trim();
+      const result = await testGeminiApiKey(apiKey);
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message || "Failed to validate Gemini API key" });
+    }
+  });
+
   // GET /news-sentiment (Gemini AI or Autonomous Lexicon polarity and catalyst analysis)
   router.get("/news-sentiment", async (req: any, res: any) => {
     try {
       const symbol = req.query.symbol as string;
       const market = (req.query.market as string) || (req.query.region as string) || 'GLOBAL';
       const companyName = req.query.companyName as string;
+      const apiKey = (req.headers['x-gemini-key'] as string) || (req.query.geminiKey as string);
 
       if (!symbol) {
         return res.status(400).json({ error: "Stock symbol is required" });
@@ -594,7 +606,8 @@ export function registerRoutes(router: Router) {
 
       const sentiment = await analyzeStockSentiment({
         symbol,
-        articles
+        articles,
+        apiKey
       });
 
       res.json({
@@ -615,6 +628,7 @@ export function registerRoutes(router: Router) {
       const strategyId = (req.query.strategyId as string) || 'strat-ema-cross';
       const region = (req.query.region as string) || 'IN';
       const includeSentiment = req.query.includeSentiment === 'true' || req.query.withSentiment === 'true';
+      const apiKey = (req.headers['x-gemini-key'] as string) || (req.query.geminiKey as string);
 
       if (!symbol) {
         return res.status(400).json({ error: "Stock symbol is required" });
@@ -655,7 +669,8 @@ export function registerRoutes(router: Router) {
           });
           sentimentReport = await analyzeStockSentiment({
             symbol: normalizedSym,
-            articles
+            articles,
+            apiKey
           });
         } catch (sentErr) {
           console.warn("[Strategy Signal] Failed to load news sentiment for confluence:", sentErr);
@@ -672,8 +687,9 @@ export function registerRoutes(router: Router) {
   // POST /strategy-eval (Evaluate custom or draft strategy in sandbox before saving)
   router.post("/strategy-eval", async (req: any, res: any) => {
     try {
-      const { strategy, symbol, region, paramOverrides, includeSentiment } = req.body;
+      const { strategy, symbol, region, paramOverrides, includeSentiment, apiKey: bodyApiKey } = req.body;
       const targetRegion = region || 'IN';
+      const apiKey = bodyApiKey || (req.headers['x-gemini-key'] as string);
 
       if (!symbol) {
         return res.status(400).json({ error: "Stock symbol is required" });
@@ -705,7 +721,8 @@ export function registerRoutes(router: Router) {
           });
           sentimentReport = await analyzeStockSentiment({
             symbol: normalizedSym,
-            articles
+            articles,
+            apiKey
           });
         } catch (sentErr) {
           console.warn("[Strategy Eval] Sentiment analysis skipped:", sentErr);

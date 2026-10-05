@@ -26,6 +26,8 @@ export interface HeadlineSentimentAnalysis {
   verdict: 'BULLISH' | 'BEARISH' | 'NEUTRAL';
   catalyst: NewsCatalystType;
   keyPhrases: string[];
+  url?: string;
+  publisher?: string;
 }
 
 export interface StockSentimentReport {
