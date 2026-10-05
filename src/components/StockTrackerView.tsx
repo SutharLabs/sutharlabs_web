@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { ChevronDown, Sliders, Eye, EyeOff, Globe, TrendingUp, TrendingDown, RefreshCw, BarChart2, ShieldCheck, DollarSign } from 'lucide-react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { ChevronDown, Sliders, Eye, EyeOff, Globe, TrendingUp, TrendingDown, RefreshCw } from 'lucide-react';
 import {
   createChart,
   CandlestickSeries,
@@ -8,7 +8,6 @@ import {
   ColorType,
   CrosshairMode,
   IChartApi,
-  ISeriesApi,
   UTCTimestamp
 } from 'lightweight-charts';
 import { TerminalLog, UserPortfolio } from '../types';
@@ -18,6 +17,7 @@ interface StockTrackerViewProps {
   onAddLog: (log: TerminalLog) => void;
   userEmail: string;
   userToken: string;
+  theme?: 'dark' | 'light';
 }
 
 const STOCK_API = '/api/workspace/stock-analyzer';
@@ -53,11 +53,6 @@ interface Candle {
   volume: number;
 }
 
-interface TimePoint {
-  time: number;
-  value: number;
-}
-
 interface Analysis {
   symbol: string;
   rsi: number | null;
@@ -74,8 +69,6 @@ interface Analysis {
   ema_50: number | null;
   ma_20?: number;
   signals: Record<string, string>;
-  ema20Series?: TimePoint[];
-  ema50Series?: TimePoint[];
 }
 
 interface Suggestion {
@@ -195,7 +188,28 @@ const DEFAULT_UNIVERSES: Record<string, MarketUniverse> = {
 
 const DEFAULT_SYMBOL = 'RELIANCE.NS';
 
-export default function StockTrackerView({ logs, onAddLog, userEmail, userToken }: StockTrackerViewProps) {
+// Mathematical continuous Exponential Moving Average helper calculated on loaded candle stream
+function calculateEMA(data: Candle[], period: number): { time: UTCTimestamp; value: number }[] {
+  if (!data || data.length < 2) return [];
+  const k = 2 / (period + 1);
+  const result: { time: UTCTimestamp; value: number }[] = [];
+  
+  const seedLength = Math.min(period, data.length);
+  let sum = 0;
+  for (let i = 0; i < seedLength; i++) {
+    sum += data[i].close;
+  }
+  let ema = sum / seedLength;
+  result.push({ time: data[seedLength - 1].time as UTCTimestamp, value: Number(ema.toFixed(2)) });
+  
+  for (let i = seedLength; i < data.length; i++) {
+    ema = data[i].close * k + ema * (1 - k);
+    result.push({ time: data[i].time as UTCTimestamp, value: Number(ema.toFixed(2)) });
+  }
+  return result;
+}
+
+export default function StockTrackerView({ logs, onAddLog, userEmail, userToken, theme }: StockTrackerViewProps) {
   // Global Market Universes
   const [universes, setUniverses] = useState<Record<string, MarketUniverse>>(DEFAULT_UNIVERSES);
   const [activeMarketKey, setActiveMarketKey] = useState<string>('IN');
@@ -242,6 +256,32 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
     close: number;
     volume: number;
   } | null>(null);
+
+  // Detect dark vs light theme cleanly
+  const [isDark, setIsDark] = useState<boolean>(() => {
+    if (typeof document !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return theme !== 'light';
+  });
+
+  useEffect(() => {
+    if (theme) {
+      setIsDark(theme === 'dark');
+    } else if (typeof document !== 'undefined') {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    }
+  }, [theme]);
+
+  // Observer for document classList changes (when user toggles theme in navbar)
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const chartInstanceRef = useRef<IChartApi | null>(null);
@@ -365,6 +405,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
     return () => clearInterval(id);
   }, [symbol]);
 
+  // Pre-calculate full-length continuous EMA series directly on current candle stream
+  const continuousEma20 = useMemo(() => calculateEMA(candles, 20), [candles]);
+  const continuousEma50 = useMemo(() => calculateEMA(candles, 50), [candles]);
+
   // ── 4. TradingView Lightweight Charts Engine ───────────────────────────────
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -378,40 +422,50 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
     if (candles.length === 0) return;
 
     const container = chartContainerRef.current;
+
+    // Theme-driven palette
+    const chartBg = isDark ? '#0c0c0e' : '#ffffff';
+    const textColor = isDark ? '#b9cacb' : '#475569';
+    const gridLineColor = isDark ? 'rgba(132, 148, 149, 0.12)' : 'rgba(148, 163, 184, 0.15)';
+    const borderColor = isDark ? 'rgba(132, 148, 149, 0.25)' : 'rgba(148, 163, 184, 0.25)';
+    const crosshairColor = isDark ? '#00dbe7' : '#0284c7';
+    const crosshairLabelBg = isDark ? '#002022' : '#0369a1';
+
     const chart = createChart(container, {
       width: container.clientWidth || 800,
       height: 380,
       layout: {
-        background: { type: ColorType.Solid, color: '#090d16' },
-        textColor: '#94a3b8',
+        attributionLogo: false, // Removes the TradingView logo from the bottom-left corner
+        background: { type: ColorType.Solid, color: chartBg },
+        textColor: textColor,
         fontSize: 11,
         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
       },
       grid: {
-        vertLines: { color: 'rgba(30, 41, 59, 0.45)' },
-        horzLines: { color: 'rgba(30, 41, 59, 0.45)' },
+        vertLines: { color: gridLineColor },
+        horzLines: { color: gridLineColor },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
         vertLine: {
-          color: '#00dbe7',
+          color: crosshairColor,
           width: 1,
           style: 3,
-          labelBackgroundColor: '#002022',
+          labelBackgroundColor: crosshairLabelBg,
         },
         horzLine: {
-          color: '#00dbe7',
+          color: crosshairColor,
           width: 1,
           style: 3,
-          labelBackgroundColor: '#002022',
+          labelBackgroundColor: crosshairLabelBg,
         },
       },
       rightPriceScale: {
-        borderColor: 'rgba(51, 65, 85, 0.6)',
+        borderColor: borderColor,
         scaleMargins: { top: 0.08, bottom: showVolume ? 0.22 : 0.08 },
       },
       timeScale: {
-        borderColor: 'rgba(51, 65, 85, 0.6)',
+        borderColor: borderColor,
         timeVisible: activePeriod === '1D' || activePeriod === '1W',
         secondsVisible: false,
       },
@@ -462,46 +516,26 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       volumeSeries.setData(volumeData);
     }
 
-    // 3. EMA 20 Overlay Line (Cyan)
-    if (showEma20 && analysis?.ema20Series && analysis.ema20Series.length > 0) {
-      const candleTimes = new Set(candles.map(c => c.time));
-      const validEma20 = analysis.ema20Series
-        .filter(p => candleTimes.has(p.time))
-        .map(p => ({
-          time: p.time as UTCTimestamp,
-          value: p.value
-        }));
-
-      if (validEma20.length > 0) {
-        const ema20Line = chart.addSeries(LineSeries, {
-          color: '#00dbe7',
-          lineWidth: 2,
-          priceLineVisible: false,
-          crosshairMarkerVisible: true,
-        });
-        ema20Line.setData(validEma20);
-      }
+    // 3. Continuous Full-Length EMA 20 Overlay (Cyan)
+    if (showEma20 && continuousEma20.length > 0) {
+      const ema20Line = chart.addSeries(LineSeries, {
+        color: '#00dbe7',
+        lineWidth: 2,
+        priceLineVisible: false,
+        crosshairMarkerVisible: true,
+      });
+      ema20Line.setData(continuousEma20);
     }
 
-    // 4. EMA 50 Overlay Line (Amber)
-    if (showEma50 && analysis?.ema50Series && analysis.ema50Series.length > 0) {
-      const candleTimes = new Set(candles.map(c => c.time));
-      const validEma50 = analysis.ema50Series
-        .filter(p => candleTimes.has(p.time))
-        .map(p => ({
-          time: p.time as UTCTimestamp,
-          value: p.value
-        }));
-
-      if (validEma50.length > 0) {
-        const ema50Line = chart.addSeries(LineSeries, {
-          color: '#f59e0b',
-          lineWidth: 2,
-          priceLineVisible: false,
-          crosshairMarkerVisible: true,
-        });
-        ema50Line.setData(validEma50);
-      }
+    // 4. Continuous Full-Length EMA 50 Overlay (Amber)
+    if (showEma50 && continuousEma50.length > 0) {
+      const ema50Line = chart.addSeries(LineSeries, {
+        color: '#f59e0b',
+        lineWidth: 2,
+        priceLineVisible: false,
+        crosshairMarkerVisible: true,
+      });
+      ema50Line.setData(continuousEma50);
     }
 
     // Crosshair hover inspection
@@ -545,7 +579,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       chart.remove();
       chartInstanceRef.current = null;
     };
-  }, [candles, showVolume, showEma20, showEma50, analysis, activePeriod]);
+  }, [candles, showVolume, showEma20, showEma50, continuousEma20, continuousEma50, activePeriod, isDark]);
 
   // ── 5. Terminal Internal Auto-Scroll ──────────────────────────────────────
   useEffect(() => {
@@ -595,13 +629,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
     ? { text: 'text-[#00e476]', bg: 'bg-[#00e476]/10', border: 'border-[#00e476]/40' }
     : suggestion?.action === 'SELL'
     ? { text: 'text-[#ff6b6b]', bg: 'bg-[#ff6b6b]/10', border: 'border-[#ff6b6b]/40' }
-    : { text: 'text-[#74f5ff]', bg: 'bg-[#00dbe7]/10', border: 'border-[#00dbe7]/30' };
+    : { text: 'text-[#00dbe7]', bg: 'bg-[#00dbe7]/10', border: 'border-[#00dbe7]/30' };
 
   // RSI display color
   const rsiColor = analysis?.rsi == null ? 'text-on-surface-variant'
     : analysis.rsi > 70 ? 'text-[#ff6b6b]'
     : analysis.rsi < 30 ? 'text-[#00e476]'
-    : 'text-[#74f5ff]';
+    : 'text-[#00dbe7]';
 
   const rsiLabel = analysis?.rsi == null ? '—'
     : analysis.rsi > 70 ? 'Overbought'
@@ -613,14 +647,14 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
 
       {/* Notification Toast */}
       {notification && (
-        <div className="bg-[#00e476]/10 border border-[#00fb83]/30 text-[#00e476] p-3 rounded-lg text-xs font-mono flex items-center gap-2 shadow-lg">
+        <div className="bg-[#00e476]/10 border border-[#00fb83]/30 text-[#00e476] p-3 rounded-xl text-xs font-mono flex items-center gap-2 shadow-lg">
           <span className="material-symbols-outlined text-sm select-none">check_circle</span>
           {notification}
         </div>
       )}
 
       {/* ── 1. GLOBAL MARKET UNIVERSE SELECTOR ───────────────────────────────── */}
-      <div className="glass-panel rounded-xl p-3 border border-outline/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 bg-gradient-to-r from-surface-container-lowest via-surface-container-low to-surface-container-lowest">
+      <div className="glass-panel rounded-xl p-3 border border-outline/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-3">
         <div className="flex items-center gap-2">
           <Globe className="w-4 h-4 text-[#00dbe7]" />
           <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
@@ -638,10 +672,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                     setSymbolInput(firstStock);
                   }
                 }}
-                className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
                   activeMarketKey === key
-                    ? 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/50 font-bold shadow-[0_0_10px_rgba(0,219,231,0.2)]'
-                    : 'bg-[#18181b]/80 text-[#94a3b8] hover:text-white border border-outline/10 hover:border-outline/30'
+                    ? 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/50 font-bold shadow-[0_0_10px_rgba(0,219,231,0.2)]'
+                    : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface border border-outline/20'
                 }`}
               >
                 <span>{u.flag}</span>
@@ -654,8 +688,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
         {/* Market State Badge */}
         {quote?.market_state && (
           <div className="flex items-center gap-2 font-mono text-[11px] self-end md:self-auto">
-            <span className={`w-2 h-2 rounded-full ${quote.market_open ? 'bg-[#00e476] animate-pulse' : 'bg-slate-500'}`} />
-            <span className={quote.market_open ? 'text-[#00e476] font-bold' : 'text-slate-400'}>
+            <span className={`w-2 h-2 rounded-full ${quote.market_open ? 'bg-[#00e476] animate-pulse' : 'bg-slate-400'}`} />
+            <span className={quote.market_open ? 'text-[#00e476] font-bold' : 'text-on-surface-variant'}>
               {quote.exchange || 'EXCHANGE'} • {quote.market_open ? 'SESSION ACTIVE' : `CLOSED (${quote.market_state})`}
             </span>
           </div>
@@ -680,10 +714,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
               }
             }}
             placeholder="e.g. RELIANCE.NS, AAPL, SHEL.L"
-            className="w-full bg-[#0c0c0e] border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-white focus:outline-none focus:border-[#00dbe7] uppercase tracking-wider"
+            className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] uppercase tracking-wider"
           />
           {showDropdown && filteredStocks.length > 0 && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-[#10141e] border border-outline/40 rounded-lg shadow-2xl z-50 overflow-hidden backdrop-blur-xl max-h-64 overflow-y-auto custom-scrollbar">
+            <div className="absolute top-full left-0 right-0 mt-1 bg-surface-container border border-outline/30 rounded-lg shadow-2xl z-50 overflow-hidden backdrop-blur-xl max-h-64 overflow-y-auto custom-scrollbar">
               {filteredStocks.map(s => (
                 <button
                   key={s.symbol}
@@ -692,14 +726,14 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                     setSymbolInput(s.symbol);
                     setShowDropdown(false);
                   }}
-                  className="w-full text-left px-3 py-2.5 text-xs font-mono hover:bg-[#00dbe7]/15 transition-colors flex justify-between items-center border-b border-outline/10 last:border-none bg-transparent cursor-pointer"
+                  className="w-full text-left px-3 py-2.5 text-xs font-mono hover:bg-[#00dbe7]/10 transition-colors flex justify-between items-center border-b border-outline/10 last:border-none bg-transparent cursor-pointer"
                 >
                   <div className="flex flex-col">
                     <span className="text-[#00dbe7] font-bold">{s.symbol}</span>
-                    <span className="text-[10px] text-slate-400">{s.name}</span>
+                    <span className="text-[10px] text-on-surface-variant">{s.name}</span>
                   </div>
                   {s.sector && (
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-container text-slate-300">
+                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant">
                       {s.sector}
                     </span>
                   )}
@@ -720,8 +754,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
           onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
           className={`px-3 py-2 border rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer ml-auto ${
             showSettingsDrawer
-              ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#74f5ff]'
-              : 'border-outline/30 text-slate-300 hover:text-white bg-surface-container-low'
+              ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#00dbe7]'
+              : 'border-outline/30 text-on-surface-variant hover:text-on-surface bg-surface-container-low'
           }`}
           title="Configure Indicator Parameters"
         >
@@ -732,31 +766,31 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
 
       {/* ── 2.1 INDICATOR CONFIGURATION DRAWER (COLLAPSIBLE) ────────────────── */}
       {showSettingsDrawer && (
-        <div className="glass-panel rounded-xl p-4 border border-[#00dbe7]/30 bg-[#090e17]/95 animate-fade-in flex flex-wrap gap-6 items-center">
+        <div className="glass-panel rounded-xl p-4 border border-[#00dbe7]/30 bg-surface-container-low animate-fade-in flex flex-wrap gap-6 items-center">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-slate-300">RSI Period:</span>
+            <span className="text-xs font-mono text-on-surface">RSI Period:</span>
             <input
               type="number"
               min="5"
               max="50"
               value={rsiPeriod}
               onChange={e => setRsiPeriod(parseInt(e.target.value) || 14)}
-              className="w-16 bg-[#0c0c0e] border border-outline/30 rounded px-2 py-1 text-xs font-mono text-white text-center"
+              className="w-16 bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface text-center"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-slate-300">BB Period:</span>
+            <span className="text-xs font-mono text-on-surface">BB Period:</span>
             <input
               type="number"
               min="10"
               max="50"
               value={bbPeriod}
               onChange={e => setBbPeriod(parseInt(e.target.value) || 20)}
-              className="w-16 bg-[#0c0c0e] border border-outline/30 rounded px-2 py-1 text-xs font-mono text-white text-center"
+              className="w-16 bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface text-center"
             />
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs font-mono text-slate-300">BB StdDev:</span>
+            <span className="text-xs font-mono text-on-surface">BB StdDev:</span>
             <input
               type="number"
               step="0.5"
@@ -764,12 +798,12 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
               max="4"
               value={bbStdDev}
               onChange={e => setBbStdDev(parseFloat(e.target.value) || 2)}
-              className="w-16 bg-[#0c0c0e] border border-outline/30 rounded px-2 py-1 text-xs font-mono text-white text-center"
+              className="w-16 bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface text-center"
             />
           </div>
           <button
             onClick={() => fetchAll(symbol, activePeriod)}
-            className="px-3 py-1 bg-[#00dbe7]/20 border border-[#00dbe7]/40 text-[#74f5ff] text-xs font-mono rounded hover:bg-[#00dbe7]/30 transition-all cursor-pointer flex items-center gap-1.5"
+            className="px-3 py-1 bg-[#00dbe7]/20 border border-[#00dbe7]/40 text-[#00dbe7] text-xs font-mono rounded hover:bg-[#00dbe7]/30 transition-all cursor-pointer flex items-center gap-1.5"
           >
             <RefreshCw className="w-3 h-3" />
             Apply Parameters
@@ -780,22 +814,22 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       {/* ── 3. QUOTE HEADER & STATS ─────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
         {/* Main Price & Strategy Card */}
-        <div className="lg:col-span-8 glass-panel rounded-xl p-5 flex flex-col justify-between neon-border-active relative overflow-hidden bg-gradient-to-br from-surface-container-lowest to-[#0e1420]">
+        <div className="lg:col-span-8 glass-panel rounded-xl p-5 flex flex-col justify-between neon-border-active relative overflow-hidden bg-surface-container-lowest/80 border border-outline/20">
           <div className="flex justify-between items-start z-10">
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-3xl font-sans font-bold tracking-tight text-on-surface">
                   {quote?.symbol ?? symbol}
                 </h1>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/40 leading-none">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 leading-none">
                   {quote?.exchange || activeUniverse?.exchange || 'MARKET'}
                 </span>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-300 border border-purple-500/30 leading-none">
+                <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-purple-500/20 text-purple-400 border border-purple-500/30 leading-none">
                   {quote?.currency || activeUniverse?.currencyCode || 'USD'}
                 </span>
                 {loading && <span className="text-[10px] font-mono text-on-surface-variant animate-pulse">Syncing...</span>}
               </div>
-              <p className="text-xs text-[#b9cacb] mt-1.5 font-light">{quote?.name ?? '—'}</p>
+              <p className="text-xs text-on-surface-variant mt-1.5 font-light">{quote?.name ?? '—'}</p>
             </div>
 
             <div className="text-right">
@@ -817,7 +851,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
               <span className={`text-xl font-mono font-black ${actionColor.text}`}>{suggestion.action}</span>
               <div className="flex-grow">
                 <div className="flex items-center gap-2">
-                  <div className="flex-grow bg-[#0c0c0e] rounded-full h-1.5">
+                  <div className="flex-grow bg-surface-container-high rounded-full h-1.5">
                     <div
                       className={`h-1.5 rounded-full ${suggestion.action === 'BUY' ? 'bg-[#00e476]' : suggestion.action === 'SELL' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'}`}
                       style={{ width: `${(suggestion.confidence ?? 0) * 100}%` }}
@@ -835,7 +869,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                     <span>Stop: <span className="text-[#ff6b6b]">{curSymbol}{suggestion.stop_loss.toFixed(2)}</span></span>
                   )}
                   {suggestion.risk_reward_ratio && (
-                    <span>R/R: <span className="text-[#74f5ff]">{suggestion.risk_reward_ratio.toFixed(2)}</span></span>
+                    <span>R/R: <span className="text-[#00dbe7]">{suggestion.risk_reward_ratio.toFixed(2)}</span></span>
                   )}
                 </div>
               </div>
@@ -861,28 +895,28 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
 
         {/* Micro Stats Grid */}
         <div className="lg:col-span-4 grid grid-cols-2 gap-3">
-          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center">
+          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center border border-outline/20 bg-surface-container-low/70">
             <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1">Volume</span>
             <span className="font-mono text-sm text-on-surface font-semibold">
               {quote?.volume != null ? (quote.volume > 1e6 ? `${(quote.volume / 1e6).toFixed(2)}M` : quote.volume.toLocaleString()) : '—'}
             </span>
           </div>
 
-          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center">
+          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center border border-outline/20 bg-surface-container-low/70">
             <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1">Day Range</span>
             <span className="font-mono text-xs text-on-surface font-semibold truncate">
               {quote?.low != null ? `${curSymbol}${quote.low.toFixed(1)}` : '—'} – {quote?.high != null ? `${curSymbol}${quote.high.toFixed(1)}` : '—'}
             </span>
           </div>
 
-          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center">
+          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center border border-outline/20 bg-surface-container-low/70">
             <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1">RSI ({rsiPeriod})</span>
             <span className={`font-mono text-sm font-semibold ${rsiColor}`}>
               {analysis?.rsi != null ? analysis.rsi.toFixed(1) : '—'} <span className="text-[9px] uppercase font-normal">{rsiLabel}</span>
             </span>
           </div>
 
-          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center">
+          <div className="glass-panel rounded-xl p-4 flex flex-col justify-center border border-outline/20 bg-surface-container-low/70">
             <span className="font-mono text-[10px] uppercase text-on-surface-variant tracking-widest mb-1">ADX (14)</span>
             <span className="font-mono text-xs text-[#00e476] font-semibold">
               {analysis?.adx != null ? `${analysis.adx.toFixed(1)} (${analysis.adx > 25 ? 'Strong' : 'Ranging'})` : '—'}
@@ -894,7 +928,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       {/* ── 4. TECHNICAL INDICATORS MATRIX ───────────────────────────────────── */}
       {analysis && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="glass-panel rounded-xl p-3.5 space-y-1">
+          <div className="glass-panel rounded-xl p-3.5 space-y-1 border border-outline/20 bg-surface-container-low/70">
             <div className="flex justify-between items-center">
               <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">MACD (12, 26, 9)</span>
               <span className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${analysis.macd != null && analysis.macd_signal != null && analysis.macd > analysis.macd_signal ? 'bg-[#00e476]/20 text-[#00e476]' : 'bg-[#ff6b6b]/20 text-[#ff6b6b]'}`}>
@@ -912,9 +946,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
             </div>
           </div>
 
-          <div className="glass-panel rounded-xl p-3.5 space-y-1">
+          <div className="glass-panel rounded-xl p-3.5 space-y-1 border border-outline/20 bg-surface-container-low/70">
             <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">Bollinger Bands ({bbPeriod}, {bbStdDev})</span>
-            <div className="text-xs font-mono text-[#74f5ff]">
+            <div className="text-xs font-mono text-[#00dbe7]">
               Upper: {curSymbol}{analysis.bb_upper?.toFixed(1) ?? '—'}
             </div>
             <div className="text-[10px] font-mono text-on-surface-variant">
@@ -922,10 +956,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
             </div>
           </div>
 
-          <div className="glass-panel rounded-xl p-3.5 space-y-1">
+          <div className="glass-panel rounded-xl p-3.5 space-y-1 border border-outline/20 bg-surface-container-low/70">
             <div className="flex justify-between items-center">
               <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">EMA Trend (20/50)</span>
-              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-300">
+              <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
                 {analysis.signals.trend || 'Trend'}
               </span>
             </div>
@@ -937,9 +971,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
             </div>
           </div>
 
-          <div className="glass-panel rounded-xl p-3.5 space-y-1">
+          <div className="glass-panel rounded-xl p-3.5 space-y-1 border border-outline/20 bg-surface-container-low/70">
             <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest">ATR Volatility (14)</span>
-            <div className="text-xs font-mono text-[#74f5ff]">
+            <div className="text-xs font-mono text-[#00dbe7]">
               {curSymbol}{analysis.atr?.toFixed(2) ?? '—'}
             </div>
             <div className="text-[10px] font-mono text-on-surface-variant">
@@ -955,38 +989,38 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       {selectedAction && (
         <div className="glass-panel rounded-xl p-5 border border-[#00dbe7]/40 bg-surface-container-low animate-fade-in shadow-2xl">
           <div className="flex justify-between items-center border-b border-outline/20 pb-3 mb-4">
-            <h4 className="font-sans font-bold text-sm text-[#74f5ff] uppercase tracking-wider flex items-center gap-2">
+            <h4 className="font-sans font-bold text-sm text-[#00dbe7] uppercase tracking-wider flex items-center gap-2">
               <span className="material-symbols-outlined text-[#00dbe7] text-base select-none">bolt</span>
               Order Terminal — {selectedAction} {quote?.symbol ?? symbol}
             </h4>
             <button
               onClick={() => setSelectedAction(null)}
-              className="text-[#b9cacb] hover:text-white rounded-full p-1 cursor-pointer"
+              className="text-on-surface-variant hover:text-on-surface rounded-full p-1 cursor-pointer"
             >
               <span className="material-symbols-outlined text-sm select-none">close</span>
             </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
-            <div className="bg-[#0e0e10]/80 p-3 rounded-lg border border-outline/30">
+            <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline/30">
               <span className="block font-mono text-[10px] text-on-surface-variant uppercase">Execution Price</span>
               <span className="font-mono text-sm text-on-surface font-bold block mt-1">
                 {curSymbol}{quote?.current_price?.toFixed(2) ?? '—'}
               </span>
             </div>
-            <div className="bg-[#0e0e10]/80 p-3 rounded-lg border border-outline/30">
+            <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline/30">
               <span className="block font-mono text-[10px] text-on-surface-variant uppercase">Available Cash</span>
-              <span className="font-mono text-sm text-[#74f5ff] font-bold block mt-1">
+              <span className="font-mono text-sm text-[#00dbe7] font-bold block mt-1">
                 {curSymbol}{portfolio.cash?.toFixed(2)}
               </span>
             </div>
-            <div className="bg-[#0e0e10]/80 p-3 rounded-lg border border-outline/30">
+            <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline/30">
               <span className="block font-mono text-[10px] text-on-surface-variant uppercase">Current Holdings</span>
-              <span className="font-mono text-sm text-[#e2ffe3] font-bold block mt-1">
+              <span className="font-mono text-sm text-[#00e476] font-bold block mt-1">
                 {portfolio.shares} shares @ {curSymbol}{portfolio.buyPrice}
               </span>
             </div>
             <div className="flex gap-2">
-              <div className="bg-[#0e0e10]/80 p-3 rounded-lg border border-outline/30 flex-grow flex flex-col justify-center">
+              <div className="bg-surface-container-lowest p-3 rounded-lg border border-outline/30 flex-grow flex flex-col justify-center">
                 <span className="block font-mono text-[9px] text-on-surface-variant uppercase leading-none">QTY</span>
                 <input
                   type="number"
@@ -994,7 +1028,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                   max="10000"
                   value={actionQuantity}
                   onChange={e => setActionQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="bg-transparent border-none focus:outline-none text-sm font-mono text-white p-0 mt-1 block w-full"
+                  className="bg-transparent border-none focus:outline-none text-sm font-mono text-on-surface p-0 mt-1 block w-full"
                 />
               </div>
               <button
@@ -1013,9 +1047,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
       )}
 
       {/* ── 6. TRADINGVIEW LIGHTWEIGHT CANDLESTICK CHART ───────────────────────── */}
-      <div className="glass-panel rounded-xl flex-1 flex flex-col overflow-hidden border border-outline/20 bg-[#090d16]">
+      <div className="glass-panel rounded-xl flex-1 flex flex-col overflow-hidden border border-outline/20 bg-surface-container-lowest shadow-md">
         {/* Chart Header Bar: Timeframes + Overlay Toggles */}
-        <div className="flex flex-wrap justify-between items-center gap-3 p-3 border-b border-outline/10 bg-[#0c121e]/80">
+        <div className="flex flex-wrap justify-between items-center gap-3 p-3 border-b border-outline/10 bg-surface-container-low/60">
           {/* Timeframe Selectors */}
           <div className="flex gap-1.5 items-center">
             {(['1D', '1W', '1M', '1Y'] as const).map(p => (
@@ -1024,8 +1058,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                 onClick={() => setActivePeriod(p)}
                 className={`px-3 py-1 rounded-md text-xs font-mono transition-all cursor-pointer ${
                   activePeriod === p
-                    ? 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.2)]'
-                    : 'bg-[#181f2c] text-slate-400 hover:text-white'
+                    ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.2)]'
+                    : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
                 }`}
               >
                 {p}
@@ -1039,8 +1073,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
               onClick={() => setShowEma20(!showEma20)}
               className={`px-2.5 py-1 rounded-md text-[11px] font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
                 showEma20
-                  ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40'
-                  : 'bg-[#181f2c] text-slate-500 border border-transparent'
+                  ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold'
+                  : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
               }`}
             >
               {showEma20 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
@@ -1051,8 +1085,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
               onClick={() => setShowEma50(!showEma50)}
               className={`px-2.5 py-1 rounded-md text-[11px] font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
                 showEma50
-                  ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40'
-                  : 'bg-[#181f2c] text-slate-500 border border-transparent'
+                  ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 font-bold'
+                  : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
               }`}
             >
               {showEma50 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
@@ -1063,8 +1097,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
               onClick={() => setShowVolume(!showVolume)}
               className={`px-2.5 py-1 rounded-md text-[11px] font-mono flex items-center gap-1.5 transition-colors cursor-pointer ${
                 showVolume
-                  ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40'
-                  : 'bg-[#181f2c] text-slate-500 border border-transparent'
+                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40 font-bold'
+                  : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
               }`}
             >
               {showVolume ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
@@ -1075,36 +1109,37 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
 
         {/* Hovered Bar Inspection Pill */}
         {hoveredBar && (
-          <div className="px-4 py-1.5 bg-[#0d1422] border-b border-outline/10 font-mono text-[11px] flex flex-wrap gap-4 text-slate-300">
-            <span className="text-slate-400">{hoveredBar.time}</span>
-            <span>O: <span className="text-white font-bold">{curSymbol}{hoveredBar.open.toFixed(2)}</span></span>
+          <div className="px-4 py-1.5 bg-surface-container-low border-b border-outline/10 font-mono text-[11px] flex flex-wrap gap-4 text-on-surface-variant">
+            <span className="font-semibold text-on-surface">{hoveredBar.time}</span>
+            <span>O: <span className="text-on-surface font-bold">{curSymbol}{hoveredBar.open.toFixed(2)}</span></span>
             <span>H: <span className="text-[#00e476] font-bold">{curSymbol}{hoveredBar.high.toFixed(2)}</span></span>
             <span>L: <span className="text-[#ff6b6b] font-bold">{curSymbol}{hoveredBar.low.toFixed(2)}</span></span>
-            <span>C: <span className="text-[#74f5ff] font-bold">{curSymbol}{hoveredBar.close.toFixed(2)}</span></span>
+            <span>C: <span className="text-[#00dbe7] font-bold">{curSymbol}{hoveredBar.close.toFixed(2)}</span></span>
+            <span>Vol: <span className="text-on-surface font-bold">{hoveredBar.volume.toLocaleString()}</span></span>
           </div>
         )}
 
         {/* Chart Canvas Container */}
-        <div className="relative flex-1 min-h-[380px] p-2 bg-[#090d16]">
+        <div className="relative flex-1 min-h-[380px] p-2 bg-surface-container-lowest">
           {loading && candles.length === 0 && (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#090d16]/80 z-20 font-mono text-xs text-[#00dbe7] animate-pulse">
+            <div className="absolute inset-0 flex items-center justify-center bg-surface-container-lowest/80 z-20 font-mono text-xs text-[#00dbe7] animate-pulse">
               Initializing TradingView Candlestick Engine...
             </div>
           )}
-          <div ref={chartContainerRef} className="w-full h-full min-h-[380px]" />
+          <div ref={chartContainerRef} className="w-full h-full min-h-[380px] [&_a[href*='tradingview']]:!hidden [&_a[title*='TradingView']]:!hidden" />
         </div>
       </div>
 
       {/* ── 7. WORKSPACE TERMINAL CONSOLE ────────────────────────────────────── */}
-      <div className={`border border-outline/20 bg-[#0e0e10]/95 rounded-xl flex flex-col overflow-hidden transition-all duration-300 ${
+      <div className={`border border-outline/20 bg-surface-container-lowest rounded-xl flex flex-col overflow-hidden transition-all duration-300 ${
         isTerminalCollapsed ? 'h-9 shrink-0' : 'h-48'
       }`}>
         <div
           onClick={() => setIsTerminalCollapsed(!isTerminalCollapsed)}
-          className="flex items-center justify-between px-4 py-2 border-b border-outline/10 bg-[#161a24] select-none cursor-pointer"
+          className="flex items-center justify-between px-4 py-2 border-b border-outline/10 bg-surface-container-high select-none cursor-pointer"
         >
           <div className="flex items-center">
-            <span className="font-mono text-[10px] font-bold text-[#b9cacb] uppercase tracking-widest leading-none">
+            <span className="font-mono text-[10px] font-bold text-on-surface-variant uppercase tracking-widest leading-none">
               TERMINAL
             </span>
             {!isTerminalCollapsed && (
@@ -1117,7 +1152,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
                     key={tab}
                     onClick={() => setActiveTab(tab)}
                     className={`pb-0.5 cursor-pointer transition-all ${
-                      activeTab === tab ? 'text-[#74f5ff] border-b border-[#00dbe7] font-bold' : 'text-on-surface-variant hover:text-on-surface'
+                      activeTab === tab ? 'text-[#00dbe7] border-b border-[#00dbe7] font-bold' : 'text-on-surface-variant hover:text-on-surface'
                     }`}
                   >
                     {tab}
@@ -1141,25 +1176,25 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
         </div>
 
         {!isTerminalCollapsed && (
-          <div ref={terminalContainerRef} className="flex-1 p-3 font-mono text-xs overflow-y-auto custom-scrollbar bg-[#050505]">
+          <div ref={terminalContainerRef} className="flex-1 p-3 font-mono text-xs overflow-y-auto custom-scrollbar bg-surface-container-lowest">
             {activeTab === 'AGENT_LOGS' && (
               <div className="space-y-1">
                 {logs.map((log, i) => {
                   const c = log.type === 'SUCCESS' ? 'text-[#00e476]'
                     : log.type === 'ALERT' ? 'text-[#ff6b6b]'
                     : log.type === 'AGENT' ? 'text-[#00dbe7]'
-                    : log.type === 'ERROR' ? 'text-[#ffb4ab]'
-                    : log.type === 'DATA' ? 'text-[#74f5ff]'
-                    : 'text-[#b9cacb]/80';
+                    : log.type === 'ERROR' ? 'text-red-400'
+                    : log.type === 'DATA' ? 'text-sky-400'
+                    : 'text-on-surface-variant';
                   return (
                     <div key={i} className={`flex gap-2 ${c}`}>
-                      <span className="text-on-surface-variant">[{log.timestamp}]</span>
+                      <span className="text-on-surface-variant opacity-60">[{log.timestamp}]</span>
                       <span>{log.message}</span>
                     </div>
                   );
                 })}
-                <div className="text-[#b9cacb]/80 flex gap-2">
-                  <span className="text-on-surface-variant">[{new Date().toLocaleTimeString()}]</span>
+                <div className="text-on-surface-variant flex gap-2 opacity-70">
+                  <span>[{new Date().toLocaleTimeString()}]</span>
                   <span className="animate-pulse">_</span>
                 </div>
               </div>
@@ -1176,7 +1211,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken 
             )}
 
             {activeTab === 'DEBUG_CONSOLE' && (
-              <div className="text-[#74f5ff] space-y-0.5">
+              <div className="text-[#00dbe7] space-y-0.5">
                 {suggestion?.reasoning?.map((r, i) => (
                   <div key={i}>[STRATEGY REASONING] {r}</div>
                 )) ?? <div>[STRATEGY] No analysis loaded</div>}
