@@ -2,8 +2,8 @@
 ## Comprehensive Architectural Review, Industry Benchmark & Implementation Roadmap
 
 > **Author**: SutharLabs Software Research & Engineering Studio  
-> **Document Version**: 1.2.0 (Updated post Stage 1 & Stage 2 Delivery)  
-> **Current Plugin Release**: `v0.3.0` (Beta)  
+> **Document Version**: 1.3.0 (Updated post Stage 1, Stage 2 & Stage 3 Delivery)  
+> **Current Plugin Release**: `v0.4.0` (Beta)  
 > **Scope**: Equity & Derivatives Market Analytics, Algorithmic Signal Generation, Multi-Timeframe Backtesting, Community Strategy Marketplace, and End-of-Day (EOD) Trade Simulation across Global Markets (India NSE/BSE, US NYSE/NASDAQ, Europe LSE/Euronext/DAX, and East Asia HKEX/China CSI 300/Japan TSE).
 
 ---
@@ -468,8 +468,8 @@ export interface IMarketAdapter {
 | :--- | :--- | :--- | :--- | :--- |
 | **Stage 1** | Professional Lightweight Charting, Global Universe Switcher, Multi-Indicator Stack | `v0.2.0` | **COMPLETED & SHIPPED** ✅ | Production Verified |
 | **Stage 2** | `IStrategy` Architecture, 4 Quant Presets, Server Engine, Visual Condition Builder UI | `v0.3.0` (Beta) | **COMPLETED & SHIPPED** ✅ | Production & Vercel Verified |
-| **Stage 3** | Live Financial News Feeds, Google Gemini AI Sentiment Analysis & Confluence Factors | `v0.4.0` | **NEXT UP** ⏳ | Pending Implementation |
-| **Stage 4** | High-Performance Historical Backtester & Multi-Country Friction / Tax Modeling | `v0.5.0` | Planned 📅 | Specification Ready |
+| **Stage 3** | Live Financial News Feeds, Regional Feeds, Dual AI/Lexicon Engine & Confluence Alerts | `v0.4.0` (Beta) | **COMPLETED & SHIPPED** ✅ | Production Verified |
+| **Stage 4** | High-Performance Historical Backtester & Multi-Country Friction / Tax Modeling | `v0.5.0` | **NEXT UP** ⏳ | Specification Ready |
 | **Stage 5** | Community Strategy Marketplace, Verified Performance Badges & Strategy Forking | `v0.6.0` | Planned 📅 | Specification Ready |
 | **Stage 6** | Global Market Screener / Scanner & Automated Daily EOD Batch Trade Simulator | `v1.0.0` | Planned 📅 | Specification Ready |
 
@@ -536,16 +536,36 @@ export interface IMarketAdapter {
 ---
 
 ### Stage 3: Real-Time News Stream & AI Sentiment Intelligence
-> **Target Version**: `v0.4.0` &bull; **Status**: **NEXT UP** ⏳
-- Ingest real-time financial news RSS/API feeds for active symbols across global markets (NSE, US, Europe, Asia).
-- Implement Google Gemini AI (`@google/genai`) sentiment scoring endpoint (`/api/workspace/stock-analyzer/news-sentiment`).
-- Add Live News Ticker drawer and sentiment badges to the Stock Tracker UI.
-- Incorporate AI Sentiment Confluence Factor into algorithmic signal calculations and emergency circuit breakers.
+> **Release Version**: `v0.4.0` (Beta) &bull; **Status**: **COMPLETED & SHIPPED** ✅
+
+#### Additions & Architectural Milestones Delivered:
+1. **Multi-Region Real-Time Financial News Stream**:
+   - Implemented in [`src/plugins/StockTracker/news/fetcher.ts`](file:///d:/Code/SutharLabs/website/src/plugins/StockTracker/news/fetcher.ts):
+     - Region-specific RSS feed ingestion covering **India** (Moneycontrol, The Economic Times, Livemint, SEBI regulatory notices), **United States** (CNBC, MarketWatch, SEC EDGAR filings, Yahoo Finance), **UK / Europe** (Reuters, FCA announcements), and **Asia / Global** blue chips.
+     - Robust XML/HTML sanitization engine eliminating raw `<a href="...">` artifacts, decoding HTML entities, and extracting clean publisher attributions and original article hyperlinks.
+2. **Dual-Engine Sentiment Analysis Architecture**:
+   - Implemented in [`src/plugins/StockTracker/news/sentimentEngine.ts`](file:///d:/Code/SutharLabs/website/src/plugins/StockTracker/news/sentimentEngine.ts):
+     - **Google Gemini 2.5 Flash (`@google/genai`)**: LLM sentiment evaluation providing structured JSON sentiment classification (`BULLISH`, `BEARISH`, `NEUTRAL`), numerical polarity score (`-1.0` to `+1.0`), and concise narrative impact analysis per headline.
+     - **Autonomous Financial Lexicon Engine ($0 Cost, <1ms Latency)**: High-speed, offline institutional finance dictionary with weighted term scoring, regulatory penalty modifiers (e.g. SEBI/SEC probes, accounting fraud, insolvency), intensifier scaling, and negation handling.
+     - **Zero-Friction Fallback**: When Gemini API key is missing or daily quota is exhausted, system instantaneously falls back to the autonomous lexicon engine without interrupting user experience.
+3. **In-App Google Gemini API Key Management & Live Probe**:
+   - Interactive configuration drawer with local storage persistence and client-to-server header forwarding (`x-gemini-api-key`).
+   - Live key probe endpoint `POST /api/workspace/stock-analyzer/test-gemini-key` testing connectivity, quota health, and latency against Gemini 2.5 Flash.
+4. **Daily AI Quota & Free Tier Usage Tracker**:
+   - Tracks daily Gemini API requests against the 1,500 RPD free tier limit.
+   - Live usage meter with color-coded progress bar (cyan &rarr; amber &rarr; rose) and dynamic warnings as limits approach.
+5. **Verified Headline Navigation & Active Stock Header**:
+   - Every headline rendered as an interactive verified link navigating to the publisher's source article in a secure external window.
+   - Expanded News & AI drawer includes an active tracked stock context banner showing symbol, full name, exchange, real-time price, and 24h percentage change.
+6. **Algorithmic Sentiment Confluence Factor & Emergency Circuit Breaker**:
+   - Integrated news sentiment into algorithmic strategy signals (`GET /api/workspace/stock-analyzer/strategy-signal?includeSentiment=true`).
+   - Automatically enhances signal confidence on technical + sentiment alignment.
+   - Emergency circuit breaker: Automatically overrides algorithmic `BUY` signals to `HOLD` or `CAUTION` when severe negative sentiment (< -0.50) is detected (e.g., regulatory probes, fraud, leadership departures).
 
 ---
 
 ### Stage 4: High-Performance Backtesting Engine & Global Friction Models
-> **Target Version**: `v0.5.0` &bull; **Status**: Planned 📅
+> **Target Version**: `v0.5.0` &bull; **Status**: **NEXT UP** ⏳
 - Implement historical bar replay backtester with full transaction friction modeling (NSE STT/GST, US SEC fees, UK Stamp Duty SDRT, China A-Share T+1 and stamp duty).
 - Generate institutional statistics (CAGR, Sharpe, Sortino, Max Drawdown, Win Rate, Profit Factor).
 - Render interactive Equity Curve and Trade Log table with trade-by-trade entry/exit points plotted on the chart.

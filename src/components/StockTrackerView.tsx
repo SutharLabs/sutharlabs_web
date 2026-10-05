@@ -2079,10 +2079,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               setShowSettingsDrawer(true);
             }}
             className="hidden md:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/25 font-mono text-[11px] font-bold cursor-pointer hover:bg-[#00dbe7]/20 transition-all shadow-sm"
-            title="SutharLabs Stock Tracker v0.3.0 (Stage 2: Strategy Architecture & Visual Rule Builder - Beta Stage)"
+            title="SutharLabs Stock Tracker v0.4.0 (Stage 3: Real-Time News & AI Sentiment Intelligence - Beta Stage)"
           >
             <Cpu className="w-3.5 h-3.5 text-[#00dbe7]" />
-            <span>v0.3.0</span>
+            <span>v0.4.0</span>
             <span className="px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[9px] uppercase tracking-wider font-semibold">
               BETA
             </span>

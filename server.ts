@@ -122,9 +122,9 @@ async function seedDatabase() {
           name: "Stock Tracker",
           category: "Finance",
           type: "Native",
-          description: "Professional quantitative trading suite: interactive TradingView charts, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), 4 battle-tested quant presets, and visual condition builder.",
+          description: "Professional quantitative trading suite: interactive TradingView charts, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), 4 battle-tested quant presets, visual condition builder, real-time regional financial news streams, and dual-engine AI sentiment analysis (Gemini 2.5 Flash + Autonomous Financial Lexicon).",
           iconSymbol: "monitoring",
-          version: "0.3.0"
+          version: "0.4.0"
         }
       });
 
