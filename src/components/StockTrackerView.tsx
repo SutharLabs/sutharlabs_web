@@ -2443,51 +2443,54 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-low border border-outline/20 select-none">
             <button
               onClick={() => setRightPanelTab('WATCHLIST')}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 h-8 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
                 rightPanelTab === 'WATCHLIST'
                   ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
                   : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
               }`}
             >
-              <Bookmark className="w-3.5 h-3.5" />
-              <span>Watchlist</span>
+              <Bookmark className="w-3.5 h-3.5 shrink-0" />
+              <span className="leading-none">Watchlist</span>
             </button>
             <button
               onClick={() => setRightPanelTab('TELEMETRY')}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 h-8 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
                 rightPanelTab === 'TELEMETRY'
                   ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
                   : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
               }`}
             >
-              <Activity className="w-3.5 h-3.5" />
-              <span>Technicals</span>
+              <Activity className="w-3.5 h-3.5 shrink-0" />
+              <span className="leading-none">Technicals</span>
             </button>
             <button
               onClick={() => setRightPanelTab('NEWS')}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 h-8 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
                 rightPanelTab === 'NEWS'
                   ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
                   : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
               }`}
             >
-              <Newspaper className="w-3.5 h-3.5" />
-              <span>News & AI {sentimentReport && (
-                <span className={`w-2 h-2 rounded-full inline-block ${
-                  sentimentReport.verdict === 'BULLISH' ? 'bg-[#00e476]' : sentimentReport.verdict === 'BEARISH' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'
-                }`} />
-              )}</span>
+              <Newspaper className="w-3.5 h-3.5 shrink-0" />
+              <span className="leading-none inline-flex items-center gap-1">
+                <span>News & AI</span>
+                {sentimentReport && (
+                  <span className={`w-2 h-2 rounded-full shrink-0 ${
+                    sentimentReport.verdict === 'BULLISH' ? 'bg-[#00e476]' : sentimentReport.verdict === 'BEARISH' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'
+                  }`} />
+                )}
+              </span>
             </button>
             <button
               onClick={() => setRightPanelTab('ORDER')}
-              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+              className={`flex-1 h-8 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
                 rightPanelTab === 'ORDER'
                   ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
                   : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
               }`}
             >
-              <Shield className="w-3.5 h-3.5" />
-              <span>Order</span>
+              <Shield className="w-3.5 h-3.5 shrink-0" />
+              <span className="leading-none">Order</span>
             </button>
           </div>
 
@@ -3009,11 +3012,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       setSettingsActiveTab('NEWS_AI');
                       setShowSettingsDrawer(true);
                     }}
-                    className="text-[10px] font-mono px-2 py-1 rounded bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/30 hover:bg-[#00dbe7]/20 transition-all flex items-center gap-1 cursor-pointer"
-                    title="Open Detailed Sentiment & Catalyst Hub"
+                    className="text-[10px] font-mono px-2 py-1 rounded bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/30 hover:bg-[#00dbe7]/20 transition-all flex items-center gap-1 cursor-pointer leading-none"
+                    title="Open Full Expanded News & AI Sentiment Hub"
                   >
-                    <Sparkles className="w-3 h-3" />
-                    <span>Deep Dive</span>
+                    <Maximize2 className="w-3 h-3 shrink-0" />
+                    <span className="leading-none">Expanded View</span>
                   </button>
                 </div>
               </div>
@@ -3417,11 +3420,20 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <Sliders className="w-5 h-5" />
                   </div>
                   <div>
-                    <h3 className="font-sans font-bold text-lg text-on-surface">
-                      Tracker Settings & Workspace Architecture
-                    </h3>
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h3 className="font-sans font-bold text-lg text-on-surface">
+                        {settingsActiveTab === 'NEWS_AI' ? 'Real-Time News Stream & AI Sentiment Hub' : 'Tracker Settings & Workspace Architecture'}
+                      </h3>
+                      {settingsActiveTab === 'NEWS_AI' && (
+                        <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30">
+                          {quote?.name || formatTickerDisplay(symbol).cleanSymbol} ({quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol})
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-on-surface-variant font-mono">
-                      All parameters, data feeds, exchange rules, and indicator formulas below are live and editable.
+                      {settingsActiveTab === 'NEWS_AI'
+                        ? `Live news stream & sentiment synthesis active for ${quote?.name || formatTickerDisplay(symbol).cleanSymbol} (${quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol})`
+                        : 'All parameters, data feeds, exchange rules, and indicator formulas below are live and editable.'}
                     </p>
                   </div>
                 </div>
@@ -4817,7 +4829,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             {settingsActiveTab === 'NEWS_AI' && (
               <div className="flex flex-col gap-6 text-xs font-mono">
                 {/* Header & Overview */}
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
                   <div className="flex justify-between items-start gap-4 flex-wrap">
                     <div>
                       <h4 className="text-sm font-bold text-on-surface flex items-center gap-2">
@@ -4840,6 +4852,48 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                         <span>{loadingNews ? 'Synthesizing...' : 'Refresh Live Stream'}</span>
                       </button>
                     </div>
+                  </div>
+
+                  {/* Active Tracked Stock Tracking Card */}
+                  <div className="p-3.5 rounded-xl bg-surface-container-high/60 border border-outline/25 flex items-center justify-between flex-wrap gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-[#00dbe7]/15 border border-[#00dbe7]/30 flex items-center justify-center font-bold font-mono text-[#00dbe7] text-xs shrink-0">
+                        {(quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol).slice(0, 2)}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-sm text-on-surface">
+                            {quote?.name || formatTickerDisplay(symbol).cleanSymbol}
+                          </span>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30">
+                            {quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
+                          </span>
+                          <span className="text-[10px] font-mono text-on-surface-variant">
+                            Exchange: {quote?.exchange || formatTickerDisplay(symbol).exchange}
+                          </span>
+                        </div>
+                        <span className="text-[11px] font-mono text-on-surface-variant block mt-0.5">
+                          Active Ingestion Target: {quote?.name || formatTickerDisplay(symbol).cleanSymbol} ({symbol})
+                        </span>
+                      </div>
+                    </div>
+
+                    {quote && (
+                      <div className="flex items-center gap-4 font-mono text-xs">
+                        <div>
+                          <span className="text-[9px] text-on-surface-variant uppercase block">Market Price</span>
+                          <span className="font-bold text-on-surface text-sm">
+                            {quote.currency_symbol || curSymbol}{quote.current_price?.toFixed(2)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-[9px] text-on-surface-variant uppercase block">24h Change</span>
+                          <span className={`font-bold flex items-center gap-0.5 ${(quote.change || 0) >= 0 ? 'text-[#00e476]' : 'text-[#ff6b6b]'}`}>
+                            {(quote.change || 0) >= 0 ? '+' : ''}{quote.change?.toFixed(2)} ({(quote.change_percent || 0) >= 0 ? '+' : ''}{quote.change_percent?.toFixed(2)}%)
+                          </span>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 
@@ -5022,7 +5076,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <div className="md:col-span-1 p-4 rounded-xl bg-surface-container-low border border-outline/20 flex flex-col justify-between gap-3">
                       <div>
                         <span className="text-[10px] text-on-surface-variant uppercase tracking-wider block">
-                          Current Stock Polarity ({quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol})
+                          Stock Polarity: {quote?.name || formatTickerDisplay(symbol).cleanSymbol} ({quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol})
                         </span>
                         <div className="flex items-baseline gap-2 mt-1">
                           <span className={`text-3xl font-black ${
@@ -5237,16 +5291,26 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
                 {/* Full Live News Feed */}
                 <div className="flex flex-col gap-3">
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-xs text-on-surface uppercase tracking-wider">
-                      Live News Stream ({newsArticles.length} Verified Stories)
+                  <div className="flex justify-between items-center flex-wrap gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-xs text-on-surface uppercase tracking-wider">
+                        Live News Stream
+                      </span>
+                      <span className="px-2 py-0.5 rounded font-mono text-[10px] font-bold bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/30">
+                        {quote?.name || formatTickerDisplay(symbol).cleanSymbol} ({quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol})
+                      </span>
+                    </div>
+                    <span className="text-[10px] font-mono text-on-surface-variant">
+                      {newsArticles.length} Verified Stories Ingested
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[480px] overflow-y-auto custom-scrollbar pr-1">
                     {newsArticles.length === 0 ? (
                       <div className="col-span-2 p-8 text-center text-xs text-on-surface-variant/70 border border-dashed border-outline/20 rounded-xl">
-                        {loadingNews ? 'Fetching live news articles...' : 'No news articles available for this ticker.'}
+                        {loadingNews
+                          ? `Fetching live news articles for ${quote?.name || formatTickerDisplay(symbol).cleanSymbol}...`
+                          : `No recent news articles found for ${quote?.name || formatTickerDisplay(symbol).cleanSymbol} (${symbol}).`}
                       </div>
                     ) : (
                       newsArticles.slice(0, 30).map(art => (
