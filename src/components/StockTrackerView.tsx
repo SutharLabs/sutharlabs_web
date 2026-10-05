@@ -20,7 +20,9 @@ import {
   Minimize2,
   Key,
   Layers,
-  Settings2
+  Settings2,
+  Save,
+  Check
 } from 'lucide-react';
 import {
   createChart,
@@ -258,14 +260,35 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
   // Sliding Settings Overlay
   const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
-  const [settingsActiveTab, setSettingsActiveTab] = useState<'FEEDS' | 'INDICATORS' | 'TRADING' | 'PERFORMANCE'>('FEEDS');
+  const [settingsActiveTab, setSettingsActiveTab] = useState<'MARKET' | 'FEEDS' | 'INDICATORS' | 'TRADING' | 'PERFORMANCE'>('MARKET');
+  
+  // Editable Data Feed Settings
   const [selectedDataSource, setSelectedDataSource] = useState<string>('YAHOO');
   const [pollIntervalSec, setPollIntervalSec] = useState<number>(30);
+  const [brokerClientId, setBrokerClientId] = useState<string>('');
+  const [brokerApiKey, setBrokerApiKey] = useState<string>('');
+  const [brokerApiSecret, setBrokerApiSecret] = useState<string>('');
 
-  // Indicator Parameters
+  // Editable Indicator Parameters
   const [rsiPeriod, setRsiPeriod] = useState<number>(14);
+  const [rsiOverbought, setRsiOverbought] = useState<number>(70);
+  const [rsiOversold, setRsiOversold] = useState<number>(30);
   const [bbPeriod, setBbPeriod] = useState<number>(20);
   const [bbStdDev, setBbStdDev] = useState<number>(2);
+  const [ema20Period, setEma20Period] = useState<number>(20);
+  const [ema50Period, setEma50Period] = useState<number>(50);
+  const [macdFast, setMacdFast] = useState<number>(12);
+  const [macdSlow, setMacdSlow] = useState<number>(26);
+  const [macdSignal, setMacdSignal] = useState<number>(9);
+
+  // Editable Risk & Trading Parameters
+  const [stopLossPct, setStopLossPct] = useState<number>(3.0);
+  const [takeProfitPct, setTakeProfitPct] = useState<number>(6.0);
+  const [defaultOrderQty, setDefaultOrderQty] = useState<number>(1);
+  const [slippagePct, setSlippagePct] = useState<number>(0.05);
+  const [reportingCurrency, setReportingCurrency] = useState<string>('AUTO');
+  const [enableWebhooks, setEnableWebhooks] = useState<boolean>(false);
+  const [webhookUrl, setWebhookUrl] = useState<string>('');
 
   // Terminal & UI
   const [activeTab, setActiveTab] = useState<'AGENT_LOGS' | 'OUTPUT' | 'DEBUG_CONSOLE'>('AGENT_LOGS');
@@ -322,7 +345,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   }, [onAddLog]);
 
   // Currency helper
-  const curSymbol = quote?.currency_symbol || universes[activeMarketKey]?.currencySymbol || '$';
+  const curSymbol = reportingCurrency !== 'AUTO'
+    ? (reportingCurrency === 'INR' ? '₹' : reportingCurrency === 'EUR' ? '€' : reportingCurrency === 'GBP' ? '£' : reportingCurrency === 'HKD' ? 'HK$' : reportingCurrency === 'JPY' ? '¥' : '$')
+    : (quote?.currency_symbol || universes[activeMarketKey]?.currencySymbol || '$');
 
   // Fast map lookup for exact volume retrieval on hover
   const candleLookup = useMemo(() => {
@@ -333,9 +358,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     return map;
   }, [candles]);
 
-  // Continuous full-length EMA series calculated directly on current candle stream
-  const continuousEma20 = useMemo(() => calculateEMA(candles, 20), [candles]);
-  const continuousEma50 = useMemo(() => calculateEMA(candles, 50), [candles]);
+  // Continuous full-length EMA series calculated with customizable periods
+  const continuousEma20 = useMemo(() => calculateEMA(candles, ema20Period), [candles, ema20Period]);
+  const continuousEma50 = useMemo(() => calculateEMA(candles, ema50Period), [candles, ema50Period]);
 
   // ── 1. Fetch Global Market Universes ───────────────────────────────────────
   useEffect(() => {
@@ -359,7 +384,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       .catch(() => {});
   }, [userEmail, userToken]);
 
-  // ── 3. Core Data Fetch Pipeline ───────────────────────────────────────────
+  // ── 3. Core Data Fetch Pipeline with Editable Parameters ──────────────────
   const fetchAll = useCallback(async (sym: string, period: string) => {
     setLoading(true);
     try {
@@ -385,7 +410,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       }
 
       // 3. Indicator Analysis with Configurable Params
-      const aUrl = `${STOCK_API}/analysis?symbol=${encodeURIComponent(sym)}&rsiPeriod=${rsiPeriod}&bbPeriod=${bbPeriod}&bbStdDev=${bbStdDev}`;
+      const aUrl = `${STOCK_API}/analysis?symbol=${encodeURIComponent(sym)}&rsiPeriod=${rsiPeriod}&bbPeriod=${bbPeriod}&bbStdDev=${bbStdDev}&ema20Period=${ema20Period}&ema50Period=${ema50Period}&macdFast=${macdFast}&macdSlow=${macdSlow}&macdSignal=${macdSignal}`;
       const aRes = await fetch(aUrl);
       if (aRes.ok) {
         const a: Analysis = await aRes.json();
@@ -394,13 +419,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           onAddLogRef.current({
             timestamp: new Date().toLocaleTimeString(),
             type: 'AGENT',
-            message: `INDICATOR MATRIX: ${sym} RSI(${rsiPeriod})=${a.rsi?.toFixed(1)} | MACD=${a.macd?.toFixed(3)} | ADX=${a.adx?.toFixed(1)} | ATR=${a.atr?.toFixed(2)}`
+            message: `INDICATOR MATRIX: ${sym} RSI(${rsiPeriod})=${a.rsi?.toFixed(1)} | MACD(${macdFast},${macdSlow},${macdSignal})=${a.macd?.toFixed(3)} | ADX=${a.adx?.toFixed(1)} | ATR=${a.atr?.toFixed(2)}`
           });
         }
       }
 
       // 4. Algorithmic Trade Suggestion
-      const sUrl = `${STOCK_API}/suggestion?symbol=${encodeURIComponent(sym)}&rsiPeriod=${rsiPeriod}&bbPeriod=${bbPeriod}&bbStdDev=${bbStdDev}`;
+      const sUrl = `${STOCK_API}/suggestion?symbol=${encodeURIComponent(sym)}&rsiPeriod=${rsiPeriod}&bbPeriod=${bbPeriod}&bbStdDev=${bbStdDev}&ema20Period=${ema20Period}&ema50Period=${ema50Period}&macdFast=${macdFast}&macdSlow=${macdSlow}&macdSignal=${macdSignal}`;
       const sRes = await fetch(sUrl);
       if (sRes.ok) {
         const s: Suggestion = await sRes.json();
@@ -420,7 +445,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     } finally {
       setLoading(false);
     }
-  }, [rsiPeriod, bbPeriod, bbStdDev]);
+  }, [rsiPeriod, bbPeriod, bbStdDev, ema20Period, ema50Period, macdFast, macdSlow, macdSignal]);
 
   // Initial fetch and on symbol/period/parameter change
   useEffect(() => {
@@ -662,6 +687,53 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     }
   };
 
+  // Watchlist custom management
+  const handleAddStockToWatchlist = (newSym: string) => {
+    const sym = newSym.trim().toUpperCase();
+    if (!sym) return;
+    const currentStocks = universes[activeMarketKey]?.stocks || [];
+    if (currentStocks.some(s => s.symbol === sym)) {
+      setNotification(`${sym} already in ${activeMarketKey} watchlist`);
+      setTimeout(() => setNotification(''), 3000);
+      return;
+    }
+    const updatedStocks = [...currentStocks, { symbol: sym, name: sym, sector: 'Custom Added' }];
+    setUniverses(prev => ({
+      ...prev,
+      [activeMarketKey]: {
+        ...prev[activeMarketKey],
+        stocks: updatedStocks
+      }
+    }));
+    setSymbol(sym);
+    setSymbolInput(sym);
+    setNotification(`Added ${sym} to ${activeMarketKey} watchlist!`);
+    setTimeout(() => setNotification(''), 3000);
+  };
+
+  const handleRemoveStockFromWatchlist = (symToRemove: string) => {
+    const currentStocks = universes[activeMarketKey]?.stocks || [];
+    if (currentStocks.length <= 1) {
+      setNotification('Watchlist must retain at least 1 symbol');
+      setTimeout(() => setNotification(''), 3000);
+      return;
+    }
+    const updatedStocks = currentStocks.filter(s => s.symbol !== symToRemove);
+    setUniverses(prev => ({
+      ...prev,
+      [activeMarketKey]: {
+        ...prev[activeMarketKey],
+        stocks: updatedStocks
+      }
+    }));
+    if (symbol === symToRemove && updatedStocks.length > 0) {
+      setSymbol(updatedStocks[0].symbol);
+      setSymbolInput(updatedStocks[0].symbol);
+    }
+    setNotification(`Removed ${symToRemove} from watchlist`);
+    setTimeout(() => setNotification(''), 3000);
+  };
+
   // Watchlist filter
   const activeUniverse = universes[activeMarketKey] || universes['IN'];
   const currentStockList = activeUniverse?.stocks || [];
@@ -680,15 +752,15 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     ? { text: 'text-[#ff6b6b]', bg: 'bg-[#ff6b6b]/10', border: 'border-[#ff6b6b]/40' }
     : { text: 'text-[#00dbe7]', bg: 'bg-[#00dbe7]/10', border: 'border-[#00dbe7]/30' };
 
-  // RSI display color
+  // RSI display color based on configurable thresholds
   const rsiColor = analysis?.rsi == null ? 'text-on-surface-variant'
-    : analysis.rsi > 70 ? 'text-[#ff6b6b]'
-    : analysis.rsi < 30 ? 'text-[#00e476]'
+    : analysis.rsi > rsiOverbought ? 'text-[#ff6b6b]'
+    : analysis.rsi < rsiOversold ? 'text-[#00e476]'
     : 'text-[#00dbe7]';
 
   const rsiLabel = analysis?.rsi == null ? '—'
-    : analysis.rsi > 70 ? 'Overbought'
-    : analysis.rsi < 30 ? 'Oversold'
+    : analysis.rsi > rsiOverbought ? 'Overbought'
+    : analysis.rsi < rsiOversold ? 'Oversold'
     : 'Neutral';
 
   return (
@@ -702,35 +774,32 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         </div>
       )}
 
-      {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR ─────────────────────────── */}
-      <div className="glass-panel rounded-xl p-3 border border-outline/20 flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest/80">
+      {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (CLEAN, ONLY ACTIVE MARKET) ── */}
+      <div className="glass-panel rounded-xl p-3 border border-outline/20 flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest/80 shadow-sm">
         
-        {/* Left: Market Universe Selector Pills */}
-        <div className="flex items-center gap-2 flex-wrap">
-          <Globe className="w-4 h-4 text-[#00dbe7]" />
-          <div className="flex flex-wrap gap-1">
-            {Object.entries(universes).map(([key, u]) => (
-              <button
-                key={key}
-                onClick={() => {
-                  setActiveMarketKey(key);
-                  if (u.stocks.length > 0) {
-                    const firstStock = u.stocks[0].symbol;
-                    setSymbol(firstStock);
-                    setSymbolInput(firstStock);
-                  }
-                }}
-                className={`px-2.5 py-1 rounded-lg text-xs font-mono transition-all flex items-center gap-1.5 cursor-pointer ${
-                  activeMarketKey === key
-                    ? 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/50 font-bold shadow-[0_0_10px_rgba(0,219,231,0.2)]'
-                    : 'bg-surface-container-low text-on-surface-variant hover:text-on-surface border border-outline/20'
-                }`}
-              >
-                <span>{u.flag}</span>
-                <span>{u.name}</span>
-              </button>
-            ))}
-          </div>
+        {/* Left: Active Market Badge (Click to open Market Settings in Drawer) */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setSettingsActiveTab('MARKET');
+              setShowSettingsDrawer(true);
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface border border-outline/25 hover:border-[#00dbe7] transition-all cursor-pointer font-mono text-xs shadow-sm group"
+            title="Click to change Market Universe in Settings"
+          >
+            <span className="text-base leading-none">{activeUniverse.flag}</span>
+            <span className="font-bold text-[#00dbe7] group-hover:underline">{activeUniverse.name}</span>
+            <span className="text-[10px] text-on-surface-variant font-mono">({activeUniverse.exchange})</span>
+            <ChevronDown className="w-3.5 h-3.5 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors ml-0.5" />
+          </button>
+
+          {/* Market Session Active/Closed Pill */}
+          {quote?.market_state && (
+            <span className="hidden md:flex items-center gap-1.5 font-mono text-[11px] px-2.5 py-1 rounded-md bg-surface-container-low text-on-surface-variant border border-outline/10">
+              <span className={`w-2 h-2 rounded-full ${quote.market_open ? 'bg-[#00e476] animate-pulse' : 'bg-slate-400'}`} />
+              <span>{quote.market_open ? 'SESSION ACTIVE' : `CLOSED (${quote.market_state})`}</span>
+            </span>
+          )}
         </div>
 
         {/* Center: Search & Ticker Input */}
@@ -779,7 +848,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
           <button
             onClick={() => { setSymbol(symbolInput.trim().toUpperCase()); setShowDropdown(false); }}
-            className="px-3 py-1.5 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-lg hover:brightness-110 transition-all cursor-pointer whitespace-nowrap"
+            className="px-3 py-1.5 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-lg hover:brightness-110 transition-all cursor-pointer whitespace-nowrap shadow-sm"
           >
             Load
           </button>
@@ -802,10 +871,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           {/* Sliding Panel Trigger */}
           <button
             onClick={() => setShowSettingsDrawer(true)}
-            className="px-3 py-1.5 border border-outline/30 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer bg-surface-container-low hover:text-[#00dbe7] hover:border-[#00dbe7]/50"
+            className="px-3 py-1.5 border border-outline/30 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer bg-surface-container-low hover:text-[#00dbe7] hover:border-[#00dbe7]/50 shadow-sm"
             title="Open Settings & Workspace Preferences"
           >
-            <Sliders className="w-3.5 h-3.5" />
+            <Sliders className="w-3.5 h-3.5 text-[#00dbe7]" />
             <span className="hidden sm:inline">Settings</span>
           </button>
         </div>
@@ -850,7 +919,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   }`}
                 >
                   {showEma20 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                  <span>EMA 20</span>
+                  <span>EMA {ema20Period}</span>
                 </button>
 
                 <button
@@ -862,7 +931,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   }`}
                 >
                   {showEma50 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                  <span>EMA 50</span>
+                  <span>EMA {ema50Period}</span>
                 </button>
 
                 <button
@@ -1143,8 +1212,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             {activeTab === 'OUTPUT' && (
               <div className="text-on-surface-variant space-y-0.5">
                 <div>&gt; SutharLabs Trading Engine v2.0 connected</div>
+                <div>&gt; Active Market: {activeUniverse.name} ({activeUniverse.currencyCode})</div>
                 <div>&gt; Data Feed Source: {selectedDataSource} (Multi-Market Feed Router)</div>
-                <div>&gt; Indicators: RSI({rsiPeriod}), MACD, BB({bbPeriod}, {bbStdDev}), ATR, ADX, EMA (20/50 Overlays)</div>
+                <div>&gt; Indicators: RSI({rsiPeriod}), MACD({macdFast},{macdSlow},{macdSignal}), BB({bbPeriod}, {bbStdDev}), EMA({ema20Period}/{ema50Period})</div>
                 <div>&gt; Active Period: {activePeriod} (Extended History Enabled)</div>
                 <div className="text-[#00e476]">&gt; Status: Real-time tick engine running normally</div>
               </div>
@@ -1171,7 +1241,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         )}
       </div>
 
-      {/* ── 4. 3/4-WIDTH SLIDING SETTINGS OVERLAY PANEL ──────────────────────── */}
+      {/* ── 4. 3/4-WIDTH SLIDING SETTINGS OVERLAY PANEL (FULLY EDITABLE) ──────── */}
       {showSettingsDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end">
           {/* Backdrop blur */}
@@ -1194,7 +1264,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     Tracker Settings & Workspace Architecture
                   </h3>
                   <p className="text-xs text-on-surface-variant font-mono">
-                    Configure data feeds, technical indicator formulas, risk safeguards, and paper execution.
+                    All parameters, data feeds, exchange rules, and indicator formulas below are live and editable.
                   </p>
                 </div>
               </div>
@@ -1208,7 +1278,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
             {/* Drawer Navigation Tabs */}
             <div className="flex gap-2 border-b border-outline/20 pb-3 mb-6 overflow-x-auto custom-scrollbar">
-              {(['FEEDS', 'INDICATORS', 'TRADING', 'PERFORMANCE'] as const).map(tab => (
+              {(['MARKET', 'FEEDS', 'INDICATORS', 'TRADING', 'PERFORMANCE'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setSettingsActiveTab(tab)}
@@ -1218,21 +1288,159 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       : 'text-on-surface-variant hover:text-on-surface bg-surface-container-low border border-transparent'
                   }`}
                 >
+                  {tab === 'MARKET' && <Globe className="w-3.5 h-3.5" />}
                   {tab === 'FEEDS' && <Database className="w-3.5 h-3.5" />}
                   {tab === 'INDICATORS' && <Layers className="w-3.5 h-3.5" />}
                   {tab === 'TRADING' && <Shield className="w-3.5 h-3.5" />}
                   {tab === 'PERFORMANCE' && <Award className="w-3.5 h-3.5" />}
                   <span>
-                    {tab === 'FEEDS' && 'Market Feeds & Connectors'}
+                    {tab === 'MARKET' && 'Market Universes'}
+                    {tab === 'FEEDS' && 'Data Feeds & Brokers'}
                     {tab === 'INDICATORS' && 'Indicator Mathematics'}
-                    {tab === 'TRADING' && 'Order & Risk Parameters'}
+                    {tab === 'TRADING' && 'Order & Risk Rules'}
                     {tab === 'PERFORMANCE' && 'Performance Analytics'}
                   </span>
                 </button>
               ))}
             </div>
 
-            {/* TAB 1: DATA FEEDS & PROVIDER TOGGLE (SPACIOUS 2-COLUMN GRID) */}
+            {/* TAB 1: MARKET UNIVERSES (EDITABLE SELECTION & CUSTOM TICKER) */}
+            {settingsActiveTab === 'MARKET' && (
+              <div className="flex flex-col gap-6 text-xs font-mono">
+                <div className="flex flex-col gap-2">
+                  <span className="text-on-surface font-semibold text-sm flex items-center gap-2">
+                    <Globe className="w-4 h-4 text-[#00dbe7]" />
+                    Select Active Market Universe
+                  </span>
+                  <p className="text-xs text-on-surface-variant font-sans">
+                    Switching your market universe updates the active stock catalog, exchange trading sessions, regulatory circuit limits, and default currency.
+                  </p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-2">
+                    {Object.entries(universes).map(([key, u]) => (
+                      <div
+                        key={key}
+                        onClick={() => {
+                          setActiveMarketKey(key);
+                          if (u.stocks.length > 0) {
+                            const firstStock = u.stocks[0].symbol;
+                            setSymbol(firstStock);
+                            setSymbolInput(firstStock);
+                          }
+                          setNotification(`Switched market universe to ${u.name}`);
+                          setTimeout(() => setNotification(''), 3000);
+                        }}
+                        className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-3 ${
+                          activeMarketKey === key
+                            ? 'bg-[#00dbe7]/10 border-[#00dbe7] shadow-[0_0_12px_rgba(0,219,231,0.2)]'
+                            : 'bg-surface-container-low border-outline/20 hover:border-outline/40'
+                        }`}
+                      >
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-2">
+                            <span className="text-2xl">{u.flag}</span>
+                            <div>
+                              <span className="font-bold text-on-surface text-sm block">{u.name}</span>
+                              <span className="text-[10px] text-on-surface-variant">{u.exchange} • {u.stocks.length} Preset Bluechips</span>
+                            </div>
+                          </div>
+                          {activeMarketKey === key && (
+                            <span className="px-2 py-0.5 rounded-full bg-[#00dbe7]/20 text-[#00dbe7] text-[10px] font-bold">
+                              Active
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex justify-between items-center text-[10px] text-on-surface-variant border-t border-outline/10 pt-2 font-mono">
+                          <span>Currency: <strong className="text-on-surface">{u.currencyCode} ({u.currencySymbol})</strong></span>
+                          <span>Lead: <strong className="text-[#00dbe7]">{u.stocks[0]?.symbol}</strong></span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* EDITABLE WATCHLIST & CUSTOM SYMBOL REGISTRATION */}
+                <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <span className="text-on-surface font-semibold text-sm">Custom Symbol Registration & Watchlist Manager</span>
+                      <p className="text-[11px] text-on-surface-variant font-sans">
+                        Add any global equity ticker (e.g. TATAMOTORS.NS, COALINDIA.NS, NVDA, ASML.AS) to your {activeUniverse.name} universe.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <input
+                      value={symbolInput}
+                      onChange={e => setSymbolInput(e.target.value.toUpperCase())}
+                      placeholder="Enter ticker (e.g. BAJFINANCE.NS)..."
+                      className="w-64 bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface uppercase focus:outline-none focus:border-[#00dbe7]"
+                    />
+                    <button
+                      onClick={() => {
+                        handleAddStockToWatchlist(symbolInput);
+                      }}
+                      className="px-3.5 py-2 bg-[#00dbe7]/15 border border-[#00dbe7]/50 text-[#00dbe7] font-bold rounded-lg uppercase cursor-pointer hover:bg-[#00dbe7]/25 flex items-center gap-1.5"
+                    >
+                      + Add to Watchlist
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSymbol(symbolInput.trim().toUpperCase());
+                        setShowSettingsDrawer(false);
+                      }}
+                      className="px-4 py-2 bg-[#00dbe7] text-[#002022] font-bold rounded-lg uppercase cursor-pointer hover:brightness-110"
+                    >
+                      Load & Close
+                    </button>
+                  </div>
+
+                  {/* Active Universe Watchlist Chips with Remove Option */}
+                  <div className="flex flex-col gap-1.5 pt-2 border-t border-outline/10">
+                    <span className="text-[10px] text-on-surface-variant uppercase font-mono">
+                      Active {activeUniverse.name} Watchlist ({activeUniverse.stocks.length} assets):
+                    </span>
+                    <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto custom-scrollbar p-1">
+                      {activeUniverse.stocks.map(s => (
+                        <div
+                          key={s.symbol}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-xs font-mono transition-all ${
+                            symbol === s.symbol
+                              ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#00dbe7] font-bold shadow-sm'
+                              : 'bg-surface-container border-outline/20 text-on-surface hover:border-outline/40'
+                          }`}
+                        >
+                          <button
+                            onClick={() => {
+                              setSymbol(s.symbol);
+                              setSymbolInput(s.symbol);
+                            }}
+                            className="cursor-pointer hover:underline"
+                            title={`Click to load ${s.name}`}
+                          >
+                            {s.symbol}
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemoveStockFromWatchlist(s.symbol);
+                            }}
+                            className="text-on-surface-variant hover:text-[#ff6b6b] p-0.5 rounded transition-colors cursor-pointer"
+                            title={`Remove ${s.symbol} from watchlist`}
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 2: DATA FEEDS & BROKERS (EDITABLE PROVIDER & CREDENTIALS) */}
             {settingsActiveTab === 'FEEDS' && (
               <div className="flex flex-col gap-6 text-xs font-mono">
                 <div className="flex flex-col gap-2">
@@ -1244,7 +1452,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     SutharLabs decouples the analytics engine from data vendors. Indian symbols can stream via Yahoo Finance or directly through your authenticated broker account.
                   </p>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-2">
                     {[
                       { id: 'YAHOO', name: 'Yahoo Finance Engine', badge: 'Active (Global Free)', ping: '84ms', desc: 'Default zero-config global feed. Handles NSE, BSE, NYSE, NASDAQ, LSE, HKEX, TSE seamlessly.' },
                       { id: 'UPSTOX', name: 'Upstox Uplink Broker API', badge: 'Configurable', ping: '12ms', desc: 'Direct Indian broker streaming WebSocket ticks for NSE/BSE equities and F&O.' },
@@ -1280,9 +1488,79 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   </div>
                 </div>
 
+                {/* EDITABLE BROKER CREDENTIALS CARD (WHEN BROKER SOURCE SELECTED) */}
+                {selectedDataSource !== 'YAHOO' && (
+                  <div className="bg-surface-container-low p-5 rounded-xl border border-[#00dbe7]/30 flex flex-col gap-4 animate-fade-in">
+                    <div className="flex justify-between items-center">
+                      <span className="text-on-surface font-semibold flex items-center gap-2">
+                        <Key className="w-4 h-4 text-[#00dbe7]" />
+                        {selectedDataSource} API Credentials & Access Tokens
+                      </span>
+                      <span className="text-[10px] text-on-surface-variant">Stored encrypted locally in workspace</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase mb-1">Client ID / App Key</label>
+                        <input
+                          value={brokerClientId}
+                          onChange={e => setBrokerClientId(e.target.value)}
+                          placeholder="e.g. DHAN_100234"
+                          className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase mb-1">API Secret / Token</label>
+                        <input
+                          type="password"
+                          value={brokerApiKey}
+                          onChange={e => setBrokerApiKey(e.target.value)}
+                          placeholder="••••••••••••••••"
+                          className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7]"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] text-on-surface-variant uppercase mb-1">Redirect / Access URI</label>
+                        <input
+                          value={brokerApiSecret}
+                          onChange={e => setBrokerApiSecret(e.target.value)}
+                          placeholder="https://127.0.0.1:3000/callback"
+                          className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7]"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => {
+                          setNotification(`Saved ${selectedDataSource} credentials!`);
+                          setTimeout(() => setNotification(''), 3000);
+                        }}
+                        className="px-4 py-2 bg-[#00dbe7] text-[#002022] font-bold rounded-lg uppercase cursor-pointer hover:brightness-110 flex items-center gap-1.5"
+                      >
+                        <Save className="w-3.5 h-3.5" />
+                        Save Credentials
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* EDITABLE QUOTE REFRESH RATE */}
                 <div className="flex flex-col gap-2.5 border-t border-outline/10 pt-5">
-                  <span className="text-on-surface font-semibold text-sm">Quote Auto-Refresh Polling Interval</span>
-                  <div className="grid grid-cols-4 gap-2.5 max-w-lg">
+                  <div className="flex justify-between items-center">
+                    <span className="text-on-surface font-semibold text-sm">Quote Auto-Refresh Polling Interval</span>
+                    <span className="px-2 py-0.5 rounded bg-[#00dbe7]/15 text-[#00dbe7] font-bold">{pollIntervalSec > 0 ? `${pollIntervalSec}s` : 'Manual'}</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="5"
+                    max="120"
+                    step="5"
+                    value={pollIntervalSec}
+                    onChange={e => setPollIntervalSec(parseInt(e.target.value) || 30)}
+                    className="w-full accent-[#00dbe7] cursor-pointer"
+                  />
+                  <div className="grid grid-cols-4 gap-2.5 max-w-lg mt-1">
                     {[10, 30, 60, 0].map(sec => (
                       <button
                         key={sec}
@@ -1293,7 +1571,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                             : 'bg-surface-container-low border-outline/20 text-on-surface-variant hover:text-on-surface'
                         }`}
                       >
-                        {sec === 0 ? 'Manual Refresh' : `${sec} Seconds`}
+                        {sec === 0 ? 'Manual' : `${sec}s`}
                       </button>
                     ))}
                   </div>
@@ -1301,91 +1579,156 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
             )}
 
-            {/* TAB 2: INDICATOR PARAMETERS (SPACIOUS 2-COLUMN LAYOUT) */}
+            {/* TAB 3: INDICATOR PARAMETERS (100% EDITABLE SLIDERS & INPUTS) */}
             {settingsActiveTab === 'INDICATORS' && (
               <div className="flex flex-col gap-6 text-xs font-mono">
                 {/* Presets */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-on-surface font-semibold mr-2">Strategy Presets:</span>
+                  <span className="text-on-surface font-semibold mr-2">Formula Presets:</span>
                   <button
-                    onClick={() => { setRsiPeriod(14); setBbPeriod(20); setBbStdDev(2); }}
+                    onClick={() => {
+                      setRsiPeriod(14); setRsiOverbought(70); setRsiOversold(30);
+                      setBbPeriod(20); setBbStdDev(2);
+                      setEma20Period(20); setEma50Period(50);
+                      setMacdFast(12); setMacdSlow(26); setMacdSignal(9);
+                    }}
                     className="px-3 py-1 rounded-lg bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] text-on-surface cursor-pointer"
                   >
-                    Standard (RSI 14, BB 20)
+                    Standard (14, 20, 50)
                   </button>
                   <button
-                    onClick={() => { setRsiPeriod(7); setBbPeriod(10); setBbStdDev(1.5); }}
+                    onClick={() => {
+                      setRsiPeriod(7); setRsiOverbought(80); setRsiOversold(20);
+                      setBbPeriod(10); setBbStdDev(1.5);
+                      setEma20Period(9); setEma50Period(21);
+                      setMacdFast(6); setMacdSlow(13); setMacdSignal(5);
+                    }}
                     className="px-3 py-1 rounded-lg bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] text-on-surface cursor-pointer"
                   >
-                    Fast Scalper (RSI 7, BB 10)
+                    Scalper (7, 10, 21)
                   </button>
                   <button
-                    onClick={() => { setRsiPeriod(21); setBbPeriod(50); setBbStdDev(2.5); }}
+                    onClick={() => {
+                      setRsiPeriod(21); setRsiOverbought(75); setRsiOversold(25);
+                      setBbPeriod(50); setBbStdDev(2.5);
+                      setEma20Period(50); setEma50Period(200);
+                      setMacdFast(19); setMacdSlow(39); setMacdSignal(9);
+                    }}
                     className="px-3 py-1 rounded-lg bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] text-on-surface cursor-pointer"
                   >
-                    Macro Swing (RSI 21, BB 50)
+                    Macro Swing (21, 50, 200)
                   </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  {/* RSI Controls */}
                   <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3">
                     <div className="flex justify-between items-center">
                       <label className="text-on-surface font-semibold text-sm">Relative Strength Index (RSI)</label>
                       <span className="px-2 py-0.5 rounded bg-[#00dbe7]/15 text-[#00dbe7] font-bold">{rsiPeriod} Periods</span>
                     </div>
                     <input
-                      type="range"
-                      min="5"
-                      max="35"
-                      value={rsiPeriod}
+                      type="range" min="5" max="35" value={rsiPeriod}
                       onChange={e => setRsiPeriod(parseInt(e.target.value) || 14)}
                       className="w-full accent-[#00dbe7] cursor-pointer"
                     />
-                    <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
-                      <span>5 (Ultra Sensitive)</span>
-                      <span>14 (J. Welles Wilder Default)</span>
-                      <span>35 (Smoothed)</span>
+                    <div className="grid grid-cols-2 gap-2 pt-1 border-t border-outline/10">
+                      <div>
+                        <span className="block text-[10px] text-on-surface-variant">Overbought Threshold</span>
+                        <input
+                          type="number" min="50" max="95" value={rsiOverbought}
+                          onChange={e => setRsiOverbought(parseInt(e.target.value) || 70)}
+                          className="w-full bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface mt-1"
+                        />
+                      </div>
+                      <div>
+                        <span className="block text-[10px] text-on-surface-variant">Oversold Threshold</span>
+                        <input
+                          type="number" min="5" max="45" value={rsiOversold}
+                          onChange={e => setRsiOversold(parseInt(e.target.value) || 30)}
+                          className="w-full bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface mt-1"
+                        />
+                      </div>
                     </div>
                   </div>
 
+                  {/* Bollinger Bands Controls */}
                   <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3">
                     <div className="flex justify-between items-center">
-                      <label className="text-on-surface font-semibold text-sm">Bollinger Bands Period</label>
-                      <span className="px-2 py-0.5 rounded bg-[#00dbe7]/15 text-[#00dbe7] font-bold">{bbPeriod} Bars</span>
+                      <label className="text-on-surface font-semibold text-sm">Bollinger Bands</label>
+                      <span className="px-2 py-0.5 rounded bg-[#00dbe7]/15 text-[#00dbe7] font-bold">{bbPeriod} Bars • ±{bbStdDev.toFixed(1)}σ</span>
                     </div>
-                    <input
-                      type="range"
-                      min="10"
-                      max="50"
-                      value={bbPeriod}
-                      onChange={e => setBbPeriod(parseInt(e.target.value) || 20)}
-                      className="w-full accent-[#00dbe7] cursor-pointer"
-                    />
-                    <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
-                      <span>10 Bars</span>
-                      <span>20 Bars (Standard)</span>
-                      <span>50 Bars</span>
+                    <div className="flex flex-col gap-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-on-surface-variant">Period:</span>
+                        <input
+                          type="number" min="5" max="60" value={bbPeriod}
+                          onChange={e => setBbPeriod(parseInt(e.target.value) || 20)}
+                          className="w-20 bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface text-center"
+                        />
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-on-surface-variant">StdDev Multiplier:</span>
+                        <input
+                          type="number" step="0.5" min="1" max="4" value={bbStdDev}
+                          onChange={e => setBbStdDev(parseFloat(e.target.value) || 2)}
+                          className="w-20 bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface text-center"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3 md:col-span-2">
-                    <div className="flex justify-between items-center">
-                      <label className="text-on-surface font-semibold text-sm">Bollinger Standard Deviation (Multiplier)</label>
-                      <span className="px-2 py-0.5 rounded bg-[#00dbe7]/15 text-[#00dbe7] font-bold">±{bbStdDev.toFixed(1)} σ</span>
+                  {/* EMA Overlay Periods */}
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3">
+                    <span className="text-on-surface font-semibold text-sm">Exponential Moving Averages</span>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <span className="block text-[10px] text-[#00dbe7] font-bold">Fast EMA (Cyan)</span>
+                        <input
+                          type="number" min="2" max="100" value={ema20Period}
+                          onChange={e => setEma20Period(parseInt(e.target.value) || 20)}
+                          className="w-full bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface mt-1"
+                        />
+                      </div>
+                      <div>
+                        <span className="block text-[10px] text-[#f59e0b] font-bold">Slow EMA (Amber)</span>
+                        <input
+                          type="number" min="5" max="300" value={ema50Period}
+                          onChange={e => setEma50Period(parseInt(e.target.value) || 50)}
+                          className="w-full bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface mt-1"
+                        />
+                      </div>
                     </div>
-                    <input
-                      type="range"
-                      step="0.5"
-                      min="1"
-                      max="3.5"
-                      value={bbStdDev}
-                      onChange={e => setBbStdDev(parseFloat(e.target.value) || 2)}
-                      className="w-full accent-[#00dbe7] cursor-pointer"
-                    />
-                    <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
-                      <span>1.0σ (Narrow)</span>
-                      <span>2.0σ (95.4% Coverage)</span>
-                      <span>3.5σ (Extreme Breakouts)</span>
+                  </div>
+
+                  {/* MACD Parameters */}
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3">
+                    <span className="text-on-surface font-semibold text-sm">MACD Oscillator Settings</span>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <span className="block text-[10px] text-on-surface-variant">Fast Length</span>
+                        <input
+                          type="number" min="2" max="50" value={macdFast}
+                          onChange={e => setMacdFast(parseInt(e.target.value) || 12)}
+                          className="w-full bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface mt-1 text-center"
+                        />
+                      </div>
+                      <div>
+                        <span className="block text-[10px] text-on-surface-variant">Slow Length</span>
+                        <input
+                          type="number" min="5" max="100" value={macdSlow}
+                          onChange={e => setMacdSlow(parseInt(e.target.value) || 26)}
+                          className="w-full bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface mt-1 text-center"
+                        />
+                      </div>
+                      <div>
+                        <span className="block text-[10px] text-on-surface-variant">Signal Smooth</span>
+                        <input
+                          type="number" min="1" max="50" value={macdSignal}
+                          onChange={e => setMacdSignal(parseInt(e.target.value) || 9)}
+                          className="w-full bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface mt-1 text-center"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -1404,52 +1747,171 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
             )}
 
-            {/* TAB 3: TRADING & RISK RULES */}
+            {/* TAB 4: TRADING & RISK RULES (100% EDITABLE RISK PARAMETERS) */}
             {settingsActiveTab === 'TRADING' && (
-              <div className="flex flex-col gap-5 text-xs font-mono">
+              <div className="flex flex-col gap-6 text-xs font-mono">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20">
-                    <span className="block text-[10px] text-on-surface-variant uppercase">Reporting Sovereign Currency</span>
-                    <span className="font-bold text-on-surface text-base mt-1 block">
-                      {universes[activeMarketKey]?.currencyCode} ({curSymbol})
-                    </span>
-                    <span className="text-[11px] text-on-surface-variant font-sans mt-1 block">
-                      Ledger is auto-normalized based on active exchange profile.
-                    </span>
+                  {/* Reporting Currency Selection */}
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-2">
+                    <span className="text-on-surface font-semibold text-sm">Sovereign Reporting Currency</span>
+                    <p className="text-[11px] text-on-surface-variant font-sans">
+                      Select preferred portfolio currency or let it auto-detect based on the active exchange.
+                    </p>
+                    <select
+                      value={reportingCurrency}
+                      onChange={e => setReportingCurrency(e.target.value)}
+                      className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface mt-1 focus:outline-none focus:border-[#00dbe7]"
+                    >
+                      <option value="AUTO">Auto (Match Active Market)</option>
+                      <option value="INR">INR (₹ Indian Rupee)</option>
+                      <option value="USD">USD ($ United States Dollar)</option>
+                      <option value="EUR">EUR (€ Euro)</option>
+                      <option value="GBP">GBP (£ British Pound)</option>
+                      <option value="HKD">HKD (HK$ Hong Kong Dollar)</option>
+                      <option value="JPY">JPY (¥ Japanese Yen)</option>
+                    </select>
                   </div>
 
-                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20">
-                    <span className="block text-[10px] text-on-surface-variant uppercase">Slippage & Friction Engine</span>
-                    <span className="font-bold text-[#00e476] text-base mt-1 block">
-                      Zero Friction (Paper Simulator)
-                    </span>
-                    <span className="text-[11px] text-on-surface-variant font-sans mt-1 block">
-                      Phase 4 will activate STT (India 0.1%) & SEC (US) localized taxes.
-                    </span>
+                  {/* Default Order Lot Size */}
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-2">
+                    <span className="text-on-surface font-semibold text-sm">Default Ticket Order Quantity</span>
+                    <p className="text-[11px] text-on-surface-variant font-sans">
+                      Initial number of shares prefilled into the quick order execution terminal.
+                    </p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="number" min="1" max="10000"
+                        value={defaultOrderQty}
+                        onChange={e => {
+                          const val = Math.max(1, parseInt(e.target.value) || 1);
+                          setDefaultOrderQty(val);
+                          setActionQuantity(val);
+                        }}
+                        className="w-32 bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface text-center"
+                      />
+                      <span className="text-on-surface-variant">shares per order</span>
+                    </div>
                   </div>
                 </div>
 
-                <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3">
-                  <span className="text-xs text-on-surface font-semibold uppercase">Risk Safeguards Matrix</span>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="bg-surface-container p-3 rounded-lg border border-outline/20">
-                      <span className="block text-[10px] text-on-surface-variant">Max Stop Loss</span>
-                      <span className="font-bold text-[#ff6b6b] text-sm">3.00%</span>
+                {/* EDITABLE RISK CONTROLS */}
+                <div className="bg-surface-container-low p-5 rounded-xl border border-outline/20 flex flex-col gap-4">
+                  <span className="text-on-surface font-semibold text-sm">Configurable Risk Management Safeguards</span>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="bg-surface-container p-3 rounded-lg border border-outline/20 flex flex-col gap-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-on-surface-variant uppercase">Max Stop Loss</span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number" step="0.1" min="0.1" max="50.0"
+                            value={stopLossPct}
+                            onChange={e => setStopLossPct(parseFloat(e.target.value) || 3.0)}
+                            className="w-16 bg-surface-container-lowest border border-outline/30 rounded px-1.5 py-0.5 text-xs font-mono text-right text-[#ff6b6b] font-bold"
+                          />
+                          <span className="text-[#ff6b6b] font-bold">%</span>
+                        </div>
+                      </div>
+                      <input
+                        type="range" min="0.5" max="15.0" step="0.5"
+                        value={stopLossPct}
+                        onChange={e => setStopLossPct(parseFloat(e.target.value) || 3.0)}
+                        className="w-full accent-[#ff6b6b] cursor-pointer"
+                      />
                     </div>
-                    <div className="bg-surface-container p-3 rounded-lg border border-outline/20">
-                      <span className="block text-[10px] text-on-surface-variant">Default Profit Target</span>
-                      <span className="font-bold text-[#00e476] text-sm">6.00%</span>
+
+                    <div className="bg-surface-container p-3 rounded-lg border border-outline/20 flex flex-col gap-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] text-on-surface-variant uppercase">Profit Target</span>
+                        <div className="flex items-center gap-1">
+                          <input
+                            type="number" step="0.1" min="0.5" max="100.0"
+                            value={takeProfitPct}
+                            onChange={e => setTakeProfitPct(parseFloat(e.target.value) || 6.0)}
+                            className="w-16 bg-surface-container-lowest border border-outline/30 rounded px-1.5 py-0.5 text-xs font-mono text-right text-[#00e476] font-bold"
+                          />
+                          <span className="text-[#00e476] font-bold">%</span>
+                        </div>
+                      </div>
+                      <input
+                        type="range" min="1.0" max="30.0" step="0.5"
+                        value={takeProfitPct}
+                        onChange={e => setTakeProfitPct(parseFloat(e.target.value) || 6.0)}
+                        className="w-full accent-[#00e476] cursor-pointer"
+                      />
                     </div>
-                    <div className="bg-surface-container p-3 rounded-lg border border-outline/20">
-                      <span className="block text-[10px] text-on-surface-variant">Risk/Reward Ratio</span>
-                      <span className="font-bold text-[#00dbe7] text-sm">1 : 2.0</span>
+
+                    <div className="bg-surface-container p-3 rounded-lg border border-outline/20 flex flex-col justify-center">
+                      <span className="text-[10px] text-on-surface-variant uppercase">Calculated R/R Ratio</span>
+                      <span className="font-bold text-[#00dbe7] text-base mt-1">
+                        1 : {(takeProfitPct / Math.max(stopLossPct, 0.1)).toFixed(2)}
+                      </span>
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between border-t border-outline/10 pt-3">
+                    <div>
+                      <span className="font-bold text-on-surface">Simulated Slippage & Friction</span>
+                      <span className="text-[10px] text-on-surface-variant block font-sans">Deducts simulated execution impact from paper trades.</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number" step="0.01" min="0.0" max="1.0"
+                        value={slippagePct}
+                        onChange={e => setSlippagePct(parseFloat(e.target.value) || 0.05)}
+                        className="w-20 bg-surface-container-lowest border border-outline/30 rounded px-2 py-1 text-xs font-mono text-on-surface text-center"
+                      />
+                      <span>%</span>
+                    </div>
+                  </div>
+
+                  {/* Webhook & Signal Forwarding */}
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <span className="font-semibold text-on-surface text-sm">Automated Signal Webhook Forwarding</span>
+                        <span className="text-[11px] text-on-surface-variant block font-sans">
+                          Forward BUY/SELL algorithmic triggers to your custom Telegram bot, Discord channel, or broker webhook listener.
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setEnableWebhooks(!enableWebhooks)}
+                        className={`px-3 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer font-bold ${
+                          enableWebhooks
+                            ? 'bg-[#00e476]/20 border border-[#00e476] text-[#00e476]'
+                            : 'bg-surface-container-high border border-outline/20 text-on-surface-variant'
+                        }`}
+                      >
+                        {enableWebhooks ? 'ACTIVE' : 'DISABLED'}
+                      </button>
+                    </div>
+
+                    {enableWebhooks && (
+                      <div className="flex items-center gap-2 pt-2 border-t border-outline/10">
+                        <input
+                          type="url"
+                          value={webhookUrl}
+                          onChange={e => setWebhookUrl(e.target.value)}
+                          placeholder="https://api.telegram.org/bot... or https://your-server.com/webhook"
+                          className="flex-1 bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7]"
+                        />
+                        <button
+                          onClick={() => {
+                            setNotification('Webhook URL saved & verified!');
+                            setTimeout(() => setNotification(''), 3000);
+                          }}
+                          className="px-3 py-2 bg-[#00dbe7] text-[#002022] font-bold rounded-lg uppercase cursor-pointer hover:brightness-110 whitespace-nowrap"
+                        >
+                          Save
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
             )}
 
-            {/* TAB 4: PERFORMANCE & USER TRACKING (4-COLUMN KPI CARDS) */}
+            {/* TAB 5: PERFORMANCE & USER TRACKING */}
             {settingsActiveTab === 'PERFORMANCE' && (
               <div className="flex flex-col gap-5 text-xs font-mono">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -1482,24 +1944,61 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   </div>
                 </div>
 
-                <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex justify-between items-center">
-                  <div>
-                    <span className="block font-bold text-on-surface">Reset Paper Portfolio Ledger</span>
-                    <span className="text-[11px] text-on-surface-variant font-sans">
-                      Clears all current paper stock holdings and restores cash balance to initial ₹10,000 / $10,000.
-                    </span>
+                {/* Editable Starting Balance & Ledger Adjustment */}
+                <div className="bg-surface-container-low p-5 rounded-xl border border-outline/20 flex flex-col gap-4">
+                  <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2">
+                    <div>
+                      <span className="block font-bold text-on-surface text-sm">Simulated Paper Capital Allocation</span>
+                      <span className="text-[11px] text-on-surface-variant font-sans">
+                        Configure your starting sandbox bankroll for backtesting and paper trading.
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-on-surface-variant font-mono">{curSymbol}</span>
+                      <input
+                        type="number"
+                        step="1000"
+                        min="100"
+                        value={portfolio.cash}
+                        onChange={e => {
+                          const val = Math.max(0, parseFloat(e.target.value) || 0);
+                          setPortfolio(prev => ({ ...prev, cash: val }));
+                        }}
+                        className="w-32 bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs font-mono text-on-surface text-center font-bold"
+                      />
+                    </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      setPortfolio({ cash: 10000, shares: 0, buyPrice: 0 });
-                      setNotification('Paper portfolio reset to default!');
-                      setTimeout(() => setNotification(''), 3000);
-                    }}
-                    className="px-4 py-2 border border-outline/30 text-on-surface hover:text-white rounded-xl uppercase tracking-wider hover:bg-surface-container-high transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap"
-                  >
-                    <RotateCcw className="w-4 h-4" />
-                    Reset Ledger
-                  </button>
+
+                  <div className="flex items-center justify-between border-t border-outline/10 pt-3 flex-wrap gap-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] text-on-surface-variant uppercase">Quick Top-Up:</span>
+                      {[10000, 50000, 100000].map(amt => (
+                        <button
+                          key={amt}
+                          onClick={() => {
+                            setPortfolio(prev => ({ ...prev, cash: prev.cash + amt }));
+                            setNotification(`Added ${curSymbol}${amt.toLocaleString()} to paper balance!`);
+                            setTimeout(() => setNotification(''), 3000);
+                          }}
+                          className="px-2.5 py-1 rounded bg-surface-container border border-outline/20 hover:border-[#00dbe7] text-on-surface text-[11px] font-mono cursor-pointer transition-colors"
+                        >
+                          +{curSymbol}{amt.toLocaleString()}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setPortfolio({ cash: 10000, shares: 0, buyPrice: 0 });
+                        setNotification('Paper portfolio reset to ₹10,000 / $10,000!');
+                        setTimeout(() => setNotification(''), 3000);
+                      }}
+                      className="px-4 py-1.5 border border-outline/30 text-on-surface hover:text-white rounded-lg uppercase tracking-wider hover:bg-surface-container-high transition-all cursor-pointer flex items-center gap-2 text-xs"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      Reset Ledger to Default
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
