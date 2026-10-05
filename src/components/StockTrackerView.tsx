@@ -956,7 +956,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       )}
 
       {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (CLEAN, ONLY ACTIVE MARKET) ── */}
-      <div className="glass-panel rounded-xl p-3 border border-outline/20 flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest/80 shadow-sm">
+      <div className="relative z-30 glass-panel rounded-xl p-3 border border-outline/20 flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest/80 shadow-sm">
         
         {/* Left: Active Market Badge (Click to open Market Settings in Drawer) */}
         <div className="flex items-center gap-2">
@@ -984,7 +984,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         </div>
 
         {/* Center: Search & Ticker Input with Real-Time Suggestions */}
-        <div className="relative flex-1 max-w-md">
+        <div className="relative flex-1 max-w-md z-40">
           <div className="relative flex items-center">
             <input
               value={symbolInput}
@@ -1036,7 +1036,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
           {/* Autocomplete Suggestions Dropdown */}
           {showDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1 bg-surface-container border border-outline/30 rounded-xl shadow-2xl z-50 overflow-hidden backdrop-blur-xl max-h-72 overflow-y-auto custom-scrollbar">
+            <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/40 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-50 overflow-hidden backdrop-blur-2xl max-h-72 overflow-y-auto custom-scrollbar">
               {searchResults.length > 0 ? (
                 searchResults.map(item => (
                   <div
@@ -1526,7 +1526,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
       {/* ── 4. 3/4-WIDTH SLIDING SETTINGS OVERLAY PANEL (FULLY EDITABLE) ──────── */}
       {showSettingsDrawer && (
-        <div className="fixed inset-0 z-50 flex justify-end">
+        <div className="fixed inset-0 z-[100] flex justify-end">
           {/* Backdrop blur */}
           <div
             onClick={() => setShowSettingsDrawer(false)}
