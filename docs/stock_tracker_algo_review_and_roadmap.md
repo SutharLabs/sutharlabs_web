@@ -2,7 +2,8 @@
 ## Comprehensive Architectural Review, Industry Benchmark & Implementation Roadmap
 
 > **Author**: SutharLabs Software Research & Engineering Studio  
-> **Document Version**: 1.1.0  
+> **Document Version**: 1.2.0 (Updated post Stage 1 & Stage 2 Delivery)  
+> **Current Plugin Release**: `v0.3.0` (Beta)  
 > **Scope**: Equity & Derivatives Market Analytics, Algorithmic Signal Generation, Multi-Timeframe Backtesting, Community Strategy Marketplace, and End-of-Day (EOD) Trade Simulation across Global Markets (India NSE/BSE, US NYSE/NASDAQ, Europe LSE/Euronext/DAX, and East Asia HKEX/China CSI 300/Japan TSE).
 
 ---
@@ -459,39 +460,108 @@ export interface IMarketAdapter {
 
 ---
 
-## 6. Phased Implementation Roadmap
+## 6. Phased Implementation Roadmap & Current Status
 
-### Phase 1: Core Foundation, Professional Charting & Global Universe Switcher (Immediate)
-- Replace static SVG sparkline with **TradingView Lightweight Charts** (interactive candlesticks, zoom, pan, volume bars).
-- Add **Global Market Universe Switcher** supporting India (NIFTY 50), US (S&P 500 / Nasdaq), Europe (FTSE 100, DAX 40), and China/HK (CSI 300, Hang Seng).
-- Decouple technical indicator calculations into extensible modules with customizable parameters (RSI, MACD, BB, ATR, ADX, Supertrend).
+### Summary Status Matrix
 
-### Phase 2: Strategy Architecture & Builder
-- Implement `IStrategy` registry on server and client.
-- Deliver 4 battle-tested preset strategies:
-  1. *EMA Golden Cross / Death Cross (50 / 200 EMA)*
-  2. *RSI Mean Reversion (Oversold 30 + Bullish MACD confirmation)*
-  3. *Bollinger Bands Squeeze & Breakout*
-  4. *Supertrend Trend-Following (ATR Multiplier 3, Period 10)*
-- Create a visual **Strategy Condition Builder** UI allowing users to configure custom indicators, entry conditions, and exit rules.
+| Phase / Stage | Core Deliverable | Target Release | Status | Live Verification |
+| :--- | :--- | :--- | :--- | :--- |
+| **Stage 1** | Professional Lightweight Charting, Global Universe Switcher, Multi-Indicator Stack | `v0.2.0` | **COMPLETED & SHIPPED** ✅ | Production Verified |
+| **Stage 2** | `IStrategy` Architecture, 4 Quant Presets, Server Engine, Visual Condition Builder UI | `v0.3.0` (Beta) | **COMPLETED & SHIPPED** ✅ | Production & Vercel Verified |
+| **Stage 3** | Live Financial News Feeds, Google Gemini AI Sentiment Analysis & Confluence Factors | `v0.4.0` | **NEXT UP** ⏳ | Pending Implementation |
+| **Stage 4** | High-Performance Historical Backtester & Multi-Country Friction / Tax Modeling | `v0.5.0` | Planned 📅 | Specification Ready |
+| **Stage 5** | Community Strategy Marketplace, Verified Performance Badges & Strategy Forking | `v0.6.0` | Planned 📅 | Specification Ready |
+| **Stage 6** | Global Market Screener / Scanner & Automated Daily EOD Batch Trade Simulator | `v1.0.0` | Planned 📅 | Specification Ready |
 
-### Phase 3: Real-Time News Stream & AI Sentiment Intelligence
-- Integrate real-time financial news RSS/API feeds for active symbols across global markets (NSE, US, Europe, Asia).
-- Implement Gemini AI (`@google/genai`) sentiment scoring endpoint (`/api/workspace/stock-analyzer/news-sentiment`).
+---
+
+### Stage 1: Core Foundation, Professional Charting & Global Universe Switcher
+> **Release Version**: `v0.2.0` &bull; **Status**: **COMPLETED & SHIPPED** ✅
+
+#### Additions & Architectural Milestones Delivered:
+1. **TradingView Lightweight Charts Integration**:
+   - Replaced static SVG sparklines with high-performance Canvas-based candlestick charting (`lightweight-charts`).
+   - Added interactive crosshairs, pan/zoom gestures, custom timeframes (`5m`, `15m`, `1h`, `1D`), dark theme styling matching the platform design tokens, and synchronized volume histogram sub-track.
+2. **Pluggable Global Market Universe Switcher**:
+   - Implemented dynamic market switching across 4 global regions:
+     - **India (`IN`)**: NSE / BSE NIFTY 50 benchmarks (Reliance, TCS, HDFC Bank, Infosys, ICICI Bank, etc.).
+     - **United States (`US`)**: S&P 500 / NASDAQ 100 benchmarks (Apple, Microsoft, NVIDIA, Amazon, Alphabet, etc.).
+     - **Europe (`EU` / `UK`)**: FTSE 100, CAC 40, and DAX 40 blue chips.
+     - **East Asia (`HK` / `CN`)**: Hang Seng and CSI 300 benchmarks (Tencent, Alibaba, Meituan, BYD, Kweichow Moutai).
+   - Added localized currency symbol formatting (`₹`, `$`, `€`, `£`, `HK$`, `¥`), exchange suffixes (`.NS`, `.BO`, `.L`, `.PA`, `.DE`, `.HK`, `.SS`), and live market session status checks (Market Open vs. Closed).
+3. **Decoupled Technical Indicator Engine**:
+   - Modularized technical indicator calculations using `technicalindicators` into standalone processing functions.
+   - Built real-time calculations for RSI (14), MACD (12, 26, 9), Bollinger Bands (20, 2), ATR (14), ADX (14), EMA (20, 50), and SMA (20).
+
+---
+
+### Stage 2: Algorithmic Strategy Architecture, Presets & Visual Condition Builder
+> **Release Version**: `v0.3.0` (Beta) &bull; **Status**: **COMPLETED & SHIPPED** ✅
+
+#### Additions & Architectural Milestones Delivered:
+1. **Standardized Strategy Contract (`IStrategy`)**:
+   - Defined strict TypeScript contracts in [`src/plugins/StockTracker/strategies/types.ts`](file:///d:/Code/SutharLabs/website/src/plugins/StockTracker/strategies/types.ts) covering `IStrategy`, `StrategyParameter`, `StrategyRuleCondition`, and `StrategySignal`.
+   - Enabled flexible multi-operator condition rules (`crosses_above`, `crosses_below`, `>`, `<`, `>=`, `<=`, `==`, `between`).
+2. **Four Battle-Tested Quantitative Presets**:
+   - Implemented in [`src/plugins/StockTracker/strategies/presets.ts`](file:///d:/Code/SutharLabs/website/src/plugins/StockTracker/strategies/presets.ts):
+     - **EMA Golden Cross / Death Cross** (`strat-ema-cross`): Momentum trend follower evaluating 20/50/200 crossovers with dynamic price trend confirmation.
+     - **RSI Mean Reversion** (`strat-rsi-mean-reversion`): Counter-trend swing system triggering at oversold/overbought thresholds confirmed by MACD histogram momentum.
+     - **Bollinger Bands Squeeze & Breakout** (`strat-bb-squeeze`): Volatility breakout algorithm capturing expansion beyond upper/lower bands with volume filters.
+     - **Supertrend Trend-Following** (`strat-supertrend`): Directional volatility trailing strategy utilizing ATR multiplier and band switches.
+3. **Server-Side Quantitative Execution Engine**:
+   - Implemented in [`src/plugins/StockTracker/strategies/engine.ts`](file:///d:/Code/SutharLabs/website/src/plugins/StockTracker/strategies/engine.ts):
+     - Calculates technical indicators (RSI, MACD, BB, ATR, EMA, SMA, and custom Supertrend formula) across historical candle bars.
+     - Dynamically evaluates entry and exit condition trees with customizable parameter substitutions.
+     - Generates deterministic signals (`BUY`, `SELL`, `HOLD`) accompanied by confidence scores (0.0 to 1.0), calculated Stop Loss, Take Profit targets, and human-readable trigger reasoning.
+4. **Strategy Persistence Store & REST API**:
+   - Implemented file-backed persistence in [`src/plugins/StockTracker/strategies/store.ts`](file:///d:/Code/SutharLabs/website/src/plugins/StockTracker/strategies/store.ts) (`data/strategies.json`) with automated data directory creation and built-in preset immutability.
+   - Exposed RESTful endpoints in [`src/plugins/StockTracker/routes.ts`](file:///d:/Code/SutharLabs/website/src/plugins/StockTracker/routes.ts):
+     - `GET /api/workspace/stock-analyzer/strategies`: List all available presets and user-created custom models.
+     - `POST /api/workspace/stock-analyzer/strategies`: Create a new custom algorithm.
+     - `GET /api/workspace/stock-analyzer/strategies/:id`: Fetch specific strategy configuration.
+     - `PUT /api/workspace/stock-analyzer/strategies/:id`: Update user-authored strategy parameters and rules.
+     - `DELETE /api/workspace/stock-analyzer/strategies/:id`: Delete custom models (with preset protection).
+     - `GET /api/workspace/stock-analyzer/strategy-signal`: Evaluate real-time signal on any symbol for the active strategy.
+5. **Interactive Frontend Strategy Catalog & Visual Rule Builder UI**:
+   - Built into [`src/components/StockTrackerView.tsx`](file:///d:/Code/SutharLabs/website/src/components/StockTrackerView.tsx):
+     - **Strategy Catalog Modal**: Searchable gallery of quant strategies with author badges, preset indicators, 1-click active strategy switching, and 1-click cloning.
+     - **Visual Condition Builder**: No-code interface for naming, market assignment, parameter configuration, adding/removing dynamic entry and exit rules.
+     - **Live Dry-Run Signal Tester**: Evaluates the unsaved builder draft against live active market data in real time, displaying immediate confidence, action, and reasoning.
+     - **Chart Toolbar Integration**: Active strategy signal pill on the chart header displaying live signal (`BUY`, `SELL`, `HOLD`) and detailed breakdown panel.
+6. **Marketplace UI & Versioning Polish**:
+   - Upgraded plugin manifest and database seeds to `v0.3.0` (classified as **Beta** for sub-v1.0.0 releases).
+   - Unified button sizing, fixed height cards, typography weights, and vertically aligned install/uninstall status pills.
+   - Fixed Node.js ESM file extension resolution (`.js`) ensuring seamless deployment on Vercel production serverless runtimes.
+
+---
+
+### Stage 3: Real-Time News Stream & AI Sentiment Intelligence
+> **Target Version**: `v0.4.0` &bull; **Status**: **NEXT UP** ⏳
+- Ingest real-time financial news RSS/API feeds for active symbols across global markets (NSE, US, Europe, Asia).
+- Implement Google Gemini AI (`@google/genai`) sentiment scoring endpoint (`/api/workspace/stock-analyzer/news-sentiment`).
 - Add Live News Ticker drawer and sentiment badges to the Stock Tracker UI.
 - Incorporate AI Sentiment Confluence Factor into algorithmic signal calculations and emergency circuit breakers.
 
-### Phase 4: High-Performance Backtesting Engine & Global Friction Models
+---
+
+### Stage 4: High-Performance Backtesting Engine & Global Friction Models
+> **Target Version**: `v0.5.0` &bull; **Status**: Planned 📅
 - Implement historical bar replay backtester with full transaction friction modeling (NSE STT/GST, US SEC fees, UK Stamp Duty SDRT, China A-Share T+1 and stamp duty).
 - Generate institutional statistics (CAGR, Sharpe, Sortino, Max Drawdown, Win Rate, Profit Factor).
 - Render interactive Equity Curve and Trade Log table with trade-by-trade entry/exit points plotted on the chart.
 
-### Phase 5: Community Algorithm Marketplace & Ratings
+---
+
+### Stage 5: Community Algorithm Marketplace & Ratings
+> **Target Version**: `v0.6.0` &bull; **Status**: Planned 📅
 - Allow users to publish their custom strategies to the SutharLabs catalog (`isPublic: true`).
 - Community rating modal (1-5 stars, reviews, paper trading verification).
 - Strategy Forking: Allow users to clone any published strategy, tweak parameters, and re-test.
 
-### Phase 6: Market Scanner & Automated EOD Simulation
+---
+
+### Stage 6: Market Scanner & Automated EOD Simulation
+> **Target Version**: `v1.0.0` (Production Milestone) &bull; **Status**: Planned 📅
 - Multi-symbol scanner running strategies across NIFTY 50, S&P 500, FTSE 100, DAX, and CSI 300.
 - Daily EOD simulation daemon executing paper trades on closing data with automatic SL/TP tracking and multi-currency portfolio conversion.
 - Webhook alert integration (exporting signals to Telegram/Discord or OpenAlgo/Interactive Brokers endpoints).
