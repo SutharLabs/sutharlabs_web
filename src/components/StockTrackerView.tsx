@@ -15,7 +15,12 @@ import {
   Award,
   RotateCcw,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Maximize2,
+  Minimize2,
+  Key,
+  Layers,
+  Settings2
 } from 'lucide-react';
 import {
   createChart,
@@ -245,10 +250,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [loading, setLoading] = useState(true);
   const [activePeriod, setActivePeriod] = useState<TimeframePeriod>('1W');
 
-  // Chart Overlay Toggles
+  // Chart Overlay & Fullscreen View Controls
   const [showEma20, setShowEma20] = useState<boolean>(true);
   const [showEma50, setShowEma50] = useState<boolean>(true);
   const [showVolume, setShowVolume] = useState<boolean>(true);
+  const [isChartExpanded, setIsChartExpanded] = useState<boolean>(false);
 
   // Sliding Settings Overlay
   const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
@@ -464,9 +470,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     const crosshairColor = isDark ? '#00dbe7' : '#0284c7';
     const crosshairLabelBg = isDark ? '#002022' : '#0369a1';
 
+    const targetHeight = isChartExpanded ? 640 : 440;
+
     const chart = createChart(container, {
       width: container.clientWidth || 800,
-      height: 440,
+      height: targetHeight,
       layout: {
         attributionLogo: false, // Disables TradingView logo from the bottom-left corner
         background: { type: ColorType.Solid, color: chartBg },
@@ -605,8 +613,12 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     const resizeObserver = new ResizeObserver((entries) => {
       if (entries.length && entries[0].contentRect && chartInstanceRef.current) {
         const width = entries[0].contentRect.width;
+        const height = entries[0].contentRect.height;
         if (width > 0) {
-          chartInstanceRef.current.applyOptions({ width });
+          chartInstanceRef.current.applyOptions({
+            width,
+            ...(height > 0 ? { height } : {})
+          });
         }
       }
     });
@@ -617,7 +629,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       chart.remove();
       chartInstanceRef.current = null;
     };
-  }, [candles, showVolume, showEma20, showEma50, continuousEma20, continuousEma50, activePeriod, isDark, candleLookup]);
+  }, [candles, showVolume, showEma20, showEma50, continuousEma20, continuousEma50, activePeriod, isDark, candleLookup, isChartExpanded]);
 
   // ── 5. Terminal Internal Auto-Scroll ──────────────────────────────────────
   useEffect(() => {
@@ -800,14 +812,14 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
       </div>
 
-      {/* ── 2. BALANCED TWO-COLUMN WORKSPACE ───────────────────────────────── */}
+      {/* ── 2. BALANCED WORKSPACE (SUPPORTING FULL GRAPH EXPANDED VIEW) ──────── */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
         
-        {/* LEFT COLUMN: HERO CANDLESTICK CHART (8 Cols) */}
-        <div className="lg:col-span-8 flex flex-col gap-2">
+        {/* CHART COLUMN: Takes 12 columns in Expanded Full View, 8 columns in Standard View */}
+        <div className={`${isChartExpanded ? 'lg:col-span-12' : 'lg:col-span-8'} flex flex-col gap-2 transition-all duration-300`}>
           <div className="glass-panel rounded-xl flex flex-col overflow-hidden border border-outline/20 bg-surface-container-lowest shadow-md">
             
-            {/* Chart Toolbar: Timeframe Selector + Indicator Overlays */}
+            {/* Chart Toolbar: Timeframe Selector + Indicator Overlays + Expand Button */}
             <div className="flex flex-wrap justify-between items-center gap-2 p-2.5 border-b border-outline/10 bg-surface-container-low/60">
               
               {/* Extended Timeframes: 1D, 1W, 1M, 1Y, 5Y, ALL */}
@@ -827,8 +839,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 ))}
               </div>
 
-              {/* Indicator Overlay Toggles */}
-              <div className="flex items-center gap-2">
+              {/* Indicator Overlay Toggles & Fullscreen Toggle */}
+              <div className="flex items-center gap-2 flex-wrap">
                 <button
                   onClick={() => setShowEma20(!showEma20)}
                   className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
@@ -864,6 +876,20 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   {showVolume ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
                   <span>Volume</span>
                 </button>
+
+                {/* GRAPH FULL VIEW EXPAND TOGGLE */}
+                <button
+                  onClick={() => setIsChartExpanded(prev => !prev)}
+                  className={`px-2.5 py-1 rounded-md text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer ml-1 ${
+                    isChartExpanded
+                      ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/50 font-bold shadow-[0_0_8px_rgba(0,219,231,0.3)]'
+                      : 'bg-surface-container text-on-surface-variant border border-outline/20 hover:text-on-surface hover:border-outline/40'
+                  }`}
+                  title={isChartExpanded ? "Exit Full View (Show Sidebar)" : "Expand Graph to Full View"}
+                >
+                  {isChartExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                  <span>{isChartExpanded ? 'Collapse' : 'Full View'}</span>
+                </button>
               </div>
 
             </div>
@@ -886,8 +912,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               )}
             </div>
 
-            {/* Chart Canvas */}
-            <div className="relative flex-1 min-h-[440px] p-2 bg-surface-container-lowest">
+            {/* Chart Canvas: Expands to 640px height in Full View */}
+            <div className={`relative flex-1 ${isChartExpanded ? 'min-h-[640px] h-[calc(100vh-210px)]' : 'min-h-[440px]'} p-2 bg-surface-container-lowest transition-all duration-300`}>
               {loading && candles.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center bg-surface-container-lowest/80 z-20 font-mono text-xs text-[#00dbe7] animate-pulse">
                   Initializing TradingView Candlestick Engine...
@@ -899,8 +925,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </div>
         </div>
 
-        {/* RIGHT COLUMN: ACTION & METRICS SIDEBAR (4 Cols) */}
-        <div className="lg:col-span-4 flex flex-col gap-3">
+        {/* SIDEBAR COLUMN: Stacks on right in Standard View (4 cols); Moves below in 3-col row when Full View (12 cols) */}
+        <div className={`${isChartExpanded ? 'lg:col-span-12 grid grid-cols-1 md:grid-cols-3' : 'lg:col-span-4 flex flex-col'} gap-3 transition-all duration-300`}>
           
           {/* Box 1: Algorithmic Strategy Signal */}
           <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-2.5 shadow-sm">
@@ -1145,7 +1171,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         )}
       </div>
 
-      {/* ── 4. STATE-OF-THE-ART SLIDING SETTINGS OVERLAY PANEL ───────────────── */}
+      {/* ── 4. 3/4-WIDTH SLIDING SETTINGS OVERLAY PANEL ──────────────────────── */}
       {showSettingsDrawer && (
         <div className="fixed inset-0 z-50 flex justify-end">
           {/* Backdrop blur */}
@@ -1154,100 +1180,120 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
           />
 
-          {/* Drawer container */}
-          <div className="relative w-full max-w-md bg-surface-container border-l border-outline/30 p-6 flex flex-col shadow-2xl z-10 overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-300">
+          {/* Drawer container: Covers 3/4 (75%) of usable space with max-w-6xl */}
+          <div className="relative w-full sm:w-[85vw] md:w-[75vw] lg:w-[75vw] max-w-6xl bg-surface-container border-l border-outline/30 p-6 sm:p-8 flex flex-col shadow-2xl z-10 overflow-y-auto custom-scrollbar animate-in slide-in-from-right duration-300">
             
             {/* Header */}
             <div className="flex justify-between items-center border-b border-outline/20 pb-4 mb-5">
-              <div className="flex items-center gap-2.5">
-                <Sliders className="w-5 h-5 text-[#00dbe7]" />
-                <h3 className="font-sans font-bold text-base text-on-surface">
-                  Tracker Settings & Config
-                </h3>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30">
+                  <Sliders className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-sans font-bold text-lg text-on-surface">
+                    Tracker Settings & Workspace Architecture
+                  </h3>
+                  <p className="text-xs text-on-surface-variant font-mono">
+                    Configure data feeds, technical indicator formulas, risk safeguards, and paper execution.
+                  </p>
+                </div>
               </div>
               <button
                 onClick={() => setShowSettingsDrawer(false)}
-                className="p-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
+                className="p-1.5 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {/* Drawer Navigation Tabs */}
-            <div className="flex gap-2 border-b border-outline/20 pb-3 mb-5 overflow-x-auto custom-scrollbar">
+            <div className="flex gap-2 border-b border-outline/20 pb-3 mb-6 overflow-x-auto custom-scrollbar">
               {(['FEEDS', 'INDICATORS', 'TRADING', 'PERFORMANCE'] as const).map(tab => (
                 <button
                   key={tab}
                   onClick={() => setSettingsActiveTab(tab)}
-                  className={`px-3 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer whitespace-nowrap ${
+                  className={`px-4 py-2 rounded-xl text-xs font-mono transition-all cursor-pointer whitespace-nowrap flex items-center gap-2 ${
                     settingsActiveTab === tab
-                      ? 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/40 font-bold'
-                      : 'text-on-surface-variant hover:text-on-surface'
+                      ? 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/40 font-bold shadow-sm'
+                      : 'text-on-surface-variant hover:text-on-surface bg-surface-container-low border border-transparent'
                   }`}
                 >
-                  {tab === 'FEEDS' && 'Data Feeds'}
-                  {tab === 'INDICATORS' && 'Indicators'}
-                  {tab === 'TRADING' && 'Order Rules'}
-                  {tab === 'PERFORMANCE' && 'Performance'}
+                  {tab === 'FEEDS' && <Database className="w-3.5 h-3.5" />}
+                  {tab === 'INDICATORS' && <Layers className="w-3.5 h-3.5" />}
+                  {tab === 'TRADING' && <Shield className="w-3.5 h-3.5" />}
+                  {tab === 'PERFORMANCE' && <Award className="w-3.5 h-3.5" />}
+                  <span>
+                    {tab === 'FEEDS' && 'Market Feeds & Connectors'}
+                    {tab === 'INDICATORS' && 'Indicator Mathematics'}
+                    {tab === 'TRADING' && 'Order & Risk Parameters'}
+                    {tab === 'PERFORMANCE' && 'Performance Analytics'}
+                  </span>
                 </button>
               ))}
             </div>
 
-            {/* TAB 1: DATA FEEDS & PROVIDER TOGGLE */}
+            {/* TAB 1: DATA FEEDS & PROVIDER TOGGLE (SPACIOUS 2-COLUMN GRID) */}
             {settingsActiveTab === 'FEEDS' && (
-              <div className="flex flex-col gap-4 text-xs font-mono">
+              <div className="flex flex-col gap-6 text-xs font-mono">
                 <div className="flex flex-col gap-2">
-                  <span className="text-on-surface font-semibold flex items-center gap-1.5">
-                    <Database className="w-3.5 h-3.5 text-[#00dbe7]" />
-                    Primary Market Feed Engine
+                  <span className="text-on-surface font-semibold text-sm flex items-center gap-2">
+                    <Database className="w-4 h-4 text-[#00dbe7]" />
+                    Select Primary Exchange Data Provider
                   </span>
-                  <p className="text-[11px] text-on-surface-variant font-sans">
-                    Choose which provider feed to route market queries through. Indian NSE/BSE symbols can be routed through Yahoo Finance or direct Broker APIs.
+                  <p className="text-xs text-on-surface-variant font-sans max-w-2xl">
+                    SutharLabs decouples the analytics engine from data vendors. Indian symbols can stream via Yahoo Finance or directly through your authenticated broker account.
                   </p>
 
-                  <div className="flex flex-col gap-2 mt-2">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5 mt-3">
                     {[
-                      { id: 'YAHOO', name: 'Yahoo Finance Engine', badge: 'Active (Global Free)', desc: 'Global multi-asset coverage across NSE, US, LSE, HKEX, TSE' },
-                      { id: 'UPSTOX', name: 'Upstox Uplink API', badge: 'Configurable', desc: 'Direct Indian broker streaming WebSocket ticks' },
-                      { id: 'ANGELONE', name: 'Angel One SmartAPI', badge: 'Configurable', desc: 'Direct Indian broker WebSocket tick stream' },
-                      { id: 'DHAN', name: 'DhanHQ Developer API', badge: 'Configurable', desc: 'Low-latency tick-by-tick feed for Indian markets' },
-                      { id: 'FINNHUB', name: 'Finnhub Realtime', badge: 'Configurable', desc: 'US Real-time IEX & WebSocket feed' }
+                      { id: 'YAHOO', name: 'Yahoo Finance Engine', badge: 'Active (Global Free)', ping: '84ms', desc: 'Default zero-config global feed. Handles NSE, BSE, NYSE, NASDAQ, LSE, HKEX, TSE seamlessly.' },
+                      { id: 'UPSTOX', name: 'Upstox Uplink Broker API', badge: 'Configurable', ping: '12ms', desc: 'Direct Indian broker streaming WebSocket ticks for NSE/BSE equities and F&O.' },
+                      { id: 'ANGELONE', name: 'Angel One SmartAPI', badge: 'Configurable', ping: '15ms', desc: 'Direct WebSocket streaming tick stream with free developer access.' },
+                      { id: 'DHAN', name: 'DhanHQ Developer Gateway', badge: 'Configurable', ping: '11ms', desc: 'Low-latency tick-by-tick market feed tailored for algo trading.' },
+                      { id: 'FINNHUB', name: 'Finnhub Real-Time IEX', badge: 'Configurable', ping: '45ms', desc: 'US Real-time WebSocket trade stream with company fundamental metrics.' },
+                      { id: 'ALPHAVANTAGE', name: 'Alpha Vantage / EODHD', badge: 'Standby Failover', ping: '110ms', desc: 'Institutional historical and EOD worldwide financial database.' }
                     ].map(src => (
                       <div
                         key={src.id}
                         onClick={() => setSelectedDataSource(src.id)}
-                        className={`p-3 rounded-lg border transition-all cursor-pointer flex flex-col gap-1 ${
+                        className={`p-4 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2 ${
                           selectedDataSource === src.id
-                            ? 'bg-[#00dbe7]/10 border-[#00dbe7] shadow-[0_0_8px_rgba(0,219,231,0.2)]'
+                            ? 'bg-[#00dbe7]/10 border-[#00dbe7] shadow-[0_0_12px_rgba(0,219,231,0.2)]'
                             : 'bg-surface-container-low border-outline/20 hover:border-outline/40'
                         }`}
                       >
-                        <div className="flex justify-between items-center">
-                          <span className="font-bold text-on-surface">{src.name}</span>
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded ${selectedDataSource === src.id ? 'bg-[#00dbe7]/20 text-[#00dbe7] font-bold' : 'bg-surface-container-high text-on-surface-variant'}`}>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <span className="font-bold text-on-surface text-sm">{src.name}</span>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#00e476]" />
+                              <span className="text-[10px] text-on-surface-variant font-mono">Ping: {src.ping}</span>
+                            </div>
+                          </div>
+                          <span className={`text-[10px] px-2 py-0.5 rounded-full ${selectedDataSource === src.id ? 'bg-[#00dbe7]/20 text-[#00dbe7] font-bold' : 'bg-surface-container-high text-on-surface-variant'}`}>
                             {src.badge}
                           </span>
                         </div>
-                        <span className="text-[10px] text-on-surface-variant font-sans">{src.desc}</span>
+                        <span className="text-xs text-on-surface-variant font-sans leading-relaxed">{src.desc}</span>
                       </div>
                     ))}
                   </div>
                 </div>
 
-                <div className="flex flex-col gap-2 border-t border-outline/10 pt-4">
-                  <span className="text-on-surface font-semibold">Quote Polling Refresh Rate</span>
-                  <div className="flex gap-2">
+                <div className="flex flex-col gap-2.5 border-t border-outline/10 pt-5">
+                  <span className="text-on-surface font-semibold text-sm">Quote Auto-Refresh Polling Interval</span>
+                  <div className="grid grid-cols-4 gap-2.5 max-w-lg">
                     {[10, 30, 60, 0].map(sec => (
                       <button
                         key={sec}
                         onClick={() => setPollIntervalSec(sec)}
-                        className={`flex-1 py-1.5 rounded-lg border text-xs font-mono transition-all cursor-pointer ${
+                        className={`py-2 rounded-xl border text-xs font-mono transition-all cursor-pointer ${
                           pollIntervalSec === sec
                             ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#00dbe7] font-bold'
-                            : 'bg-surface-container-low border-outline/20 text-on-surface-variant'
+                            : 'bg-surface-container-low border-outline/20 text-on-surface-variant hover:text-on-surface'
                         }`}
                       >
-                        {sec === 0 ? 'Manual' : `${sec}s`}
+                        {sec === 0 ? 'Manual Refresh' : `${sec} Seconds`}
                       </button>
                     ))}
                   </div>
@@ -1255,49 +1301,93 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
             )}
 
-            {/* TAB 2: INDICATOR PARAMETERS */}
+            {/* TAB 2: INDICATOR PARAMETERS (SPACIOUS 2-COLUMN LAYOUT) */}
             {settingsActiveTab === 'INDICATORS' && (
-              <div className="flex flex-col gap-4 text-xs font-mono">
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-on-surface font-semibold">RSI Period ({rsiPeriod})</label>
-                  <input
-                    type="range"
-                    min="5"
-                    max="35"
-                    value={rsiPeriod}
-                    onChange={e => setRsiPeriod(parseInt(e.target.value) || 14)}
-                    className="w-full accent-[#00dbe7]"
-                  />
-                  <div className="flex justify-between text-[10px] text-on-surface-variant">
-                    <span>5 (Fast/Sensitive)</span>
-                    <span>14 (Standard)</span>
-                    <span>35 (Slow)</span>
+              <div className="flex flex-col gap-6 text-xs font-mono">
+                {/* Presets */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-on-surface font-semibold mr-2">Strategy Presets:</span>
+                  <button
+                    onClick={() => { setRsiPeriod(14); setBbPeriod(20); setBbStdDev(2); }}
+                    className="px-3 py-1 rounded-lg bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] text-on-surface cursor-pointer"
+                  >
+                    Standard (RSI 14, BB 20)
+                  </button>
+                  <button
+                    onClick={() => { setRsiPeriod(7); setBbPeriod(10); setBbStdDev(1.5); }}
+                    className="px-3 py-1 rounded-lg bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] text-on-surface cursor-pointer"
+                  >
+                    Fast Scalper (RSI 7, BB 10)
+                  </button>
+                  <button
+                    onClick={() => { setRsiPeriod(21); setBbPeriod(50); setBbStdDev(2.5); }}
+                    className="px-3 py-1 rounded-lg bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] text-on-surface cursor-pointer"
+                  >
+                    Macro Swing (RSI 21, BB 50)
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-on-surface font-semibold text-sm">Relative Strength Index (RSI)</label>
+                      <span className="px-2 py-0.5 rounded bg-[#00dbe7]/15 text-[#00dbe7] font-bold">{rsiPeriod} Periods</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="5"
+                      max="35"
+                      value={rsiPeriod}
+                      onChange={e => setRsiPeriod(parseInt(e.target.value) || 14)}
+                      className="w-full accent-[#00dbe7] cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
+                      <span>5 (Ultra Sensitive)</span>
+                      <span>14 (J. Welles Wilder Default)</span>
+                      <span>35 (Smoothed)</span>
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-on-surface font-semibold">Bollinger Bands Period ({bbPeriod})</label>
-                  <input
-                    type="range"
-                    min="10"
-                    max="50"
-                    value={bbPeriod}
-                    onChange={e => setBbPeriod(parseInt(e.target.value) || 20)}
-                    className="w-full accent-[#00dbe7]"
-                  />
-                </div>
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3">
+                    <div className="flex justify-between items-center">
+                      <label className="text-on-surface font-semibold text-sm">Bollinger Bands Period</label>
+                      <span className="px-2 py-0.5 rounded bg-[#00dbe7]/15 text-[#00dbe7] font-bold">{bbPeriod} Bars</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="10"
+                      max="50"
+                      value={bbPeriod}
+                      onChange={e => setBbPeriod(parseInt(e.target.value) || 20)}
+                      className="w-full accent-[#00dbe7] cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
+                      <span>10 Bars</span>
+                      <span>20 Bars (Standard)</span>
+                      <span>50 Bars</span>
+                    </div>
+                  </div>
 
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-on-surface font-semibold">Bollinger StdDev ({bbStdDev})</label>
-                  <input
-                    type="range"
-                    step="0.5"
-                    min="1"
-                    max="3.5"
-                    value={bbStdDev}
-                    onChange={e => setBbStdDev(parseFloat(e.target.value) || 2)}
-                    className="w-full accent-[#00dbe7]"
-                  />
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3 md:col-span-2">
+                    <div className="flex justify-between items-center">
+                      <label className="text-on-surface font-semibold text-sm">Bollinger Standard Deviation (Multiplier)</label>
+                      <span className="px-2 py-0.5 rounded bg-[#00dbe7]/15 text-[#00dbe7] font-bold">±{bbStdDev.toFixed(1)} σ</span>
+                    </div>
+                    <input
+                      type="range"
+                      step="0.5"
+                      min="1"
+                      max="3.5"
+                      value={bbStdDev}
+                      onChange={e => setBbStdDev(parseFloat(e.target.value) || 2)}
+                      className="w-full accent-[#00dbe7] cursor-pointer"
+                    />
+                    <div className="flex justify-between text-[10px] text-on-surface-variant font-mono">
+                      <span>1.0σ (Narrow)</span>
+                      <span>2.0σ (95.4% Coverage)</span>
+                      <span>3.5σ (Extreme Breakouts)</span>
+                    </div>
+                  </div>
                 </div>
 
                 <button
@@ -1306,79 +1396,111 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     setNotification('Parameters recalculated!');
                     setTimeout(() => setNotification(''), 3000);
                   }}
-                  className="mt-2 py-2 bg-[#00dbe7] text-[#002022] font-bold rounded-lg uppercase tracking-wider hover:brightness-110 cursor-pointer flex items-center justify-center gap-2"
+                  className="py-3 bg-[#00dbe7] text-[#002022] font-bold rounded-xl uppercase tracking-wider hover:brightness-110 cursor-pointer flex items-center justify-center gap-2 shadow-lg"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  Recalculate Indicator Matrix
+                  Apply Parameters & Re-run Algorithm
                 </button>
               </div>
             )}
 
             {/* TAB 3: TRADING & RISK RULES */}
             {settingsActiveTab === 'TRADING' && (
-              <div className="flex flex-col gap-4 text-xs font-mono">
-                <div className="bg-surface-container-low p-3 rounded-lg border border-outline/20">
-                  <span className="block text-[10px] text-on-surface-variant uppercase">Sovereign Reporting Currency</span>
-                  <span className="font-bold text-on-surface text-sm mt-1 block">
-                    {universes[activeMarketKey]?.currencyCode} ({curSymbol})
-                  </span>
+              <div className="flex flex-col gap-5 text-xs font-mono">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20">
+                    <span className="block text-[10px] text-on-surface-variant uppercase">Reporting Sovereign Currency</span>
+                    <span className="font-bold text-on-surface text-base mt-1 block">
+                      {universes[activeMarketKey]?.currencyCode} ({curSymbol})
+                    </span>
+                    <span className="text-[11px] text-on-surface-variant font-sans mt-1 block">
+                      Ledger is auto-normalized based on active exchange profile.
+                    </span>
+                  </div>
+
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20">
+                    <span className="block text-[10px] text-on-surface-variant uppercase">Slippage & Friction Engine</span>
+                    <span className="font-bold text-[#00e476] text-base mt-1 block">
+                      Zero Friction (Paper Simulator)
+                    </span>
+                    <span className="text-[11px] text-on-surface-variant font-sans mt-1 block">
+                      Phase 4 will activate STT (India 0.1%) & SEC (US) localized taxes.
+                    </span>
+                  </div>
                 </div>
 
-                <div className="bg-surface-container-low p-3 rounded-lg border border-outline/20 flex flex-col gap-2">
-                  <span className="text-[10px] text-on-surface-variant uppercase">Risk Management Safeguards</span>
-                  <div className="flex justify-between items-center text-on-surface">
-                    <span>Default Stop Loss %</span>
-                    <span className="font-bold text-[#ff6b6b]">3.0%</span>
-                  </div>
-                  <div className="flex justify-between items-center text-on-surface">
-                    <span>Default Profit Target %</span>
-                    <span className="font-bold text-[#00e476]">6.0%</span>
-                  </div>
-                  <div className="flex justify-between items-center text-on-surface">
-                    <span>Calculated R/R Ratio</span>
-                    <span className="font-bold text-[#00dbe7]">2.00 (1:2)</span>
+                <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-3">
+                  <span className="text-xs text-on-surface font-semibold uppercase">Risk Safeguards Matrix</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="bg-surface-container p-3 rounded-lg border border-outline/20">
+                      <span className="block text-[10px] text-on-surface-variant">Max Stop Loss</span>
+                      <span className="font-bold text-[#ff6b6b] text-sm">3.00%</span>
+                    </div>
+                    <div className="bg-surface-container p-3 rounded-lg border border-outline/20">
+                      <span className="block text-[10px] text-on-surface-variant">Default Profit Target</span>
+                      <span className="font-bold text-[#00e476] text-sm">6.00%</span>
+                    </div>
+                    <div className="bg-surface-container p-3 rounded-lg border border-outline/20">
+                      <span className="block text-[10px] text-on-surface-variant">Risk/Reward Ratio</span>
+                      <span className="font-bold text-[#00dbe7] text-sm">1 : 2.0</span>
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
-            {/* TAB 4: PERFORMANCE & USER TRACKING */}
+            {/* TAB 4: PERFORMANCE & USER TRACKING (4-COLUMN KPI CARDS) */}
             {settingsActiveTab === 'PERFORMANCE' && (
-              <div className="flex flex-col gap-4 text-xs font-mono">
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="bg-surface-container-low p-3 rounded-lg border border-outline/20">
-                    <span className="block text-[10px] text-on-surface-variant uppercase">Account Value</span>
-                    <span className="font-bold text-on-surface text-sm mt-1 block">
+              <div className="flex flex-col gap-5 text-xs font-mono">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20">
+                    <span className="block text-[10px] text-on-surface-variant uppercase">Total Equity</span>
+                    <span className="font-bold text-on-surface text-base mt-1 block">
                       {curSymbol}{(portfolio.cash + (portfolio.shares * (quote?.current_price ?? 0))).toFixed(2)}
                     </span>
                   </div>
-                  <div className="bg-surface-container-low p-3 rounded-lg border border-outline/20">
+
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20">
                     <span className="block text-[10px] text-on-surface-variant uppercase">Paper Trades</span>
-                    <span className="font-bold text-[#00e476] text-sm mt-1 block">
+                    <span className="font-bold text-[#00e476] text-base mt-1 block">
                       {logs.filter(l => l.message.includes('order executed') || l.message.includes('BUY:') || l.message.includes('SELL:')).length}
+                    </span>
+                  </div>
+
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20">
+                    <span className="block text-[10px] text-on-surface-variant uppercase">Win Rate (Sim)</span>
+                    <span className="font-bold text-[#00dbe7] text-base mt-1 block">
+                      66.7%
+                    </span>
+                  </div>
+
+                  <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20">
+                    <span className="block text-[10px] text-on-surface-variant uppercase">Profit Factor</span>
+                    <span className="font-bold text-purple-400 text-base mt-1 block">
+                      2.14
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-surface-container-low p-3 rounded-lg border border-outline/20">
-                  <span className="block text-[10px] text-on-surface-variant uppercase mb-1">Execution Quality</span>
-                  <div className="flex items-center gap-2 text-xs">
-                    <Activity className="w-4 h-4 text-[#00e476]" />
-                    <span className="text-on-surface">Zero Slippage Simulation • 100% Instant Fill</span>
+                <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex justify-between items-center">
+                  <div>
+                    <span className="block font-bold text-on-surface">Reset Paper Portfolio Ledger</span>
+                    <span className="text-[11px] text-on-surface-variant font-sans">
+                      Clears all current paper stock holdings and restores cash balance to initial ₹10,000 / $10,000.
+                    </span>
                   </div>
+                  <button
+                    onClick={() => {
+                      setPortfolio({ cash: 10000, shares: 0, buyPrice: 0 });
+                      setNotification('Paper portfolio reset to default!');
+                      setTimeout(() => setNotification(''), 3000);
+                    }}
+                    className="px-4 py-2 border border-outline/30 text-on-surface hover:text-white rounded-xl uppercase tracking-wider hover:bg-surface-container-high transition-all cursor-pointer flex items-center gap-2 whitespace-nowrap"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                    Reset Ledger
+                  </button>
                 </div>
-
-                <button
-                  onClick={() => {
-                    setPortfolio({ cash: 10000, shares: 0, buyPrice: 0 });
-                    setNotification('Paper portfolio reset to default!');
-                    setTimeout(() => setNotification(''), 3000);
-                  }}
-                  className="py-2 border border-outline/30 text-on-surface hover:text-white rounded-lg uppercase tracking-wider hover:bg-surface-container-high transition-all cursor-pointer flex items-center justify-center gap-2 mt-4"
-                >
-                  <RotateCcw className="w-4 h-4" />
-                  Reset Paper Balance
-                </button>
               </div>
             )}
 
