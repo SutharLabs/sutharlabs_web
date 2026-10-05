@@ -433,6 +433,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [editingWatchlistName, setEditingWatchlistName] = useState('');
   const [addSymbolInputs, setAddSymbolInputs] = useState<Record<string, string>>({});
 
+  // Main Workspace Right Panel View Mode: WATCHLIST (Default) | TELEMETRY | ORDER
+  const [rightPanelTab, setRightPanelTab] = useState<'WATCHLIST' | 'TELEMETRY' | 'ORDER'>('WATCHLIST');
+  const [watchlistQuotes, setWatchlistQuotes] = useState<Record<string, Quote>>({});
+  const [loadingWatchlistQuotes, setLoadingWatchlistQuotes] = useState<boolean>(false);
+  const [watchlistSearchFilter, setWatchlistSearchFilter] = useState<string>('');
+  const [watchlistSortBy, setWatchlistSortBy] = useState<'DEFAULT' | 'CHANGE_DESC' | 'CHANGE_ASC' | 'PRICE_DESC'>('DEFAULT');
+
   // Sliding Settings Overlay
   const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
   const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'FEEDS' | 'INDICATORS' | 'TRADING' | 'PERFORMANCE'>('WATCHLISTS');
@@ -540,6 +547,44 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     const norm = normalizeTicker(symbol, activeMarketKey);
     return activeWatchlist.symbols.some(s => normalizeTicker(s, activeMarketKey) === norm);
   }, [activeWatchlist, symbol, activeMarketKey]);
+
+  // Batch Live Quote Fetcher for Watchlist Deck
+  const fetchWatchlistQuotes = useCallback(async (symbols: string[]) => {
+    if (!symbols || symbols.length === 0) {
+      setWatchlistQuotes({});
+      return;
+    }
+    setLoadingWatchlistQuotes(true);
+    try {
+      const symParam = symbols.map(s => normalizeTicker(s, activeMarketKey)).join(',');
+      const res = await fetch(`${STOCK_API}/watchlist-quotes?symbols=${encodeURIComponent(symParam)}&region=${activeMarketKey}`);
+      if (res.ok) {
+        const data: Quote[] = await res.json();
+        const map: Record<string, Quote> = {};
+        for (const q of data) {
+          if (q && q.symbol) {
+            const normKey = normalizeTicker(q.symbol, activeMarketKey);
+            const fmt = formatTickerDisplay(q.symbol);
+            map[q.symbol] = q;
+            map[normKey] = q;
+            map[fmt.cleanSymbol] = q;
+            if (q.clean_symbol) map[q.clean_symbol] = q;
+            if (q.display_symbol) map[q.display_symbol] = q;
+          }
+        }
+        setWatchlistQuotes(map);
+      }
+    } catch {
+      // Graceful fallback
+    } finally {
+      setLoadingWatchlistQuotes(false);
+    }
+  }, [activeMarketKey]);
+
+  // Sync Watchlist Live Quotes whenever activeWatchlist or symbols change
+  useEffect(() => {
+    fetchWatchlistQuotes(activeWatchlist.symbols);
+  }, [activeWatchlist.symbols, fetchWatchlistQuotes]);
 
   // Currency helper
   const curSymbol = reportingCurrency !== 'AUTO'
@@ -1299,39 +1344,40 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       </div>
 
       {/* ── QUICK WATCHLIST ASSET TICKER STRIP & WATCHLIST SWITCHER ── */}
-      <div className="relative z-20 flex items-center gap-2 overflow-x-auto pb-1 custom-scrollbar">
-        {/* Watchlist Dropdown Switcher Button */}
-        <div className="relative shrink-0">
+      <div className="relative z-30 flex flex-wrap items-center justify-between gap-2 p-1.5 rounded-xl bg-surface-container-lowest/80 border border-outline/20 shadow-sm">
+        
+        {/* Left: Unclipped Watchlist Switcher Dropdown */}
+        <div className="relative z-50">
           <button
+            type="button"
             onClick={() => setShowWatchlistDropdown(!showWatchlistDropdown)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-high border border-outline/30 hover:border-[#00dbe7] transition-all text-xs font-mono font-bold text-on-surface cursor-pointer shadow-sm group"
             title="Click to access or switch between your watchlists"
           >
             <Bookmark className="w-3.5 h-3.5 text-[#00dbe7]" />
-            <span className="max-w-[130px] truncate">{activeWatchlist.name}</span>
+            <span className="max-w-[140px] truncate">{activeWatchlist.name}</span>
             <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-mono">
               {activeWatchlist.symbols.length}
             </span>
             <ChevronDown className="w-3 h-3 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors" />
           </button>
 
-          {/* All Watchlists Dropdown Menu */}
+          {/* All Watchlists Dropdown Menu (Guaranteed Unclipped with z-[90]) */}
           {showWatchlistDropdown && (
-            <div className="absolute top-full left-0 mt-1.5 w-64 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/40 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-50 p-2 flex flex-col gap-1 backdrop-blur-2xl">
+            <div className="absolute top-full left-0 mt-1.5 w-72 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/50 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] z-[90] p-2.5 flex flex-col gap-1.5 backdrop-blur-2xl animate-in fade-in slide-in-from-top-2 duration-150">
               <div className="flex justify-between items-center px-2 py-1 border-b border-outline/10 text-[10px] text-on-surface-variant font-mono uppercase">
                 <span>All Watchlists ({watchlists.length})</span>
                 <button
                   onClick={() => {
                     setShowWatchlistDropdown(false);
-                    setSettingsActiveTab('WATCHLISTS');
-                    setShowSettingsDrawer(true);
+                    setRightPanelTab('WATCHLIST');
                   }}
                   className="text-[#00dbe7] hover:underline cursor-pointer font-bold"
                 >
-                  Manage All
+                  Open Summary Deck →
                 </button>
               </div>
-              <div className="max-h-48 overflow-y-auto custom-scrollbar flex flex-col gap-0.5">
+              <div className="max-h-52 overflow-y-auto custom-scrollbar flex flex-col gap-0.5">
                 {watchlists.map(wl => {
                   const isCur = wl.id === activeWatchlist.id;
                   return (
@@ -1347,7 +1393,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                           : 'text-on-surface hover:bg-surface-container hover:text-[#00dbe7]'
                       }`}
                     >
-                      <span className="truncate max-w-[170px]">{wl.name}</span>
+                      <span className="truncate max-w-[180px]">{wl.name}</span>
                       <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface-container text-on-surface-variant">
                         {wl.symbols.length}
                       </span>
@@ -1355,81 +1401,124 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   );
                 })}
               </div>
-              <div className="pt-1.5 border-t border-outline/10">
+              <div className="pt-2 border-t border-outline/10 flex items-center justify-between gap-2">
                 <button
                   onClick={() => {
                     setShowWatchlistDropdown(false);
                     setSettingsActiveTab('WATCHLISTS');
                     setShowSettingsDrawer(true);
                   }}
-                  className="w-full py-1.5 px-2 rounded-lg bg-[#00dbe7]/15 border border-[#00dbe7]/30 text-[#00dbe7] text-[11px] font-mono font-bold hover:bg-[#00dbe7]/25 flex items-center justify-center gap-1.5 cursor-pointer"
+                  className="text-[11px] font-mono text-[#00dbe7] hover:underline cursor-pointer font-semibold"
                 >
-                  <Plus className="w-3.5 h-3.5" />
-                  <span>+ Create New Watchlist</span>
+                  ⚙️ Manage All
+                </button>
+                <button
+                  onClick={() => {
+                    setShowWatchlistDropdown(false);
+                    setSettingsActiveTab('WATCHLISTS');
+                    setShowSettingsDrawer(true);
+                  }}
+                  className="px-2 py-1 rounded bg-[#00dbe7]/15 border border-[#00dbe7]/30 text-[#00dbe7] text-[10px] font-mono font-bold hover:bg-[#00dbe7]/25 cursor-pointer"
+                >
+                  + New List
                 </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* Active Watchlist Symbols Chips */}
-        {activeWatchlist.symbols.map(symStr => {
-          const fmt = formatTickerDisplay(symStr);
-          const isSelected = normalizeTicker(symbol, activeMarketKey) === normalizeTicker(symStr, activeMarketKey);
-          return (
-            <div
-              key={symStr}
-              className={`group flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono transition-all whitespace-nowrap border ${
-                isSelected
-                  ? 'bg-[#00dbe7]/20 text-[#00dbe7] border-[#00dbe7] font-bold shadow-[0_0_8px_rgba(0,219,231,0.25)]'
-                  : 'bg-surface-container-low text-on-surface-variant border-outline/20 hover:text-on-surface hover:border-outline/40'
-              }`}
-            >
-              <button
-                onClick={() => {
-                  const norm = normalizeTicker(symStr, activeMarketKey);
-                  setSymbol(norm);
-                  setSymbolInput(fmt.displaySymbol);
-                }}
-                className="cursor-pointer flex items-center gap-1.5"
-                title={`Load ${fmt.displaySymbol}`}
-              >
-                <span>{fmt.cleanSymbol}</span>
-                <span className={`text-[9px] px-1 py-0.2 rounded font-semibold ${
-                  fmt.exchange === 'NSE' ? 'bg-[#00dbe7]/15 text-[#00dbe7]' :
-                  fmt.exchange === 'BSE' ? 'bg-amber-500/15 text-amber-400' :
-                  'bg-purple-500/15 text-purple-400'
-                }`}>
-                  {fmt.exchange}
-                </span>
-              </button>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleRemoveSymbolFromWatchlist(activeWatchlist.id, symStr);
-                }}
-                className="opacity-0 group-hover:opacity-100 hover:text-[#ff6b6b] p-0.5 rounded transition-all cursor-pointer ml-0.5"
-                title={`Remove from ${activeWatchlist.name}`}
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          );
-        })}
+        {/* Center: Scrollable symbol chips */}
+        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar flex-1 px-1">
+          {activeWatchlist.symbols.map(symStr => {
+            const fmt = formatTickerDisplay(symStr);
+            const isSelected = normalizeTicker(symbol, activeMarketKey) === normalizeTicker(symStr, activeMarketKey);
+            const norm = normalizeTicker(symStr, activeMarketKey);
+            const q = watchlistQuotes[norm] || watchlistQuotes[symStr] || watchlistQuotes[fmt.cleanSymbol];
+            const hasQuote = q && q.change_percent != null;
+            const isPos = (q?.change_percent ?? 0) >= 0;
+            const priceSym = q?.currency_symbol || curSymbol;
 
-        {/* Manual Star / Bookmark Toggle for Currently Viewed Stock */}
-        <button
-          onClick={() => handleToggleCurrentStockInWatchlist()}
-          className={`shrink-0 flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
-            isInActiveWatchlist
-              ? 'bg-[#00e476]/15 border-[#00e476]/40 text-[#00e476] font-semibold'
-              : 'bg-[#00dbe7]/10 border-[#00dbe7]/30 text-[#00dbe7] hover:bg-[#00dbe7]/20 font-medium'
-          }`}
-          title={isInActiveWatchlist ? `In "${activeWatchlist.name}" (Click to remove)` : `Add ${symbol} to "${activeWatchlist.name}"`}
-        >
-          <Star className={`w-3.5 h-3.5 ${isInActiveWatchlist ? 'fill-[#00e476]' : ''}`} />
-          <span>{isInActiveWatchlist ? 'In Watchlist' : '+ Add Current Stock'}</span>
-        </button>
+            return (
+              <div
+                key={symStr}
+                className={`group flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono transition-all whitespace-nowrap border ${
+                  isSelected
+                    ? 'bg-[#00dbe7]/20 text-[#00dbe7] border-[#00dbe7] font-bold shadow-[0_0_8px_rgba(0,219,231,0.25)]'
+                    : 'bg-surface-container-low text-on-surface-variant border-outline/20 hover:text-on-surface hover:border-outline/40'
+                }`}
+              >
+                <button
+                  onClick={() => {
+                    setSymbol(norm);
+                    setSymbolInput(fmt.displaySymbol);
+                  }}
+                  className="cursor-pointer flex items-center gap-1.5"
+                  title={`Load ${fmt.displaySymbol} in chart`}
+                >
+                  <span className="font-semibold">{fmt.cleanSymbol}</span>
+                  <span className={`text-[9px] px-1 py-0.2 rounded font-semibold ${
+                    fmt.exchange === 'NSE' ? 'bg-[#00dbe7]/15 text-[#00dbe7]' :
+                    fmt.exchange === 'BSE' ? 'bg-amber-500/15 text-amber-400' :
+                    'bg-purple-500/15 text-purple-400'
+                  }`}>
+                    {fmt.exchange}
+                  </span>
+                  {hasQuote && (
+                    <span className="flex items-center gap-1.5 ml-0.5">
+                      {q.current_price != null && (
+                        <span className="text-on-surface font-semibold text-[11px]">
+                          {priceSym}{q.current_price.toFixed(1)}
+                        </span>
+                      )}
+                      <span className={`text-[10px] font-bold ${isPos ? 'text-[#00e476]' : 'text-[#ff6b6b]'}`}>
+                        {isPos ? '+' : ''}{q.change_percent?.toFixed(1)}%
+                      </span>
+                    </span>
+                  )}
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveSymbolFromWatchlist(activeWatchlist.id, symStr);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 hover:text-[#ff6b6b] p-0.5 rounded transition-all cursor-pointer ml-0.5"
+                  title={`Remove from ${activeWatchlist.name}`}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Right Actions: + Add Current Stock & Toggle Detailed Deck */}
+        <div className="flex items-center gap-2 shrink-0">
+          <button
+            onClick={() => handleToggleCurrentStockInWatchlist()}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
+              isInActiveWatchlist
+                ? 'bg-[#00e476]/15 border-[#00e476]/40 text-[#00e476] font-semibold'
+                : 'bg-[#00dbe7]/10 border-[#00dbe7]/30 text-[#00dbe7] hover:bg-[#00dbe7]/20 font-medium'
+            }`}
+            title={isInActiveWatchlist ? `In "${activeWatchlist.name}" (Click to remove)` : `Add ${symbol} to "${activeWatchlist.name}"`}
+          >
+            <Star className={`w-3.5 h-3.5 ${isInActiveWatchlist ? 'fill-[#00e476]' : ''}`} />
+            <span>{isInActiveWatchlist ? 'In Watchlist' : '+ Add to List'}</span>
+          </button>
+
+          <button
+            onClick={() => setRightPanelTab(rightPanelTab === 'WATCHLIST' ? 'TELEMETRY' : 'WATCHLIST')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
+              rightPanelTab === 'WATCHLIST'
+                ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#00dbe7] font-bold shadow-[0_0_8px_rgba(0,219,231,0.25)]'
+                : 'bg-surface-container-high border-outline/30 text-on-surface hover:text-[#00dbe7]'
+            }`}
+            title="Toggle Watchlist Summary Deck in main view"
+          >
+            <Layers className="w-3.5 h-3.5 text-[#00dbe7]" />
+            <span className="font-bold">Watchlist Deck</span>
+          </button>
+        </div>
       </div>
 
       {/* ── 2. BALANCED WORKSPACE (SUPPORTING FULL GRAPH EXPANDED VIEW) ──────── */}
@@ -1560,150 +1649,454 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         </div>
 
         {/* SIDEBAR COLUMN: Stacks on right in Standard View (4 cols); Moves below in 3-col row when Full View (12 cols) */}
-        <div className={`${isChartExpanded ? 'lg:col-span-12 grid grid-cols-1 md:grid-cols-3' : 'lg:col-span-4 flex flex-col'} gap-3 transition-all duration-300`}>
+        <div className={`${isChartExpanded ? 'lg:col-span-12' : 'lg:col-span-4'} flex flex-col gap-3 transition-all duration-300`}>
           
-          {/* Box 1: Algorithmic Strategy Signal */}
-          <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-2.5 shadow-sm">
-            <div className="flex justify-between items-center">
-              <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
-                Strategy Recommendation
-              </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
-                Rule-Based Engine
-              </span>
-            </div>
+          {/* Right Column Mode Switcher: WATCHLIST (Default) | TECHNICALS | ORDER */}
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-low border border-outline/20 select-none">
+            <button
+              onClick={() => setRightPanelTab('WATCHLIST')}
+              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                rightPanelTab === 'WATCHLIST'
+                  ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+              }`}
+            >
+              <Bookmark className="w-3.5 h-3.5" />
+              <span>Watchlist ({activeWatchlist.symbols.length})</span>
+            </button>
+            <button
+              onClick={() => setRightPanelTab('TELEMETRY')}
+              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                rightPanelTab === 'TELEMETRY'
+                  ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+              }`}
+            >
+              <Activity className="w-3.5 h-3.5" />
+              <span>Technicals</span>
+            </button>
+            <button
+              onClick={() => setRightPanelTab('ORDER')}
+              className={`flex-1 py-1.5 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                rightPanelTab === 'ORDER'
+                  ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
+                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              <span>Trade Order</span>
+            </button>
+          </div>
 
-            {suggestion ? (
-              <div className={`p-3 rounded-lg border ${actionColor.bg} ${actionColor.border} flex flex-col gap-2`}>
+          {/* ── TAB 1: LIVE WATCHLIST SUMMARY DECK (TRADINGVIEW & KITE STYLE) ── */}
+          {rightPanelTab === 'WATCHLIST' && (
+            <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/95 flex flex-col gap-3 shadow-md">
+              
+              {/* Watchlist Header & Quick List Switcher */}
+              <div className="flex justify-between items-center gap-2">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="relative flex-1">
+                    <select
+                      value={activeWatchlist.id}
+                      onChange={e => setActiveWatchlistId(e.target.value)}
+                      className="w-full bg-surface-container-low border border-outline/30 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer truncate"
+                    >
+                      {watchlists.map(w => (
+                        <option key={w.id} value={w.id}>
+                          {w.name} ({w.symbols.length} assets)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => fetchWatchlistQuotes(activeWatchlist.symbols)}
+                    className="p-1.5 rounded-lg bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] hover:text-[#00dbe7] transition-all cursor-pointer text-on-surface-variant"
+                    title="Refresh live quotes"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${loadingWatchlistQuotes ? 'animate-spin text-[#00dbe7]' : ''}`} />
+                  </button>
+                  <button
+                    onClick={() => {
+                      setSettingsActiveTab('WATCHLISTS');
+                      setShowSettingsDrawer(true);
+                    }}
+                    className="p-1.5 rounded-lg bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] hover:text-[#00dbe7] transition-all cursor-pointer text-on-surface-variant"
+                    title="Open Watchlist Management Hub"
+                  >
+                    <Sliders className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Filter & Sort Bar */}
+              <div className="flex items-center gap-2">
+                <input
+                  value={watchlistSearchFilter}
+                  onChange={e => setWatchlistSearchFilter(e.target.value)}
+                  placeholder="Filter symbols in list..."
+                  className="flex-1 bg-surface-container-lowest border border-outline/25 rounded-lg px-2.5 py-1 text-xs font-mono text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-[#00dbe7]"
+                />
+                <select
+                  value={watchlistSortBy}
+                  onChange={e => setWatchlistSortBy(e.target.value as any)}
+                  className="bg-surface-container-low border border-outline/25 rounded-lg px-2 py-1 text-[11px] font-mono text-on-surface-variant focus:outline-none focus:border-[#00dbe7] cursor-pointer"
+                >
+                  <option value="DEFAULT">Default Order</option>
+                  <option value="CHANGE_DESC">Top Gainers (%)</option>
+                  <option value="CHANGE_ASC">Top Losers (%)</option>
+                  <option value="PRICE_DESC">Highest Price</option>
+                </select>
+              </div>
+
+              {/* Summary Metric Pills */}
+              <div className="grid grid-cols-3 gap-2 text-[10px] font-mono border-y border-outline/10 py-1.5">
+                <div className="flex items-center justify-between px-2 py-1 rounded bg-surface-container-low text-on-surface-variant">
+                  <span>Tracked</span>
+                  <strong className="text-on-surface">{activeWatchlist.symbols.length}</strong>
+                </div>
+                <div className="flex items-center justify-between px-2 py-1 rounded bg-[#00e476]/10 text-[#00e476]">
+                  <span>Gainers</span>
+                  <strong>
+                    {activeWatchlist.symbols.filter(s => {
+                      const q = watchlistQuotes[normalizeTicker(s, activeMarketKey)] || watchlistQuotes[formatTickerDisplay(s).cleanSymbol];
+                      return (q?.change_percent ?? 0) > 0;
+                    }).length}
+                  </strong>
+                </div>
+                <div className="flex items-center justify-between px-2 py-1 rounded bg-[#ff6b6b]/10 text-[#ff6b6b]">
+                  <span>Losers</span>
+                  <strong>
+                    {activeWatchlist.symbols.filter(s => {
+                      const q = watchlistQuotes[normalizeTicker(s, activeMarketKey)] || watchlistQuotes[formatTickerDisplay(s).cleanSymbol];
+                      return (q?.change_percent ?? 0) < 0;
+                    }).length}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Live Watchlist Table: All Selected Stocks with Full Detailed Summary */}
+              <div className="flex flex-col gap-1.5 max-h-[360px] overflow-y-auto custom-scrollbar pr-0.5">
+                {activeWatchlist.symbols.length === 0 ? (
+                  <div className="p-6 text-center text-xs font-mono text-on-surface-variant flex flex-col gap-2">
+                    <Bookmark className="w-8 h-8 opacity-30 mx-auto" />
+                    <span>This watchlist is empty.</span>
+                    <span className="text-[11px] opacity-70">Use the input below or search bar to bookmark stocks.</span>
+                  </div>
+                ) : (
+                  (() => {
+                    let list = [...activeWatchlist.symbols];
+                    if (watchlistSearchFilter.trim()) {
+                      const q = watchlistSearchFilter.toLowerCase().trim();
+                      list = list.filter(symStr => {
+                        const fmt = formatTickerDisplay(symStr);
+                        const qData = watchlistQuotes[normalizeTicker(symStr, activeMarketKey)] || watchlistQuotes[fmt.cleanSymbol];
+                        return fmt.cleanSymbol.toLowerCase().includes(q) ||
+                          fmt.displaySymbol.toLowerCase().includes(q) ||
+                          (qData?.name && qData.name.toLowerCase().includes(q));
+                      });
+                    }
+
+                    if (watchlistSortBy === 'CHANGE_DESC') {
+                      list.sort((a, b) => {
+                        const qa = watchlistQuotes[normalizeTicker(a, activeMarketKey)] || watchlistQuotes[formatTickerDisplay(a).cleanSymbol];
+                        const qb = watchlistQuotes[normalizeTicker(b, activeMarketKey)] || watchlistQuotes[formatTickerDisplay(b).cleanSymbol];
+                        return (qb?.change_percent ?? -999) - (qa?.change_percent ?? -999);
+                      });
+                    } else if (watchlistSortBy === 'CHANGE_ASC') {
+                      list.sort((a, b) => {
+                        const qa = watchlistQuotes[normalizeTicker(a, activeMarketKey)] || watchlistQuotes[formatTickerDisplay(a).cleanSymbol];
+                        const qb = watchlistQuotes[normalizeTicker(b, activeMarketKey)] || watchlistQuotes[formatTickerDisplay(b).cleanSymbol];
+                        return (qa?.change_percent ?? 999) - (qb?.change_percent ?? 999);
+                      });
+                    } else if (watchlistSortBy === 'PRICE_DESC') {
+                      list.sort((a, b) => {
+                        const qa = watchlistQuotes[normalizeTicker(a, activeMarketKey)] || watchlistQuotes[formatTickerDisplay(a).cleanSymbol];
+                        const qb = watchlistQuotes[normalizeTicker(b, activeMarketKey)] || watchlistQuotes[formatTickerDisplay(b).cleanSymbol];
+                        return (qb?.current_price ?? 0) - (qa?.current_price ?? 0);
+                      });
+                    }
+
+                    return list.map(symStr => {
+                      const norm = normalizeTicker(symStr, activeMarketKey);
+                      const fmt = formatTickerDisplay(norm);
+                      const isCurrent = normalizeTicker(symbol, activeMarketKey) === norm;
+                      const q = watchlistQuotes[norm] || watchlistQuotes[symStr] || watchlistQuotes[fmt.cleanSymbol];
+                      const isPos = (q?.change_percent ?? 0) >= 0;
+                      const priceSym = q?.currency_symbol || curSymbol;
+
+                      return (
+                        <div
+                          key={symStr}
+                          onClick={() => {
+                            setSymbol(norm);
+                            setSymbolInput(fmt.displaySymbol);
+                          }}
+                          className={`group p-2.5 rounded-xl border text-xs font-mono transition-all cursor-pointer flex flex-col gap-1.5 ${
+                            isCurrent
+                              ? 'bg-[#00dbe7]/15 border-[#00dbe7] shadow-[0_0_12px_rgba(0,219,231,0.25)]'
+                              : 'bg-surface-container-low/70 border-outline/20 hover:border-outline/50 hover:bg-surface-container'
+                          }`}
+                        >
+                          {/* Row 1: Symbol, Exchange, Company Name & Live Price */}
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex flex-col min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`font-bold text-sm ${isCurrent ? 'text-[#00dbe7]' : 'text-on-surface group-hover:text-[#00dbe7]'} transition-colors`}>
+                                  {fmt.cleanSymbol}
+                                </span>
+                                <span className={`text-[9px] px-1 py-0.2 rounded font-semibold ${
+                                  fmt.exchange === 'NSE' ? 'bg-[#00dbe7]/15 text-[#00dbe7]' :
+                                  fmt.exchange === 'BSE' ? 'bg-amber-500/15 text-amber-400' :
+                                  'bg-purple-500/15 text-purple-400'
+                                }`}>
+                                  {fmt.exchange}
+                                </span>
+                                {isCurrent && (
+                                  <span className="text-[9px] px-1 py-0.2 rounded bg-[#00dbe7]/20 text-[#00dbe7] font-bold animate-pulse">
+                                    CHART
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-[10px] text-on-surface-variant truncate max-w-[160px]">
+                                {q?.name || fmt.cleanSymbol}
+                              </span>
+                            </div>
+
+                            {/* Price & Change Pill */}
+                            <div className="flex flex-col items-end">
+                              <span className="font-bold text-sm text-on-surface">
+                                {q?.current_price != null ? `${priceSym}${q.current_price.toFixed(2)}` : '—'}
+                              </span>
+                              <span className={`text-[11px] font-bold px-1.5 py-0.2 rounded flex items-center gap-0.5 ${
+                                isPos ? 'bg-[#00e476]/15 text-[#00e476]' : 'bg-[#ff6b6b]/15 text-[#ff6b6b]'
+                              }`}>
+                                {isPos ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                <span>{isPos ? '+' : ''}{q?.change_percent?.toFixed(2) ?? '0.00'}%</span>
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Row 2: Day High/Low & Quick Action Bar */}
+                          <div className="flex justify-between items-center text-[10px] text-on-surface-variant pt-1 border-t border-outline/10">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span>L: <strong className="text-[#ff6b6b]">{q?.low != null ? `${priceSym}${q.low.toFixed(1)}` : '—'}</strong></span>
+                              <span className="opacity-30">|</span>
+                              <span>H: <strong className="text-[#00e476]">{q?.high != null ? `${priceSym}${q.high.toFixed(1)}` : '—'}</strong></span>
+                              {q?.open != null && (
+                                <>
+                                  <span className="opacity-30">|</span>
+                                  <span>O: <strong className="text-on-surface">{priceSym}{q.open.toFixed(1)}</strong></span>
+                                </>
+                              )}
+                            </div>
+
+                            <div className="flex items-center gap-1.5 opacity-80 group-hover:opacity-100">
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSymbol(norm);
+                                  setSymbolInput(fmt.displaySymbol);
+                                  setRightPanelTab('ORDER');
+                                }}
+                                className="px-2 py-0.5 rounded bg-[#00e476]/15 border border-[#00e476]/30 text-[#00e476] font-bold hover:bg-[#00e476]/25 cursor-pointer"
+                                title={`Trade ${fmt.cleanSymbol}`}
+                              >
+                                Trade
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleRemoveSymbolFromWatchlist(activeWatchlist.id, symStr);
+                                }}
+                                className="p-0.5 rounded text-on-surface-variant hover:text-[#ff6b6b] hover:bg-surface-container cursor-pointer transition-colors"
+                                title={`Remove from ${activeWatchlist.name}`}
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()
+                )}
+              </div>
+
+              {/* Fast Add Symbol to Watchlist Footer */}
+              <div className="flex items-center gap-2 pt-2 border-t border-outline/15">
+                <input
+                  value={addSymbolInputs[activeWatchlist.id] || ''}
+                  onChange={e => setAddSymbolInputs(prev => ({ ...prev, [activeWatchlist.id]: e.target.value.toUpperCase() }))}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') handleAddSymbolToWatchlist(activeWatchlist.id, addSymbolInputs[activeWatchlist.id] || '');
+                  }}
+                  placeholder="Add symbol to list (e.g. TATAMOTORS, TSLA)..."
+                  className="flex-1 bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 text-xs font-mono text-on-surface uppercase focus:outline-none focus:border-[#00dbe7]"
+                />
+                <button
+                  onClick={() => handleAddSymbolToWatchlist(activeWatchlist.id, addSymbolInputs[activeWatchlist.id] || '')}
+                  className="px-3 py-1.5 bg-[#00dbe7] text-[#002022] font-bold rounded-lg uppercase cursor-pointer hover:brightness-110 text-xs font-mono whitespace-nowrap"
+                >
+                  + Add
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ── TAB 2: TECHNICAL INDICATORS & ALGORITHMIC STRATEGY MATRIX ── */}
+          {rightPanelTab === 'TELEMETRY' && (
+            <div className="flex flex-col gap-3">
+              {/* Box 1: Algorithmic Strategy Signal */}
+              <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-2.5 shadow-sm">
                 <div className="flex justify-between items-center">
-                  <span className={`text-2xl font-mono font-black ${actionColor.text}`}>
-                    {suggestion.action}
+                  <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
+                    Strategy Recommendation
                   </span>
-                  <span className="font-mono text-xs text-on-surface-variant font-bold">
-                    {((suggestion.confidence ?? 0) * 100).toFixed(0)}% Confidence
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                    Rule-Based Engine
                   </span>
                 </div>
 
-                <div className="w-full bg-surface-container-high rounded-full h-1.5">
-                  <div
-                    className={`h-1.5 rounded-full ${
-                      suggestion.action === 'BUY' ? 'bg-[#00e476]' : suggestion.action === 'SELL' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'
-                    }`}
-                    style={{ width: `${(suggestion.confidence ?? 0) * 100}%` }}
-                  />
+                {suggestion ? (
+                  <div className={`p-3 rounded-lg border ${actionColor.bg} ${actionColor.border} flex flex-col gap-2`}>
+                    <div className="flex justify-between items-center">
+                      <span className={`text-2xl font-mono font-black ${actionColor.text}`}>
+                        {suggestion.action}
+                      </span>
+                      <span className="font-mono text-xs text-on-surface-variant font-bold">
+                        {((suggestion.confidence ?? 0) * 100).toFixed(0)}% Confidence
+                      </span>
+                    </div>
+
+                    <div className="w-full bg-surface-container-high rounded-full h-1.5">
+                      <div
+                        className={`h-1.5 rounded-full ${
+                          suggestion.action === 'BUY' ? 'bg-[#00e476]' : suggestion.action === 'SELL' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'
+                        }`}
+                        style={{ width: `${(suggestion.confidence ?? 0) * 100}%` }}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-3 gap-2 mt-1 text-[10px] font-mono text-on-surface-variant border-t border-outline/10 pt-2">
+                      <div>
+                        <span className="block opacity-70">Target</span>
+                        <span className="text-[#00e476] font-bold">{suggestion.target_price ? `${curSymbol}${suggestion.target_price.toFixed(1)}` : '—'}</span>
+                      </div>
+                      <div>
+                        <span className="block opacity-70">Stop</span>
+                        <span className="text-[#ff6b6b] font-bold">{suggestion.stop_loss ? `${curSymbol}${suggestion.stop_loss.toFixed(1)}` : '—'}</span>
+                      </div>
+                      <div>
+                        <span className="block opacity-70">R/R</span>
+                        <span className="text-[#00dbe7] font-bold">{suggestion.risk_reward_ratio ? suggestion.risk_reward_ratio.toFixed(2) : '—'}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="p-4 text-center font-mono text-xs text-on-surface-variant animate-pulse">
+                    Analyzing indicators...
+                  </div>
+                )}
+              </div>
+
+              {/* Box 2: Compact Technical Indicators Matrix */}
+              <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-2.5 shadow-sm">
+                <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
+                  Technical Metrics
+                </span>
+
+                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                  <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                    <span className="block text-[9px] text-on-surface-variant uppercase">RSI ({rsiPeriod})</span>
+                    <span className={`font-bold ${rsiColor}`}>
+                      {analysis?.rsi != null ? analysis.rsi.toFixed(1) : '—'} <span className="text-[9px] font-normal">({rsiLabel})</span>
+                    </span>
+                  </div>
+
+                  <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                    <span className="block text-[9px] text-on-surface-variant uppercase">ADX (14)</span>
+                    <span className="font-bold text-[#00e476]">
+                      {analysis?.adx != null ? `${analysis.adx.toFixed(1)}` : '—'} <span className="text-[9px] font-normal">{analysis?.adx && analysis.adx > 25 ? 'Trend' : 'Range'}</span>
+                    </span>
+                  </div>
+
+                  <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                    <span className="block text-[9px] text-on-surface-variant uppercase">MACD</span>
+                    <span className={`font-bold ${analysis?.macd && analysis?.macd_signal && analysis.macd > analysis.macd_signal ? 'text-[#00e476]' : 'text-[#ff6b6b]'}`}>
+                      {analysis?.macd != null ? analysis.macd.toFixed(2) : '—'}
+                    </span>
+                  </div>
+
+                  <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                    <span className="block text-[9px] text-on-surface-variant uppercase">ATR Volatility</span>
+                    <span className="font-bold text-[#00dbe7]">
+                      {curSymbol}{analysis?.atr != null ? analysis.atr.toFixed(2) : '—'}
+                    </span>
+                  </div>
                 </div>
+              </div>
+            </div>
+          )}
 
-                <div className="grid grid-cols-3 gap-2 mt-1 text-[10px] font-mono text-on-surface-variant border-t border-outline/10 pt-2">
-                  <div>
-                    <span className="block opacity-70">Target</span>
-                    <span className="text-[#00e476] font-bold">{suggestion.target_price ? `${curSymbol}${suggestion.target_price.toFixed(1)}` : '—'}</span>
-                  </div>
-                  <div>
-                    <span className="block opacity-70">Stop</span>
-                    <span className="text-[#ff6b6b] font-bold">{suggestion.stop_loss ? `${curSymbol}${suggestion.stop_loss.toFixed(1)}` : '—'}</span>
-                  </div>
-                  <div>
-                    <span className="block opacity-70">R/R</span>
-                    <span className="text-[#00dbe7] font-bold">{suggestion.risk_reward_ratio ? suggestion.risk_reward_ratio.toFixed(2) : '—'}</span>
-                  </div>
+          {/* ── TAB 3: INSTANT PAPER ORDER TICKET & PORTFOLIO ── */}
+          {rightPanelTab === 'ORDER' && (
+            <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-3 shadow-sm">
+              <div className="flex justify-between items-center">
+                <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
+                  Paper Order Execution Ticket
+                </span>
+                <span className="text-[10px] font-mono text-[#00dbe7] font-bold">
+                  {quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                  <span className="block text-[9px] text-on-surface-variant uppercase">Cash Available</span>
+                  <span className="font-bold text-[#00dbe7]">{curSymbol}{portfolio.cash?.toFixed(0)}</span>
+                </div>
+                <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
+                  <span className="block text-[9px] text-on-surface-variant uppercase">Active Holdings</span>
+                  <span className="font-bold text-[#00e476]">{portfolio.shares} shs</span>
                 </div>
               </div>
-            ) : (
-              <div className="p-4 text-center font-mono text-xs text-on-surface-variant animate-pulse">
-                Analyzing indicators...
-              </div>
-            )}
-          </div>
 
-          {/* Box 2: Instant Paper Order Ticket */}
-          <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-3 shadow-sm">
-            <div className="flex justify-between items-center">
-              <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
-                Paper Order Ticket
-              </span>
-              <span className="text-[10px] font-mono text-[#00dbe7] font-bold">
-                {quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
-                <span className="block text-[9px] text-on-surface-variant uppercase">Cash</span>
-                <span className="font-bold text-[#00dbe7]">{curSymbol}{portfolio.cash?.toFixed(0)}</span>
-              </div>
-              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
-                <span className="block text-[9px] text-on-surface-variant uppercase">Holdings</span>
-                <span className="font-bold text-[#00e476]">{portfolio.shares} shs</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[10px] text-on-surface-variant uppercase">QTY</span>
-              <input
-                type="number"
-                min="1"
-                max="10000"
-                value={actionQuantity}
-                onChange={e => setActionQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-20 bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1 text-xs font-mono text-on-surface text-center"
-              />
-              <span className="font-mono text-[10px] text-on-surface-variant truncate">
-                Total: {curSymbol}{((quote?.current_price ?? 0) * actionQuantity).toFixed(2)}
-              </span>
-            </div>
-
-            <div className="flex gap-2">
-              <button
-                onClick={() => executeTrade('BUY')}
-                className="flex-1 bg-[#00e476] text-[#002812] font-mono text-xs py-2 rounded-lg font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_10px_rgba(0,228,118,0.3)] transition-all cursor-pointer"
-              >
-                BUY {formatTickerDisplay(symbol).cleanSymbol}
-              </button>
-              <button
-                onClick={() => executeTrade('SELL')}
-                className="flex-1 bg-[#ff6b6b] text-[#2c0000] font-mono text-xs py-2 rounded-lg font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_10px_rgba(255,107,107,0.3)] transition-all cursor-pointer"
-              >
-                SELL {formatTickerDisplay(symbol).cleanSymbol}
-              </button>
-            </div>
-          </div>
-
-          {/* Box 3: Compact Technical Indicators Matrix */}
-          <div className="glass-panel rounded-xl p-4 border border-outline/20 bg-surface-container-lowest/90 flex flex-col gap-2.5 shadow-sm">
-            <span className="font-mono text-[10px] text-on-surface-variant uppercase tracking-widest font-semibold">
-              Technical Metrics
-            </span>
-
-            <div className="grid grid-cols-2 gap-2 text-xs font-mono">
-              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
-                <span className="block text-[9px] text-on-surface-variant uppercase">RSI ({rsiPeriod})</span>
-                <span className={`font-bold ${rsiColor}`}>
-                  {analysis?.rsi != null ? analysis.rsi.toFixed(1) : '—'} <span className="text-[9px] font-normal">({rsiLabel})</span>
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-[10px] text-on-surface-variant uppercase">Quantity</span>
+                <input
+                  type="number"
+                  min="1"
+                  max="10000"
+                  value={actionQuantity}
+                  onChange={e => setActionQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="w-20 bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1 text-xs font-mono text-on-surface text-center"
+                />
+                <span className="font-mono text-[10px] text-on-surface-variant truncate">
+                  Est. Total: {curSymbol}{((quote?.current_price ?? 0) * actionQuantity).toFixed(2)}
                 </span>
               </div>
 
-              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
-                <span className="block text-[9px] text-on-surface-variant uppercase">ADX (14)</span>
-                <span className="font-bold text-[#00e476]">
-                  {analysis?.adx != null ? `${analysis.adx.toFixed(1)}` : '—'} <span className="text-[9px] font-normal">{analysis?.adx && analysis.adx > 25 ? 'Trend' : 'Range'}</span>
-                </span>
-              </div>
-
-              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
-                <span className="block text-[9px] text-on-surface-variant uppercase">MACD</span>
-                <span className={`font-bold ${analysis?.macd && analysis?.macd_signal && analysis.macd > analysis.macd_signal ? 'text-[#00e476]' : 'text-[#ff6b6b]'}`}>
-                  {analysis?.macd != null ? analysis.macd.toFixed(2) : '—'}
-                </span>
-              </div>
-
-              <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
-                <span className="block text-[9px] text-on-surface-variant uppercase">ATR Volatility</span>
-                <span className="font-bold text-[#00dbe7]">
-                  {curSymbol}{analysis?.atr != null ? analysis.atr.toFixed(2) : '—'}
-                </span>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => executeTrade('BUY')}
+                  className="flex-1 bg-[#00e476] text-[#002812] font-mono text-xs py-2 rounded-lg font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_10px_rgba(0,228,118,0.3)] transition-all cursor-pointer"
+                >
+                  BUY {formatTickerDisplay(symbol).cleanSymbol}
+                </button>
+                <button
+                  onClick={() => executeTrade('SELL')}
+                  className="flex-1 bg-[#ff6b6b] text-[#2c0000] font-mono text-xs py-2 rounded-lg font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_10px_rgba(255,107,107,0.3)] transition-all cursor-pointer"
+                >
+                  SELL {formatTickerDisplay(symbol).cleanSymbol}
+                </button>
               </div>
             </div>
-          </div>
+          )}
 
         </div>
 

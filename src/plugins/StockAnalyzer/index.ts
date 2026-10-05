@@ -356,6 +356,14 @@ export async function getQuote(symbol: string, defaultRegion: string = 'IN') {
     const currencySymbol = getCurrencySymbol(normalizedSymbol, currency);
     const formatted = formatTickerDisplay(normalizedSymbol, quote.exchange || quote.fullExchangeName);
 
+    const currentPrice = quote.regularMarketPrice ?? quote.price ?? quote.ask ?? quote.bid ?? quote.regularMarketPreviousClose ?? 0;
+    const prevClose = quote.regularMarketPreviousClose ?? quote.previousClose ?? currentPrice;
+    const high = quote.regularMarketDayHigh ?? quote.dayHigh ?? quote.high ?? Math.max(currentPrice, prevClose);
+    const low = quote.regularMarketDayLow ?? quote.dayLow ?? quote.low ?? Math.min(currentPrice, prevClose);
+    const open = quote.regularMarketOpen ?? quote.open ?? prevClose;
+    const change = quote.regularMarketChange ?? (currentPrice - prevClose);
+    const changePercent = quote.regularMarketChangePercent ?? (prevClose > 0 ? ((change / prevClose) * 100) : 0);
+
     return {
       symbol: normalizedSymbol,
       display_symbol: formatted.displaySymbol,
@@ -364,17 +372,17 @@ export async function getQuote(symbol: string, defaultRegion: string = 'IN') {
       currency,
       currency_symbol: currencySymbol,
       exchange: formatted.exchange,
-      current_price: quote.regularMarketPrice,
-      open: quote.regularMarketOpen,
-      high: quote.regularMarketDayHigh,
-      low: quote.regularMarketDayLow,
-      volume: quote.regularMarketVolume,
-      prev_close: quote.regularMarketPreviousClose,
-      change: quote.regularMarketChange,
-      change_percent: quote.regularMarketChangePercent,
-      fifty_two_week_high: quote.fiftyTwoWeekHigh,
-      fifty_two_week_low: quote.fiftyTwoWeekLow,
-      market_cap: quote.marketCap,
+      current_price: currentPrice,
+      open,
+      high,
+      low,
+      volume: quote.regularMarketVolume ?? quote.volume ?? 0,
+      prev_close: prevClose,
+      change,
+      change_percent: changePercent,
+      fifty_two_week_high: quote.fiftyTwoWeekHigh ?? high,
+      fifty_two_week_low: quote.fiftyTwoWeekLow ?? low,
+      market_cap: quote.marketCap ?? 0,
       market_open: quote.marketState === 'REGULAR',
       market_state: quote.marketState || 'CLOSED',
     };

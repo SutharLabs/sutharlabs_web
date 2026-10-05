@@ -47,6 +47,24 @@ export function registerRoutes(router: Router) {
     }
   });
 
+  // Batch quotes for watchlist summary cards (TradingView / Kite style)
+  router.get("/watchlist-quotes", async (req: any, res: any) => {
+    try {
+      const rawSymbols = (req.query.symbols as string || '').split(',').map(s => s.trim()).filter(Boolean);
+      const region = req.query.region as string || 'IN';
+      if (rawSymbols.length === 0) {
+        return res.json([]);
+      }
+      const results = await Promise.allSettled(rawSymbols.map(s => getQuote(s, region)));
+      const quotes = results
+        .filter(r => r.status === 'fulfilled')
+        .map((r: any) => r.value);
+      res.json(quotes);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
   router.get("/history", async (req: any, res: any) => {
     try {
       const region = req.query.region as string || 'IN';
