@@ -147,9 +147,14 @@ export default function App() {
     ? installedPlugins.map(p => ({
         name: p.name as WorkspaceTab,
         icon: p.iconSymbol || 'extension',
-        size: 'Native'
+        size: 'Native',
+        version: p.version,
+        isBeta: !p.version || parseInt(p.version.replace(/^v/i, '').split('.')[0], 10) < 1
       }))
-    : INSTALLED_PLUGINS;
+    : INSTALLED_PLUGINS.map(p => ({
+        ...p,
+        isBeta: true
+      }));
 
   const handleLaunchWorkspace = () => {
     if (user.isLoggedIn) {
@@ -442,6 +447,11 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                           {file.icon}
                         </span>
                         <span className="truncate">{file.name}</span>
+                        {(file as any).isBeta && (
+                          <span className="text-[8px] font-mono font-bold uppercase px-1 py-0.2 rounded bg-amber-400/15 text-amber-500 dark:text-amber-300 border border-amber-400/30">
+                            Beta
+                          </span>
+                        )}
                       </div>
                     </button>
                   );

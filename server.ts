@@ -983,16 +983,42 @@ app.get("/api/workspace-plugins", async (req, res) => {
       }
     });
 
+    const semverCompareDesc = (v1: string, v2: string) => {
+      const p1 = (v1 || '0.0.0').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
+      const p2 = (v2 || '0.0.0').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
+      for (let i = 0; i < 3; i++) {
+        const diff = (p2[i] || 0) - (p1[i] || 0);
+        if (diff !== 0) return diff;
+      }
+      return 0;
+    };
+
+    const isBetaVersion = (ver: string) => {
+      const major = parseInt((ver || '0.0.0').replace(/^v/i, '').split('.')[0], 10);
+      return isNaN(major) || major < 1;
+    };
+
     const enriched = plugins.map(p => {
       const reviewCount = p.reviews.length;
       const avgRating = reviewCount > 0
         ? Number((p.reviews.reduce((sum, r) => sum + r.rating, 0) / reviewCount).toFixed(1))
         : 0;
+
+      const sortedVersions = [...p.versions].sort((a, b) => {
+        const sDiff = semverCompareDesc(a.version, b.version);
+        if (sDiff !== 0) return sDiff;
+        return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+      }).map(ver => ({
+        ...ver,
+        stage: isBetaVersion(ver.version) ? 'Beta' : 'Stable'
+      }));
+
       return {
         id: p.id,
         name: p.name,
         category: p.category,
         type: p.type,
+        stage: isBetaVersion(p.version) ? 'Beta' : 'Stable',
         description: p.description,
         iconSymbol: p.iconSymbol,
         version: p.version,
@@ -1000,7 +1026,7 @@ app.get("/api/workspace-plugins", async (req, res) => {
         rating: avgRating,
         reviewsCount: reviewCount,
         reviews: p.reviews,
-        versions: p.versions
+        versions: sortedVersions
       };
     });
 

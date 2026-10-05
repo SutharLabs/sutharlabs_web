@@ -387,6 +387,11 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
                         <span className="text-[10px] font-mono text-on-surface-variant font-semibold">
                           v{wp.version}
                         </span>
+                        {(!wp.version || parseInt(wp.version.replace(/^v/i, '').split('.')[0], 10) < 1) && (
+                          <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase bg-amber-400/15 text-amber-500 dark:text-amber-300 border border-amber-400/30">
+                            Beta
+                          </span>
+                        )}
                         <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
                           wp.type === 'Native' 
                             ? 'bg-emerald-500/10 text-emerald-700 dark:text-[#00e476] border border-emerald-500/30' 

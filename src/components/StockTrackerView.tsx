@@ -572,6 +572,39 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [editingWatchlistName, setEditingWatchlistName] = useState('');
   const [addSymbolInputs, setAddSymbolInputs] = useState<Record<string, string>>({});
 
+  // ── Algorithmic Strategy Registry & Execution State (Stage 2) ───
+  const [strategies, setStrategies] = useState<IStrategy[]>(PRESET_STRATEGIES);
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('sutharlabs_active_strategy_id') || 'strat-ema-cross';
+    } catch {
+      return 'strat-ema-cross';
+    }
+  });
+  const [strategySignal, setStrategySignal] = useState<StrategySignal | null>(null);
+  const [loadingStrategySignal, setLoadingStrategySignal] = useState<boolean>(false);
+
+  // Visual Strategy Builder & Catalog State
+  const [builderMode, setBuilderMode] = useState<'CATALOG' | 'BUILDER'>('CATALOG');
+  const [builderEditingId, setBuilderEditingId] = useState<string | null>(null);
+  const [builderName, setBuilderName] = useState<string>('');
+  const [builderDesc, setBuilderDesc] = useState<string>('');
+  const [builderMarket, setBuilderMarket] = useState<'IN' | 'US' | 'BOTH' | 'GLOBAL'>('GLOBAL');
+  const [builderTimeframe, setBuilderTimeframe] = useState<'5m' | '15m' | '1h' | '1D'>('1D');
+  const [builderParameters, setBuilderParameters] = useState<StrategyParameter[]>([]);
+  const [builderEntryConditions, setBuilderEntryConditions] = useState<StrategyRuleCondition[]>([
+    { indicator: 'rsi', operator: '<', value: 30 }
+  ]);
+  const [builderExitConditions, setBuilderExitConditions] = useState<StrategyRuleCondition[]>([
+    { indicator: 'rsi', operator: '>', value: 70 }
+  ]);
+  const [sandboxSignal, setSandboxSignal] = useState<StrategySignal | null>(null);
+  const [isEvaluatingSandbox, setIsEvaluatingSandbox] = useState<boolean>(false);
+  const [isSavingStrategy, setIsSavingStrategy] = useState<boolean>(false);
+  const [strategyActionFeedback, setStrategyActionFeedback] = useState<string | null>(null);
+  const [strategySearchQuery, setStrategySearchQuery] = useState<string>('');
+  const [strategyMarketFilter, setStrategyMarketFilter] = useState<'ALL' | 'IN' | 'US' | 'GLOBAL'>('ALL');
+
   // ── Database Fetch on Mount: Load Registered Strategies ───
   const fetchStrategies = useCallback(async () => {
     try {
@@ -773,40 +806,6 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
   const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'FEEDS' | 'INDICATORS' | 'STRATEGIES' | 'TRADING' | 'PERFORMANCE'>('WATCHLISTS');
 
-  // Algorithmic Strategy Registry & Execution State (Stage 2)
-  const [strategies, setStrategies] = useState<IStrategy[]>(PRESET_STRATEGIES);
-  const [selectedStrategyId, setSelectedStrategyId] = useState<string>(() => {
-    try {
-      return localStorage.getItem('sutharlabs_active_strategy_id') || 'strat-ema-cross';
-    } catch {
-      return 'strat-ema-cross';
-    }
-  });
-  const [strategySignal, setStrategySignal] = useState<StrategySignal | null>(null);
-  const [loadingStrategySignal, setLoadingStrategySignal] = useState<boolean>(false);
-
-  // Visual Strategy Builder & Catalog State
-  const [builderMode, setBuilderMode] = useState<'CATALOG' | 'BUILDER'>('CATALOG');
-  const [builderEditingId, setBuilderEditingId] = useState<string | null>(null);
-  const [builderName, setBuilderName] = useState<string>('');
-  const [builderDesc, setBuilderDesc] = useState<string>('');
-  const [builderMarket, setBuilderMarket] = useState<'IN' | 'US' | 'BOTH' | 'GLOBAL'>('GLOBAL');
-  const [builderTimeframe, setBuilderTimeframe] = useState<'5m' | '15m' | '1h' | '1D'>('1D');
-  const [builderParameters, setBuilderParameters] = useState<StrategyParameter[]>([]);
-  const [builderEntryConditions, setBuilderEntryConditions] = useState<StrategyRuleCondition[]>([
-    { indicator: 'rsi', operator: '<', value: 30 }
-  ]);
-  const [builderExitConditions, setBuilderExitConditions] = useState<StrategyRuleCondition[]>([
-    { indicator: 'rsi', operator: '>', value: 70 }
-  ]);
-  const [sandboxSignal, setSandboxSignal] = useState<StrategySignal | null>(null);
-  const [isEvaluatingSandbox, setIsEvaluatingSandbox] = useState<boolean>(false);
-  const [isSavingStrategy, setIsSavingStrategy] = useState<boolean>(false);
-  const [strategyActionFeedback, setStrategyActionFeedback] = useState<string | null>(null);
-  const [strategySearchQuery, setStrategySearchQuery] = useState<string>('');
-  const [strategyMarketFilter, setStrategyMarketFilter] = useState<'ALL' | 'IN' | 'US' | 'GLOBAL'>('ALL');
-
-  
   // Editable Data Feed Settings
   const [selectedDataSource, setSelectedDataSource] = useState<string>('YAHOO');
   const [pollIntervalSec, setPollIntervalSec] = useState<number>(30);
@@ -1914,10 +1913,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               setShowSettingsDrawer(true);
             }}
             className="hidden md:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/25 font-mono text-[11px] font-bold cursor-pointer hover:bg-[#00dbe7]/20 transition-all shadow-sm"
-            title="SutharLabs Stock Tracker v0.3.0 (Stage 2: Strategy Architecture & Visual Rule Builder)"
+            title="SutharLabs Stock Tracker v0.3.0 (Stage 2: Strategy Architecture & Visual Rule Builder - Beta Stage)"
           >
             <Cpu className="w-3.5 h-3.5 text-[#00dbe7]" />
             <span>v0.3.0</span>
+            <span className="px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[9px] uppercase tracking-wider font-semibold">
+              BETA
+            </span>
           </button>
 
           {/* Sliding Panel Trigger */}

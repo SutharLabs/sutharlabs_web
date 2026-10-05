@@ -151,7 +151,8 @@ async function seed() {
       changelog: "Initial public release. Real-time Yahoo Finance quote streaming, technical indicators (RSI, MACD, Bollinger Bands), and deterministic paper trading execution log.",
       checksumSha256: "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       minEngineVersion: "0.1.0",
-      publishedBy: "Suthar Suresh"
+      publishedBy: "Suthar Suresh",
+      publishedAt: new Date("2026-10-01T10:00:00Z")
     },
     {
       pluginId: "wp_stock_analyzer",
@@ -159,7 +160,8 @@ async function seed() {
       changelog: "Stage 1 Foundation & Global Markets: Interactive TradingView Lightweight Candlestick Charts (zoom, pan, volume histogram), Pluggable Global Market Universes (India NSE/BSE, US NYSE/NASDAQ, Europe LSE/DAX/Euronext, China/HK CSI 300/Hang Seng, Japan TSE), multi-currency normalization, and persistent database watchlists.",
       checksumSha256: "d5a8c2918f4bb71900a7b489c44ea1d58e3881267b14072895bc803e404bf912",
       minEngineVersion: "0.1.0",
-      publishedBy: "Suthar Suresh"
+      publishedBy: "Suthar Suresh",
+      publishedAt: new Date("2026-10-04T12:00:00Z")
     },
     {
       pluginId: "wp_stock_analyzer",
@@ -167,7 +169,8 @@ async function seed() {
       changelog: "Stage 2 Strategy Architecture & Visual Rule Builder: Pluggable IStrategy lifecycle engine, 4 battle-tested quant presets (EMA Golden / Death Cross, RSI Mean Reversion, Bollinger Bands Breakout, Supertrend Trend-Following), persistent JSON storage for custom strategies, and Visual Condition Builder UI with live sandbox test evaluator.",
       checksumSha256: "7a94cb0211a7db8f134591a1820468351b9e0f54316d2cae89b4f0b080e7d592",
       minEngineVersion: "0.1.0",
-      publishedBy: "Suthar Suresh"
+      publishedBy: "Suthar Suresh",
+      publishedAt: new Date("2026-10-05T18:00:00Z")
     },
 
     {

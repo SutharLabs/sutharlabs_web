@@ -25,6 +25,7 @@ export interface WorkspacePluginVersion {
   id: string;
   pluginId: string;
   version: string;
+  stage?: string;
   changelog?: string | null;
   packageUrl?: string | null;
   checksumSha256?: string | null;
@@ -38,6 +39,7 @@ export interface WorkspacePlugin {
   name: string;
   category: string;
   type: string;
+  stage?: string;
   description: string;
   iconSymbol: string;
   version: string;
@@ -50,6 +52,22 @@ export interface WorkspacePlugin {
 
 export interface InstalledPlugin extends WorkspacePlugin {
   installedVersion?: string;
+}
+
+export function isBetaVersion(version?: string): boolean {
+  if (!version) return true;
+  const major = parseInt(version.replace(/^v/i, '').split('.')[0], 10);
+  return isNaN(major) || major < 1;
+}
+
+export function compareSemverDesc(v1?: string, v2?: string): number {
+  const p1 = (v1 || '0.0.0').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
+  const p2 = (v2 || '0.0.0').replace(/^v/i, '').split('.').map(n => parseInt(n, 10) || 0);
+  for (let i = 0; i < 3; i++) {
+    const diff = (p2[i] || 0) - (p1[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
 }
 
 // Enriched technical attributes (tags, features, permissions) for top-tier store fidelity
@@ -423,7 +441,7 @@ export default function WorkspacePluginStore({
           return a.name.localeCompare(b.name);
         }
         if (sortBy === 'newest') {
-          return b.version.localeCompare(a.version);
+          return compareSemverDesc(b.version, a.version);
         }
         // default: popular (sort by real installs count, then review count)
         const installsA = a.installsCount || 0;
@@ -533,6 +551,12 @@ export default function WorkspacePluginStore({
                     {spotlightPlugin.category}
                   </span>
                   <span className="text-xs font-mono text-on-surface-variant font-medium">v{spotlightPlugin.version}</span>
+                  {isBetaVersion(spotlightPlugin.version) && (
+                    <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-amber-400/15 text-amber-500 dark:text-amber-300 border border-amber-400/30 flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
+                      Beta Stage
+                    </span>
+                  )}
                 </div>
 
                 <h2 className="text-xl sm:text-2xl font-bold text-on-surface group-hover:text-[#00838f] dark:group-hover:text-[#74f5ff] transition-colors mt-1.5">
@@ -837,6 +861,11 @@ export default function WorkspacePluginStore({
                         {p.category}
                       </span>
                       <span className="text-[10px] font-mono text-on-surface-variant">v{p.version}</span>
+                      {isBetaVersion(p.version) && (
+                        <span className="text-[9px] font-mono px-1.5 py-0.2 rounded font-bold uppercase bg-amber-400/15 text-amber-500 dark:text-amber-300 border border-amber-400/30">
+                          Beta
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -1006,6 +1035,12 @@ export default function WorkspacePluginStore({
                         {activeModalPlugin.category}
                       </span>
                       <span className="text-xs font-mono text-on-surface-variant">v{activeModalPlugin.version}</span>
+                      {isBetaVersion(activeModalPlugin.version) && (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-amber-400/15 text-amber-500 dark:text-amber-300 border border-amber-400/30 flex items-center gap-1">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                          Beta Stage
+                        </span>
+                      )}
                       <span className="text-xs font-mono text-[#00e476]">{activeModalPlugin.type}</span>
                     </div>
 
@@ -1225,7 +1260,13 @@ export default function WorkspacePluginStore({
                       </div>
                     ) : (
                       <div className="space-y-3.5">
-                        {activeModalPlugin.versions.map((ver, idx) => {
+                        {[...(activeModalPlugin.versions || [])]
+                          .sort((a, b) => {
+                            const sDiff = compareSemverDesc(a.version, b.version);
+                            if (sDiff !== 0) return sDiff;
+                            return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
+                          })
+                          .map((ver, idx) => {
                           const isLatest = idx === 0;
                           const isUserInstalled = userInstalled?.installedVersion === ver.version;
 
@@ -1243,6 +1284,11 @@ export default function WorkspacePluginStore({
                                   <span className="px-2.5 py-0.5 rounded-lg font-mono text-xs font-bold bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/40">
                                     v{ver.version}
                                   </span>
+                                  {isBetaVersion(ver.version) && (
+                                    <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-amber-400/10 text-amber-400 border border-amber-400/30">
+                                      Beta
+                                    </span>
+                                  )}
                                   {isLatest && (
                                     <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-[#00e476]/15 text-[#00e476] border border-[#00fb83]/30">
                                       Latest Release
@@ -1560,8 +1606,15 @@ export default function WorkspacePluginStore({
                         <span className="text-on-surface font-bold break-all">{activeModalPlugin.id}</span>
                       </div>
                       <div className="p-3 rounded-xl bg-surface-container/50 border border-outline/10">
-                        <span className="text-[10px] text-on-surface-variant block">Semantic Version</span>
-                        <span className="text-on-surface font-bold">{activeModalPlugin.version}</span>
+                        <span className="text-[10px] text-on-surface-variant block">Semantic Version & Stage</span>
+                        <span className="text-on-surface font-bold flex items-center gap-1.5 mt-0.5">
+                          v{activeModalPlugin.version}
+                          {isBetaVersion(activeModalPlugin.version) && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-400/15 text-amber-500 dark:text-amber-300 border border-amber-400/30 uppercase font-mono font-semibold">
+                              Beta
+                            </span>
+                          )}
+                        </span>
                       </div>
                       <div className="p-3 rounded-xl bg-surface-container/50 border border-outline/10">
                         <span className="text-[10px] text-on-surface-variant block">Runtime Environment</span>
