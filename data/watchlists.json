@@ -1,0 +1,181 @@
+[
+  {
+    "id": "wl-india-core",
+    "name": "India Core & Momentum",
+    "isDefault": true,
+    "userEmail": "system",
+    "items": [
+      {
+        "symbol": "RELIANCE.NS",
+        "market": "IN",
+        "cleanSymbol": "RELIANCE",
+        "displaySymbol": "RELIANCE (NSE)",
+        "name": "Reliance Industries Limited",
+        "exchange": "NSE"
+      },
+      {
+        "symbol": "TCS.NS",
+        "market": "IN",
+        "cleanSymbol": "TCS",
+        "displaySymbol": "TCS (NSE)",
+        "name": "Tata Consultancy Services Limited",
+        "exchange": "NSE"
+      },
+      {
+        "symbol": "INFY.NS",
+        "market": "IN",
+        "cleanSymbol": "INFY",
+        "displaySymbol": "INFY (NSE)",
+        "name": "Infosys Limited",
+        "exchange": "NSE"
+      },
+      {
+        "symbol": "HDFCBANK.NS",
+        "market": "IN",
+        "cleanSymbol": "HDFCBANK",
+        "displaySymbol": "HDFCBANK (NSE)",
+        "name": "HDFC Bank Limited",
+        "exchange": "NSE"
+      },
+      {
+        "symbol": "ATHERENERG.NS",
+        "market": "IN",
+        "cleanSymbol": "ATHERENERG",
+        "displaySymbol": "ATHERENERG (NSE)",
+        "name": "Ather Energy Limited",
+        "exchange": "NSE"
+      },
+      {
+        "symbol": "ETERNAL.NS",
+        "market": "IN",
+        "cleanSymbol": "ETERNAL",
+        "displaySymbol": "ETERNAL (NSE)",
+        "name": "Eternal / Zomato",
+        "exchange": "NSE"
+      }
+    ],
+    "symbols": [
+      "RELIANCE.NS",
+      "TCS.NS",
+      "INFY.NS",
+      "HDFCBANK.NS",
+      "ATHERENERG.NS",
+      "ETERNAL.NS"
+    ],
+    "createdAt": "2026-10-05T12:16:14.316Z",
+    "updatedAt": "2026-10-05T12:16:14.318Z"
+  },
+  {
+    "id": "wl-us-tech",
+    "name": "US Tech Leaders",
+    "userEmail": "system",
+    "items": [
+      {
+        "symbol": "AAPL",
+        "market": "US",
+        "cleanSymbol": "AAPL",
+        "displaySymbol": "AAPL (NASDAQ)",
+        "name": "Apple Inc.",
+        "exchange": "NASDAQ"
+      },
+      {
+        "symbol": "MSFT",
+        "market": "US",
+        "cleanSymbol": "MSFT",
+        "displaySymbol": "MSFT (NASDAQ)",
+        "name": "Microsoft Corp.",
+        "exchange": "NASDAQ"
+      },
+      {
+        "symbol": "NVDA",
+        "market": "US",
+        "cleanSymbol": "NVDA",
+        "displaySymbol": "NVDA (NASDAQ)",
+        "name": "NVIDIA Corp.",
+        "exchange": "NASDAQ"
+      },
+      {
+        "symbol": "GOOGL",
+        "market": "US",
+        "cleanSymbol": "GOOGL",
+        "displaySymbol": "GOOGL (NASDAQ)",
+        "name": "Alphabet Inc.",
+        "exchange": "NASDAQ"
+      },
+      {
+        "symbol": "AMZN",
+        "market": "US",
+        "cleanSymbol": "AMZN",
+        "displaySymbol": "AMZN (NASDAQ)",
+        "name": "Amazon.com Inc.",
+        "exchange": "NASDAQ"
+      },
+      {
+        "symbol": "TSLA",
+        "market": "US",
+        "cleanSymbol": "TSLA",
+        "displaySymbol": "TSLA (NASDAQ)",
+        "name": "Tesla Inc.",
+        "exchange": "NASDAQ"
+      },
+      {
+        "symbol": "ATHERENERG.NS",
+        "market": "IN",
+        "cleanSymbol": "ATHERENERG",
+        "displaySymbol": "ATHERENERG (NSE)",
+        "name": "Ather Energy Limited",
+        "exchange": "NSE",
+        "addedAt": "2026-10-05T12:39:40.032Z"
+      }
+    ],
+    "symbols": [
+      "AAPL",
+      "MSFT",
+      "NVDA",
+      "GOOGL",
+      "AMZN",
+      "TSLA",
+      "ATHERENERG.NS"
+    ],
+    "createdAt": "2026-10-05T12:16:14.318Z",
+    "updatedAt": "2026-10-05T12:39:40.033Z"
+  },
+  {
+    "id": "wl-ev-green",
+    "name": "EV & Mobility Growth",
+    "userEmail": "system",
+    "items": [
+      {
+        "symbol": "ATHERENERG.NS",
+        "market": "IN",
+        "cleanSymbol": "ATHERENERG",
+        "displaySymbol": "ATHERENERG (NSE)",
+        "name": "Ather Energy Limited",
+        "exchange": "NSE"
+      },
+      {
+        "symbol": "TMCV.NS",
+        "market": "IN",
+        "cleanSymbol": "TMCV",
+        "displaySymbol": "TMCV (NSE)",
+        "name": "Tata Motors Limited",
+        "exchange": "NSE"
+      },
+      {
+        "symbol": "TSLA",
+        "market": "US",
+        "cleanSymbol": "TSLA",
+        "displaySymbol": "TSLA (NASDAQ)",
+        "name": "Tesla Inc.",
+        "exchange": "NASDAQ"
+      }
+    ],
+    "symbols": [
+      "ATHERENERG.NS",
+      "TMCV.NS",
+      "TSLA"
+    ],
+    "createdAt": "2026-10-05T12:16:14.318Z",
+    "updatedAt": "2026-10-05T12:16:14.318Z"
+  }
+]

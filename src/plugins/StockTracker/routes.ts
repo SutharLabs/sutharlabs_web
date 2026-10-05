@@ -1,4 +1,7 @@
 import { Router } from "express";
+import path from "path";
+import fs from "fs";
+import crypto from "crypto";
 import {
   getQuote,
   getHistory,
@@ -7,8 +10,115 @@ import {
   searchStocks,
   formatTickerDisplay,
   normalizeTicker,
-  MARKET_UNIVERSES
+  MARKET_UNIVERSES,
+  KNOWN_US_TICKERS
 } from "../StockAnalyzer/index.js";
+
+export interface WatchlistItem {
+  symbol: string;
+  market: string;
+  cleanSymbol: string;
+  displaySymbol: string;
+  name: string;
+  exchange: string;
+  addedAt?: string;
+}
+
+export interface WatchlistRecord {
+  id: string;
+  name: string;
+  isDefault?: boolean;
+  userEmail?: string;
+  items: WatchlistItem[];
+  symbols: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+const WATCHLISTS_DATA_PATH = path.join(process.cwd(), "data", "watchlists.json");
+
+const SEED_WATCHLISTS: WatchlistRecord[] = [
+  {
+    id: "wl-india-core",
+    name: "India Core & Momentum",
+    isDefault: true,
+    userEmail: "system",
+    items: [
+      { symbol: "RELIANCE.NS",   market: "IN", cleanSymbol: "RELIANCE",   displaySymbol: "RELIANCE (NSE)",   name: "Reliance Industries Limited", exchange: "NSE" },
+      { symbol: "TCS.NS",        market: "IN", cleanSymbol: "TCS",        displaySymbol: "TCS (NSE)",        name: "Tata Consultancy Services Limited", exchange: "NSE" },
+      { symbol: "INFY.NS",       market: "IN", cleanSymbol: "INFY",       displaySymbol: "INFY (NSE)",       name: "Infosys Limited", exchange: "NSE" },
+      { symbol: "HDFCBANK.NS",   market: "IN", cleanSymbol: "HDFCBANK",   displaySymbol: "HDFCBANK (NSE)",   name: "HDFC Bank Limited", exchange: "NSE" },
+      { symbol: "ATHERENERG.NS", market: "IN", cleanSymbol: "ATHERENERG", displaySymbol: "ATHERENERG (NSE)", name: "Ather Energy Limited", exchange: "NSE" },
+      { symbol: "ETERNAL.NS",     market: "IN", cleanSymbol: "ETERNAL",     displaySymbol: "ETERNAL (NSE)",     name: "Eternal / Zomato", exchange: "NSE" }
+    ],
+    symbols: ["RELIANCE.NS", "TCS.NS", "INFY.NS", "HDFCBANK.NS", "ATHERENERG.NS", "ETERNAL.NS"],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: "wl-us-tech",
+    name: "US Tech Leaders",
+    userEmail: "system",
+    items: [
+      { symbol: "AAPL",  market: "US", cleanSymbol: "AAPL",  displaySymbol: "AAPL (NASDAQ)",  name: "Apple Inc.", exchange: "NASDAQ" },
+      { symbol: "MSFT",  market: "US", cleanSymbol: "MSFT",  displaySymbol: "MSFT (NASDAQ)",  name: "Microsoft Corp.", exchange: "NASDAQ" },
+      { symbol: "NVDA",  market: "US", cleanSymbol: "NVDA",  displaySymbol: "NVDA (NASDAQ)",  name: "NVIDIA Corp.", exchange: "NASDAQ" },
+      { symbol: "GOOGL", market: "US", cleanSymbol: "GOOGL", displaySymbol: "GOOGL (NASDAQ)", name: "Alphabet Inc.", exchange: "NASDAQ" },
+      { symbol: "AMZN",  market: "US", cleanSymbol: "AMZN",  displaySymbol: "AMZN (NASDAQ)",  name: "Amazon.com Inc.", exchange: "NASDAQ" },
+      { symbol: "TSLA",  market: "US", cleanSymbol: "TSLA",  displaySymbol: "TSLA (NASDAQ)",  name: "Tesla Inc.", exchange: "NASDAQ" }
+    ],
+    symbols: ["AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "TSLA"],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  },
+  {
+    id: "wl-ev-green",
+    name: "EV & Mobility Growth",
+    userEmail: "system",
+    items: [
+      { symbol: "ATHERENERG.NS", market: "IN", cleanSymbol: "ATHERENERG", displaySymbol: "ATHERENERG (NSE)", name: "Ather Energy Limited", exchange: "NSE" },
+      { symbol: "TMCV.NS",       market: "IN", cleanSymbol: "TMCV",       displaySymbol: "TMCV (NSE)",       name: "Tata Motors Limited", exchange: "NSE" },
+      { symbol: "TSLA",          market: "US", cleanSymbol: "TSLA",       displaySymbol: "TSLA (NASDAQ)",    name: "Tesla Inc.", exchange: "NASDAQ" }
+    ],
+    symbols: ["ATHERENERG.NS", "TMCV.NS", "TSLA"],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  }
+];
+
+function ensureDataDirectory() {
+  const dir = path.dirname(WATCHLISTS_DATA_PATH);
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+}
+
+function loadWatchlistsFromDisk(): WatchlistRecord[] {
+  ensureDataDirectory();
+  try {
+    if (fs.existsSync(WATCHLISTS_DATA_PATH)) {
+      const content = fs.readFileSync(WATCHLISTS_DATA_PATH, "utf8");
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (err) {
+    console.error("[Watchlist DB] Error reading watchlists.json:", err);
+  }
+  // Initialize with seed defaults
+  saveWatchlistsToDisk(SEED_WATCHLISTS);
+  return SEED_WATCHLISTS;
+}
+
+function saveWatchlistsToDisk(watchlists: WatchlistRecord[]): void {
+  ensureDataDirectory();
+  try {
+    fs.writeFileSync(WATCHLISTS_DATA_PATH, JSON.stringify(watchlists, null, 2), "utf8");
+  } catch (err) {
+    console.error("[Watchlist DB] Error saving watchlists.json:", err);
+  }
+}
 
 export function registerRoutes(router: Router) {
   // Returns multi-market universes (India, US, Europe, China/HK, Japan)
@@ -47,19 +157,247 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // Batch quotes for watchlist summary cards (TradingView / Kite style)
+  // Market-Aware Batch Quotes for Watchlist Deck (e.g. "NVDA:US,RELIANCE.NS:IN,TSLA:US")
   router.get("/watchlist-quotes", async (req: any, res: any) => {
     try {
       const rawSymbols = (req.query.symbols as string || '').split(',').map(s => s.trim()).filter(Boolean);
-      const region = req.query.region as string || 'IN';
+      const defaultRegion = (req.query.region as string || 'IN').toUpperCase();
       if (rawSymbols.length === 0) {
         return res.json([]);
       }
-      const results = await Promise.allSettled(rawSymbols.map(s => getQuote(s, region)));
+
+      const results = await Promise.allSettled(
+        rawSymbols.map(entry => {
+          let sym = entry;
+          let market = defaultRegion;
+          if (entry.includes(':')) {
+            const parts = entry.split(':');
+            sym = parts[0].trim();
+            market = (parts[1] || defaultRegion).trim().toUpperCase();
+          } else if (entry.includes('@')) {
+            const parts = entry.split('@');
+            sym = parts[0].trim();
+            market = (parts[1] || defaultRegion).trim().toUpperCase();
+          } else if (KNOWN_US_TICKERS.has(entry.toUpperCase())) {
+            market = 'US';
+          }
+          return getQuote(sym, market);
+        })
+      );
+
       const quotes = results
         .filter(r => r.status === 'fulfilled')
         .map((r: any) => r.value);
       res.json(quotes);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ── Database Watchlists Endpoints (Full CRUD with Market Metadata) ─────────
+  // GET /watchlists
+  router.get("/watchlists", (req: any, res: any) => {
+    try {
+      const userEmail = (req.query.email as string || '').toLowerCase().trim();
+      const all = loadWatchlistsFromDisk();
+      if (!userEmail) {
+        return res.json(all);
+      }
+      const filtered = all.filter(w => !w.userEmail || w.userEmail === 'system' || w.userEmail === userEmail);
+      res.json(filtered.length > 0 ? filtered : all);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /watchlists (Create new list)
+  router.post("/watchlists", (req: any, res: any) => {
+    try {
+      const { name, userEmail, items = [] } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: "Watchlist name is required" });
+      }
+
+      const all = loadWatchlistsFromDisk();
+      const formattedItems: WatchlistItem[] = (items as any[]).map(item => {
+        if (typeof item === 'string') {
+          const fmt = formatTickerDisplay(item);
+          const isUS = KNOWN_US_TICKERS.has(fmt.cleanSymbol.toUpperCase());
+          return {
+            symbol: item,
+            market: isUS ? 'US' : 'IN',
+            cleanSymbol: fmt.cleanSymbol,
+            displaySymbol: fmt.displaySymbol,
+            name: fmt.cleanSymbol,
+            exchange: fmt.exchange
+          };
+        }
+        return {
+          symbol: item.symbol,
+          market: item.market || (KNOWN_US_TICKERS.has(item.symbol.toUpperCase()) ? 'US' : 'IN'),
+          cleanSymbol: item.cleanSymbol || formatTickerDisplay(item.symbol).cleanSymbol,
+          displaySymbol: item.displaySymbol || formatTickerDisplay(item.symbol).displaySymbol,
+          name: item.name || item.symbol,
+          exchange: item.exchange || formatTickerDisplay(item.symbol).exchange,
+          addedAt: item.addedAt || new Date().toISOString()
+        };
+      });
+
+      const newRecord: WatchlistRecord = {
+        id: `wl-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+        name: name.trim(),
+        userEmail: userEmail ? userEmail.toLowerCase().trim() : "default_user",
+        items: formattedItems,
+        symbols: formattedItems.map(i => i.symbol),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+
+      all.push(newRecord);
+      saveWatchlistsToDisk(all);
+      res.status(201).json(newRecord);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // PUT /watchlists/:id (Update watchlist)
+  router.put("/watchlists/:id", (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const { name, items, isDefault } = req.body;
+      const all = loadWatchlistsFromDisk();
+      const idx = all.findIndex(w => w.id === id);
+      if (idx === -1) {
+        return res.status(404).json({ error: "Watchlist not found" });
+      }
+
+      const existing = all[idx];
+      if (name) existing.name = name.trim();
+      if (isDefault !== undefined) existing.isDefault = Boolean(isDefault);
+      if (items && Array.isArray(items)) {
+        existing.items = items.map((item: any) => {
+          if (typeof item === 'string') {
+            const fmt = formatTickerDisplay(item);
+            const isUS = KNOWN_US_TICKERS.has(fmt.cleanSymbol.toUpperCase());
+            return {
+              symbol: item,
+              market: isUS ? 'US' : 'IN',
+              cleanSymbol: fmt.cleanSymbol,
+              displaySymbol: fmt.displaySymbol,
+              name: fmt.cleanSymbol,
+              exchange: fmt.exchange
+            };
+          }
+          return item;
+        });
+        existing.symbols = existing.items.map(i => i.symbol);
+      }
+      existing.updatedAt = new Date().toISOString();
+
+      all[idx] = existing;
+      saveWatchlistsToDisk(all);
+      res.json(existing);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // DELETE /watchlists/:id (Delete watchlist)
+  router.delete("/watchlists/:id", (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      let all = loadWatchlistsFromDisk();
+      const initialLen = all.length;
+      all = all.filter(w => w.id !== id);
+      if (all.length === initialLen) {
+        return res.status(404).json({ error: "Watchlist not found" });
+      }
+      saveWatchlistsToDisk(all);
+      res.json({ success: true, removedId: id });
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /watchlists/:id/symbols (Add stock with market info to watchlist)
+  router.post("/watchlists/:id/symbols", (req: any, res: any) => {
+    try {
+      const { id } = req.params;
+      const { symbol, market, name, exchange } = req.body;
+      if (!symbol) {
+        return res.status(400).json({ error: "Stock symbol is required" });
+      }
+
+      const all = loadWatchlistsFromDisk();
+      const target = all.find(w => w.id === id);
+      if (!target) {
+        return res.status(404).json({ error: "Watchlist not found" });
+      }
+
+      const norm = normalizeTicker(symbol, market || 'IN');
+      const fmt = formatTickerDisplay(norm, exchange);
+      const isUS = market === 'US' || KNOWN_US_TICKERS.has(fmt.cleanSymbol.toUpperCase());
+      const resolvedMarket = market || (isUS ? 'US' : 'IN');
+
+      // Deduplicate by clean symbol or normalized ticker
+      const alreadyIn = target.items.some(it => it.symbol === norm || it.cleanSymbol === fmt.cleanSymbol);
+      if (!alreadyIn) {
+        const newItem: WatchlistItem = {
+          symbol: norm,
+          market: resolvedMarket,
+          cleanSymbol: fmt.cleanSymbol,
+          displaySymbol: fmt.displaySymbol,
+          name: name || fmt.cleanSymbol,
+          exchange: exchange || fmt.exchange,
+          addedAt: new Date().toISOString()
+        };
+        target.items.push(newItem);
+        target.symbols = target.items.map(i => i.symbol);
+        target.updatedAt = new Date().toISOString();
+        saveWatchlistsToDisk(all);
+      }
+
+      res.json(target);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // DELETE /watchlists/:id/symbols/:symbol (Remove stock from watchlist)
+  router.delete("/watchlists/:id/symbols/:symbol", (req: any, res: any) => {
+    try {
+      const { id, symbol } = req.params;
+      const all = loadWatchlistsFromDisk();
+      const target = all.find(w => w.id === id);
+      if (!target) {
+        return res.status(404).json({ error: "Watchlist not found" });
+      }
+
+      const cleanTarget = symbol.replace(/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i, '').toUpperCase();
+      target.items = target.items.filter(it => {
+        const itClean = it.symbol.replace(/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i, '').toUpperCase();
+        return it.symbol !== symbol && itClean !== cleanTarget;
+      });
+      target.symbols = target.items.map(i => i.symbol);
+      target.updatedAt = new Date().toISOString();
+
+      saveWatchlistsToDisk(all);
+      res.json(target);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // PUT /watchlists/sync (Batch sync all watchlists)
+  router.put("/watchlists/sync", (req: any, res: any) => {
+    try {
+      const { watchlists } = req.body;
+      if (!Array.isArray(watchlists)) {
+        return res.status(400).json({ error: "Watchlists array is required" });
+      }
+      saveWatchlistsToDisk(watchlists);
+      res.json({ success: true, count: watchlists.length });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

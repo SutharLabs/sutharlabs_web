@@ -242,10 +242,22 @@ export interface StockSearchResult {
   quoteType?: string;
 }
 
+export interface WatchlistItem {
+  symbol: string;
+  market: string;
+  cleanSymbol: string;
+  displaySymbol: string;
+  name: string;
+  exchange: string;
+  addedAt?: string;
+}
+
 export interface Watchlist {
   id: string;
   name: string;
   isDefault?: boolean;
+  userEmail?: string;
+  items: WatchlistItem[];
   symbols: string[];
 }
 
@@ -254,19 +266,65 @@ export const DEFAULT_WATCHLISTS: Watchlist[] = [
     id: 'wl-india-core',
     name: 'India Core & Momentum',
     isDefault: true,
+    userEmail: 'system',
+    items: [
+      { symbol: 'RELIANCE.NS',   market: 'IN', cleanSymbol: 'RELIANCE',   displaySymbol: 'RELIANCE (NSE)',   name: 'Reliance Industries Limited', exchange: 'NSE' },
+      { symbol: 'TCS.NS',        market: 'IN', cleanSymbol: 'TCS',        displaySymbol: 'TCS (NSE)',        name: 'Tata Consultancy Services Limited', exchange: 'NSE' },
+      { symbol: 'INFY.NS',       market: 'IN', cleanSymbol: 'INFY',       displaySymbol: 'INFY (NSE)',       name: 'Infosys Limited', exchange: 'NSE' },
+      { symbol: 'HDFCBANK.NS',   market: 'IN', cleanSymbol: 'HDFCBANK',   displaySymbol: 'HDFCBANK (NSE)',   name: 'HDFC Bank Limited', exchange: 'NSE' },
+      { symbol: 'ATHERENERG.NS', market: 'IN', cleanSymbol: 'ATHERENERG', displaySymbol: 'ATHERENERG (NSE)', name: 'Ather Energy Limited', exchange: 'NSE' },
+      { symbol: 'ETERNAL.NS',     market: 'IN', cleanSymbol: 'ETERNAL',     displaySymbol: 'ETERNAL (NSE)',     name: 'Eternal / Zomato', exchange: 'NSE' }
+    ],
     symbols: ['RELIANCE.NS', 'TCS.NS', 'INFY.NS', 'HDFCBANK.NS', 'ATHERENERG.NS', 'ETERNAL.NS']
   },
   {
     id: 'wl-us-tech',
     name: 'US Tech Leaders',
+    userEmail: 'system',
+    items: [
+      { symbol: 'AAPL',  market: 'US', cleanSymbol: 'AAPL',  displaySymbol: 'AAPL (NASDAQ)',  name: 'Apple Inc.', exchange: 'NASDAQ' },
+      { symbol: 'MSFT',  market: 'US', cleanSymbol: 'MSFT',  displaySymbol: 'MSFT (NASDAQ)',  name: 'Microsoft Corp.', exchange: 'NASDAQ' },
+      { symbol: 'NVDA',  market: 'US', cleanSymbol: 'NVDA',  displaySymbol: 'NVDA (NASDAQ)',  name: 'NVIDIA Corp.', exchange: 'NASDAQ' },
+      { symbol: 'GOOGL', market: 'US', cleanSymbol: 'GOOGL', displaySymbol: 'GOOGL (NASDAQ)', name: 'Alphabet Inc.', exchange: 'NASDAQ' },
+      { symbol: 'AMZN',  market: 'US', cleanSymbol: 'AMZN',  displaySymbol: 'AMZN (NASDAQ)',  name: 'Amazon.com Inc.', exchange: 'NASDAQ' },
+      { symbol: 'TSLA',  market: 'US', cleanSymbol: 'TSLA',  displaySymbol: 'TSLA (NASDAQ)',  name: 'Tesla Inc.', exchange: 'NASDAQ' }
+    ],
     symbols: ['AAPL', 'MSFT', 'NVDA', 'GOOGL', 'AMZN', 'TSLA']
   },
   {
     id: 'wl-ev-green',
     name: 'EV & Mobility Growth',
-    symbols: ['ATHERENERG.NS', 'TATAMOTORS.NS', 'TSLA']
+    userEmail: 'system',
+    items: [
+      { symbol: 'ATHERENERG.NS', market: 'IN', cleanSymbol: 'ATHERENERG', displaySymbol: 'ATHERENERG (NSE)', name: 'Ather Energy Limited', exchange: 'NSE' },
+      { symbol: 'TMCV.NS',       market: 'IN', cleanSymbol: 'TMCV',       displaySymbol: 'TMCV (NSE)',       name: 'Tata Motors Limited', exchange: 'NSE' },
+      { symbol: 'TSLA',          market: 'US', cleanSymbol: 'TSLA',       displaySymbol: 'TSLA (NASDAQ)',    name: 'Tesla Inc.', exchange: 'NASDAQ' }
+    ],
+    symbols: ['ATHERENERG.NS', 'TMCV.NS', 'TSLA']
   }
 ];
+
+export function createWatchlistItem(
+  rawSymbol: string,
+  marketHint?: string,
+  nameHint?: string,
+  exchangeHint?: string
+): WatchlistItem {
+  const norm = normalizeTicker(rawSymbol, marketHint || 'IN');
+  const fmt = formatTickerDisplay(norm, exchangeHint);
+  const isUS = marketHint === 'US' || KNOWN_US_TICKERS.has(fmt.cleanSymbol.toUpperCase());
+  const resolvedMarket = marketHint || (isUS ? 'US' : 'IN');
+
+  return {
+    symbol: norm,
+    market: resolvedMarket,
+    cleanSymbol: fmt.cleanSymbol,
+    displaySymbol: fmt.displaySymbol,
+    name: nameHint || fmt.cleanSymbol,
+    exchange: exchangeHint || fmt.exchange,
+    addedAt: new Date().toISOString()
+  };
+}
 
 export function formatTickerDisplay(rawSymbol: string, exchangeName?: string): { displaySymbol: string; cleanSymbol: string; exchange: string } {
   if (!rawSymbol) return { displaySymbol: '', cleanSymbol: '', exchange: '' };
@@ -423,13 +481,23 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [showVolume, setShowVolume] = useState<boolean>(true);
   const [isChartExpanded, setIsChartExpanded] = useState<boolean>(false);
 
-  // User Custom Watchlists
+  // User Custom Watchlists (Database-persisted with LocalStorage cache)
   const [watchlists, setWatchlists] = useState<Watchlist[]>(() => {
     try {
       const saved = localStorage.getItem('sutharlabs_custom_watchlists');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map((wl: any) => ({
+            ...wl,
+            items: Array.isArray(wl.items) && wl.items.length > 0
+              ? wl.items
+              : (wl.symbols || []).map((s: string) => createWatchlistItem(s)),
+            symbols: Array.isArray(wl.symbols) && wl.symbols.length > 0
+              ? wl.symbols
+              : (wl.items || []).map((i: any) => i.symbol)
+          }));
+        }
       }
     } catch {}
     return DEFAULT_WATCHLISTS;
@@ -442,6 +510,52 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     } catch {}
     return 'wl-india-core';
   });
+
+  // ── Database Fetch on Mount: Load User Watchlists from Persistent Backend ───
+  useEffect(() => {
+    let isCancelled = false;
+    const emailParam = userEmail ? `?email=${encodeURIComponent(userEmail)}` : '';
+    fetch(`${STOCK_API}/watchlists${emailParam}`)
+      .then(res => {
+        if (res.ok) return res.json();
+        throw new Error('Failed to fetch watchlists from database');
+      })
+      .then((data: any[]) => {
+        if (isCancelled || !Array.isArray(data) || data.length === 0) return;
+        const normalized: Watchlist[] = data.map(wl => {
+          const rawItems = Array.isArray(wl.items) && wl.items.length > 0
+            ? wl.items
+            : (wl.symbols || []).map((s: string) => createWatchlistItem(s));
+          const formattedItems: WatchlistItem[] = rawItems.map((it: any) => {
+            if (typeof it === 'string') return createWatchlistItem(it);
+            return {
+              symbol: it.symbol,
+              market: it.market || (KNOWN_US_TICKERS.has(it.symbol.toUpperCase()) ? 'US' : 'IN'),
+              cleanSymbol: it.cleanSymbol || formatTickerDisplay(it.symbol).cleanSymbol,
+              displaySymbol: it.displaySymbol || formatTickerDisplay(it.symbol).displaySymbol,
+              name: it.name || it.symbol,
+              exchange: it.exchange || formatTickerDisplay(it.symbol).exchange,
+              addedAt: it.addedAt || new Date().toISOString()
+            };
+          });
+          return {
+            id: wl.id,
+            name: wl.name,
+            isDefault: wl.isDefault,
+            userEmail: wl.userEmail,
+            items: formattedItems,
+            symbols: formattedItems.map(i => i.symbol)
+          };
+        });
+        setWatchlists(normalized);
+      })
+      .catch(err => {
+        console.warn('[Watchlist DB] Using local/cached watchlists:', err);
+      });
+    return () => {
+      isCancelled = true;
+    };
+  }, [userEmail]);
 
   const [showWatchlistDropdown, setShowWatchlistDropdown] = useState(false);
   const [newWatchlistName, setNewWatchlistName] = useState('');
@@ -542,7 +656,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     onAddLogRef.current = onAddLog;
   }, [onAddLog]);
 
-  // Sync watchlists to localStorage
+  // Sync watchlists to localStorage cache
   useEffect(() => {
     try {
       localStorage.setItem('sutharlabs_custom_watchlists', JSON.stringify(watchlists));
@@ -561,18 +675,39 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
   const isInActiveWatchlist = useMemo(() => {
     const norm = normalizeTicker(symbol, activeMarketKey);
-    return activeWatchlist.symbols.some(s => normalizeTicker(s, activeMarketKey) === norm);
+    const fmt = formatTickerDisplay(norm);
+    return (activeWatchlist.items || []).some(i => i.symbol === norm || i.cleanSymbol === fmt.cleanSymbol) ||
+           (activeWatchlist.symbols || []).some(s => normalizeTicker(s, activeMarketKey) === norm);
   }, [activeWatchlist, symbol, activeMarketKey]);
 
-  // Batch Live Quote Fetcher for Watchlist Deck
-  const fetchWatchlistQuotes = useCallback(async (symbols: string[]) => {
-    if (!symbols || symbols.length === 0) {
+  // Batch Live Quote Fetcher for Watchlist Deck (Sends SYMBOL:MARKET for flawless multi-region quotes)
+  const fetchWatchlistQuotes = useCallback(async (customWl?: Watchlist) => {
+    const targetWl = customWl || activeWatchlist;
+    const items = targetWl?.items || [];
+    const symbols = targetWl?.symbols || [];
+
+    if (items.length === 0 && symbols.length === 0) {
       setWatchlistQuotes({});
       return;
     }
     setLoadingWatchlistQuotes(true);
     try {
-      const symParam = symbols.map(s => normalizeTicker(s, activeMarketKey)).join(',');
+      const queryList: string[] = [];
+      if (items.length > 0) {
+        for (const it of items) {
+          const itemMarket = it.market || (KNOWN_US_TICKERS.has(it.symbol.toUpperCase()) ? 'US' : activeMarketKey);
+          const norm = normalizeTicker(it.symbol, itemMarket);
+          queryList.push(`${norm}:${itemMarket}`);
+        }
+      } else {
+        for (const s of symbols) {
+          const itemMarket = KNOWN_US_TICKERS.has(s.toUpperCase()) ? 'US' : activeMarketKey;
+          const norm = normalizeTicker(s, itemMarket);
+          queryList.push(`${norm}:${itemMarket}`);
+        }
+      }
+
+      const symParam = queryList.join(',');
       const res = await fetch(`${STOCK_API}/watchlist-quotes?symbols=${encodeURIComponent(symParam)}&region=${activeMarketKey}`);
       if (res.ok) {
         const data: Quote[] = await res.json();
@@ -599,12 +734,12 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     } finally {
       setLoadingWatchlistQuotes(false);
     }
-  }, [activeMarketKey]);
+  }, [activeWatchlist, activeMarketKey]);
 
   // Sync Watchlist Live Quotes whenever activeWatchlist or symbols change
   useEffect(() => {
-    fetchWatchlistQuotes(activeWatchlist.symbols);
-  }, [activeWatchlist.symbols, fetchWatchlistQuotes]);
+    fetchWatchlistQuotes(activeWatchlist);
+  }, [activeWatchlist.id, activeWatchlist.symbols, activeWatchlist.items, fetchWatchlistQuotes]);
 
   // Currency helper
   const curSymbol = reportingCurrency !== 'AUTO'
@@ -1013,56 +1148,131 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     }
   };
 
-  // ── 7. Dedicated Custom Watchlist Operations (Manual, Multi-list, Persistent) ──
-  const handleToggleCurrentStockInWatchlist = (targetSym?: string) => {
+  // ── 7. Dedicated Custom Watchlist Operations (Manual, Multi-list, Database-Backed) ──
+  const handleToggleCurrentStockInWatchlist = async (
+    targetSym?: string,
+    targetMarket?: string,
+    targetName?: string,
+    targetExchange?: string
+  ) => {
     const rawSym = targetSym || symbol;
-    const norm = normalizeTicker(rawSym, activeMarketKey);
-    const fmt = formatTickerDisplay(norm);
-    const exists = activeWatchlist.symbols.some(s => normalizeTicker(s, activeMarketKey) === norm);
+    const resolvedMarket = targetMarket || (KNOWN_US_TICKERS.has(rawSym.toUpperCase()) ? 'US' : activeMarketKey);
+    const norm = normalizeTicker(rawSym, resolvedMarket);
+    const fmt = formatTickerDisplay(norm, targetExchange);
+    const exists = (activeWatchlist.items || []).some(
+      i => i.symbol === norm || i.cleanSymbol === fmt.cleanSymbol
+    ) || activeWatchlist.symbols.some(s => normalizeTicker(s, resolvedMarket) === norm);
 
     if (exists) {
+      // 1. Optimistic Local State Update
       setWatchlists(prev => prev.map(wl => {
         if (wl.id === activeWatchlist.id) {
+          const updatedItems = (wl.items || []).filter(
+            i => i.symbol !== norm && i.cleanSymbol !== fmt.cleanSymbol
+          );
           return {
             ...wl,
-            symbols: wl.symbols.filter(s => normalizeTicker(s, activeMarketKey) !== norm)
+            items: updatedItems,
+            symbols: updatedItems.map(i => i.symbol)
           };
         }
         return wl;
       }));
       setNotification(`Removed ${fmt.displaySymbol} from "${activeWatchlist.name}"`);
+
+      // 2. Persist Deletion to Database Store
+      try {
+        await fetch(`${STOCK_API}/watchlists/${encodeURIComponent(activeWatchlist.id)}/symbols/${encodeURIComponent(norm)}`, {
+          method: 'DELETE'
+        });
+      } catch (err) {
+        console.error('[Watchlist DB] Failed to remove symbol from database:', err);
+      }
     } else {
+      const newItem = createWatchlistItem(
+        rawSym,
+        resolvedMarket,
+        targetName || (rawSym === symbol ? quote?.name : undefined),
+        targetExchange || (rawSym === symbol ? quote?.exchange : undefined)
+      );
+
+      // 1. Optimistic Local State Update
       setWatchlists(prev => prev.map(wl => {
         if (wl.id === activeWatchlist.id) {
+          const updatedItems = [...(wl.items || []), newItem];
           return {
             ...wl,
-            symbols: [...wl.symbols, norm]
+            items: updatedItems,
+            symbols: updatedItems.map(i => i.symbol)
           };
         }
         return wl;
       }));
-      setNotification(`Added ${fmt.displaySymbol} to "${activeWatchlist.name}"!`);
+      setNotification(`Added ${fmt.displaySymbol} [${newItem.market}] to "${activeWatchlist.name}"!`);
+
+      // 2. Persist Insertion to Database Store
+      try {
+        await fetch(`${STOCK_API}/watchlists/${encodeURIComponent(activeWatchlist.id)}/symbols`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            symbol: newItem.symbol,
+            market: newItem.market,
+            name: newItem.name,
+            exchange: newItem.exchange
+          })
+        });
+      } catch (err) {
+        console.error('[Watchlist DB] Failed to add symbol to database:', err);
+      }
     }
     setTimeout(() => setNotification(''), 3500);
   };
 
-  const handleCreateWatchlist = (name: string) => {
+  const handleCreateWatchlist = async (name: string) => {
     const trimmed = name.trim();
     if (!trimmed) return;
-    const newId = `wl-${Date.now()}`;
+    const tempId = `wl-${Date.now()}`;
+    const initialItem = createWatchlistItem(symbol, activeMarketKey, quote?.name, quote?.exchange);
     const newWl: Watchlist = {
-      id: newId,
+      id: tempId,
       name: trimmed,
-      symbols: [normalizeTicker(symbol, activeMarketKey)]
+      userEmail: userEmail || 'default_user',
+      items: [initialItem],
+      symbols: [initialItem.symbol]
     };
+
+    // 1. Optimistic UI update
     setWatchlists(prev => [...prev, newWl]);
-    setActiveWatchlistId(newId);
+    setActiveWatchlistId(tempId);
     setNewWatchlistName('');
     setNotification(`Created watchlist "${trimmed}"!`);
     setTimeout(() => setNotification(''), 3000);
+
+    // 2. Persist to Database Store
+    try {
+      const res = await fetch(`${STOCK_API}/watchlists`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: trimmed,
+          userEmail: userEmail || 'default_user',
+          items: [initialItem]
+        })
+      });
+      if (res.ok) {
+        const created: Watchlist = await res.json();
+        if (created && created.id) {
+          setWatchlists(prev => prev.map(w => w.id === tempId ? created : w));
+          setActiveWatchlistId(created.id);
+        }
+      }
+    } catch (err) {
+      console.error('[Watchlist DB] Failed to create watchlist in database:', err);
+    }
   };
 
-  const handleDeleteWatchlist = (id: string) => {
+  const handleDeleteWatchlist = async (id: string) => {
     if (watchlists.length <= 1) {
       setNotification('You must keep at least one watchlist.');
       setTimeout(() => setNotification(''), 3000);
@@ -1076,49 +1286,101 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     }
     setNotification(`Deleted watchlist "${toDelete?.name || ''}"`);
     setTimeout(() => setNotification(''), 3000);
+
+    // Persist Deletion to Database Store
+    try {
+      await fetch(`${STOCK_API}/watchlists/${encodeURIComponent(id)}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.error('[Watchlist DB] Failed to delete watchlist from database:', err);
+    }
   };
 
-  const handleRenameWatchlist = (id: string, newName: string) => {
+  const handleRenameWatchlist = async (id: string, newName: string) => {
     const trimmed = newName.trim();
     if (!trimmed) return;
     setWatchlists(prev => prev.map(w => w.id === id ? { ...w, name: trimmed } : w));
     setEditingWatchlistId(null);
     setNotification(`Renamed watchlist to "${trimmed}"`);
     setTimeout(() => setNotification(''), 3000);
+
+    // Persist Rename to Database Store
+    try {
+      await fetch(`${STOCK_API}/watchlists/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: trimmed })
+      });
+    } catch (err) {
+      console.error('[Watchlist DB] Failed to rename watchlist in database:', err);
+    }
   };
 
-  const handleAddSymbolToWatchlist = (watchlistId: string, symInput: string) => {
-    const norm = normalizeTicker(symInput, activeMarketKey);
-    const fmt = formatTickerDisplay(norm);
-    if (!norm) return;
+  const handleAddSymbolToWatchlist = async (watchlistId: string, symInput: string, marketHint?: string) => {
+    if (!symInput || !symInput.trim()) return;
+    const resolvedMarket = marketHint || (KNOWN_US_TICKERS.has(symInput.trim().toUpperCase()) ? 'US' : activeMarketKey);
+    const newItem = createWatchlistItem(symInput, resolvedMarket);
+    const fmt = formatTickerDisplay(newItem.symbol);
+
     setWatchlists(prev => prev.map(wl => {
       if (wl.id === watchlistId) {
-        if (wl.symbols.some(s => normalizeTicker(s, activeMarketKey) === norm)) {
-          return wl;
-        }
+        const already = (wl.items || []).some(i => i.symbol === newItem.symbol || i.cleanSymbol === newItem.cleanSymbol);
+        if (already) return wl;
+        const updatedItems = [...(wl.items || []), newItem];
         return {
           ...wl,
-          symbols: [...wl.symbols, norm]
+          items: updatedItems,
+          symbols: updatedItems.map(i => i.symbol)
         };
       }
       return wl;
     }));
     setAddSymbolInputs(prev => ({ ...prev, [watchlistId]: '' }));
-    setNotification(`Added ${fmt.displaySymbol} to watchlist`);
+    setNotification(`Added ${fmt.displaySymbol} [${newItem.market}] to watchlist`);
     setTimeout(() => setNotification(''), 3000);
+
+    // Persist Insertion to Database Store
+    try {
+      await fetch(`${STOCK_API}/watchlists/${encodeURIComponent(watchlistId)}/symbols`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: newItem.symbol,
+          market: newItem.market,
+          name: newItem.name,
+          exchange: newItem.exchange
+        })
+      });
+    } catch (err) {
+      console.error('[Watchlist DB] Failed to add symbol to database:', err);
+    }
   };
 
-  const handleRemoveSymbolFromWatchlist = (watchlistId: string, symToRemove: string) => {
+  const handleRemoveSymbolFromWatchlist = async (watchlistId: string, symToRemove: string) => {
     const norm = normalizeTicker(symToRemove, activeMarketKey);
     setWatchlists(prev => prev.map(wl => {
       if (wl.id === watchlistId) {
+        const updatedItems = (wl.items || []).filter(
+          i => normalizeTicker(i.symbol, activeMarketKey) !== norm && i.symbol !== symToRemove
+        );
         return {
           ...wl,
-          symbols: wl.symbols.filter(s => normalizeTicker(s, activeMarketKey) !== norm)
+          items: updatedItems,
+          symbols: updatedItems.map(i => i.symbol)
         };
       }
       return wl;
     }));
+
+    // Persist Deletion to Database Store
+    try {
+      await fetch(`${STOCK_API}/watchlists/${encodeURIComponent(watchlistId)}/symbols/${encodeURIComponent(norm)}`, {
+        method: 'DELETE'
+      });
+    } catch (err) {
+      console.error('[Watchlist DB] Failed to remove symbol from database:', err);
+    }
   };
 
   // Optional Market Universe Custom Stock Registry helper
@@ -1309,12 +1571,20 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                         type="button"
                         onMouseDown={(e) => {
                           e.stopPropagation();
-                          handleToggleCurrentStockInWatchlist(item.symbol);
+                          const isUS = item.exchange === 'NASDAQ' || item.exchange === 'NYSE' || KNOWN_US_TICKERS.has(item.cleanSymbol.toUpperCase());
+                          const itemMarket = isUS ? 'US' : (item.exchange === 'BSE' || item.exchange === 'NSE' ? 'IN' : activeMarketKey);
+                          handleToggleCurrentStockInWatchlist(item.symbol, itemMarket, item.name, item.exchange);
                         }}
                         className="p-1 rounded hover:bg-surface-container-high transition-colors cursor-pointer text-on-surface-variant hover:text-[#00dbe7]"
-                        title={activeWatchlist.symbols.some(s => normalizeTicker(s, activeMarketKey) === normalizeTicker(item.symbol, activeMarketKey)) ? `In "${activeWatchlist.name}" (Click to remove)` : `Add to "${activeWatchlist.name}"`}
+                        title={
+                          (activeWatchlist.items || []).some(i => i.symbol === item.symbol || i.cleanSymbol === item.cleanSymbol) ||
+                          activeWatchlist.symbols.some(s => normalizeTicker(s, activeMarketKey) === normalizeTicker(item.symbol, activeMarketKey))
+                            ? `In "${activeWatchlist.name}" (Click to remove)`
+                            : `Add to "${activeWatchlist.name}"`
+                        }
                       >
                         <Star className={`w-3.5 h-3.5 ${
+                          (activeWatchlist.items || []).some(i => i.symbol === item.symbol || i.cleanSymbol === item.cleanSymbol) ||
                           activeWatchlist.symbols.some(s => normalizeTicker(s, activeMarketKey) === normalizeTicker(item.symbol, activeMarketKey))
                             ? 'fill-[#00e476] text-[#00e476]'
                             : ''
@@ -1450,13 +1720,17 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         {/* Center: Scrollable symbol chips */}
         <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar flex-1 px-1">
           {activeWatchlist.symbols.map(symStr => {
-            const fmt = formatTickerDisplay(symStr);
-            const isSelected = normalizeTicker(symbol, activeMarketKey) === normalizeTicker(symStr, activeMarketKey);
-            const norm = normalizeTicker(symStr, activeMarketKey);
-            const q = watchlistQuotes[norm] || watchlistQuotes[symStr] || watchlistQuotes[fmt.cleanSymbol];
+            const targetItem = (activeWatchlist.items || []).find(
+              i => i.symbol === symStr || i.cleanSymbol === symStr
+            );
+            const itemMarket = targetItem?.market || (KNOWN_US_TICKERS.has(symStr.toUpperCase()) ? 'US' : activeMarketKey);
+            const norm = normalizeTicker(symStr, itemMarket);
+            const fmt = formatTickerDisplay(norm, targetItem?.exchange);
+            const isSelected = normalizeTicker(symbol, activeMarketKey) === norm;
+            const q = watchlistQuotes[norm] || watchlistQuotes[symStr] || watchlistQuotes[fmt.cleanSymbol] || (targetItem?.cleanSymbol ? watchlistQuotes[targetItem.cleanSymbol] : undefined);
             const hasQuote = q && q.change_percent != null;
             const isPos = (q?.change_percent ?? 0) >= 0;
-            const priceSym = q?.currency_symbol || curSymbol;
+            const priceSym = q?.currency_symbol || (itemMarket === 'US' ? '$' : itemMarket === 'IN' ? '₹' : curSymbol);
 
             return (
               <div
@@ -1471,6 +1745,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   onClick={() => {
                     setSymbol(norm);
                     setSymbolInput(fmt.displaySymbol);
+                    if (targetItem?.market && targetItem.market !== activeMarketKey && universes[targetItem.market]) {
+                      setActiveMarketKey(targetItem.market);
+                    }
                   }}
                   className="cursor-pointer flex items-center gap-1.5"
                   title={`Load ${fmt.displaySymbol} in chart`}
@@ -1514,7 +1791,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         {/* Right Actions: + Add Current Stock & Toggle Detailed Deck */}
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => handleToggleCurrentStockInWatchlist()}
+            onClick={() => handleToggleCurrentStockInWatchlist(symbol, activeMarketKey, quote?.name, quote?.exchange)}
             className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
               isInActiveWatchlist
                 ? 'bg-[#00e476]/15 border-[#00e476]/40 text-[#00e476] font-semibold'
@@ -1732,7 +2009,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
                 <div className="flex items-center gap-1.5 shrink-0">
                   <button
-                    onClick={() => fetchWatchlistQuotes(activeWatchlist.symbols)}
+                    onClick={() => fetchWatchlistQuotes(activeWatchlist)}
                     className="p-1.5 rounded-lg bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] hover:text-[#00dbe7] transition-all cursor-pointer text-on-surface-variant"
                     title="Refresh live quotes"
                   >
@@ -1840,12 +2117,16 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     }
 
                     return list.map(symStr => {
-                      const norm = normalizeTicker(symStr, activeMarketKey);
-                      const fmt = formatTickerDisplay(norm);
+                      const targetItem = (activeWatchlist.items || []).find(
+                        i => i.symbol === symStr || i.cleanSymbol === symStr
+                      );
+                      const itemMarket = targetItem?.market || (KNOWN_US_TICKERS.has(symStr.toUpperCase()) ? 'US' : activeMarketKey);
+                      const norm = normalizeTicker(symStr, itemMarket);
+                      const fmt = formatTickerDisplay(norm, targetItem?.exchange);
                       const isCurrent = normalizeTicker(symbol, activeMarketKey) === norm;
-                      const q = watchlistQuotes[norm] || watchlistQuotes[symStr] || watchlistQuotes[fmt.cleanSymbol];
+                      const q = watchlistQuotes[norm] || watchlistQuotes[symStr] || watchlistQuotes[fmt.cleanSymbol] || (targetItem?.cleanSymbol ? watchlistQuotes[targetItem.cleanSymbol] : undefined);
                       const isPos = (q?.change_percent ?? 0) >= 0;
-                      const priceSym = q?.currency_symbol || curSymbol;
+                      const priceSym = q?.currency_symbol || (itemMarket === 'US' ? '$' : itemMarket === 'IN' ? '₹' : curSymbol);
 
                       return (
                         <div
@@ -1853,6 +2134,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                           onClick={() => {
                             setSymbol(norm);
                             setSymbolInput(fmt.displaySymbol);
+                            if (targetItem?.market && targetItem.market !== activeMarketKey && universes[targetItem.market]) {
+                              setActiveMarketKey(targetItem.market);
+                            }
                           }}
                           className={`group p-2.5 rounded-xl border text-xs font-mono transition-all cursor-pointer flex flex-col gap-1.5 ${
                             isCurrent
@@ -1872,7 +2156,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                                   fmt.exchange === 'BSE' ? 'bg-amber-500/15 text-amber-400' :
                                   'bg-purple-500/15 text-purple-400'
                                 }`}>
-                                  {fmt.exchange}
+                                  {fmt.exchange} · {itemMarket}
                                 </span>
                                 {isCurrent && (
                                   <span className="text-[9px] px-1 py-0.2 rounded bg-[#00dbe7]/20 text-[#00dbe7] font-bold animate-pulse">
@@ -1881,7 +2165,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                                 )}
                               </div>
                               <span className="text-[10px] text-on-surface-variant truncate max-w-[160px]">
-                                {q?.name || fmt.cleanSymbol}
+                                {targetItem?.name || q?.name || fmt.cleanSymbol}
                               </span>
                             </div>
 
@@ -1920,6 +2204,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                                   e.stopPropagation();
                                   setSymbol(norm);
                                   setSymbolInput(fmt.displaySymbol);
+                                  if (targetItem?.market && targetItem.market !== activeMarketKey && universes[targetItem.market]) {
+                                    setActiveMarketKey(targetItem.market);
+                                  }
                                   setRightPanelTab('ORDER');
                                 }}
                                 className="px-2 py-0.5 rounded bg-[#00e476]/15 border border-[#00e476]/30 text-[#00e476] font-bold hover:bg-[#00e476]/25 cursor-pointer"
@@ -2605,7 +2892,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto custom-scrollbar p-1">
                       {activeUniverse.stocks.map(s => {
                         const fmt = formatTickerDisplay(s.symbol);
-                        const inWatchlist = activeWatchlist.symbols.some(symStr => normalizeTicker(symStr, activeMarketKey) === normalizeTicker(s.symbol, activeMarketKey));
+                        const inWatchlist = (activeWatchlist.items || []).some(i => i.symbol === s.symbol || i.cleanSymbol === fmt.cleanSymbol) ||
+                          activeWatchlist.symbols.some(symStr => normalizeTicker(symStr, activeMarketKey) === normalizeTicker(s.symbol, activeMarketKey));
                         return (
                           <div
                             key={s.symbol}
@@ -2627,7 +2915,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                               {fmt.displaySymbol}
                             </button>
                             <button
-                              onClick={() => handleToggleCurrentStockInWatchlist(s.symbol)}
+                              onClick={() => handleToggleCurrentStockInWatchlist(s.symbol, activeMarketKey, s.name, universes[activeMarketKey]?.exchange)}
                               className="p-0.5 rounded hover:text-[#00dbe7] cursor-pointer transition-colors"
                               title={inWatchlist ? `In "${activeWatchlist.name}" (Click to remove)` : `Add to "${activeWatchlist.name}"`}
                             >
