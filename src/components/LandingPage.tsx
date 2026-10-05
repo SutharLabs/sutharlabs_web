@@ -1086,7 +1086,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
           <div className="flex items-center gap-2 text-xs font-mono text-on-surface-variant select-none">
             <button onClick={() => setCurrentView('HOME')} className="hover:text-white transition-all bg-transparent border-none cursor-pointer">HOME</button>
             <span>/</span>
-            <span className="text-[#00e476]">DEVELOPMENT AGENCY CASES</span>
+            <span className="text-[#00e476]">ENGINEERING CASE STUDIES</span>
           </div>
 
           {/* Header copy */}
@@ -1096,7 +1096,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
               Custom Development Services Portfolio
             </h2>
             <p className="text-sm sm:text-base text-[#b9cacb] max-w-3xl font-sans font-light leading-relaxed">
-              Review our operating case studies and custom structural projects. As an elite development agency, we craft responsive architectures, high-performance visual dashboards, secure cross-platform frameworks, and intelligent local database syncs with complete type-safety.
+              Review our operating case studies and custom structural projects. As an advanced software engineering and research studio, we craft responsive architectures, high-performance visual dashboards, secure cross-platform frameworks, and intelligent local database syncs with complete type-safety.
             </p>
           </div>
 
@@ -1179,20 +1179,25 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
             })}
           </div>
 
-          {/* Corporate Agency Consultation Inquiry block */}
-          <div className="glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-[#00e476]/20 bg-[#00e476]/5 mt-10 space-y-4 max-w-3xl mx-auto text-center animate-[fadeIn_0.3s_ease-out]">
+          {/* Corporate Studio Consultation Inquiry block */}
+          <div className="glass-panel p-4 sm:p-6 sm:p-8 rounded-xl border border-[#00e476]/20 bg-[#00e476]/5 mt-10 space-y-4 max-w-3xl mx-auto text-center animate-[fadeIn_0.3s_ease-out]">
             <span className="material-symbols-outlined text-3xl sm:text-4xl text-[#00e476] select-none">chat_bubble_outline</span>
             <h3 className="text-xl font-bold text-white font-sans">Ready to Build Your Project?</h3>
             <p className="text-xs sm:text-sm text-[#b9cacb] leading-relaxed font-light">
-              We deliver high-end bespoke products ranging from enterprise-grade corporate portals to custom AI workflows. Sponsor our lab’s open-source tools by partnering with our expert engineering team.
+              We engineer bespoke software architectures ranging from enterprise corporate portals to custom AI workflows. Partner directly with our software engineering studio to bring your technical roadmap to life.
             </p>
             <div className="pt-2">
-              <a 
-                href="mailto:developer@sutharlabs.com"
-                className="inline-flex py-3 px-6 rounded-lg bg-[#00e476] text-[#002022] font-mono text-xs font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_15px_rgba(0,228,118,0.25)] transition-all"
+              <button 
+                type="button"
+                onClick={() => {
+                  setCurrentView('CONTACT');
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }}
+                className="inline-flex items-center gap-2 py-3 px-6 rounded-lg bg-[#00e476] text-[#002022] font-mono text-xs font-bold uppercase tracking-wider hover:brightness-110 shadow-[0_0_15px_rgba(0,228,118,0.25)] transition-all border-none cursor-pointer"
               >
-                Contact SutharLabs Agency
-              </a>
+                <span className="material-symbols-outlined text-sm select-none">send</span>
+                <span>Start Project Consultation</span>
+              </button>
             </div>
           </div>
 
@@ -1230,7 +1235,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
               Contact SutharLabs
             </h2>
             <p className="text-sm sm:text-base text-[#b9cacb] font-sans font-light leading-relaxed">
-              Have a project in mind, or want to collaborate with our software research lab? Get in touch below. By partnering with our agency, you directly sponsor our freemium developer tools, MCP servers, and open-source workflows.
+              Have a project in mind, or want to collaborate with our software research lab? Get in touch below. By partnering with our software engineering studio, you directly sponsor our freemium developer tools, MCP servers, and open-source workflows.
             </p>
           </div>
 
@@ -1240,7 +1245,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
             {/* Track 1: Enterprise Consultation Form (Cols 7) */}
             <div className="md:col-span-7 glass-panel p-4 sm:p-6 sm:p-4 sm:p-8 rounded-xl border border-outline/15 bg-surface-container-low/50 flex flex-col justify-between space-y-6">
               <div className="space-y-2">
-                <span className="px-2 py-0.5 rounded bg-[#00e476]/20 border border-[#00e476]/30 text-[#00e476] text-[9px] font-mono uppercase tracking-wider">Enterprise &amp; Agency Funnel</span>
+                <span className="px-2 py-0.5 rounded bg-[#00e476]/20 border border-[#00e476]/30 text-[#00e476] text-[9px] font-mono uppercase tracking-wider">Enterprise &amp; Studio Inquiries</span>
                 <h3 className="text-lg font-bold text-white">Start a Project Consultation</h3>
                 <p className="text-xs text-[#b9cacb] font-sans">Submit your project parameters and our engineering studio will get back to you within a few business days.</p>
               </div>
