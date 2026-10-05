@@ -101,9 +101,9 @@ async function seed() {
       name: "Stock Tracker",
       category: "Finance",
       type: "Native",
-      description: "Real-time stock data fetching, technical indicators (RSI, MACD, Bollinger), and algorithmic trading suggestions via native Node.js and Yahoo Finance.",
+      description: "Professional quantitative trading suite: interactive TradingView charts, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), 4 battle-tested quant presets, and visual condition builder.",
       iconSymbol: "monitoring",
-      version: "0.1.0"
+      version: "0.3.0"
     },
     {
       id: "wp_flow_designer",
@@ -137,15 +137,11 @@ async function seed() {
   for (const wp of inTreePlugins) {
     await prisma.workspacePlugin.upsert({
       where: { id: wp.id },
-      update: { ...wp, version: "0.1.0" },
+      update: wp,
       create: wp
     });
   }
-  // Ensure any other workspace plugin in DB is also updated to 0.1.0
-  await prisma.workspacePlugin.updateMany({
-    data: { version: "0.1.0" }
-  });
-  console.log(`  ✓ ${inTreePlugins.length} workspace plugins ensured in catalog at v0.1.0`);
+  console.log(`  ✓ ${inTreePlugins.length} workspace plugins ensured in catalog.`);
 
   // 2a. Seed initial version history records
   const initialVersions = [
@@ -157,6 +153,23 @@ async function seed() {
       minEngineVersion: "0.1.0",
       publishedBy: "Suthar Suresh"
     },
+    {
+      pluginId: "wp_stock_analyzer",
+      version: "0.2.0",
+      changelog: "Stage 1 Foundation & Global Markets: Interactive TradingView Lightweight Candlestick Charts (zoom, pan, volume histogram), Pluggable Global Market Universes (India NSE/BSE, US NYSE/NASDAQ, Europe LSE/DAX/Euronext, China/HK CSI 300/Hang Seng, Japan TSE), multi-currency normalization, and persistent database watchlists.",
+      checksumSha256: "d5a8c2918f4bb71900a7b489c44ea1d58e3881267b14072895bc803e404bf912",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh"
+    },
+    {
+      pluginId: "wp_stock_analyzer",
+      version: "0.3.0",
+      changelog: "Stage 2 Strategy Architecture & Visual Rule Builder: Pluggable IStrategy lifecycle engine, 4 battle-tested quant presets (EMA Golden / Death Cross, RSI Mean Reversion, Bollinger Bands Breakout, Supertrend Trend-Following), persistent JSON storage for custom strategies, and Visual Condition Builder UI with live sandbox test evaluator.",
+      checksumSha256: "7a94cb0211a7db8f134591a1820468351b9e0f54316d2cae89b4f0b080e7d592",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh"
+    },
+
     {
       pluginId: "wp_flow_designer",
       version: "0.1.0",

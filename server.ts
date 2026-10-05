@@ -119,14 +119,15 @@ async function seedDatabase() {
       await prisma.workspacePlugin.create({
         data: {
           id: "wp_stock_analyzer",
-          name: "Stock Market Analyzer",
+          name: "Stock Tracker",
           category: "Finance",
           type: "Native",
-          description: "Real-time stock data fetching, technical indicators (RSI, MACD, Bollinger), and algorithmic trading suggestions via native Node.js and Yahoo Finance.",
-          iconSymbol: "candlestick_chart",
-          version: "2.0.0"
+          description: "Professional quantitative trading suite: interactive TradingView charts, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), 4 battle-tested quant presets, and visual condition builder.",
+          iconSymbol: "monitoring",
+          version: "0.3.0"
         }
       });
+
     }
 
     // 2. Seed default users and their portfolios if none exist

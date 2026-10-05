@@ -18,16 +18,17 @@ interface PluginConfig {
 
 const IN_TREE_PLUGINS: PluginConfig[] = [
   {
-    dirName: 'StockAnalyzer',
+    dirName: 'StockTracker',
     id: 'wp_stock_analyzer',
-    name: 'Stock Analyzer & Algorithmic Trader',
-    version: '0.1.0',
+    name: 'Stock Tracker',
+    version: '0.3.0',
     category: 'Finance',
     type: 'Native',
-    description: 'Real-time Yahoo Finance quote streaming, technical indicators (RSI, MACD, Bollinger Bands), and deterministic paper trading.',
+    description: 'Professional quantitative trading suite: interactive TradingView charts, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), 4 battle-tested quant presets, and visual condition builder.',
     iconSymbol: 'monitoring',
     minEngineVersion: '0.1.0'
   },
+
   {
     dirName: 'FlowDesigner',
     id: 'wp_flow_designer',

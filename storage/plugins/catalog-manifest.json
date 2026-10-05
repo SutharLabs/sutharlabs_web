@@ -1,19 +1,19 @@
 [
   {
     "id": "wp_stock_analyzer",
-    "name": "Stock Analyzer & Algorithmic Trader",
-    "version": "0.1.0",
+    "name": "Stock Tracker",
+    "version": "0.3.0",
     "category": "Finance",
     "type": "Native",
-    "description": "Real-time Yahoo Finance quote streaming, technical indicators (RSI, MACD, Bollinger Bands), and deterministic paper trading.",
+    "description": "Professional quantitative trading suite: interactive TradingView charts, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), 4 battle-tested quant presets, and visual condition builder.",
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-04T14:46:17.060Z",
-    "archiveFileName": "wp_stock_analyzer-v0.1.0.zip",
-    "packageUrl": "/storage/plugins/wp_stock_analyzer-v0.1.0.zip",
-    "sizeBytes": 2651,
-    "checksumSha256": "2fb89d9905017f5eb48d961015773bfa937e776189f95c8c0dddd7788c4faa25"
+    "packagedAt": "2026-10-05T15:13:52.510Z",
+    "archiveFileName": "wp_stock_analyzer-v0.3.0.zip",
+    "packageUrl": "/storage/plugins/wp_stock_analyzer-v0.3.0.zip",
+    "sizeBytes": 13317,
+    "checksumSha256": "1c7b5645c4d38cb50a84afb4d65f9398128bbe4e326c0350dd1ee6057d07c2de"
   },
   {
     "id": "wp_flow_designer",
@@ -25,11 +25,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-04T14:46:18.997Z",
+    "packagedAt": "2026-10-05T15:13:56.752Z",
     "archiveFileName": "wp_flow_designer-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.1.0.zip",
-    "sizeBytes": 1818,
-    "checksumSha256": "056fcf0b5232f7ad5cb045f91af29650fa20e2f4e1684f0384e177e9c7031405"
+    "sizeBytes": 1837,
+    "checksumSha256": "036d71b78a6858b1364f03492413f33119af05659479417ffa58cb3cce6464e0"
   },
   {
     "id": "wp_doc_nexus",
@@ -41,11 +41,11 @@
     "iconSymbol": "description",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-04T14:46:20.743Z",
+    "packagedAt": "2026-10-05T15:13:58.666Z",
     "archiveFileName": "wp_doc_nexus-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.1.0.zip",
-    "sizeBytes": 2269,
-    "checksumSha256": "7565cb35ad020f3663db9edbabf4cd1ea9cf6beb1fc47a95e8c2c695dc215bff"
+    "sizeBytes": 2290,
+    "checksumSha256": "d09079af6f3581ee9942ea772d615e942de219a8f4b0ea6e2c16b8a2a3d237f9"
   },
   {
     "id": "wp_accounting",
@@ -57,10 +57,10 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-04T14:46:23.332Z",
+    "packagedAt": "2026-10-05T15:14:01.898Z",
     "archiveFileName": "wp_accounting-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.1.0.zip",
-    "sizeBytes": 1767,
-    "checksumSha256": "f2a213b95dfc19d88e4308fb30970e01d491ee97781a5ee1a7440ac4872d8e53"
+    "sizeBytes": 1785,
+    "checksumSha256": "f518a9ed915d10dcc49c3ae08776f6e5fb715321cec0d5c3f56f348b1c866dcf"
   }
 ]

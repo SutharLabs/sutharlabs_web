@@ -1,10 +1,12 @@
 {
   "id": "wp_stock_analyzer",
   "name": "Stock Tracker",
-  "version": "0.1.0",
+  "version": "0.3.0",
   "category": "Finance",
   "type": "Native",
+  "description": "Professional quantitative trading suite: interactive TradingView charts, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), 4 battle-tested quant presets, and visual condition builder.",
   "iconSymbol": "monitoring",
-  "route": "/workspace/stock-tracker",
-  "description": "Real-time market analytics, Yahoo Finance quote streaming, historical candlestick charting, and algorithmic technical indicators (RSI, MACD, Bollinger Bands)."
+  "main": "index.ts",
+  "minEngineVersion": "0.1.0",
+  "packagedAt": "2026-10-05T15:13:52.510Z"
 }

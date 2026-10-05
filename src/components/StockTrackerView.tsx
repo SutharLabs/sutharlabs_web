@@ -1907,6 +1907,19 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             </span>
           </div>
 
+          {/* Version & Stage Badge */}
+          <button
+            onClick={() => {
+              setSettingsActiveTab('STRATEGIES');
+              setShowSettingsDrawer(true);
+            }}
+            className="hidden md:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/25 font-mono text-[11px] font-bold cursor-pointer hover:bg-[#00dbe7]/20 transition-all shadow-sm"
+            title="SutharLabs Stock Tracker v0.3.0 (Stage 2: Strategy Architecture & Visual Rule Builder)"
+          >
+            <Cpu className="w-3.5 h-3.5 text-[#00dbe7]" />
+            <span>v0.3.0</span>
+          </button>
+
           {/* Sliding Panel Trigger */}
           <button
             onClick={() => setShowSettingsDrawer(true)}
@@ -1917,6 +1930,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             <span className="hidden sm:inline">Settings</span>
           </button>
         </div>
+
 
       </div>
 

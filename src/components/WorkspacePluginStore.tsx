@@ -63,23 +63,25 @@ const PLUGIN_METADATA_REGISTRY: Record<string, {
   accentBorder: string;
 }> = {
   wp_stock_analyzer: {
-    publisher: 'SutharLabs Sovereign Systems',
-    tags: ['Real-Time Ticker', 'Yahoo Finance', 'Technical Indicators', 'Prisma DB'],
+    publisher: 'SutharLabs Quantitative Systems',
+    tags: ['TradingView Charts', 'Global Equities', 'Quant Algorithms', 'Condition Builder', 'Neon DB'],
     features: [
-      'Live streaming Yahoo Finance ticker quotes with auto-reconnect',
-      'Technical indicators computation including RSI, MACD, and Bollinger Bands',
-      'Immutable paper trading audit log persisted directly to Neon Postgres',
-      'Deterministic buy/sell order simulator with cash balance tracking'
+      'Interactive TradingView Lightweight Charts with zoom, pan, crosshair, and volume histogram',
+      'Multi-Market Global Universes supporting India (NSE/BSE), US, Europe (LSE/DAX), China/HK, and Japan',
+      'Pluggable Strategy Engine (IStrategy) with 4 battle-tested quant presets (EMA Cross, RSI Reversion, BB Breakout, Supertrend)',
+      'Visual Strategy Condition Builder for zero-latency deterministic Buy/Sell rule creation with live sandbox test',
+      'Database-backed custom watchlists with multi-currency conversion and paper trading risk management'
     ],
     permissions: [
-      { name: 'External Network', description: 'Streams market quotes via Yahoo Finance APIs', granted: true },
-      { name: 'Database Persistence', description: 'Reads and writes trade records to the Trade table', granted: true },
-      { name: 'Terminal IPC', description: 'Dispatches live telemetry to the terminal audit drawer', granted: true }
+      { name: 'External Network', description: 'Streams global market quotes and candle feeds via Yahoo Finance APIs', granted: true },
+      { name: 'Database Persistence', description: 'Persists custom watchlists, trading rules, and portfolio transactions to Neon PostgreSQL', granted: true },
+      { name: 'Terminal IPC', description: 'Dispatches real-time algorithmic telemetry to the developer console drawer', granted: true }
     ],
-    accentColor: '#00e476',
-    accentBg: 'rgba(0, 228, 118, 0.1)',
-    accentBorder: 'rgba(0, 228, 118, 0.3)'
+    accentColor: '#00dbe7',
+    accentBg: 'rgba(0, 219, 231, 0.1)',
+    accentBorder: 'rgba(0, 219, 231, 0.3)'
   },
+
   wp_flow_designer: {
     publisher: 'SutharLabs Architecture Group',
     tags: ['Visual Canvas', 'Topology Nodes', 'Microservices', 'JSON Export'],
