@@ -346,6 +346,25 @@ export interface NewsSentimentAnalysis {
 - **AI Catalyst Drawer**: Clicking any news item opens an executive briefing detailing why the AI categorized the news as bullish/bearish, key risks, and projected price reaction timeframe.
 - **Chart Timeline Overlay**: Renders sentiment markers along the bottom of the candlestick chart, visually displaying whether news events triggered historical breakouts or selloffs.
 
+### 5.7. Autonomous Non-AI Operation & Graceful Degradation (Strict Decoupling)
+
+**Core Architectural Guarantee**: The SutharLabs Stock Tracker and Algorithmic Trading suite must remain **100% functional, autonomous, and self-sufficient** without opting into AI analysis or having an active LLM API key.
+
+#### 1. Zero AI Dependency for Core Trading Pillars
+- **Real-Time Tracking & Charts**: Candlestick price feeds, volume bars, order book ticks, and OHLC data render instantly with zero AI network overhead.
+- **Technical Indicator Computation**: RSI, MACD, Bollinger Bands, ATR, ADX, SuperTrend, EMA, SMA, and VWAP are computed locally in pure deterministic mathematics via `technicalindicators` / TypeScript math libraries. Execution latency is sub-millisecond ($< 2\text{ms}$).
+- **Algorithmic Signal Generation**: All built-in and user-authored strategies execute deterministically based strictly on mathematical entry/exit rules. When AI is disabled, $\text{Adjusted Confidence} \equiv \text{Technical Confidence}$.
+- **Historical Backtesting**: Runs entirely offline on historical OHLCV bar datasets. Never calls AI services during backtest loops, guaranteeing ultra-fast execution and zero token costs.
+- **Market Scanners**: Scans the entire NIFTY 50, NIFTY 500, or S&P 500 universe using pure technical condition filters (e.g., `EMA(20) crosses above EMA(50)`).
+- **End-of-Day (EOD) Trade Simulator**: Executes paper trades, updates cash/share ledgers, and tracks trailing stops based solely on price action and technical rules.
+
+#### 2. User Mode Selection & Fallback Behavior
+- **Global Workspace Toggle**: A simple UI switch in the tracker header:  
+  `[⚡ Pure Technical Mode]` vs. `[🤖 AI-Augmented Intelligence]` (Default: Pure Technical Mode).
+- **Graceful Network / Quota Degradation**:
+  - If the user opts into AI mode, but the network drops, rate limits occur, or no Gemini API key is configured, the system **never crashes or blocks order execution**.
+  - It seamlessly falls back to Pure Technical Mode with a discreet status badge: `AI Offline - Running Pure Technical Engine`.
+
 ---
 
 ## 6. Phased Implementation Roadmap
