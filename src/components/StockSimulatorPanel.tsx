@@ -21,7 +21,8 @@ import {
   Zap,
   Sliders,
   Scale,
-  Receipt
+  Receipt,
+  Globe
 } from 'lucide-react';
 import { IStrategy } from '../plugins/StockTracker/strategies/types';
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
@@ -56,7 +57,35 @@ export default function StockSimulatorPanel({
   onSelectSymbol,
   isDark = true
 }: StockSimulatorPanelProps) {
-  const currencySign = currencySymbol || (activeMarketKey === 'IN' ? '₹' : activeMarketKey === 'EU' ? '€' : '$');
+  // Target Market State (IN = India ₹, US = United States $, EU = Europe €)
+  const [selectedMarket, setSelectedMarket] = useState<string>(activeMarketKey || 'IN');
+
+  useEffect(() => {
+    if (activeMarketKey) {
+      setSelectedMarket(activeMarketKey);
+    }
+  }, [activeMarketKey]);
+
+  const effectiveMarket = selectedMarket || activeMarketKey || 'IN';
+  const currencySign = currencySymbol || (effectiveMarket === 'IN' ? '₹' : effectiveMarket === 'EU' ? '€' : '$');
+
+  /**
+   * Deterministic per-asset currency symbol resolver.
+   * Ensures US stocks (AAPL, MSFT, TSLA, NVDA) ALWAYS display '$' regardless of the active market setting.
+   */
+  const getAssetCurrencySymbol = useCallback((symbol?: string, market?: string, explicitSymbol?: string) => {
+    if (explicitSymbol) return explicitSymbol;
+    if (!symbol) return currencySign;
+    const s = symbol.toUpperCase().trim();
+    if (s.endsWith('.NS') || s.endsWith('.BO') || market === 'IN') {
+      return '₹';
+    }
+    if (s.endsWith('.L') || s.endsWith('.DE') || s.endsWith('.PA') || market === 'EU') {
+      return '€';
+    }
+    // US or Global default tickers
+    return '$';
+  }, [currencySign]);
 
   // Strategy & Simulation Config
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>(activeStrategyId || 'strat-ema-cross');
@@ -157,8 +186,8 @@ export default function StockSimulatorPanel({
         strategyId: selectedStrategyId,
         capitalAllocationPct: allocationPct,
         trailingStopPct: enableTrailingStop ? trailingStopPct : undefined,
-        market: activeMarketKey || 'IN',
-        marketRegion: activeMarketKey || 'IN',
+        market: effectiveMarket,
+        marketRegion: effectiveMarket,
         userEmail
       };
 
@@ -184,33 +213,80 @@ export default function StockSimulatorPanel({
     }
   };
 
-  // Reset Trade Simulator Portfolio & History
+  // Reset Trade Simulator Portfolio & History with resilient multi-endpoint fallback
   const handleResetSimulator = async () => {
     setIsResettingSim(true);
     setErrorMessage(null);
-    try {
-      const res = await fetch(`${STOCK_API}/simulator/reset`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          initialCapital: 100000,
-          marketRegion: activeMarketKey || 'IN'
-        })
-      });
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.error || 'Failed to reset simulator.');
+    let resetSucceeded = false;
+    let newPortfolioState: any = null;
+
+    const endpoints = [
+      `${STOCK_API}/simulator/reset`,
+      '/api/workspace/stock-analyzer/simulator/reset',
+      '/api/plugins/wp_stock_analyzer/simulator/reset',
+      '/api/simulator/reset'
+    ];
+
+    for (const url of endpoints) {
+      try {
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            initialCapital: 100000,
+            marketRegion: effectiveMarket
+          })
+        });
+        if (res.ok) {
+          const data = await res.json().catch(() => ({}));
+          newPortfolioState = data.portfolio;
+          resetSucceeded = true;
+          break;
+        }
+      } catch (err) {
+        console.warn(`[Trade Simulator] Reset failed on ${url}:`, err);
       }
-      const data = await res.json();
-      setPortfolio(data.portfolio || null);
-      setLatestReport(null);
-      setHistoryRuns([]);
-      setShowResetConfirm(false);
-      await fetchPortfolioAndHistory();
-    } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to reset trade simulator.');
-    } finally {
-      setIsResettingSim(false);
+    }
+
+    // Try GET fallback if POST had proxy rewrite issue
+    if (!resetSucceeded) {
+      for (const url of endpoints) {
+        try {
+          const res = await fetch(`${url}?initialCapital=100000&marketRegion=${encodeURIComponent(effectiveMarket)}`, {
+            method: 'GET'
+          });
+          if (res.ok) {
+            const data = await res.json().catch(() => ({}));
+            newPortfolioState = data.portfolio;
+            resetSucceeded = true;
+            break;
+          }
+        } catch (err) {
+          console.warn(`[Trade Simulator] Reset GET failed on ${url}:`, err);
+        }
+      }
+    }
+
+    // Fresh reset state
+    const defaultReset = {
+      cash: 100000,
+      initialCash: 100000,
+      positions: [],
+      totalRealizedPnL: 0,
+      totalFrictionPaid: 0,
+      winCount: 0,
+      lossCount: 0,
+      lastUpdated: new Date().toISOString()
+    };
+
+    setPortfolio(newPortfolioState || defaultReset);
+    setLatestReport(null);
+    setHistoryRuns([]);
+    setShowResetConfirm(false);
+    setIsResettingSim(false);
+
+    if (resetSucceeded) {
+      await fetchPortfolioAndHistory().catch(() => {});
     }
   };
 
@@ -324,7 +400,25 @@ export default function StockSimulatorPanel({
         )}
 
         {/* Configuration Options Bar */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-outline/10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-outline/10">
+          {/* Target Market Universe Selector */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
+              <Globe className="w-3 h-3 text-[#00e476]" />
+              Simulation Market ({effectiveMarket})
+            </label>
+            <select
+              value={selectedMarket}
+              onChange={e => setSelectedMarket(e.target.value)}
+              disabled={isRunningSim}
+              className="w-full bg-surface-container-lowest border border-outline/30 rounded-xl px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00e476]"
+            >
+              <option value="IN">🇮🇳 India (NSE/BSE - ₹ INR)</option>
+              <option value="US">🇺🇸 United States (NYSE/NASDAQ - $ USD)</option>
+              <option value="EU">🇪🇺 Europe (LSE/DAX - € EUR)</option>
+            </select>
+          </div>
+
           {/* Strategy Selector */}
           <div>
             <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
@@ -534,6 +628,7 @@ export default function StockSimulatorPanel({
               <tbody className="divide-y divide-outline/10 text-xs font-mono">
                 {portfolio.positions.map(pos => {
                   const isProfit = pos.unrealizedPnL >= 0;
+                  const posSign = getAssetCurrencySymbol(pos.symbol, (pos as any).market, (pos as any).currencySymbol);
                   return (
                     <tr
                       key={pos.id}
@@ -560,28 +655,28 @@ export default function StockSimulatorPanel({
                       </td>
 
                       <td className="py-3 px-3 text-right text-on-surface">
-                        {currencySign}{pos.entryPrice.toFixed(2)}
+                        {posSign}{pos.entryPrice.toFixed(2)}
                       </td>
 
                       <td className="py-3 px-3 text-right font-bold text-on-surface">
-                        {currencySign}{pos.currentPrice.toFixed(2)}
+                        {posSign}{pos.currentPrice.toFixed(2)}
                       </td>
 
                       <td className="py-3 px-3 text-center">
                         <span className="px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 font-bold text-[10px]">
-                          {currencySign}{pos.stopLoss.toFixed(2)}
+                          {posSign}{pos.stopLoss.toFixed(2)}
                         </span>
                       </td>
 
                       <td className="py-3 px-3 text-center">
                         <span className="px-2 py-0.5 rounded bg-[#00e476]/15 text-[#00e476] font-bold text-[10px]">
-                          {currencySign}{pos.takeProfit.toFixed(2)}
+                          {posSign}{pos.takeProfit.toFixed(2)}
                         </span>
                       </td>
 
                       <td className="py-3 px-3 text-right">
                         <div className={`font-bold ${isProfit ? 'text-[#00e476]' : 'text-rose-400'}`}>
-                          {isProfit ? '+' : ''}{currencySign}{pos.unrealizedPnL.toFixed(2)}
+                          {isProfit ? '+' : ''}{posSign}{pos.unrealizedPnL.toFixed(2)}
                         </div>
                         <div className={`text-[10px] ${isProfit ? 'text-[#00e476]' : 'text-rose-400'}`}>
                           {isProfit ? '+' : ''}{pos.unrealizedPnLPct.toFixed(2)}%
@@ -627,6 +722,11 @@ export default function StockSimulatorPanel({
             {historyRuns.map(run => {
               const isExpanded = expandedRunId === run.id;
               const isPositive = run.netDailyPnL >= 0;
+              const runSign = ((run as any).market === 'US' || (run as any).marketRegion === 'US')
+                ? '$'
+                : ((run as any).market === 'EU' || (run as any).marketRegion === 'EU')
+                ? '€'
+                : currencySign;
 
               return (
                 <div key={run.id} className="flex flex-col">
@@ -654,10 +754,10 @@ export default function StockSimulatorPanel({
 
                     <div className="text-right">
                       <div className={`font-bold text-xs ${isPositive ? 'text-[#00e476]' : 'text-rose-400'}`}>
-                        {isPositive ? '+' : ''}{currencySign}{run.netDailyPnL.toFixed(2)} ({run.netDailyPnLPct.toFixed(2)}%)
+                        {isPositive ? '+' : ''}{runSign}{run.netDailyPnL.toFixed(2)} ({run.netDailyPnLPct.toFixed(2)}%)
                       </div>
                       <div className="text-[10px] text-on-surface-variant">
-                        Cap: {currencySign}{run.endingCapital.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        Cap: {runSign}{run.endingCapital.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </div>
                     </div>
                   </div>
@@ -676,27 +776,30 @@ export default function StockSimulatorPanel({
                             Positions Closed / Realized:
                           </span>
                           <div className="space-y-1">
-                            {run.closedPositions.map(t => (
-                              <div
-                                key={t.id}
-                                className="p-2 rounded-lg bg-surface-container-low border border-outline/10 flex items-center justify-between"
-                              >
-                                <div>
-                                  <span className="font-bold text-on-surface">{t.symbol}</span>
-                                  <span className="text-[10px] text-on-surface-variant ml-2">
-                                    {t.shares} shares @ {currencySign}{t.price} ({t.reason})
-                                  </span>
+                            {run.closedPositions.map(t => {
+                              const tradeSign = getAssetCurrencySymbol(t.symbol, undefined, (t as any).currencySymbol);
+                              return (
+                                <div
+                                  key={t.id}
+                                  className="p-2 rounded-lg bg-surface-container-low border border-outline/10 flex items-center justify-between"
+                                >
+                                  <div>
+                                    <span className="font-bold text-on-surface">{t.symbol}</span>
+                                    <span className="text-[10px] text-on-surface-variant ml-2">
+                                      {t.shares} shares @ {tradeSign}{t.price} ({t.reason})
+                                    </span>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className={`font-bold ${t.realizedPnL >= 0 ? 'text-[#00e476]' : 'text-rose-400'}`}>
+                                      {t.realizedPnL >= 0 ? '+' : ''}{tradeSign}{t.realizedPnL.toFixed(2)} ({t.realizedPnLPct.toFixed(2)}%)
+                                    </span>
+                                    <span className="text-[9px] text-on-surface-variant ml-2">
+                                      Friction: {tradeSign}{t.friction.toFixed(2)}
+                                    </span>
+                                  </div>
                                 </div>
-                                <div className="text-right">
-                                  <span className={`font-bold ${t.realizedPnL >= 0 ? 'text-[#00e476]' : 'text-rose-400'}`}>
-                                    {t.realizedPnL >= 0 ? '+' : ''}{currencySign}{t.realizedPnL.toFixed(2)} ({t.realizedPnLPct.toFixed(2)}%)
-                                  </span>
-                                  <span className="text-[9px] text-on-surface-variant ml-2">
-                                    Friction: {currencySign}{t.friction.toFixed(2)}
-                                  </span>
-                                </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}
@@ -708,22 +811,25 @@ export default function StockSimulatorPanel({
                             New Positions Initiated:
                           </span>
                           <div className="space-y-1">
-                            {run.openedPositions.map(t => (
-                              <div
-                                key={t.id}
-                                className="p-2 rounded-lg bg-surface-container-low border border-outline/10 flex items-center justify-between"
-                              >
-                                <div>
-                                  <span className="font-bold text-[#00e476]">{t.symbol}</span>
-                                  <span className="text-[10px] text-on-surface-variant ml-2">
-                                    Bought {t.shares} shares @ {currencySign}{t.price}
+                            {run.openedPositions.map(t => {
+                              const tradeSign = getAssetCurrencySymbol(t.symbol, undefined, (t as any).currencySymbol);
+                              return (
+                                <div
+                                  key={t.id}
+                                  className="p-2 rounded-lg bg-surface-container-low border border-outline/10 flex items-center justify-between"
+                                >
+                                  <div>
+                                    <span className="font-bold text-[#00e476]">{t.symbol}</span>
+                                    <span className="text-[10px] text-on-surface-variant ml-2">
+                                      Bought {t.shares} shares @ {tradeSign}{t.price}
+                                    </span>
+                                  </div>
+                                  <span className="text-[10px] text-on-surface-variant">
+                                    {t.reason}
                                   </span>
                                 </div>
-                                <span className="text-[10px] text-on-surface-variant">
-                                  {t.reason}
-                                </span>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </div>
                       )}

@@ -7,6 +7,7 @@ import crypto from "crypto";
 import { getPrismaClient, hashPassword, generateToken, verifyToken } from "./api/_utils.js";
 import { PluginEngine } from "./src/plugins/PluginEngine.js";
 import { registerAllPluginRoutes } from "./src/plugins/serverRegistry.js";
+import { resetSimulator } from "./src/plugins/StockTracker/simulator/index.js";
 import { getSystemTelemetry } from "./src/services/telemetryService.js";
 import { notifyAdminNewInquiry } from "./src/services/emailService.js";
 import {
@@ -1672,6 +1673,25 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
 
   // ==================== REGISTER IN-TREE MODULAR PLUGINS ====================
   registerAllPluginRoutes(app);
+
+  // Direct route aliases for Trade Simulator reset across all namespaces
+  app.all([
+    "/api/workspace/stock-analyzer/simulator/reset",
+    "/api/workspace/stock-analyzer/simulator/reset/",
+    "/api/plugins/wp_stock_analyzer/simulator/reset",
+    "/api/plugins/wp_stock_analyzer/simulator/reset/",
+    "/api/simulator/reset",
+    "/api/simulator/reset/"
+  ], (req, res) => {
+    try {
+      const { initialCapital, marketRegion } = req.body || req.query || {};
+      const resetState = resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN");
+      res.json({ success: true, message: "Trade Simulator reset successfully.", portfolio: resetState });
+    } catch (e: any) {
+      console.error("[Trade Simulator] Reset error:", e);
+      res.status(500).json({ error: e.message || "Failed to reset simulator." });
+    }
+  });
 
   // ==================== INITIALIZE PLUGIN ENGINE ====================
   const pluginEngine = new PluginEngine(app);

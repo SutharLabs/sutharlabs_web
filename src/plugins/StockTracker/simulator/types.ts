@@ -3,6 +3,8 @@ export interface EODPosition {
   symbol: string;
   name: string;
   market: string;
+  currency?: string;
+  currencySymbol?: string;
   shares: number;
   entryPrice: number;
   currentPrice: number;
@@ -22,6 +24,8 @@ export interface EODTradeExecution {
   companyName: string;
   shares: number;
   price: number;
+  currency?: string;
+  currencySymbol?: string;
   realizedPnL: number;
   realizedPnLPct: number;
   friction: number;

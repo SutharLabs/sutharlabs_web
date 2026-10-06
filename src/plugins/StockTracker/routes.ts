@@ -938,9 +938,9 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  router.post("/simulator/reset", (req: any, res: any) => {
+  router.all(["/simulator/reset", "/simulator/reset/"], (req: any, res: any) => {
     try {
-      const { initialCapital, marketRegion } = req.body || {};
+      const { initialCapital, marketRegion } = req.body || req.query || {};
       const resetState = resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN");
       res.json({ success: true, message: "Trade Simulator reset successfully.", portfolio: resetState });
     } catch (e: any) {

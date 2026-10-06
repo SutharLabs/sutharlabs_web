@@ -172,6 +172,11 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
         store.cash += netProceeds;
         store.totalRealizedPnL += realizedPnL;
 
+        const isIndian = pos.symbol.endsWith('.NS') || pos.symbol.endsWith('.BO') || region === 'IN';
+        const isEU = pos.symbol.endsWith('.L') || pos.symbol.endsWith('.DE') || pos.symbol.endsWith('.PA') || region === 'EU';
+        const tradeCurr = isIndian ? 'INR' : (isEU ? 'EUR' : 'USD');
+        const tradeCurrSym = isIndian ? '₹' : (isEU ? '€' : '$');
+
         closedTrades.push({
           id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
           type: exitType,
@@ -179,6 +184,8 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
           companyName: pos.name,
           shares: pos.shares,
           price: parseFloat(exitPrice.toFixed(2)),
+          currency: tradeCurr,
+          currencySymbol: tradeCurrSym,
           realizedPnL: parseFloat(realizedPnL.toFixed(2)),
           realizedPnLPct: parseFloat(realizedPnLPct.toFixed(2)),
           friction: parseFloat(friction.totalFriction.toFixed(2)),
@@ -253,11 +260,18 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             const stopLoss = signal.stopLoss || parseFloat((entryPrice * 0.95).toFixed(2));
             const takeProfit = signal.targetPrice || (signal as any).takeProfit || parseFloat((entryPrice * 1.10).toFixed(2));
 
+            const isIndian = normSym.endsWith('.NS') || normSym.endsWith('.BO') || item.market === 'IN';
+            const isEU = normSym.endsWith('.L') || normSym.endsWith('.DE') || normSym.endsWith('.PA') || item.market === 'EU';
+            const posCurr = isIndian ? 'INR' : (isEU ? 'EUR' : 'USD');
+            const posCurrSym = isIndian ? '₹' : (isEU ? '€' : '$');
+
             const newPos: EODPosition = {
               id: `pos-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
               symbol: normSym,
               name: quote?.name || formatTickerDisplay(normSym).cleanSymbol,
               market: item.market,
+              currency: posCurr,
+              currencySymbol: posCurrSym,
               shares,
               entryPrice: parseFloat(entryPrice.toFixed(2)),
               currentPrice: parseFloat(entryPrice.toFixed(2)),
@@ -279,6 +293,8 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
               companyName: newPos.name,
               shares,
               price: parseFloat(entryPrice.toFixed(2)),
+              currency: posCurr,
+              currencySymbol: posCurrSym,
               realizedPnL: 0,
               realizedPnLPct: 0,
               friction: parseFloat(friction.totalFriction.toFixed(2)),

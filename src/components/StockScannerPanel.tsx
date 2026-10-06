@@ -25,6 +25,7 @@ import {
   Search
 } from 'lucide-react';
 import { IStrategy } from '../plugins/StockTracker/strategies/types';
+import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
 import { ScannerCandidate, ScannerReport } from '../plugins/StockTracker/scanner/types';
 
 export interface StockScannerPanelProps {
@@ -63,6 +64,42 @@ export default function StockScannerPanel({
   const [minVolumeSpike, setMinVolumeSpike] = useState<number>(1.0);
   const [signalFilter, setSignalFilter] = useState<'ALL' | 'BUY' | 'SELL' | 'HIGH_CONVICTION'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Complete Catalog of Strategies (Presets + Custom + Community)
+  const [allStrategies, setAllStrategies] = useState<IStrategy[]>(() => {
+    const map = new Map<string, IStrategy>();
+    PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+    if (strategies && strategies.length > 0) strategies.forEach(s => map.set(s.id, s));
+    return Array.from(map.values());
+  });
+
+  useEffect(() => {
+    const loadFullStrategies = async () => {
+      try {
+        const res = await fetch(`${STOCK_API}/strategies`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const map = new Map<string, IStrategy>();
+            PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+            data.forEach(s => map.set(s.id, s));
+            if (strategies) strategies.forEach(s => map.set(s.id, s));
+            setAllStrategies(Array.from(map.values()));
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('[Scanner] Error fetching strategies list:', e);
+      }
+      if (strategies && strategies.length > 0) {
+        const map = new Map<string, IStrategy>();
+        PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+        strategies.forEach(s => map.set(s.id, s));
+        setAllStrategies(Array.from(map.values()));
+      }
+    };
+    loadFullStrategies();
+  }, [strategies]);
 
   // Synchronize universe with active market whenever changed
   useEffect(() => {
@@ -270,7 +307,7 @@ export default function StockScannerPanel({
           <div>
             <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
               <Zap className="w-3 h-3 text-[#00e476]" />
-              Algorithm Strategy
+              Algorithm Strategy ({allStrategies.length} Available)
             </label>
             <select
               value={selectedStrategy}
@@ -278,9 +315,9 @@ export default function StockScannerPanel({
               disabled={isScanning}
               className="w-full bg-surface-container-lowest border border-outline/30 rounded-xl px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7]"
             >
-              {strategies.map(s => (
+              {allStrategies.map(s => (
                 <option key={s.id} value={s.id}>
-                  {s.name} ({s.market})
+                  {s.name} ({s.market || 'GLOBAL'})
                 </option>
               ))}
             </select>
