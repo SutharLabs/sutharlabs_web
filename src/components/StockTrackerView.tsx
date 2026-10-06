@@ -965,6 +965,24 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     tickerScrollRef.current.scrollBy({ left: offset, behavior: 'smooth' });
   }, []);
 
+  // Top Bar Action Tools Strip Carousel Navigation
+  const topToolsScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollTopToolsLeft, setCanScrollTopToolsLeft] = useState<boolean>(false);
+  const [canScrollTopToolsRight, setCanScrollTopToolsRight] = useState<boolean>(false);
+
+  const checkTopToolsScroll = useCallback(() => {
+    if (!topToolsScrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = topToolsScrollRef.current;
+    setCanScrollTopToolsLeft(scrollLeft > 2);
+    setCanScrollTopToolsRight(scrollLeft + clientWidth < scrollWidth - 2);
+  }, []);
+
+  const scrollTopTools = useCallback((direction: 'left' | 'right') => {
+    if (!topToolsScrollRef.current) return;
+    const offset = direction === 'left' ? -180 : 180;
+    topToolsScrollRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+  }, []);
+
 
 
   // Handle Splitter Mouse Drag
@@ -1315,6 +1333,20 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       ro.disconnect();
     };
   }, [checkTickerScroll, activeWatchlist?.symbols, watchlistQuotes]);
+
+  // Sync Top Bar Action Tools Scroll Indicators
+  useEffect(() => {
+    checkTopToolsScroll();
+    const el = topToolsScrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', checkTopToolsScroll, { passive: true });
+    const ro = new ResizeObserver(checkTopToolsScroll);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', checkTopToolsScroll);
+      ro.disconnect();
+    };
+  }, [checkTopToolsScroll, sidebarWidth]);
 
   // Currency helper
   const curSymbol = reportingCurrency !== 'AUTO'
@@ -2125,17 +2157,17 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       )}
 
       {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (CLEAN, ONLY ACTIVE MARKET) ── */}
-      <div className="relative z-50 glass-panel rounded-xl p-3 border border-outline/20 flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest/80 shadow-sm">
+      <div className="relative z-50 glass-panel rounded-xl p-2.5 sm:p-3 border border-outline/20 flex items-center justify-between gap-3 bg-surface-container-lowest/80 shadow-sm">
         
-        {/* Left Group: Continuous Active Market Selector, Session Pill & Search Box */}
-        <div className="flex items-center gap-2.5 flex-1 min-w-[280px]">
+        {/* Left Group: Continuous Active Market Selector, Session Pill & Search Box (Stable Width) */}
+        <div className="flex items-center gap-2 shrink-0">
           {/* Active Market Badge (Click to open Market Settings in Drawer) */}
           <button
             onClick={() => {
               setSettingsActiveTab('MARKET');
               setShowSettingsDrawer(true);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface border border-outline/25 hover:border-[#00dbe7] transition-all cursor-pointer font-mono text-xs shadow-sm group shrink-0"
+            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface border border-outline/25 hover:border-[#00dbe7] transition-all cursor-pointer font-mono text-xs shadow-sm group shrink-0"
             title="Click to change Market Universe in Settings"
           >
             <span className="text-base leading-none">{activeUniverse?.flag || '🇮🇳'}</span>
@@ -2153,7 +2185,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           )}
 
           {/* Continuous Search & Ticker Input with Real-Time Suggestions */}
-          <div className="relative flex-1 min-w-[180px] max-w-sm lg:max-w-md z-50">
+          <div className="relative w-44 sm:w-52 md:w-60 shrink-0 z-50">
             <div className="relative flex items-center">
               <input
                 value={symbolInput}
@@ -2178,11 +2210,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     }
                   }
                 }}
-                placeholder="Search symbol or company (e.g. Ather, Reliance, Apple)..."
-                className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg pl-3 pr-16 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] tracking-wider"
+                placeholder="Search symbol/company..."
+                className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg pl-2.5 pr-14 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] tracking-wider"
               />
               {isSearching && (
-                <span className="absolute right-14 w-2 h-2 rounded-full bg-[#00dbe7] animate-ping" />
+                <span className="absolute right-12 w-2 h-2 rounded-full bg-[#00dbe7] animate-ping" />
               )}
               <button
                 onClick={() => {
@@ -2197,7 +2229,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   }
                   setShowDropdown(false);
                 }}
-                className="absolute right-1 top-1 bottom-1 px-3 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-md hover:brightness-110 transition-all cursor-pointer whitespace-nowrap"
+                className="absolute right-1 top-1 bottom-1 px-2.5 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-md hover:brightness-110 transition-all cursor-pointer whitespace-nowrap"
               >
                 Load
               </button>
@@ -2279,87 +2311,122 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </div>
         </div>
 
-        {/* Right: Live Quote Pill & Sliding Settings Overlay Trigger */}
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-base font-bold text-on-surface">
-              {curSymbol}{quote?.current_price?.toFixed(2) ?? '—'}
-            </span>
-            <span className={`flex items-center gap-0.5 font-mono text-xs px-2 py-0.5 rounded ${
-              isPositive ? 'bg-[#00e476]/15 text-[#00e476]' : 'bg-[#ff6b6b]/15 text-[#ff6b6b]'
-            }`}>
-              {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-              <span>{isPositive ? '+' : ''}{quote?.change_percent?.toFixed(2) ?? '0'}%</span>
-            </span>
+        {/* Right Group: Action Tools with Horizontal Scroll Carousel Navigation */}
+        <div className="group/toptools relative flex-1 flex items-center min-w-0 justify-end overflow-hidden ml-2">
+          {/* Left Scroll Button (appears when scrollable) */}
+          {canScrollTopToolsLeft && (
+            <button
+              type="button"
+              onClick={() => scrollTopTools('left')}
+              className="absolute left-0 z-20 flex items-center justify-center w-6 h-7 rounded-md bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
+              title="Scroll action tools left"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Right Scroll Button (appears when scrollable) */}
+          {canScrollTopToolsRight && (
+            <button
+              type="button"
+              onClick={() => scrollTopTools('right')}
+              className="absolute right-0 z-20 flex items-center justify-center w-6 h-7 rounded-md bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
+              title="Scroll action tools right"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Action Tools Scrollable Track */}
+          <div
+            ref={topToolsScrollRef}
+            onWheel={(e) => {
+              if (e.deltaY !== 0 && topToolsScrollRef.current) {
+                topToolsScrollRef.current.scrollLeft += e.deltaY;
+              }
+            }}
+            className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth py-0.5 px-6 whitespace-nowrap"
+          >
+            {/* 1. Live Quote Pill */}
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <span className="font-mono text-sm sm:text-base font-bold text-on-surface">
+                {curSymbol}{quote?.current_price?.toFixed(2) ?? '—'}
+              </span>
+              <span className={`flex items-center gap-0.5 font-mono text-[11px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded ${
+                isPositive ? 'bg-[#00e476]/15 text-[#00e476]' : 'bg-[#ff6b6b]/15 text-[#ff6b6b]'
+              }`}>
+                {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
+                <span>{isPositive ? '+' : ''}{quote?.change_percent?.toFixed(2) ?? '0'}%</span>
+              </span>
+            </div>
+
+            {/* 2. Version & Stage Badge (Stage 6 v1.0.0 Production Milestone) */}
+            <button
+              onClick={() => {
+                setSettingsActiveTab('SCANNER');
+                setShowSettingsDrawer(true);
+              }}
+              className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 font-mono text-[11px] font-bold cursor-pointer hover:bg-[#00e476]/20 transition-all shadow-sm shrink-0"
+              title="SutharLabs Stock Tracker v1.0.0 (Stage 6: Multi-Market Screener, Autonomous EOD Trade Simulator & Webhook Alerts - Production)"
+            >
+              <Cpu className="w-3.5 h-3.5 text-[#00e476]" />
+              <span>v1.0.0</span>
+              <span className="px-1.5 py-0.2 rounded bg-[#00e476]/20 text-[#00e476] border border-[#00e476]/40 text-[9px] uppercase tracking-wider font-semibold">
+                PROD
+              </span>
+            </button>
+
+            {/* 3. Quick Algo Marketplace Button */}
+            <button
+              onClick={() => {
+                setSettingsActiveTab('STRATEGIES');
+                setBuilderMode('CATALOG');
+                setShowSettingsDrawer(true);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-[#00dbe7]/15 to-emerald-500/15 border border-[#00dbe7]/35 text-[#00dbe7] font-mono text-xs font-semibold hover:border-[#00dbe7] hover:brightness-110 transition-all cursor-pointer shadow-sm shrink-0"
+              title="Explore Community Algorithmic Trading Marketplace"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#00dbe7]" />
+              <span>Algo Marketplace</span>
+            </button>
+
+            {/* 4. Sliding Settings Overlay Trigger */}
+            <button
+              onClick={() => setShowSettingsDrawer(true)}
+              className="px-3 py-1.5 border border-outline/30 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer bg-surface-container-low hover:text-[#00dbe7] hover:border-[#00dbe7]/50 shadow-sm shrink-0"
+              title="Open Settings & Workspace Preferences"
+            >
+              <Sliders className="w-3.5 h-3.5 text-[#00dbe7]" />
+              <span>Settings</span>
+            </button>
+
+            {/* 5. Quick Screener Button (Moved to End as requested) */}
+            <button
+              onClick={() => {
+                setSettingsActiveTab('SCANNER');
+                setShowSettingsDrawer(true);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-outline/30 text-on-surface hover:text-[#00dbe7] hover:border-[#00dbe7]/50 font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm shrink-0"
+              title="Open Global Multi-Market Screener"
+            >
+              <Eye className="w-3.5 h-3.5 text-[#00dbe7]" />
+              <span>Screener</span>
+            </button>
+
+            {/* 6. Quick Simulator Button (Moved to End as requested) */}
+            <button
+              onClick={() => {
+                setSettingsActiveTab('SIMULATOR');
+                setShowSettingsDrawer(true);
+              }}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-outline/30 text-on-surface hover:text-[#00e476] hover:border-[#00e476]/50 font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm shrink-0"
+              title="Open Automated EOD Batch Trade Simulator"
+            >
+              <Play className="w-3.5 h-3.5 text-[#00e476]" />
+              <span>Simulator</span>
+            </button>
           </div>
-
-          {/* Version & Stage Badge (Stage 6 v1.0.0 Production Milestone) */}
-          <button
-            onClick={() => {
-              setSettingsActiveTab('SCANNER');
-              setShowSettingsDrawer(true);
-            }}
-            className="hidden md:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 font-mono text-[11px] font-bold cursor-pointer hover:bg-[#00e476]/20 transition-all shadow-sm"
-            title="SutharLabs Stock Tracker v1.0.0 (Stage 6: Multi-Market Screener, Autonomous EOD Trade Simulator & Webhook Alerts - Production)"
-          >
-            <Cpu className="w-3.5 h-3.5 text-[#00e476]" />
-            <span>v1.0.0</span>
-            <span className="px-1.5 py-0.2 rounded bg-[#00e476]/20 text-[#00e476] border border-[#00e476]/40 text-[9px] uppercase tracking-wider font-semibold">
-              PROD
-            </span>
-          </button>
-
-          {/* Quick Screener Button */}
-          <button
-            onClick={() => {
-              setSettingsActiveTab('SCANNER');
-              setShowSettingsDrawer(true);
-            }}
-            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-outline/30 text-on-surface hover:text-[#00dbe7] hover:border-[#00dbe7]/50 font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm"
-            title="Open Global Multi-Market Screener"
-          >
-            <Eye className="w-3.5 h-3.5 text-[#00dbe7]" />
-            <span>Screener</span>
-          </button>
-
-          {/* Quick Simulator Button */}
-          <button
-            onClick={() => {
-              setSettingsActiveTab('SIMULATOR');
-              setShowSettingsDrawer(true);
-            }}
-            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-outline/30 text-on-surface hover:text-[#00e476] hover:border-[#00e476]/50 font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm"
-            title="Open Automated EOD Batch Trade Simulator"
-          >
-            <Play className="w-3.5 h-3.5 text-[#00e476]" />
-            <span>Simulator</span>
-          </button>
-
-          {/* Quick Algo Marketplace Button */}
-          <button
-            onClick={() => {
-              setSettingsActiveTab('STRATEGIES');
-              setBuilderMode('CATALOG');
-              setShowSettingsDrawer(true);
-            }}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-[#00dbe7]/15 to-emerald-500/15 border border-[#00dbe7]/35 text-[#00dbe7] font-mono text-xs font-semibold hover:border-[#00dbe7] hover:brightness-110 transition-all cursor-pointer shadow-sm"
-            title="Explore Community Algorithmic Trading Marketplace"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-[#00dbe7]" />
-            <span>Algo Marketplace</span>
-          </button>
-
-          {/* Sliding Panel Trigger */}
-          <button
-            onClick={() => setShowSettingsDrawer(true)}
-            className="px-3 py-1.5 border border-outline/30 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer bg-surface-container-low hover:text-[#00dbe7] hover:border-[#00dbe7]/50 shadow-sm"
-            title="Open Settings & Workspace Preferences"
-          >
-            <Sliders className="w-3.5 h-3.5 text-[#00dbe7]" />
-            <span className="hidden sm:inline">Settings</span>
-          </button>
         </div>
-
 
       </div>
 
