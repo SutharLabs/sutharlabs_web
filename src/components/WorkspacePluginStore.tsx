@@ -1061,7 +1061,7 @@ export default function WorkspacePluginStore({
         return (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-fade-in">
             <div
-              className="relative w-full max-w-2xl max-h-[90vh] flex flex-col rounded-3xl border border-outline/40 bg-surface-container-lowest/95 shadow-2xl overflow-hidden"
+              className="relative w-full max-w-4xl xl:max-w-5xl max-h-[90vh] flex flex-col rounded-3xl border border-outline/40 bg-surface-container-lowest/95 shadow-2xl overflow-hidden"
               onClick={e => e.stopPropagation()}
             >
               {/* Modal Header */}
@@ -1187,12 +1187,12 @@ export default function WorkspacePluginStore({
               </div>
 
               {/* Modal Tabs Navigation */}
-              <div className="flex items-center gap-1 px-6 pt-3 border-b border-outline/20 bg-surface-container-lowest overflow-x-auto custom-scrollbar">
+              <div className="flex items-center gap-1 px-6 border-b border-outline/20 bg-surface-container-lowest overflow-x-auto scrollbar-hide [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden shrink-0">
                 {(['overview', 'features', 'permissions', 'releases', 'reviews', 'specs'] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setModalTab(tab)}
-                    className={`px-4 py-2.5 text-xs font-mono capitalize transition-all border-b-2 font-medium shrink-0 flex items-center gap-1.5 ${
+                    className={`px-4 py-3 text-xs font-mono capitalize transition-all border-b-2 font-medium shrink-0 flex items-center gap-1.5 -mb-px ${
                       modalTab === tab
                         ? 'border-[#00dbe7] text-[#00dbe7] font-bold'
                         : 'border-transparent text-on-surface-variant hover:text-on-surface'
@@ -1202,12 +1202,12 @@ export default function WorkspacePluginStore({
                       {tab === 'reviews' ? 'Reviews & Ratings' : tab === 'releases' ? 'Releases & Changelog' : tab}
                     </span>
                     {tab === 'reviews' && (
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-surface-container text-on-surface-variant font-bold">
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-surface-container text-on-surface-variant font-bold leading-none">
                         {reviews.length}
                       </span>
                     )}
                     {tab === 'releases' && (
-                      <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-surface-container text-on-surface-variant font-bold">
+                      <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-surface-container text-on-surface-variant font-bold leading-none">
                         {(activeModalPlugin.versions || []).length}
                       </span>
                     )}
@@ -1216,7 +1216,7 @@ export default function WorkspacePluginStore({
               </div>
 
               {/* Modal Body */}
-              <div className="p-6 overflow-y-auto max-h-[50vh] custom-scrollbar space-y-4">
+              <div className="p-6 overflow-y-auto max-h-[60vh] custom-scrollbar space-y-4">
                 {modalTab === 'overview' && (
                   <div className="space-y-4">
                     <div>
