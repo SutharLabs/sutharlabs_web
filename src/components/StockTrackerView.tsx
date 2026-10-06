@@ -1289,9 +1289,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   // ── 1. Fetch Global Market Universes ───────────────────────────────────────
   useEffect(() => {
     fetch(`${STOCK_API}/markets`)
-      .then(r => r.json())
+      .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (data && Object.keys(data).length > 0) {
+        if (data && typeof data === 'object' && !data.error && data.IN && data.IN.flag) {
           setUniverses(data);
         }
       })
@@ -1484,7 +1484,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     // 1. Instant local search across all registered universes
     const localMatches: StockSearchResult[] = [];
     const seen = new Set<string>();
-    const allStocks = Object.values(universes).flatMap(u => u.stocks);
+    const allStocks = Object.values(universes).flatMap(u => (u && Array.isArray(u.stocks)) ? u.stocks : []);
     const qLower = q.toLowerCase();
     const fuzzyQ = qLower.length > 4 ? qLower.slice(0, -1) : qLower;
 
@@ -2037,7 +2037,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   };
 
   // Watchlist filter
-  const activeUniverse = universes[activeMarketKey] || universes['IN'];
+  const activeUniverse = universes[activeMarketKey] || universes['IN'] || DEFAULT_UNIVERSES[activeMarketKey] || DEFAULT_UNIVERSES['IN'];
   const currentStockList = activeUniverse?.stocks || [];
 
   const filteredStocks = currentStockList.filter(s =>
@@ -2089,9 +2089,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface border border-outline/25 hover:border-[#00dbe7] transition-all cursor-pointer font-mono text-xs shadow-sm group"
             title="Click to change Market Universe in Settings"
           >
-            <span className="text-base leading-none">{activeUniverse.flag}</span>
-            <span className="font-bold text-[#00dbe7] group-hover:underline">{activeUniverse.name}</span>
-            <span className="text-[10px] text-on-surface-variant font-mono">({activeUniverse.exchange})</span>
+            <span className="text-base leading-none">{activeUniverse?.flag || '🇮🇳'}</span>
+            <span className="font-bold text-[#00dbe7] group-hover:underline">{activeUniverse?.name || 'Active Market'}</span>
+            <span className="text-[10px] text-on-surface-variant font-mono">({activeUniverse?.exchange || 'NSE'})</span>
             <ChevronDown className="w-3.5 h-3.5 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors ml-0.5" />
           </button>
 
@@ -3690,7 +3690,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             {activeTab === 'OUTPUT' && (
               <div className="text-on-surface-variant space-y-0.5">
                 <div>&gt; SutharLabs Trading Engine v2.0 connected</div>
-                <div>&gt; Active Market: {activeUniverse.name} ({activeUniverse.currencyCode})</div>
+                <div>&gt; Active Market: {activeUniverse?.name || activeMarketKey} ({activeUniverse?.currencyCode || 'INR'})</div>
                 <div>&gt; Data Feed Source: {selectedDataSource} (Multi-Market Feed Router)</div>
                 <div>&gt; Indicators: RSI({rsiPeriod}), MACD({macdFast},{macdSlow},{macdSignal}), BB({bbPeriod}, {bbStdDev}), EMA({ema20Period}/{ema50Period})</div>
                 <div>&gt; Active Period: {activePeriod} (Extended History Enabled)</div>
@@ -4027,7 +4027,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   </p>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-2">
-                    {Object.entries(universes).map(([key, u]) => (
+                    {Object.entries(universes)
+                      .filter(([_, u]) => u && typeof u === 'object' && u.name && u.flag && Array.isArray(u.stocks))
+                      .map(([key, u]) => (
                       <div
                         key={key}
                         onClick={() => {
@@ -4063,7 +4065,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
                         <div className="flex justify-between items-center text-[10px] text-on-surface-variant border-t border-outline/10 pt-2 font-mono">
                           <span>Currency: <strong className="text-on-surface">{u.currencyCode} ({u.currencySymbol})</strong></span>
-                          <span>Lead: <strong className="text-[#00dbe7]">{formatTickerDisplay(u.stocks[0]?.symbol).displaySymbol}</strong></span>
+                          <span>Lead: <strong className="text-[#00dbe7]">{u.stocks[0]?.symbol ? formatTickerDisplay(u.stocks[0].symbol).displaySymbol : 'N/A'}</strong></span>
                         </div>
                       </div>
                     ))}
@@ -4076,7 +4078,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <div>
                       <span className="text-on-surface font-semibold text-sm">Exchange Universe Benchmark Registry</span>
                       <p className="text-[11px] text-on-surface-variant font-sans">
-                        Benchmark constituents registered for {activeUniverse.name} ({activeUniverse.exchange}). You can load any asset or bookmark it into your custom watchlists.
+                        Benchmark constituents registered for {activeUniverse?.name || activeMarketKey} ({activeUniverse?.exchange || ''}). You can load any asset or bookmark it into your custom watchlists.
                       </p>
                     </div>
                   </div>
@@ -4091,7 +4093,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <button
                       onClick={() => {
                         handleAddStockToUniverse(symbolInput);
-                        setNotification(`Registered ${symbolInput} into ${activeUniverse.name} catalog`);
+                        setNotification(`Registered ${symbolInput} into ${activeUniverse?.name || activeMarketKey} catalog`);
                         setTimeout(() => setNotification(''), 3000);
                       }}
                       className="px-3.5 py-2 bg-[#00dbe7]/15 border border-[#00dbe7]/50 text-[#00dbe7] font-bold rounded-lg uppercase cursor-pointer hover:bg-[#00dbe7]/25 flex items-center gap-1.5"
@@ -4115,7 +4117,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   <div className="flex flex-col gap-1.5 pt-2 border-t border-outline/10">
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] text-on-surface-variant uppercase font-mono">
-                        {activeUniverse.name} Constituents ({activeUniverse.stocks.length} assets):
+                        {activeUniverse?.name || activeMarketKey} Constituents ({activeUniverse?.stocks?.length || 0} assets):
                       </span>
                       <button
                         onClick={() => setSettingsActiveTab('WATCHLISTS')}
@@ -4126,7 +4128,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       </button>
                     </div>
                     <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto custom-scrollbar p-1">
-                      {activeUniverse.stocks.map(s => {
+                      {(activeUniverse?.stocks || []).map(s => {
                         const fmt = formatTickerDisplay(s.symbol);
                         const inWatchlist = (activeWatchlist.items || []).some(i => i.symbol === s.symbol || i.cleanSymbol === fmt.cleanSymbol) ||
                           activeWatchlist.symbols.some(symStr => normalizeTicker(symStr, activeMarketKey) === normalizeTicker(s.symbol, activeMarketKey));
