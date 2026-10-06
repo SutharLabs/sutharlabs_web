@@ -63,6 +63,8 @@ import { StockNewsArticle, StockSentimentReport } from '../plugins/StockTracker/
 import StockBacktestPanel from './StockBacktestPanel';
 import StockStrategyMarketplace from './StockStrategyMarketplace';
 import StockTrackerAlertModal, { StockTrackerAlertState } from './StockTrackerAlertModal';
+import StockScannerPanel from './StockScannerPanel';
+import StockSimulatorPanel from './StockSimulatorPanel';
 
 
 interface StockTrackerViewProps {
@@ -1099,7 +1101,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
   // Sliding Settings Overlay
   const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
-  const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'STRATEGIES' | 'BACKTEST' | 'NEWS_AI' | 'INDICATORS' | 'TRADING' | 'FEEDS' | 'PERFORMANCE'>('WATCHLISTS');
+  const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'STRATEGIES' | 'SCANNER' | 'SIMULATOR' | 'BACKTEST' | 'NEWS_AI' | 'INDICATORS' | 'TRADING' | 'FEEDS' | 'PERFORMANCE'>('WATCHLISTS');
 
   // Editable Data Feed Settings
   const [selectedDataSource, setSelectedDataSource] = useState<string>('YAHOO');
@@ -2256,21 +2258,46 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             </span>
           </div>
 
-          {/* Version & Stage Badge */}
+          {/* Version & Stage Badge (Stage 6 v1.0.0 Production Milestone) */}
           <button
             onClick={() => {
-              setSettingsActiveTab('STRATEGIES');
-              setBuilderMode('CATALOG');
+              setSettingsActiveTab('SCANNER');
               setShowSettingsDrawer(true);
             }}
-            className="hidden md:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/25 font-mono text-[11px] font-bold cursor-pointer hover:bg-[#00dbe7]/20 transition-all shadow-sm"
-            title="SutharLabs Stock Tracker v0.6.0 (Stage 5: Community Algorithm Marketplace, Cloneable Presets & Verified Ratings - Beta)"
+            className="hidden md:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 font-mono text-[11px] font-bold cursor-pointer hover:bg-[#00e476]/20 transition-all shadow-sm"
+            title="SutharLabs Stock Tracker v1.0.0 (Stage 6: Multi-Market Screener, Autonomous EOD Trade Simulator & Webhook Alerts - Production)"
           >
-            <Cpu className="w-3.5 h-3.5 text-[#00dbe7]" />
-            <span>v0.6.0</span>
-            <span className="px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[9px] uppercase tracking-wider font-semibold">
-              BETA
+            <Cpu className="w-3.5 h-3.5 text-[#00e476]" />
+            <span>v1.0.0</span>
+            <span className="px-1.5 py-0.2 rounded bg-[#00e476]/20 text-[#00e476] border border-[#00e476]/40 text-[9px] uppercase tracking-wider font-semibold">
+              PROD
             </span>
+          </button>
+
+          {/* Quick Screener Button */}
+          <button
+            onClick={() => {
+              setSettingsActiveTab('SCANNER');
+              setShowSettingsDrawer(true);
+            }}
+            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-outline/30 text-on-surface hover:text-[#00dbe7] hover:border-[#00dbe7]/50 font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm"
+            title="Open Global Multi-Market Screener"
+          >
+            <Eye className="w-3.5 h-3.5 text-[#00dbe7]" />
+            <span>Screener</span>
+          </button>
+
+          {/* Quick Simulator Button */}
+          <button
+            onClick={() => {
+              setSettingsActiveTab('SIMULATOR');
+              setShowSettingsDrawer(true);
+            }}
+            className="hidden lg:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-outline/30 text-on-surface hover:text-[#00e476] hover:border-[#00e476]/50 font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm"
+            title="Open Automated EOD Batch Trade Simulator"
+          >
+            <Play className="w-3.5 h-3.5 text-[#00e476]" />
+            <span>Simulator</span>
           </button>
 
           {/* Quick Algo Marketplace Button */}
@@ -3787,7 +3814,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 }}
                 className="flex items-center gap-2 overflow-x-auto overflow-y-hidden custom-scrollbar py-1 shrink-0"
               >
-                {(['WATCHLISTS', 'MARKET', 'STRATEGIES', 'BACKTEST', 'NEWS_AI', 'INDICATORS', 'TRADING', 'FEEDS', 'PERFORMANCE'] as const).map(tab => (
+                {(['WATCHLISTS', 'MARKET', 'STRATEGIES', 'SCANNER', 'SIMULATOR', 'BACKTEST', 'NEWS_AI', 'INDICATORS', 'TRADING', 'FEEDS', 'PERFORMANCE'] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setSettingsActiveTab(tab)}
@@ -3800,6 +3827,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     {tab === 'WATCHLISTS' && <Bookmark className="w-3.5 h-3.5" />}
                     {tab === 'MARKET' && <Globe className="w-3.5 h-3.5" />}
                     {tab === 'STRATEGIES' && <Cpu className="w-3.5 h-3.5" />}
+                    {tab === 'SCANNER' && <Eye className="w-3.5 h-3.5 text-[#00dbe7]" />}
+                    {tab === 'SIMULATOR' && <Play className="w-3.5 h-3.5 text-[#00e476]" />}
                     {tab === 'BACKTEST' && <BarChart2 className="w-3.5 h-3.5 text-[#00dbe7]" />}
                     {tab === 'NEWS_AI' && <Newspaper className="w-3.5 h-3.5 text-[#00dbe7]" />}
                     {tab === 'INDICATORS' && <Layers className="w-3.5 h-3.5" />}
@@ -3810,6 +3839,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       {tab === 'WATCHLISTS' && 'Custom Watchlists'}
                       {tab === 'MARKET' && 'Market Universes'}
                       {tab === 'STRATEGIES' && 'Algo Marketplace & Builder'}
+                      {tab === 'SCANNER' && 'Market Screener'}
+                      {tab === 'SIMULATOR' && 'EOD Trade Simulator'}
                       {tab === 'BACKTEST' && 'Backtest Engine'}
                       {tab === 'NEWS_AI' && 'News & AI Sentiment'}
                       {tab === 'INDICATORS' && 'Indicator Mathematics'}
@@ -4997,6 +5028,50 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* TAB: GLOBAL MULTI-MARKET SCREENER & SCANNER HUB (STAGE 6) */}
+            {settingsActiveTab === 'SCANNER' && (
+              <div className="flex flex-col gap-6">
+                <StockScannerPanel
+                  strategies={strategies}
+                  activeStrategyId={selectedStrategyId}
+                  activeUniverseKey={activeMarketKey}
+                  watchlistSymbols={activeWatchlist.symbols}
+                  onSelectSymbol={(sym) => {
+                    const fmt = formatTickerDisplay(sym);
+                    setSymbol(sym);
+                    setSymbolInput(fmt.displaySymbol);
+                    setShowSettingsDrawer(false);
+                  }}
+                  onOpenBacktest={(sym, stratId) => {
+                    const fmt = formatTickerDisplay(sym);
+                    setSymbol(sym);
+                    setSymbolInput(fmt.displaySymbol);
+                    setSelectedStrategyId(stratId);
+                    setSettingsActiveTab('BACKTEST');
+                  }}
+                  isDark={isDark}
+                />
+              </div>
+            )}
+
+            {/* TAB: AUTOMATED END-OF-DAY (EOD) BATCH TRADE SIMULATOR (STAGE 6) */}
+            {settingsActiveTab === 'SIMULATOR' && (
+              <div className="flex flex-col gap-6">
+                <StockSimulatorPanel
+                  strategies={strategies}
+                  activeStrategyId={selectedStrategyId}
+                  userEmail={userEmail}
+                  onSelectSymbol={(sym) => {
+                    const fmt = formatTickerDisplay(sym);
+                    setSymbol(sym);
+                    setSymbolInput(fmt.displaySymbol);
+                    setShowSettingsDrawer(false);
+                  }}
+                  isDark={isDark}
+                />
               </div>
             )}
 

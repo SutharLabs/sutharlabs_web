@@ -122,9 +122,9 @@ async function seedDatabase() {
           name: "Stock Tracker",
           category: "Finance",
           type: "Native",
-          description: "Professional quantitative trading suite: interactive TradingView charts, drag-resizable split-pane workspace, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), visual condition builder, real-time news & dual AI sentiment analysis, high-performance backtesting engine with localized friction modeling, and Stage 5 Community Algorithm Marketplace with 1-click cloning/forking, interactive 5-star reviews, and verified performance proofs.",
+          description: "Enterprise quantitative trading suite (v1.0.0 Production): interactive TradingView charts, drag-resizable split-pane workspace, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), visual condition builder, real-time news & dual AI sentiment analysis, high-performance backtesting engine with localized friction modeling, Community Algorithm Marketplace with 1-click cloning & 5-star reviews, Global Multi-Market Screener & Scanner Hub, Autonomous End-of-Day (EOD) Batch Trade Simulator, and Discord/Telegram Webhook Alerts.",
           iconSymbol: "monitoring",
-          version: "0.6.0"
+          version: "1.0.0"
         }
       });
 
@@ -270,7 +270,9 @@ app.use("/api/workspace/stock-analyzer", (req, res, next) => {
     req.path.startsWith("/strategies") ||
     req.path.startsWith("/watchlists") ||
     req.path.startsWith("/markets") ||
-    req.path.startsWith("/universes")
+    req.path.startsWith("/universes") ||
+    req.path.startsWith("/scanner") ||
+    req.path.startsWith("/simulator")
   ) {
     return next();
   }

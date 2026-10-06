@@ -101,9 +101,9 @@ async function seed() {
       name: "Stock Tracker",
       category: "Finance",
       type: "Native",
-      description: "Professional quantitative trading suite: interactive TradingView charts, drag-resizable split-pane workspace, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), visual condition builder, real-time news & dual AI sentiment analysis, high-performance backtesting engine with localized friction modeling, and Stage 5 Community Algorithm Marketplace with 1-click cloning/forking, interactive 5-star reviews, and verified performance proofs.",
+      description: "Enterprise quantitative trading suite (v1.0.0 Production): interactive TradingView charts, drag-resizable split-pane workspace, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), visual condition builder, real-time news & dual AI sentiment analysis, high-performance backtesting engine with localized friction modeling, Community Algorithm Marketplace with 1-click cloning & 5-star reviews, Global Multi-Market Screener & Scanner Hub, Autonomous End-of-Day (EOD) Batch Trade Simulator, and Discord/Telegram Webhook Alerts.",
       iconSymbol: "monitoring",
-      version: "0.6.0"
+      version: "1.0.0"
     },
     {
       id: "wp_flow_designer",
@@ -198,6 +198,15 @@ async function seed() {
       minEngineVersion: "0.1.0",
       publishedBy: "Suthar Suresh",
       publishedAt: new Date("2026-10-06T12:00:00Z")
+    },
+    {
+      pluginId: "wp_stock_analyzer",
+      version: "1.0.0",
+      changelog: "Stage 6 Production Milestone — Autonomous Multi-Market Screener, End-of-Day (EOD) Batch Trade Simulator & Webhook Alerting: Parallel multi-symbol quantitative market scanner with volume surge & momentum breakout detection, automated EOD batch paper trading engine with persistent portfolio ledger, automated stop loss/take profit/trailing stop execution, multi-country statutory friction deductions, and Discord/Telegram/Generic Webhook dispatching for real-time algorithmic alerts.",
+      checksumSha256: "b89e21147983ac12781b268f761d4a8e9821435fc607d891b2978a2e1f40c112",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh",
+      publishedAt: new Date("2026-10-06T14:30:00Z")
     },
 
     {

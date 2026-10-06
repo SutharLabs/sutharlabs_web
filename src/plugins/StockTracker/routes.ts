@@ -35,6 +35,8 @@ import {
   detectMarketRegion,
   getRegionCurrencyInfo
 } from "./backtest/index.js";
+import { runMarketScan, dispatchWebhookAlert } from "./scanner/index.js";
+import { runEODSimulation, getEODHistory, getEODPortfolio } from "./simulator/index.js";
 
 export interface WatchlistItem {
   symbol: string;
@@ -891,6 +893,59 @@ export function registerRoutes(router: Router) {
         slippagePct
       });
       res.json(friction);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ── Stage 6: Global Multi-Asset Market Scanner Hub ──
+  router.post("/scanner/scan", async (req: any, res: any) => {
+    try {
+      const report = await runMarketScan(req.body || {});
+      res.json(report);
+    } catch (e: any) {
+      console.error("[Scanner Engine] Scan failure:", e);
+      res.status(500).json({ error: e.message || "Failed to execute market scan." });
+    }
+  });
+
+  router.post("/scanner/alert-webhook", async (req: any, res: any) => {
+    try {
+      const { webhookUrl, candidate, strategyName } = req.body;
+      if (!webhookUrl || !candidate) {
+        return res.status(400).json({ error: "Webhook URL and candidate details are required." });
+      }
+      const result = await dispatchWebhookAlert(webhookUrl, candidate, strategyName || "Active Strategy");
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ── Stage 6: Automated End-of-Day (EOD) Batch Trade Simulator ──
+  router.post("/simulator/run-eod", async (req: any, res: any) => {
+    try {
+      const report = await runEODSimulation(req.body || {});
+      res.json(report);
+    } catch (e: any) {
+      console.error("[EOD Simulator] Simulation run failure:", e);
+      res.status(500).json({ error: e.message || "Failed to execute EOD batch simulation." });
+    }
+  });
+
+  router.get("/simulator/history", (_req: any, res: any) => {
+    try {
+      const history = getEODHistory();
+      res.json(history);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  router.get("/simulator/portfolio", (_req: any, res: any) => {
+    try {
+      const portfolio = getEODPortfolio();
+      res.json(portfolio);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
