@@ -40,6 +40,10 @@ export const MARKET_UNIVERSES: Record<string, MarketUniverse> = {
     currencySymbol: '₹',
     exchange: 'NSE',
     stocks: [
+      { symbol: '^NSEI',         name: 'NIFTY 50 Index', sector: 'Benchmark Index' },
+      { symbol: '^BSESN',        name: 'BSE SENSEX Index', sector: 'Benchmark Index' },
+      { symbol: '^NSEBANK',      name: 'NIFTY Bank Index', sector: 'Sectoral Index' },
+      { symbol: '^CNXIT',        name: 'NIFTY IT Index', sector: 'Sectoral Index' },
       { symbol: 'RELIANCE.NS',   name: 'Reliance Industries', sector: 'Energy / Conglomerate' },
       { symbol: 'TCS.NS',        name: 'Tata Consultancy Services', sector: 'IT Services' },
       { symbol: 'HDFCBANK.NS',   name: 'HDFC Bank', sector: 'Banking' },
@@ -68,6 +72,9 @@ export const MARKET_UNIVERSES: Record<string, MarketUniverse> = {
     currencySymbol: '$',
     exchange: 'NYSE/NASDAQ',
     stocks: [
+      { symbol: '^GSPC',  name: 'S&P 500 Index', sector: 'Benchmark Index' },
+      { symbol: '^IXIC',  name: 'NASDAQ Composite Index', sector: 'Benchmark Index' },
+      { symbol: '^DJI',   name: 'Dow Jones Industrial Average', sector: 'Benchmark Index' },
       { symbol: 'AAPL',  name: 'Apple Inc.', sector: 'Consumer Electronics' },
       { symbol: 'MSFT',  name: 'Microsoft Corp.', sector: 'Enterprise Software & Cloud' },
       { symbol: 'NVDA',  name: 'NVIDIA Corp.', sector: 'Semiconductors & AI' },
@@ -145,14 +152,42 @@ export interface StockSearchResult {
   quoteType?: string;
 }
 
+export const INDEX_TICKER_MAP: Record<string, { name: string; displaySymbol: string; cleanSymbol: string; exchange: string; sector: string }> = {
+  '^NSEI':    { name: 'NIFTY 50', displaySymbol: 'NIFTY 50 (NSE Index)', cleanSymbol: 'NIFTY 50', exchange: 'NSE', sector: 'Benchmark Index' },
+  '^BSESN':   { name: 'BSE SENSEX', displaySymbol: 'SENSEX (BSE Index)', cleanSymbol: 'SENSEX', exchange: 'BSE', sector: 'Benchmark Index' },
+  '^NSEBANK': { name: 'NIFTY Bank', displaySymbol: 'BANK NIFTY (NSE Index)', cleanSymbol: 'BANK NIFTY', exchange: 'NSE', sector: 'Sectoral Index' },
+  '^CNXIT':   { name: 'NIFTY IT', displaySymbol: 'NIFTY IT (NSE Index)', cleanSymbol: 'NIFTY IT', exchange: 'NSE', sector: 'Sectoral Index' },
+  '^CNXAUTO': { name: 'NIFTY Auto', displaySymbol: 'NIFTY AUTO (NSE Index)', cleanSymbol: 'NIFTY AUTO', exchange: 'NSE', sector: 'Sectoral Index' },
+  '^GSPC':    { name: 'S&P 500', displaySymbol: 'S&P 500 (US Index)', cleanSymbol: 'S&P 500', exchange: 'US', sector: 'Benchmark Index' },
+  '^IXIC':    { name: 'NASDAQ Composite', displaySymbol: 'NASDAQ (US Index)', cleanSymbol: 'NASDAQ', exchange: 'US', sector: 'Benchmark Index' },
+  '^DJI':     { name: 'Dow Jones Industrial Average', displaySymbol: 'DOW JONES (US Index)', cleanSymbol: 'DOW JONES', exchange: 'US', sector: 'Benchmark Index' },
+  '^FTSE':    { name: 'FTSE 100', displaySymbol: 'FTSE 100 (LSE Index)', cleanSymbol: 'FTSE 100', exchange: 'LSE', sector: 'Benchmark Index' },
+  '^GDAXI':   { name: 'DAX Performance Index', displaySymbol: 'DAX (XETRA Index)', cleanSymbol: 'DAX', exchange: 'XETRA', sector: 'Benchmark Index' },
+  '^N225':    { name: 'Nikkei 225', displaySymbol: 'NIKKEI 225 (TSE Index)', cleanSymbol: 'NIKKEI 225', exchange: 'TSE', sector: 'Benchmark Index' },
+  '^HSI':     { name: 'Hang Seng Index', displaySymbol: 'HANG SENG (HKEX Index)', cleanSymbol: 'HANG SENG', exchange: 'HKEX', sector: 'Benchmark Index' }
+};
+
 export function formatTickerDisplay(rawSymbol: string, exchangeName?: string): { displaySymbol: string; cleanSymbol: string; exchange: string } {
   if (!rawSymbol) return { displaySymbol: '', cleanSymbol: '', exchange: '' };
   const sym = rawSymbol.trim();
 
-  // If already formatted like "ATHERENERG (NSE)"
+  // Known index check
+  const upper = sym.toUpperCase();
+  if (INDEX_TICKER_MAP[upper]) {
+    const idx = INDEX_TICKER_MAP[upper];
+    return { displaySymbol: idx.displaySymbol, cleanSymbol: idx.cleanSymbol, exchange: idx.exchange };
+  }
+
+  // If already formatted like "ATHERENERG (NSE)" or "NIFTY 50 (NSE Index)"
   const parenMatch = sym.match(/^(.*?)\s*\((.*?)\)$/);
   if (parenMatch) {
     return { displaySymbol: sym, cleanSymbol: parenMatch[1].trim(), exchange: parenMatch[2].trim() };
+  }
+
+  // Any other index starting with ^
+  if (sym.startsWith('^')) {
+    const clean = sym.slice(1).toUpperCase();
+    return { displaySymbol: `${clean} (INDEX)`, cleanSymbol: clean, exchange: 'INDEX' };
   }
 
   if (sym.endsWith('.NS')) {
@@ -205,12 +240,35 @@ export function normalizeTicker(symbol: string, defaultRegion: string = 'IN'): s
   if (!symbol) return '';
   let clean = symbol.trim();
 
+  // 0. Direct index symbol starting with ^
+  if (clean.startsWith('^')) {
+    return clean.toUpperCase();
+  }
+
+  // If formatted like "NIFTY 50 (NSE Index)" or "SENSEX (BSE Index)"
+  if (/\s*\((.*?Index.*?)\)$/i.test(clean)) {
+    const base = clean.replace(/\s*\((.*?Index.*?)\)$/i, '').trim().toUpperCase();
+    if (/^(NIFTY\s*50|NIFTY50|NIFTY)$/i.test(base)) return '^NSEI';
+    if (/^(SENSEX|BSE\s*SENSEX)$/i.test(base)) return '^BSESN';
+    if (/^(BANK\s*NIFTY|BANKNIFTY|NIFTY\s*BANK)$/i.test(base)) return '^NSEBANK';
+    if (/^(NIFTY\s*IT|CNXIT)$/i.test(base)) return '^CNXIT';
+    if (/^(S&P\s*500|SP500|SPX)$/i.test(base)) return '^GSPC';
+    if (/^(NASDAQ|NASDAQ\s*100|NDX|COMPOSITE)$/i.test(base)) return '^IXIC';
+    if (/^(DOW|DOW\s*JONES|DJI)$/i.test(base)) return '^DJI';
+    return `^${base}`;
+  }
+
   // 1. If symbol ends with (NSE), (BSE), etc.
   if (/\s*\((NSE)\)$/i.test(clean)) {
-    return clean.replace(/\s*\((NSE)\)$/i, '').trim().toUpperCase() + '.NS';
+    const base = clean.replace(/\s*\((NSE)\)$/i, '').trim().toUpperCase();
+    if (/^(NIFTY\s*50|NIFTY50|NIFTY)$/i.test(base)) return '^NSEI';
+    if (/^(BANK\s*NIFTY|BANKNIFTY|NIFTY\s*BANK)$/i.test(base)) return '^NSEBANK';
+    return base + '.NS';
   }
   if (/\s*\((BSE|BOMBAY)\)$/i.test(clean)) {
-    return clean.replace(/\s*\((BSE|BOMBAY)\)$/i, '').trim().toUpperCase() + '.BO';
+    const base = clean.replace(/\s*\((BSE|BOMBAY)\)$/i, '').trim().toUpperCase();
+    if (/^(SENSEX|BSE\s*SENSEX)$/i.test(base)) return '^BSESN';
+    return base + '.BO';
   }
   if (/\s*\((LSE)\)$/i.test(clean)) {
     return clean.replace(/\s*\((LSE)\)$/i, '').trim().toUpperCase() + '.L';
@@ -237,7 +295,21 @@ export function normalizeTicker(symbol: string, defaultRegion: string = 'IN'): s
     return clean.replace(/\s*\((NASDAQ|NYSE|NYSE\/NASDAQ|AMEX|OTC)\)$/i, '').trim().toUpperCase();
   }
 
-  // 2. Known special name aliases (must check before generic dot suffix)
+  // 2. Known Index and Special Aliases
+  if (/^(NIFTY\s*50|NIFTY50|NIFTY)$/i.test(clean)) return '^NSEI';
+  if (/^(SENSEX|BSE\s*SENSEX)$/i.test(clean)) return '^BSESN';
+  if (/^(BANK\s*NIFTY|BANKNIFTY|NIFTY\s*BANK)$/i.test(clean)) return '^NSEBANK';
+  if (/^(NIFTY\s*IT|CNXIT)$/i.test(clean)) return '^CNXIT';
+  if (/^(NIFTY\s*AUTO)$/i.test(clean)) return '^CNXAUTO';
+  if (/^(S&P\s*500|SP500|SPX)$/i.test(clean)) return '^GSPC';
+  if (/^(NASDAQ|NASDAQ\s*100|NDX|COMPOSITE)$/i.test(clean)) return '^IXIC';
+  if (/^(DOW|DOW\s*JONES|DJI)$/i.test(clean)) return '^DJI';
+  if (/^(FTSE|FTSE\s*100)$/i.test(clean)) return '^FTSE';
+  if (/^(DAX|GDAXI)$/i.test(clean)) return '^GDAXI';
+  if (/^(NIKKEI|NIKKEI\s*225)$/i.test(clean)) return '^N225';
+  if (/^(HANG\s*SENG|HSI)$/i.test(clean)) return '^HSI';
+
+  // Known special name aliases (must check before generic dot suffix)
   if (/^ATHER/i.test(clean)) return 'ATHERENERG.NS';
   if (/^ZOMATO/i.test(clean)) return 'ETERNAL.NS';
   if (/^TATAMOTORS(\.NS)?$/i.test(clean)) return 'TMCV.NS';
@@ -266,14 +338,34 @@ export async function searchStocks(query: string, region: string = 'IN'): Promis
 
   const results: StockSearchResult[] = [];
   const seenSymbols = new Set<string>();
-
-  // 1. Instant local index lookup
-  const allUniverseStocks = Object.values(MARKET_UNIVERSES).flatMap(u => u.stocks);
   const qLower = qClean.toLowerCase();
   const fuzzyQ = qLower.length > 4 ? qLower.slice(0, -1) : qLower;
 
+  // 0. Instant benchmark index lookup
+  for (const [sym, info] of Object.entries(INDEX_TICKER_MAP)) {
+    const symMatch = sym.toLowerCase().includes(qLower) || sym.slice(1).toLowerCase().includes(qLower);
+    const nameMatch = info.name.toLowerCase().includes(qLower);
+    const cleanMatch = info.cleanSymbol.toLowerCase().includes(qLower);
+    if (symMatch || nameMatch || cleanMatch) {
+      results.push({
+        symbol: sym,
+        displaySymbol: info.displaySymbol,
+        cleanSymbol: info.cleanSymbol,
+        name: info.name,
+        exchange: info.exchange,
+        sector: info.sector,
+        quoteType: 'INDEX'
+      });
+      seenSymbols.add(sym);
+    }
+  }
+
+  // 1. Instant local index lookup
+  const allUniverseStocks = Object.values(MARKET_UNIVERSES).flatMap(u => u.stocks);
+
   for (const s of allUniverseStocks) {
-    const sSymClean = s.symbol.replace(/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i, '').toLowerCase();
+    if (seenSymbols.has(s.symbol)) continue;
+    const sSymClean = s.symbol.replace(/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i, '').replace(/^\^/, '').toLowerCase();
     const sNameLower = s.name.toLowerCase();
 
     if (
@@ -353,12 +445,12 @@ export async function searchStocks(query: string, region: string = 'IN'): Promis
 
 export function getCurrencySymbol(symbol: string, currencyCode?: string): string {
   const code = (currencyCode || '').toUpperCase();
-  if (code === 'INR' || symbol.endsWith('.NS') || symbol.endsWith('.BO')) return '₹';
-  if (code === 'GBP' || code === 'GBp' || symbol.endsWith('.L')) return '£';
-  if (code === 'EUR' || symbol.endsWith('.DE') || symbol.endsWith('.PA') || symbol.endsWith('.AS') || symbol.endsWith('.BR')) return '€';
-  if (code === 'HKD' || symbol.endsWith('.HK')) return 'HK$';
+  if (code === 'INR' || symbol.startsWith('^NSE') || symbol.startsWith('^BSE') || symbol.startsWith('^CNX') || symbol.endsWith('.NS') || symbol.endsWith('.BO')) return '₹';
+  if (code === 'GBP' || code === 'GBp' || symbol.endsWith('.L') || symbol === '^FTSE') return '£';
+  if (code === 'EUR' || symbol.endsWith('.DE') || symbol.endsWith('.PA') || symbol.endsWith('.AS') || symbol.endsWith('.BR') || symbol === '^GDAXI') return '€';
+  if (code === 'HKD' || symbol.endsWith('.HK') || symbol === '^HSI') return 'HK$';
   if (code === 'CNY' || symbol.endsWith('.SS') || symbol.endsWith('.SZ')) return '¥';
-  if (code === 'JPY' || symbol.endsWith('.T')) return '¥';
+  if (code === 'JPY' || symbol.endsWith('.T') || symbol === '^N225') return '¥';
   if (code === 'USD') return '$';
   return '$';
 }

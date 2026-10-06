@@ -124,7 +124,7 @@ async function seedDatabase() {
           type: "Native",
           description: "Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.",
           iconSymbol: "monitoring",
-          version: "1.0.0"
+          version: "1.0.1"
         }
       });
 

@@ -114,27 +114,46 @@ export function evaluateStrategy(
   const latestEmaSlow = emaSlowSeries[emaSlowSeries.length - 1] ?? latestEmaFast;
   const prevEmaSlow = emaSlowSeries[emaSlowSeries.length - 2] ?? latestEmaSlow;
 
+  const ema200Series = EMA.calculate({ values: closes, period: Math.min(200, closes.length) });
+  const latestEma200 = ema200Series[ema200Series.length - 1] ?? latestEmaSlow;
+
   const latestRsi = rsiSeries[rsiSeries.length - 1] ?? 50;
   const prevRsi = rsiSeries[rsiSeries.length - 2] ?? latestRsi;
 
+  const rsi2Series = RSI.calculate({ values: closes, period: Math.min(2, Math.max(2, closes.length - 1)) });
+  const latestRsi2 = rsi2Series[rsi2Series.length - 1] ?? latestRsi;
+
   const latestMacd = macdSeries[macdSeries.length - 1];
   const prevMacd = macdSeries[macdSeries.length - 2];
+  const latestMacdHist = Number(((latestMacd?.MACD ?? 0) - (latestMacd?.signal ?? 0)).toFixed(2));
+  const prevMacdHist = Number(((prevMacd?.MACD ?? 0) - (prevMacd?.signal ?? 0)).toFixed(2));
 
   const latestBb = bbSeries[bbSeries.length - 1];
   const latestAtr = atrSeries[atrSeries.length - 1] ?? (currentPrice * 0.02);
 
+  // Volume Moving Average (20-bar)
+  const last20Vols = validCandles.slice(-20).map(c => Number(c.volume || 0));
+  const volumeMa = last20Vols.length > 0 ? (last20Vols.reduce((a, b) => a + b, 0) / last20Vols.length) : 1;
+  const latestVol = Number(validCandles[validCandles.length - 1]?.volume || 0);
+  const volumeRatio = volumeMa > 0 ? Number((latestVol / volumeMa).toFixed(2)) : 1.0;
+
   const indicatorsMap: Record<string, number> = {
     price: currentPrice,
     rsi: Number(latestRsi.toFixed(2)),
+    rsi_2: Number(latestRsi2.toFixed(2)),
     ema_fast: Number(latestEmaFast.toFixed(2)),
     ema_slow: Number(latestEmaSlow.toFixed(2)),
+    ema_200: Number(latestEma200.toFixed(2)),
     macd: latestMacd?.MACD ? Number(latestMacd.MACD.toFixed(2)) : 0,
     macd_signal: latestMacd?.signal ? Number(latestMacd.signal.toFixed(2)) : 0,
+    macd_hist: latestMacdHist,
     bb_upper: latestBb?.upper ? Number(latestBb.upper.toFixed(2)) : currentPrice * 1.05,
     bb_middle: latestBb?.middle ? Number(latestBb.middle.toFixed(2)) : currentPrice,
     bb_lower: latestBb?.lower ? Number(latestBb.lower.toFixed(2)) : currentPrice * 0.95,
     supertrend: Number(supertrendResult.supertrend.toFixed(2)),
-    volume: validCandles[validCandles.length - 1]?.volume || 0
+    volume: latestVol,
+    volume_ma: Math.round(volumeMa),
+    volume_ratio: volumeRatio
   };
 
   const reasoning: string[] = [];
@@ -224,6 +243,105 @@ export function evaluateStrategy(
       confidence = 0.82;
       reasoning.push(`Supertrend is Bearish (Red). Trailing resistance ceiling at ${stVal}.`);
       reasoning.push(`Asset is in active corrective regime below trendline.`);
+    }
+  } else if (strategy.id === 'strat-connors-rsi2-pullback') {
+    // Larry Connors RSI-2 High Win Rate Pullback Model
+    const oversoldLvl = Number(params.oversoldThreshold || 12);
+    const inBullRegime = currentPrice > latestEma200;
+
+    if (inBullRegime && latestRsi2 < oversoldLvl) {
+      action = 'BUY';
+      confidence = 0.94;
+      reasoning.push(`Larry Connors Setup Fired: RSI(2) collapsed to extreme oversold (${latestRsi2.toFixed(1)} < ${oversoldLvl}).`);
+      reasoning.push(`Secular Trend Confirmed: Price is strictly above 200 EMA (${latestEma200.toFixed(2)}). Mean-reversion edge active.`);
+    } else if (latestRsi2 > 70 || currentPrice > latestEmaFast) {
+      action = 'SELL';
+      confidence = 0.86;
+      reasoning.push(`Mean Reversion Target Achieved: RSI(2) normalized (${latestRsi2.toFixed(1)} > 70) or tagged Fast EMA.`);
+    } else {
+      action = 'HOLD';
+      confidence = 0.45;
+      reasoning.push(`Waiting for deep RSI(2) pullback < ${oversoldLvl} in secular bull trend.`);
+    }
+  } else if (strategy.id === 'strat-dual-momentum-trend') {
+    // Gary Antonacci / Andreas Clenow Dual Momentum & Crash Defense
+    const isAbove200 = currentPrice > latestEma200;
+    const isFastAboveSlow = latestEmaFast > latestEmaSlow;
+    const isMomentumPositive = latestRsi > 50;
+
+    if (isAbove200 && isFastAboveSlow && isMomentumPositive) {
+      action = 'BUY';
+      confidence = 0.91;
+      reasoning.push(`Dual Momentum Confirmed: Asset in macro bull regime (Price > 200 EMA ${latestEma200.toFixed(2)}).`);
+      reasoning.push(`Relative Momentum Surge: Fast EMA (${latestEmaFast.toFixed(2)}) > Slow EMA (${latestEmaSlow.toFixed(2)}) with RSI > 50.`);
+    } else if (!isAbove200 || !isFastAboveSlow) {
+      action = 'SELL';
+      confidence = 0.88;
+      reasoning.push(`Macro Regime Exit: Asset fell below 200 EMA or experienced negative trend deceleration.`);
+      reasoning.push(`Capital preservation cash preservation trigger active.`);
+    } else {
+      action = 'HOLD';
+      confidence = 0.48;
+      reasoning.push(`Dual momentum metrics consolidated.`);
+    }
+  } else if (strategy.id === 'strat-minervini-trend-template') {
+    // Mark Minervini SEPA Stage-2 Trend Template
+    const isStage2 = currentPrice > latestEmaFast && latestEmaFast > latestEmaSlow && latestEmaSlow > latestEma200;
+    const isConsolidating = latestRsi >= 50 && latestRsi <= 72;
+
+    if (isStage2 && isConsolidating) {
+      action = 'BUY';
+      confidence = 0.93;
+      reasoning.push(`Minervini Stage-2 Alignment: Sequential moving average hierarchy confirmed.`);
+      reasoning.push(`Price (${currentPrice}) > EMA20 (${latestEmaFast.toFixed(2)}) > EMA50 (${latestEmaSlow.toFixed(2)}) > EMA200 (${latestEma200.toFixed(2)}).`);
+      reasoning.push(`RSI (${latestRsi.toFixed(1)}) demonstrates non-exhausted leadership momentum.`);
+    } else if (currentPrice < latestEmaSlow) {
+      action = 'SELL';
+      confidence = 0.87;
+      reasoning.push(`Trend Breakdown: Price slipped below 50 EMA institutional support floor.`);
+    } else {
+      action = 'HOLD';
+      confidence = 0.46;
+      reasoning.push(`Awaiting clean Stage-2 moving average alignment.`);
+    }
+  } else if (strategy.id === 'strat-ttm-squeeze-breakout') {
+    // John Carter TTM Squeeze Volatility Breakout
+    const isMomentumUp = latestMacdHist > 0 && latestMacdHist >= prevMacdHist;
+    const isAboveMid = currentPrice > indicatorsMap.bb_middle;
+
+    if (isMomentumUp && isAboveMid) {
+      action = 'BUY';
+      confidence = 0.89;
+      reasoning.push(`TTM Squeeze Firing Long: MACD histogram expansion (+${latestMacdHist.toFixed(2)}) above zero line.`);
+      reasoning.push(`Price (${currentPrice}) breaking out above midline volatility channel.`);
+    } else if (latestMacdHist < 0 || currentPrice < indicatorsMap.bb_middle) {
+      action = 'SELL';
+      confidence = 0.84;
+      reasoning.push(`Squeeze Momentum Breakdown: MACD histogram entered negative territory (${latestMacdHist.toFixed(2)}).`);
+    } else {
+      action = 'HOLD';
+      confidence = 0.42;
+      reasoning.push(`Volatility energy compression in progress inside channels.`);
+    }
+  } else if (strategy.id === 'strat-vw-macd-expansion') {
+    // Volume-Weighted MACD Momentum Surge (Institutional Order Flow)
+    const isMacdCrossUp = prevMacd && (prevMacd.MACD ?? 0) <= (prevMacd.signal ?? 0) && (latestMacd?.MACD ?? 0) > (latestMacd?.signal ?? 0);
+    const isMacdPositive = (latestMacd?.MACD ?? 0) > 0;
+    const hasVolumeExpansion = volumeRatio >= 1.25;
+
+    if ((isMacdCrossUp || (isMacdPositive && latestMacdHist > prevMacdHist)) && hasVolumeExpansion) {
+      action = 'BUY';
+      confidence = 0.90;
+      reasoning.push(`Institutional Accumulation Surge: Volume is ${volumeRatio}x above 20-bar average.`);
+      reasoning.push(`MACD signal line crossover confirmed with heavy positive order flow.`);
+    } else if ((latestMacd?.MACD ?? 0) < (latestMacd?.signal ?? 0) || latestRsi > 78) {
+      action = 'SELL';
+      confidence = 0.86;
+      reasoning.push(`Order flow momentum divergence or MACD signal line breakdown.`);
+    } else {
+      action = 'HOLD';
+      confidence = 0.45;
+      reasoning.push(`Awaiting institutional volume expansion on MACD crossover.`);
     }
   } else {
     // 2. DYNAMIC RULE EVALUATION FOR CUSTOM STRATEGIES
