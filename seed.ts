@@ -101,9 +101,9 @@ async function seed() {
       name: "Stock Tracker",
       category: "Finance",
       type: "Native",
-      description: "Professional quantitative trading suite: interactive TradingView charts, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), 4 battle-tested quant presets, visual condition builder, real-time regional financial news streams, and dual-engine AI sentiment analysis (Gemini 2.5 Flash + Autonomous Financial Lexicon).",
+      description: "Professional quantitative trading suite: interactive TradingView charts, drag-resizable split-pane workspace, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), visual condition builder, real-time news & dual AI sentiment analysis, and high-performance quantitative backtesting engine with localized friction & statutory tax modeling (STT, SEC, GST, SDRT, slippage).",
       iconSymbol: "monitoring",
-      version: "0.4.0"
+      version: "0.5.0"
     },
     {
       id: "wp_flow_designer",
@@ -180,6 +180,15 @@ async function seed() {
       minEngineVersion: "0.1.0",
       publishedBy: "Suthar Suresh",
       publishedAt: new Date("2026-10-05T23:30:00Z")
+    },
+    {
+      pluginId: "wp_stock_analyzer",
+      version: "0.5.0",
+      changelog: "Stage 4 High-Performance Quantitative Backtesting Engine & Multi-Country Market Friction: Point-in-time sequential simulation over historical daily/intraday bars with zero lookahead bias, localized statutory tax & friction modeling (India NSE STT/GST/SEBI/Stamp Duty, US SEC 31/FINRA TAF, UK SDRT, China A-share T+1 rule, HK/Japan board lots, bid-ask slippage), institutional KPI suite (CAGR, Sharpe, Sortino, Max Drawdown duration, Win Rate, Profit Factor, Alpha vs Buy & Hold), interactive SVG Equity Curve with hover telemetry, Trade Log table with CSV export, and TradingView-style drag-resizable split pane with tab strip carousel.",
+      checksumSha256: "c52be147983ac12781b268f761d4a8e9821435fc607d891b2978a2e1f40b2195",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh",
+      publishedAt: new Date("2026-10-06T03:30:00Z")
     },
 
     {

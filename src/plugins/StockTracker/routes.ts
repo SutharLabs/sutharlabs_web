@@ -24,6 +24,12 @@ import {
 import { evaluateStrategy } from "./strategies/engine.js";
 import { PRESET_STRATEGIES } from "./strategies/presets.js";
 import { fetchStockNews, analyzeStockSentiment, testGeminiApiKey } from "./news/index.js";
+import {
+  runBacktest,
+  calculateRegionalFriction,
+  detectMarketRegion,
+  getRegionCurrencyInfo
+} from "./backtest/index.js";
 
 export interface WatchlistItem {
   symbol: string;
@@ -731,6 +737,43 @@ export function registerRoutes(router: Router) {
 
       const signal = evaluateStrategy(strategy, candles, quote, paramOverrides || {}, sentimentReport);
       res.json(signal);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Stage 4: High-Performance Quantitative Backtest Engine
+  router.post("/backtest", async (req: any, res: any) => {
+    try {
+      if (!req.body || !req.body.symbol) {
+        return res.status(400).json({ error: "Stock symbol is required for backtesting." });
+      }
+      const report = await runBacktest(req.body);
+      res.json(report);
+    } catch (e: any) {
+      console.error("[Backtest Engine] Error executing backtest:", e);
+      res.status(500).json({ error: e.message || "Failed to execute backtesting simulation." });
+    }
+  });
+
+  // Stage 4: Localized Regional Friction & Tax Breakdown Preview
+  router.get("/backtest-friction-preview", (req: any, res: any) => {
+    try {
+      const symbol = (req.query.symbol as string) || "RELIANCE.NS";
+      const region = (req.query.region as any) || detectMarketRegion(symbol);
+      const side = ((req.query.side as string) || "BUY").toUpperCase() as "BUY" | "SELL";
+      const price = Number(req.query.price || 100);
+      const quantity = Number(req.query.quantity || 100);
+      const slippagePct = req.query.slippagePct !== undefined ? Number(req.query.slippagePct) : 0.05;
+
+      const friction = calculateRegionalFriction({
+        region,
+        side,
+        price,
+        quantity,
+        slippagePct
+      });
+      res.json(friction);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

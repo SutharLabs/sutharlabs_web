@@ -40,7 +40,11 @@ import {
   ExternalLink,
   Zap,
   AlertTriangle,
-  Clock
+  Clock,
+  BarChart2,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical
 } from 'lucide-react';
 import {
   createChart,
@@ -56,6 +60,7 @@ import { TerminalLog, UserPortfolio } from '../types';
 import { IStrategy, StrategySignal, StrategyRuleCondition, StrategyParameter } from '../plugins/StockTracker/strategies/types';
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
 import { StockNewsArticle, StockSentimentReport } from '../plugins/StockTracker/news/types';
+import StockBacktestPanel from './StockBacktestPanel';
 
 
 interface StockTrackerViewProps {
@@ -818,8 +823,101 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   }, [symbol, activeMarketKey, builderEditingId, builderName, builderDesc, builderMarket, builderTimeframe, builderParameters, builderEntryConditions, builderExitConditions]);
 
 
-  // Main Workspace Right Panel View Mode: WATCHLIST (Default) | TELEMETRY | NEWS | ORDER
-  const [rightPanelTab, setRightPanelTab] = useState<'WATCHLIST' | 'TELEMETRY' | 'NEWS' | 'ORDER'>('WATCHLIST');
+  // Main Workspace Right Panel View Mode: WATCHLIST (Default) | TELEMETRY | NEWS | ORDER | BACKTEST
+  const [rightPanelTab, setRightPanelTab] = useState<'WATCHLIST' | 'TELEMETRY' | 'NEWS' | 'ORDER' | 'BACKTEST'>('WATCHLIST');
+
+  // Resizable Workspace Splitter State (TradingView, VS Code & Linear pattern)
+  const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('sutharlabs_sidebar_width');
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed) && parsed >= 320 && parsed <= 850) return parsed;
+      }
+    } catch {}
+    return 440; // Optimal default width for charts, backtesting & telemetry
+  });
+  const [isDraggingSidebar, setIsDraggingSidebar] = useState<boolean>(false);
+  const splitWorkspaceRef = useRef<HTMLDivElement>(null);
+
+  // Tab Strip Carousel Navigation
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollTabsLeft, setCanScrollTabsLeft] = useState<boolean>(false);
+  const [canScrollTabsRight, setCanScrollTabsRight] = useState<boolean>(false);
+
+  const checkTabsScroll = useCallback(() => {
+    if (!tabsScrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = tabsScrollRef.current;
+    setCanScrollTabsLeft(scrollLeft > 2);
+    setCanScrollTabsRight(scrollLeft + clientWidth < scrollWidth - 2);
+  }, []);
+
+  const scrollTabs = useCallback((direction: 'left' | 'right') => {
+    if (!tabsScrollRef.current) return;
+    const offset = direction === 'left' ? -140 : 140;
+    tabsScrollRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    checkTabsScroll();
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', checkTabsScroll, { passive: true });
+    const ro = new ResizeObserver(checkTabsScroll);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', checkTabsScroll);
+      ro.disconnect();
+    };
+  }, [checkTabsScroll, sidebarWidth]);
+
+  // Handle Splitter Mouse Drag
+  const handleSplitterMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDraggingSidebar(true);
+  }, []);
+
+  const handleSplitterDoubleClick = useCallback(() => {
+    setSidebarWidth(440);
+    try { localStorage.setItem('sutharlabs_sidebar_width', '440'); } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (!isDraggingSidebar) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!splitWorkspaceRef.current) return;
+      const rect = splitWorkspaceRef.current.getBoundingClientRect();
+      // Mouse distance from the right edge of workspace split container
+      const newWidth = rect.right - e.clientX;
+      // Guarantee chart has minimum 400px room and sidebar stays within [320px, maxAllowed]
+      const maxAllowed = Math.min(850, Math.max(380, rect.width - 400));
+      const clamped = Math.max(320, Math.min(newWidth, maxAllowed));
+      setSidebarWidth(Math.round(clamped));
+    };
+
+    const handleMouseUp = () => {
+      setIsDraggingSidebar(false);
+      setSidebarWidth(current => {
+        try { localStorage.setItem('sutharlabs_sidebar_width', current.toString()); } catch {}
+        return current;
+      });
+    };
+
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDraggingSidebar]);
+
   const [watchlistQuotes, setWatchlistQuotes] = useState<Record<string, Quote>>({});
   const [loadingWatchlistQuotes, setLoadingWatchlistQuotes] = useState<boolean>(false);
   const [watchlistSearchFilter, setWatchlistSearchFilter] = useState<string>('');
@@ -927,7 +1025,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
   // Sliding Settings Overlay
   const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
-  const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'STRATEGIES' | 'NEWS_AI' | 'INDICATORS' | 'TRADING' | 'FEEDS' | 'PERFORMANCE'>('WATCHLISTS');
+  const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'STRATEGIES' | 'BACKTEST' | 'NEWS_AI' | 'INDICATORS' | 'TRADING' | 'FEEDS' | 'PERFORMANCE'>('WATCHLISTS');
 
   // Editable Data Feed Settings
   const [selectedDataSource, setSelectedDataSource] = useState<string>('YAHOO');
@@ -2079,10 +2177,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               setShowSettingsDrawer(true);
             }}
             className="hidden md:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/25 font-mono text-[11px] font-bold cursor-pointer hover:bg-[#00dbe7]/20 transition-all shadow-sm"
-            title="SutharLabs Stock Tracker v0.4.0 (Stage 3: Real-Time News & AI Sentiment Intelligence - Beta Stage)"
+            title="SutharLabs Stock Tracker v0.5.0 (Stage 4: High-Performance Backtesting Engine & Multi-Country Friction Modeling - Beta Stage)"
           >
             <Cpu className="w-3.5 h-3.5 text-[#00dbe7]" />
-            <span>v0.4.0</span>
+            <span>v0.5.0</span>
             <span className="px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[9px] uppercase tracking-wider font-semibold">
               BETA
             </span>
@@ -2287,12 +2385,22 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         </div>
       </div>
 
-      {/* ── 2. BALANCED WORKSPACE (SUPPORTING FULL GRAPH EXPANDED VIEW) ──────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-start">
+      {/* ── 2. BALANCED RESIZABLE WORKSPACE (TRADINGVIEW & VS CODE SPLIT PANE) ──────── */}
+      <div 
+        ref={splitWorkspaceRef}
+        className={`${
+          isChartExpanded 
+            ? 'flex flex-col gap-3' 
+            : 'flex flex-col lg:flex-row items-stretch gap-0 w-full'
+        } relative`}
+      >
         
-        {/* CHART COLUMN: Takes 12 columns in Expanded Full View, 8 columns in Standard View */}
-        <div className={`${isChartExpanded ? 'lg:col-span-12' : 'lg:col-span-8'} flex flex-col gap-2 transition-all duration-300`}>
-          <div className="glass-panel rounded-xl flex flex-col overflow-hidden border border-outline/20 bg-surface-container-lowest shadow-md">
+        {/* CHART COLUMN: Dynamic fill in standard view, 100% in full view */}
+        <div 
+          style={!isChartExpanded ? { flex: '1 1 0%', minWidth: 0 } : { width: '100%' }}
+          className="flex flex-col gap-2 transition-all duration-150 min-w-0"
+        >
+          <div className="glass-panel rounded-xl flex flex-col overflow-hidden border border-outline/20 bg-surface-container-lowest shadow-md h-full">
             
             {/* Chart Toolbar: Timeframe Selector + Indicator Overlays + Expand Button */}
             <div className="flex flex-wrap justify-between items-center gap-2 p-2.5 border-b border-outline/10 bg-surface-container-low/60">
@@ -2436,62 +2544,161 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </div>
         </div>
 
-        {/* SIDEBAR COLUMN: Stacks on right in Standard View (4 cols); Moves below in 3-col row when Full View (12 cols) */}
-        <div className={`${isChartExpanded ? 'lg:col-span-12' : 'lg:col-span-4'} flex flex-col gap-3 transition-all duration-300`}>
+        {/* RESIZABLE SPLITTER BAR (DESKTOP) */}
+        {!isChartExpanded && (
+          <div
+            onMouseDown={handleSplitterMouseDown}
+            onDoubleClick={handleSplitterDoubleClick}
+            title="Drag horizontally to resize chart & sidebar • Double-click to reset (440px)"
+            className={`hidden lg:flex relative w-3.5 group cursor-col-resize select-none shrink-0 items-center justify-center transition-all z-10 mx-0.5 ${
+              isDraggingSidebar ? 'cursor-col-resize' : ''
+            }`}
+          >
+            {/* Vertical Guide Line */}
+            <div className={`w-[2px] h-full transition-colors rounded-full ${
+              isDraggingSidebar 
+                ? 'bg-[#00dbe7] shadow-[0_0_12px_rgba(0,219,231,0.9)]' 
+                : 'bg-outline/25 group-hover:bg-[#00dbe7]/70 group-hover:shadow-[0_0_8px_rgba(0,219,231,0.5)]'
+            }`} />
+
+            {/* Floating Grip Handle Pill */}
+            <div className={`absolute top-1/2 -translate-y-1/2 w-4 h-9 rounded-full flex items-center justify-center transition-all shadow-md pointer-events-none ${
+              isDraggingSidebar 
+                ? 'bg-[#00dbe7] text-[#002022] scale-110 shadow-[0_0_12px_rgba(0,219,231,0.8)]' 
+                : 'bg-surface-container-high border border-outline/40 text-on-surface-variant group-hover:border-[#00dbe7]/60 group-hover:text-[#00dbe7] group-hover:scale-105'
+            }`}>
+              <GripVertical className="w-3 h-3 pointer-events-none" />
+            </div>
+          </div>
+        )}
+
+        {/* SIDEBAR COLUMN: Resizable on desktop, stacks below when in full view */}
+        <div 
+          style={!isChartExpanded ? { width: `${sidebarWidth}px` } : undefined}
+          className={`${
+            isChartExpanded ? 'w-full mt-3' : 'w-full lg:shrink-0'
+          } flex flex-col gap-3 transition-all duration-150`}
+        >
           
-          {/* Right Column Mode Switcher: WATCHLIST (Default) | TECHNICALS | NEWS & AI | ORDER */}
-          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-low border border-outline/20 select-none">
-            <button
-              onClick={() => setRightPanelTab('WATCHLIST')}
-              className={`flex-1 h-8 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
-                rightPanelTab === 'WATCHLIST'
-                  ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-              }`}
+          {/* Right Column Mode Switcher: Carousel Slideshow with Hover Navigation Chevrons */}
+          <div className="relative group/tabs flex items-center p-1 rounded-xl bg-surface-container-low border border-outline/20 select-none overflow-hidden">
+            
+            {/* Left Scroll Button (appears on hover when scrollable) */}
+            {canScrollTabsLeft && (
+              <button
+                type="button"
+                onClick={() => scrollTabs('left')}
+                className="absolute left-1 z-20 flex items-center justify-center w-6 h-7 rounded-md bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all opacity-0 group-hover/tabs:opacity-100 cursor-pointer"
+                title="Scroll tabs left"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Right Scroll Button (appears on hover when scrollable) */}
+            {canScrollTabsRight && (
+              <button
+                type="button"
+                onClick={() => scrollTabs('right')}
+                className="absolute right-1 z-20 flex items-center justify-center w-6 h-7 rounded-md bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all opacity-0 group-hover/tabs:opacity-100 cursor-pointer"
+                title="Scroll tabs right"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+
+            {/* Scrollable Tabs Carousel Track */}
+            <div
+              ref={tabsScrollRef}
+              onWheel={(e) => {
+                if (e.deltaY !== 0 && tabsScrollRef.current) {
+                  tabsScrollRef.current.scrollLeft += e.deltaY;
+                }
+              }}
+              className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth w-full px-0.5"
             >
-              <Bookmark className="w-3.5 h-3.5 shrink-0" />
-              <span className="leading-none">Watchlist</span>
-            </button>
-            <button
-              onClick={() => setRightPanelTab('TELEMETRY')}
-              className={`flex-1 h-8 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
-                rightPanelTab === 'TELEMETRY'
-                  ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-              }`}
-            >
-              <Activity className="w-3.5 h-3.5 shrink-0" />
-              <span className="leading-none">Technicals</span>
-            </button>
-            <button
-              onClick={() => setRightPanelTab('NEWS')}
-              className={`flex-1 h-8 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
-                rightPanelTab === 'NEWS'
-                  ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-              }`}
-            >
-              <Newspaper className="w-3.5 h-3.5 shrink-0" />
-              <span className="leading-none inline-flex items-center gap-1">
-                <span>News & AI</span>
-                {sentimentReport && (
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${
-                    sentimentReport.verdict === 'BULLISH' ? 'bg-[#00e476]' : sentimentReport.verdict === 'BEARISH' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'
-                  }`} />
-                )}
-              </span>
-            </button>
-            <button
-              onClick={() => setRightPanelTab('ORDER')}
-              className={`flex-1 h-8 px-2 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
-                rightPanelTab === 'ORDER'
-                  ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
-                  : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5 shrink-0" />
-              <span className="leading-none">Order</span>
-            </button>
+              <button
+                onClick={(e) => {
+                  setRightPanelTab('WATCHLIST');
+                  (e.currentTarget as HTMLElement).scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+                }}
+                className={`shrink-0 h-8 px-3 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
+                  rightPanelTab === 'WATCHLIST'
+                    ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <Bookmark className="w-3.5 h-3.5 shrink-0" />
+                <span className="leading-none">Watchlist</span>
+              </button>
+
+              <button
+                onClick={(e) => {
+                  setRightPanelTab('TELEMETRY');
+                  (e.currentTarget as HTMLElement).scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+                }}
+                className={`shrink-0 h-8 px-3 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
+                  rightPanelTab === 'TELEMETRY'
+                    ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <Activity className="w-3.5 h-3.5 shrink-0" />
+                <span className="leading-none">Technicals</span>
+              </button>
+
+              <button
+                onClick={(e) => {
+                  setRightPanelTab('NEWS');
+                  (e.currentTarget as HTMLElement).scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+                }}
+                className={`shrink-0 h-8 px-3 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
+                  rightPanelTab === 'NEWS'
+                    ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <Newspaper className="w-3.5 h-3.5 shrink-0" />
+                <span className="leading-none inline-flex items-center gap-1">
+                  <span>News & AI</span>
+                  {sentimentReport && (
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${
+                      sentimentReport.verdict === 'BULLISH' ? 'bg-[#00e476]' : sentimentReport.verdict === 'BEARISH' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'
+                    }`} />
+                  )}
+                </span>
+              </button>
+
+              <button
+                onClick={(e) => {
+                  setRightPanelTab('BACKTEST');
+                  (e.currentTarget as HTMLElement).scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+                }}
+                className={`shrink-0 h-8 px-3 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
+                  rightPanelTab === 'BACKTEST'
+                    ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <BarChart2 className="w-3.5 h-3.5 shrink-0" />
+                <span className="leading-none">Backtest</span>
+              </button>
+
+              <button
+                onClick={(e) => {
+                  setRightPanelTab('ORDER');
+                  (e.currentTarget as HTMLElement).scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+                }}
+                className={`shrink-0 h-8 px-3 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
+                  rightPanelTab === 'ORDER'
+                    ? 'bg-[#00dbe7] text-[#002022] shadow-[0_0_10px_rgba(0,219,231,0.3)]'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <Shield className="w-3.5 h-3.5 shrink-0" />
+                <span className="leading-none">Order</span>
+              </button>
+            </div>
           </div>
 
           {/* ── TAB 1: LIVE WATCHLIST SUMMARY DECK (TRADINGVIEW & KITE STYLE) ── */}
@@ -3293,6 +3500,30 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             </div>
           )}
 
+          {/* ── TAB 5: HISTORICAL BACKTESTING ENGINE & FRICTION MODELING (STAGE 4) ── */}
+          {rightPanelTab === 'BACKTEST' && (
+            <StockBacktestPanel
+              symbol={symbol}
+              displaySymbol={quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
+              cleanSymbol={formatTickerDisplay(symbol).cleanSymbol}
+              companyName={quote?.name}
+              marketRegion={activeMarketKey}
+              curSymbol={curSymbol}
+              strategies={strategies}
+              activeStrategyId={selectedStrategyId}
+              onSelectStrategy={(id) => {
+                setSelectedStrategyId(id);
+                try { localStorage.setItem('sutharlabs_active_strategy_id', id); } catch {}
+              }}
+              onOpenStrategyBuilder={() => {
+                setSettingsActiveTab('STRATEGIES');
+                setBuilderMode('CATALOG');
+                setShowSettingsDrawer(true);
+              }}
+              isDark={isDark}
+            />
+          )}
+
         </div>
 
       </div>
@@ -3455,7 +3686,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 }}
                 className="flex items-center gap-2 overflow-x-auto overflow-y-hidden custom-scrollbar py-1 shrink-0"
               >
-                {(['WATCHLISTS', 'MARKET', 'STRATEGIES', 'NEWS_AI', 'INDICATORS', 'TRADING', 'FEEDS', 'PERFORMANCE'] as const).map(tab => (
+                {(['WATCHLISTS', 'MARKET', 'STRATEGIES', 'BACKTEST', 'NEWS_AI', 'INDICATORS', 'TRADING', 'FEEDS', 'PERFORMANCE'] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setSettingsActiveTab(tab)}
@@ -3468,6 +3699,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     {tab === 'WATCHLISTS' && <Bookmark className="w-3.5 h-3.5" />}
                     {tab === 'MARKET' && <Globe className="w-3.5 h-3.5" />}
                     {tab === 'STRATEGIES' && <Cpu className="w-3.5 h-3.5" />}
+                    {tab === 'BACKTEST' && <BarChart2 className="w-3.5 h-3.5 text-[#00dbe7]" />}
                     {tab === 'NEWS_AI' && <Newspaper className="w-3.5 h-3.5 text-[#00dbe7]" />}
                     {tab === 'INDICATORS' && <Layers className="w-3.5 h-3.5" />}
                     {tab === 'TRADING' && <Shield className="w-3.5 h-3.5" />}
@@ -3477,6 +3709,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       {tab === 'WATCHLISTS' && 'Custom Watchlists'}
                       {tab === 'MARKET' && 'Market Universes'}
                       {tab === 'STRATEGIES' && 'Strategy Builder'}
+                      {tab === 'BACKTEST' && 'Backtest Engine'}
                       {tab === 'NEWS_AI' && 'News & AI Sentiment'}
                       {tab === 'INDICATORS' && 'Indicator Mathematics'}
                       {tab === 'TRADING' && 'Order & Risk Rules'}
@@ -4822,6 +5055,31 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     </div>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* TAB: HISTORICAL BACKTESTING ENGINE & FRICTION MODELING (STAGE 4) */}
+            {settingsActiveTab === 'BACKTEST' && (
+              <div className="flex flex-col gap-6">
+                <StockBacktestPanel
+                  symbol={symbol}
+                  displaySymbol={quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
+                  cleanSymbol={formatTickerDisplay(symbol).cleanSymbol}
+                  companyName={quote?.name}
+                  marketRegion={activeMarketKey}
+                  curSymbol={curSymbol}
+                  strategies={strategies}
+                  activeStrategyId={selectedStrategyId}
+                  onSelectStrategy={(id) => {
+                    setSelectedStrategyId(id);
+                    try { localStorage.setItem('sutharlabs_active_strategy_id', id); } catch {}
+                  }}
+                  onOpenStrategyBuilder={() => {
+                    setSettingsActiveTab('STRATEGIES');
+                    setBuilderMode('CATALOG');
+                  }}
+                  isDark={isDark}
+                />
               </div>
             )}
 

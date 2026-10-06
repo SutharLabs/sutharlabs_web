@@ -564,11 +564,33 @@ export interface IMarketAdapter {
 
 ---
 
-### Stage 4: High-Performance Backtesting Engine & Global Friction Models
-> **Target Version**: `v0.5.0` &bull; **Status**: **NEXT UP** ⏳
-- Implement historical bar replay backtester with full transaction friction modeling (NSE STT/GST, US SEC fees, UK Stamp Duty SDRT, China A-Share T+1 and stamp duty).
-- Generate institutional statistics (CAGR, Sharpe, Sortino, Max Drawdown, Win Rate, Profit Factor).
-- Render interactive Equity Curve and Trade Log table with trade-by-trade entry/exit points plotted on the chart.
+### Stage 4: High-Performance Quantitative Backtesting Engine & Multi-Country Friction Modeling
+> **Release Version**: `v0.5.0` (Beta) &bull; **Status**: **COMPLETED & SHIPPED** ✅
+
+#### Additions & Architectural Milestones Delivered:
+1. **Point-in-Time Quantitative Backtesting Engine**:
+   - Implemented in [`src/plugins/StockTracker/backtest/engine.ts`](file:///d:/Code/SutharLabs/website/src/plugins/StockTracker/backtest/engine.ts):
+     - Strict causal state machine with **zero lookahead bias** (evaluates strategy rules strictly on historical candle slices up to bar $i$).
+     - Multi-timeframe replay window configuration (`1mo`, `3mo`, `6mo`, `1y`, `2y`, `5y`, `max`).
+     - Realistic intra-bar fills for Stop Loss (at candle low or gap open) and Take Profit (at candle high or gap open).
+     - Seamless integration with both pre-built algorithmic presets and user-created custom strategies from the Visual Rule Builder.
+2. **Multi-Country Realistic Market Friction & Statutory Tax Modeling**:
+   - Implemented in [`src/plugins/StockTracker/backtest/friction.ts`](file:///d:/Code/SutharLabs/website/src/plugins/StockTracker/backtest/friction.ts):
+     - **India (NSE / BSE)**: Securities Transaction Tax (STT 0.1% delivery / 0.025% intraday sell), Exchange turnover charges (0.00297%), SEBI turnover levies (₹10/crore), Stamp Duty (0.015% on buy), and Goods & Services Tax (GST 18% on brokerage & statutory charges).
+     - **United States (NYSE / NASDAQ)**: Zero commission baseline, SEC Section 31 fee ($0.0000278 on sell proceeds), and FINRA Trading Activity Fee ($0.000166/share).
+     - **United Kingdom (LSE)**: UK Stamp Duty Reserve Tax (SDRT 0.50% on equity purchases).
+     - **Asia (Greater China / HK / Japan)**: China A-Share T+1 settlement day trading rule enforcement (cannot sell on same bar as purchase), HK Stamp Duty (0.1%), and 100-share board lot constraints for HKEX and TSE.
+     - **Execution Slippage**: Configurable bid-ask slippage modeling on entry and exit (default 0.05%).
+3. **Institutional Analytics & KPI Metric Suite**:
+   - Computes Annualized CAGR (252-day basis), Sharpe Ratio, Sortino Ratio (downside deviation), Maximum Drawdown % with peak-to-trough bar duration, Win Rate %, Profit Factor, Expectancy, and Net Alpha vs. Buy-and-Hold benchmark.
+4. **Interactive SVG Equity Curve Plot**:
+   - High-contrast visual equity curve comparing Strategy Net Equity against Buy & Hold Benchmark with responsive coordinates, gradient fills, and interactive mouse hover telemetry.
+5. **Trade-by-Trade Audit Log & CSV Export**:
+   - Complete audit trail of executed trades detailing entry/exit dates, prices, exit triggers (`STOP_LOSS`, `TAKE_PROFIT`, `SIGNAL_EXIT`, `END_OF_DATA`), holding period in days, gross PnL, itemized friction drag, and 1-click CSV download.
+6. **TradingView & VS Code-Style Drag-Resizable Workspace & Tab Carousel**:
+   - Drag-resizable vertical splitter dividing the chart canvas and the right panel with tactile cyan grip handle, clamped bounds (320px - 850px), double-click reset (440px), and `localStorage` persistence.
+   - Right panel mode switcher upgraded to a smooth horizontal carousel with hover `<` and `>` chevron scroll navigation, eliminating tab cramping.
+   - Automatic real-time Lightweight Charts canvas reflow via `ResizeObserver`.
 
 ---
 
