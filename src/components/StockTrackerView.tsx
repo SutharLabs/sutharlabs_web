@@ -947,6 +947,37 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     };
   }, [checkTabsScroll, sidebarWidth]);
 
+  // Quick Watchlist Ticker Strip Carousel Navigation
+  const tickerScrollRef = useRef<HTMLDivElement>(null);
+  const [canScrollTickerLeft, setCanScrollTickerLeft] = useState<boolean>(false);
+  const [canScrollTickerRight, setCanScrollTickerRight] = useState<boolean>(false);
+
+  const checkTickerScroll = useCallback(() => {
+    if (!tickerScrollRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = tickerScrollRef.current;
+    setCanScrollTickerLeft(scrollLeft > 2);
+    setCanScrollTickerRight(scrollLeft + clientWidth < scrollWidth - 2);
+  }, []);
+
+  const scrollTicker = useCallback((direction: 'left' | 'right') => {
+    if (!tickerScrollRef.current) return;
+    const offset = direction === 'left' ? -200 : 200;
+    tickerScrollRef.current.scrollBy({ left: offset, behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => {
+    checkTickerScroll();
+    const el = tickerScrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', checkTickerScroll, { passive: true });
+    const ro = new ResizeObserver(checkTickerScroll);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', checkTickerScroll);
+      ro.disconnect();
+    };
+  }, [checkTickerScroll, activeWatchlist?.symbols, watchlistQuotes]);
+
   // Handle Splitter Mouse Drag
   const handleSplitterMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -2093,14 +2124,15 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (CLEAN, ONLY ACTIVE MARKET) ── */}
       <div className="relative z-50 glass-panel rounded-xl p-3 border border-outline/20 flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest/80 shadow-sm">
         
-        {/* Left: Active Market Badge (Click to open Market Settings in Drawer) */}
-        <div className="flex items-center gap-2">
+        {/* Left Group: Continuous Active Market Selector, Session Pill & Search Box */}
+        <div className="flex items-center gap-2.5 flex-1 min-w-[280px]">
+          {/* Active Market Badge (Click to open Market Settings in Drawer) */}
           <button
             onClick={() => {
               setSettingsActiveTab('MARKET');
               setShowSettingsDrawer(true);
             }}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface border border-outline/25 hover:border-[#00dbe7] transition-all cursor-pointer font-mono text-xs shadow-sm group"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface border border-outline/25 hover:border-[#00dbe7] transition-all cursor-pointer font-mono text-xs shadow-sm group shrink-0"
             title="Click to change Market Universe in Settings"
           >
             <span className="text-base leading-none">{activeUniverse?.flag || '🇮🇳'}</span>
@@ -2111,137 +2143,137 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
           {/* Market Session Active/Closed Pill */}
           {quote?.market_state && (
-            <span className="hidden md:flex items-center gap-1.5 font-mono text-[11px] px-2.5 py-1 rounded-md bg-surface-container-low text-on-surface-variant border border-outline/10">
+            <span className="hidden md:flex items-center gap-1.5 font-mono text-[11px] px-2.5 py-1 rounded-md bg-surface-container-low text-on-surface-variant border border-outline/10 shrink-0 whitespace-nowrap">
               <span className={`w-2 h-2 rounded-full ${quote.market_open ? 'bg-[#00e476] animate-pulse' : 'bg-slate-400'}`} />
               <span>{quote.market_open ? 'SESSION ACTIVE' : `CLOSED (${quote.market_state})`}</span>
             </span>
           )}
-        </div>
 
-        {/* Center: Search & Ticker Input with Real-Time Suggestions */}
-        <div className="relative flex-1 max-w-md z-50">
-          <div className="relative flex items-center">
-            <input
-              value={symbolInput}
-              onChange={e => {
-                setSymbolInput(e.target.value);
-                setShowDropdown(true);
-              }}
-              onFocus={() => setShowDropdown(true)}
-              onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
-              onKeyDown={e => {
-                if (e.key === 'Enter') {
+          {/* Continuous Search & Ticker Input with Real-Time Suggestions */}
+          <div className="relative flex-1 min-w-[180px] max-w-sm lg:max-w-md z-50">
+            <div className="relative flex items-center">
+              <input
+                value={symbolInput}
+                onChange={e => {
+                  setSymbolInput(e.target.value);
+                  setShowDropdown(true);
+                }}
+                onFocus={() => setShowDropdown(true)}
+                onBlur={() => setTimeout(() => setShowDropdown(false), 250)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    if (searchResults.length > 0) {
+                      const chosen = searchResults[0];
+                      setSymbol(chosen.symbol);
+                      setSymbolInput(chosen.displaySymbol);
+                      setShowDropdown(false);
+                    } else {
+                      const norm = normalizeTicker(symbolInput, activeMarketKey);
+                      setSymbol(norm);
+                      setSymbolInput(formatTickerDisplay(norm).displaySymbol);
+                      setShowDropdown(false);
+                    }
+                  }
+                }}
+                placeholder="Search symbol or company (e.g. Ather, Reliance, Apple)..."
+                className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg pl-3 pr-16 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] tracking-wider"
+              />
+              {isSearching && (
+                <span className="absolute right-14 w-2 h-2 rounded-full bg-[#00dbe7] animate-ping" />
+              )}
+              <button
+                onClick={() => {
                   if (searchResults.length > 0) {
                     const chosen = searchResults[0];
                     setSymbol(chosen.symbol);
                     setSymbolInput(chosen.displaySymbol);
-                    setShowDropdown(false);
                   } else {
                     const norm = normalizeTicker(symbolInput, activeMarketKey);
                     setSymbol(norm);
                     setSymbolInput(formatTickerDisplay(norm).displaySymbol);
-                    setShowDropdown(false);
                   }
-                }
-              }}
-              placeholder="Search symbol or company (e.g. Ather, Reliance, Apple)..."
-              className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg pl-3 pr-16 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] tracking-wider"
-            />
-            {isSearching && (
-              <span className="absolute right-14 w-2 h-2 rounded-full bg-[#00dbe7] animate-ping" />
-            )}
-            <button
-              onClick={() => {
-                if (searchResults.length > 0) {
-                  const chosen = searchResults[0];
-                  setSymbol(chosen.symbol);
-                  setSymbolInput(chosen.displaySymbol);
-                } else {
-                  const norm = normalizeTicker(symbolInput, activeMarketKey);
-                  setSymbol(norm);
-                  setSymbolInput(formatTickerDisplay(norm).displaySymbol);
-                }
-                setShowDropdown(false);
-              }}
-              className="absolute right-1 top-1 bottom-1 px-3 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-md hover:brightness-110 transition-all cursor-pointer whitespace-nowrap"
-            >
-              Load
-            </button>
-          </div>
+                  setShowDropdown(false);
+                }}
+                className="absolute right-1 top-1 bottom-1 px-3 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-md hover:brightness-110 transition-all cursor-pointer whitespace-nowrap"
+              >
+                Load
+              </button>
+            </div>
 
-          {/* Autocomplete Suggestions Dropdown */}
-          {showDropdown && (
-            <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/40 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-[100] overflow-hidden backdrop-blur-2xl max-h-72 overflow-y-auto custom-scrollbar">
-              {searchResults.length > 0 ? (
-                searchResults.map(item => (
-                  <div
-                    key={item.symbol}
-                    onMouseDown={() => {
-                      setSymbol(item.symbol);
-                      setSymbolInput(item.displaySymbol);
-                      setShowDropdown(false);
-                    }}
-                    className="w-full text-left px-3.5 py-2.5 text-xs font-mono hover:bg-[#00dbe7]/10 transition-colors flex justify-between items-center border-b border-outline/10 last:border-none cursor-pointer group"
-                  >
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-2">
-                        <span className="text-on-surface font-bold group-hover:text-[#00dbe7] transition-colors">
-                          {item.name}
-                        </span>
-                        <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-mono">
-                          {item.cleanSymbol}
+            {/* Autocomplete Suggestions Dropdown */}
+            {showDropdown && (
+              <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/40 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-[100] overflow-hidden backdrop-blur-2xl max-h-72 overflow-y-auto custom-scrollbar">
+                {searchResults.length > 0 ? (
+                  searchResults.map(item => (
+                    <div
+                      key={item.symbol}
+                      onMouseDown={() => {
+                        setSymbol(item.symbol);
+                        setSymbolInput(item.displaySymbol);
+                        setShowDropdown(false);
+                      }}
+                      className="w-full text-left px-3.5 py-2.5 text-xs font-mono hover:bg-[#00dbe7]/10 transition-colors flex justify-between items-center border-b border-outline/10 last:border-none cursor-pointer group"
+                    >
+                      <div className="flex flex-col gap-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="text-on-surface font-bold group-hover:text-[#00dbe7] transition-colors">
+                            {item.name}
+                          </span>
+                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-mono">
+                            {item.cleanSymbol}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-on-surface-variant truncate max-w-[280px]">
+                          {item.sector || 'Listed Equity'}
                         </span>
                       </div>
-                      <span className="text-[10px] text-on-surface-variant truncate max-w-[280px]">
-                        {item.sector || 'Listed Equity'}
-                      </span>
-                    </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      <span className={`text-[11px] px-2 py-0.5 rounded font-mono font-bold border ${
-                        item.exchange === 'NSE' ? 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/40' :
-                        item.exchange === 'BSE' ? 'bg-amber-500/15 text-amber-400 border-amber-500/40' :
-                        'bg-purple-500/15 text-purple-400 border-purple-500/40'
-                      }`}>
-                        {item.displaySymbol}
-                      </span>
-                      <button
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          const isUS = item.exchange === 'NASDAQ' || item.exchange === 'NYSE' || KNOWN_US_TICKERS.has(item.cleanSymbol.toUpperCase());
-                          const itemMarket = isUS ? 'US' : (item.exchange === 'BSE' || item.exchange === 'NSE' ? 'IN' : activeMarketKey);
-                          handleToggleCurrentStockInWatchlist(item.symbol, itemMarket, item.name, item.exchange);
-                        }}
-                        className="p-1 rounded hover:bg-surface-container-high transition-colors cursor-pointer text-on-surface-variant hover:text-[#00dbe7]"
-                        title={
-                          (activeWatchlist.items || []).some(i => i.symbol === item.symbol || i.cleanSymbol === item.cleanSymbol) ||
-                          activeWatchlist.symbols.some(s => normalizeTicker(s, activeMarketKey) === normalizeTicker(item.symbol, activeMarketKey))
-                            ? `In "${activeWatchlist.name}" (Click to remove)`
-                            : `Add to "${activeWatchlist.name}"`
-                        }
-                      >
-                        <Star className={`w-3.5 h-3.5 ${
-                          (activeWatchlist.items || []).some(i => i.symbol === item.symbol || i.cleanSymbol === item.cleanSymbol) ||
-                          activeWatchlist.symbols.some(s => normalizeTicker(s, activeMarketKey) === normalizeTicker(item.symbol, activeMarketKey))
-                            ? 'fill-[#00e476] text-[#00e476]'
-                            : ''
-                        }`} />
-                      </button>
+                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        <span className={`text-[11px] px-2 py-0.5 rounded font-mono font-bold border ${
+                          item.exchange === 'NSE' ? 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/40' :
+                          item.exchange === 'BSE' ? 'bg-amber-500/15 text-amber-400 border-amber-500/40' :
+                          'bg-purple-500/15 text-purple-400 border-purple-500/40'
+                        }`}>
+                          {item.displaySymbol}
+                        </span>
+                        <button
+                          type="button"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            const isUS = item.exchange === 'NASDAQ' || item.exchange === 'NYSE' || KNOWN_US_TICKERS.has(item.cleanSymbol.toUpperCase());
+                            const itemMarket = isUS ? 'US' : (item.exchange === 'BSE' || item.exchange === 'NSE' ? 'IN' : activeMarketKey);
+                            handleToggleCurrentStockInWatchlist(item.symbol, itemMarket, item.name, item.exchange);
+                          }}
+                          className="p-1 rounded hover:bg-surface-container-high transition-colors cursor-pointer text-on-surface-variant hover:text-[#00dbe7]"
+                          title={
+                            (activeWatchlist.items || []).some(i => i.symbol === item.symbol || i.cleanSymbol === item.cleanSymbol) ||
+                            activeWatchlist.symbols.some(s => normalizeTicker(s, activeMarketKey) === normalizeTicker(item.symbol, activeMarketKey))
+                              ? `In "${activeWatchlist.name}" (Click to remove)`
+                              : `Add to "${activeWatchlist.name}"`
+                          }
+                        >
+                          <Star className={`w-3.5 h-3.5 ${
+                            (activeWatchlist.items || []).some(i => i.symbol === item.symbol || i.cleanSymbol === item.cleanSymbol) ||
+                            activeWatchlist.symbols.some(s => normalizeTicker(s, activeMarketKey) === normalizeTicker(item.symbol, activeMarketKey))
+                              ? 'fill-[#00e476] text-[#00e476]'
+                              : ''
+                          }`} />
+                        </button>
+                      </div>
                     </div>
+                  ))
+                ) : symbolInput.trim().length > 0 ? (
+                  <div className="p-3 text-center text-xs font-mono text-on-surface-variant">
+                    {isSearching ? 'Searching exchange directory...' : (
+                      <span>
+                        Press <kbd className="px-1.5 py-0.5 rounded bg-surface-container-high border border-outline/20">Enter</kbd> to load <strong className="text-[#00dbe7]">{symbolInput}</strong>
+                      </span>
+                    )}
                   </div>
-                ))
-              ) : symbolInput.trim().length > 0 ? (
-                <div className="p-3 text-center text-xs font-mono text-on-surface-variant">
-                  {isSearching ? 'Searching exchange directory...' : (
-                    <span>
-                      Press <kbd className="px-1.5 py-0.5 rounded bg-surface-container-high border border-outline/20">Enter</kbd> to load <strong className="text-[#00dbe7]">{symbolInput}</strong>
-                    </span>
-                  )}
-                </div>
-              ) : null}
-            </div>
-          )}
+                ) : null}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right: Live Quote Pill & Sliding Settings Overlay Trigger */}
@@ -2329,10 +2361,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       </div>
 
       {/* ── QUICK WATCHLIST ASSET TICKER STRIP & WATCHLIST SWITCHER ── */}
-      <div className="relative z-20 flex flex-wrap items-center justify-between gap-2 p-1.5 rounded-xl bg-surface-container-lowest/80 border border-outline/20 shadow-sm">
+      <div className="relative z-20 flex items-center justify-between gap-2 p-1.5 rounded-xl bg-surface-container-lowest/80 border border-outline/20 shadow-sm">
         
         {/* Left: Unclipped Watchlist Switcher Dropdown */}
-        <div className="relative z-30">
+        <div className="relative z-30 shrink-0">
           <button
             type="button"
             onClick={() => setShowWatchlistDropdown(!showWatchlistDropdown)}
@@ -2412,78 +2444,113 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           )}
         </div>
 
-        {/* Center: Scrollable symbol chips */}
-        <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar flex-1 px-1">
-          {activeWatchlist.symbols.map(symStr => {
-            const targetItem = (activeWatchlist.items || []).find(
-              i => i.symbol === symStr || i.cleanSymbol === symStr
-            );
-            const itemMarket = targetItem?.market || (KNOWN_US_TICKERS.has(symStr.toUpperCase()) ? 'US' : activeMarketKey);
-            const norm = normalizeTicker(symStr, itemMarket);
-            const fmt = formatTickerDisplay(norm, targetItem?.exchange);
-            const isSelected = normalizeTicker(symbol, activeMarketKey) === norm;
-            const q = watchlistQuotes[norm] || watchlistQuotes[symStr] || watchlistQuotes[fmt.cleanSymbol] || (targetItem?.cleanSymbol ? watchlistQuotes[targetItem.cleanSymbol] : undefined);
-            const hasQuote = q && q.change_percent != null;
-            const isPos = (q?.change_percent ?? 0) >= 0;
-            const priceSym = q?.currency_symbol || (itemMarket === 'US' ? '$' : itemMarket === 'IN' ? '₹' : curSymbol);
+        {/* Center: Scrollable symbol chips carousel with left & right chevrons */}
+        <div className="group/ticker relative flex-1 flex items-center min-w-0 overflow-hidden px-1">
+          {/* Left Scroll Button (appears when scrollable) */}
+          {canScrollTickerLeft && (
+            <button
+              type="button"
+              onClick={() => scrollTicker('left')}
+              className="absolute left-0 z-20 flex items-center justify-center w-6 h-7 rounded-md bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
+              title="Scroll watchlist left"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+          )}
 
-            return (
-              <div
-                key={symStr}
-                className={`group flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono transition-all whitespace-nowrap border ${
-                  isSelected
-                    ? 'bg-[#00dbe7]/20 text-[#00dbe7] border-[#00dbe7] font-bold shadow-[0_0_8px_rgba(0,219,231,0.25)]'
-                    : 'bg-surface-container-low text-on-surface-variant border-outline/20 hover:text-on-surface hover:border-outline/40'
-                }`}
-              >
-                <button
-                  onClick={() => {
-                    setSymbol(norm);
-                    setSymbolInput(fmt.displaySymbol);
-                    if (targetItem?.market && targetItem.market !== activeMarketKey && universes[targetItem.market]) {
-                      setActiveMarketKey(targetItem.market);
-                    }
-                  }}
-                  className="cursor-pointer flex items-center gap-1.5"
-                  title={`Load ${fmt.displaySymbol} in chart`}
+          {/* Right Scroll Button (appears when scrollable) */}
+          {canScrollTickerRight && (
+            <button
+              type="button"
+              onClick={() => scrollTicker('right')}
+              className="absolute right-0 z-20 flex items-center justify-center w-6 h-7 rounded-md bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
+              title="Scroll watchlist right"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Carousel Track */}
+          <div
+            ref={tickerScrollRef}
+            onWheel={(e) => {
+              if (e.deltaY !== 0 && tickerScrollRef.current) {
+                tickerScrollRef.current.scrollLeft += e.deltaY;
+              }
+            }}
+            className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth w-full py-0.5 px-6"
+          >
+            {activeWatchlist.symbols.map(symStr => {
+              const targetItem = (activeWatchlist.items || []).find(
+                i => i.symbol === symStr || i.cleanSymbol === symStr
+              );
+              const itemMarket = targetItem?.market || (KNOWN_US_TICKERS.has(symStr.toUpperCase()) ? 'US' : activeMarketKey);
+              const norm = normalizeTicker(symStr, itemMarket);
+              const fmt = formatTickerDisplay(norm, targetItem?.exchange);
+              const isSelected = normalizeTicker(symbol, activeMarketKey) === norm;
+              const q = watchlistQuotes[norm] || watchlistQuotes[symStr] || watchlistQuotes[fmt.cleanSymbol] || (targetItem?.cleanSymbol ? watchlistQuotes[targetItem.cleanSymbol] : undefined);
+              const hasQuote = q && q.change_percent != null;
+              const isPos = (q?.change_percent ?? 0) >= 0;
+              const priceSym = q?.currency_symbol || (itemMarket === 'US' ? '$' : itemMarket === 'IN' ? '₹' : curSymbol);
+
+              return (
+                <div
+                  key={symStr}
+                  className={`group flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-mono transition-all whitespace-nowrap border ${
+                    isSelected
+                      ? 'bg-[#00dbe7]/20 text-[#00dbe7] border-[#00dbe7] font-bold shadow-[0_0_8px_rgba(0,219,231,0.25)]'
+                      : 'bg-surface-container-low text-on-surface-variant border-outline/20 hover:text-on-surface hover:border-outline/40'
+                  }`}
                 >
-                  <span className="font-semibold">{fmt.cleanSymbol}</span>
-                  <span className={`text-[9px] px-1 py-0.2 rounded font-semibold ${
-                    fmt.exchange === 'NSE' ? 'bg-[#00dbe7]/15 text-[#00dbe7]' :
-                    fmt.exchange === 'BSE' ? 'bg-amber-500/15 text-amber-400' :
-                    'bg-purple-500/15 text-purple-400'
-                  }`}>
-                    {fmt.exchange}
-                  </span>
-                  {hasQuote && (
-                    <span className="flex items-center gap-1.5 ml-0.5">
-                      {q.current_price != null && (
-                        <span className="text-on-surface font-semibold text-[11px]">
-                          {priceSym}{q.current_price.toFixed(1)}
-                        </span>
-                      )}
-                      <span className={`text-[10px] font-bold ${isPos ? 'text-[#00e476]' : 'text-[#ff6b6b]'}`}>
-                        {isPos ? '+' : ''}{q.change_percent?.toFixed(1)}%
-                      </span>
+                  <button
+                    onClick={() => {
+                      setSymbol(norm);
+                      setSymbolInput(fmt.displaySymbol);
+                      if (targetItem?.market && targetItem.market !== activeMarketKey && universes[targetItem.market]) {
+                        setActiveMarketKey(targetItem.market);
+                      }
+                    }}
+                    className="cursor-pointer flex items-center gap-1.5"
+                    title={`Load ${fmt.displaySymbol} in chart`}
+                  >
+                    <span className="font-semibold">{fmt.cleanSymbol}</span>
+                    <span className={`text-[9px] px-1 py-0.2 rounded font-semibold ${
+                      fmt.exchange === 'NSE' ? 'bg-[#00dbe7]/15 text-[#00dbe7]' :
+                      fmt.exchange === 'BSE' ? 'bg-amber-500/15 text-amber-400' :
+                      'bg-purple-500/15 text-purple-400'
+                    }`}>
+                      {fmt.exchange}
                     </span>
-                  )}
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleRemoveSymbolFromWatchlist(activeWatchlist.id, symStr);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 hover:text-[#ff6b6b] p-0.5 rounded transition-all cursor-pointer ml-0.5"
-                  title={`Remove from ${activeWatchlist.name}`}
-                >
-                  <X className="w-3 h-3" />
-                </button>
-              </div>
-            );
-          })}
+                    {hasQuote && (
+                      <span className="flex items-center gap-1.5 ml-0.5">
+                        {q.current_price != null && (
+                          <span className="text-on-surface font-semibold text-[11px]">
+                            {priceSym}{q.current_price.toFixed(1)}
+                          </span>
+                        )}
+                        <span className={`text-[10px] font-bold ${isPos ? 'text-[#00e476]' : 'text-[#ff6b6b]'}`}>
+                          {isPos ? '+' : ''}{q.change_percent?.toFixed(1)}%
+                        </span>
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRemoveSymbolFromWatchlist(activeWatchlist.id, symStr);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 hover:text-[#ff6b6b] p-0.5 rounded transition-all cursor-pointer ml-0.5"
+                    title={`Remove from ${activeWatchlist.name}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
-        {/* Right Actions: + Add Current Stock & Toggle Detailed Deck */}
+        {/* Right Actions: + Add Current Stock */}
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => handleToggleCurrentStockInWatchlist(symbol, activeMarketKey, quote?.name, quote?.exchange)}
@@ -2496,19 +2563,6 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           >
             <Star className={`w-3.5 h-3.5 ${isInActiveWatchlist ? 'fill-[#00e476]' : ''}`} />
             <span>{isInActiveWatchlist ? 'In Watchlist' : '+ Add to List'}</span>
-          </button>
-
-          <button
-            onClick={() => setRightPanelTab(rightPanelTab === 'WATCHLIST' ? 'TELEMETRY' : 'WATCHLIST')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
-              rightPanelTab === 'WATCHLIST'
-                ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#00dbe7] font-bold shadow-[0_0_8px_rgba(0,219,231,0.25)]'
-                : 'bg-surface-container-high border-outline/30 text-on-surface hover:text-[#00dbe7]'
-            }`}
-            title="Toggle Watchlist Summary Deck in main view"
-          >
-            <Layers className="w-3.5 h-3.5 text-[#00dbe7]" />
-            <span className="font-bold">Watchlist Deck</span>
           </button>
         </div>
       </div>
