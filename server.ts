@@ -1013,15 +1013,19 @@ app.get("/api/workspace-plugins", async (req, res) => {
         stage: isBetaVersion(ver.version) ? 'Beta' : 'Stable'
       }));
 
+      const latestVersion = (sortedVersions.length > 0 && semverCompareDesc(sortedVersions[0].version, p.version) < 0)
+        ? sortedVersions[0].version
+        : p.version;
+
       return {
         id: p.id,
         name: p.name,
         category: p.category,
         type: p.type,
-        stage: isBetaVersion(p.version) ? 'Beta' : 'Stable',
+        stage: isBetaVersion(latestVersion) ? 'Beta' : 'Stable',
         description: p.description,
         iconSymbol: p.iconSymbol,
-        version: p.version,
+        version: latestVersion,
         installsCount: p.installedBy.length,
         rating: avgRating,
         reviewsCount: reviewCount,

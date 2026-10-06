@@ -171,6 +171,15 @@ async function packageAllPlugins() {
             publishedBy: 'Suthar Suresh'
           }
         });
+
+        // Also update parent plugin version and description
+        await prisma.workspacePlugin.update({
+          where: { id: item.id },
+          data: {
+            version: item.version,
+            description: item.description
+          }
+        }).catch(() => {});
       }
       console.log('✅ Database version records synchronized successfully.');
       await prisma.$disconnect();
