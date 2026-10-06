@@ -24,6 +24,9 @@ import {
   Clock,
   User,
   Filter,
+  Pencil,
+  Trash2,
+  Edit3,
   X
 } from 'lucide-react';
 import { IStrategy, StrategyReview, VerifiedBacktestBadge } from '../plugins/StockTracker/strategies/types';
@@ -38,6 +41,8 @@ export interface StockStrategyMarketplaceProps {
   onOpenBuilder: (strategyId?: string) => void;
   onOpenBacktest: (strategyId: string) => void;
   onRefreshStrategies: () => Promise<void>;
+  onDeleteStrategy?: (strategyId: string) => Promise<void>;
+  onRenameStrategy?: (strategyId: string, newName: string, newDesc?: string) => Promise<void>;
   isDark?: boolean;
 }
 
@@ -53,6 +58,8 @@ export default function StockStrategyMarketplace({
   onOpenBuilder,
   onOpenBacktest,
   onRefreshStrategies,
+  onDeleteStrategy,
+  onRenameStrategy,
   isDark = true
 }: StockStrategyMarketplaceProps) {
   // Filter and Search states
@@ -68,6 +75,15 @@ export default function StockStrategyMarketplace({
   const [userComment, setUserComment] = useState<string>('');
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
+  // Rename Modal state
+  const [renamingStrategy, setRenamingStrategy] = useState<IStrategy | null>(null);
+  const [renameName, setRenameName] = useState<string>('');
+  const [renameDesc, setRenameDesc] = useState<string>('');
+  const [isSubmittingRename, setIsSubmittingRename] = useState(false);
+
+  // Deletion tracker
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
   // Verification status tracker
   const [verifyingId, setVerifyingId] = useState<string | null>(null);
   const [forkingId, setForkingId] = useState<string | null>(null);
@@ -76,6 +92,95 @@ export default function StockStrategyMarketplace({
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleOpenRename = (strat: IStrategy) => {
+    setRenamingStrategy(strat);
+    setRenameName(strat.name);
+    setRenameDesc(strat.description || '');
+  };
+
+  const handleSaveRename = async () => {
+    if (!renamingStrategy) return;
+    const trimmed = renameName.trim();
+    if (!trimmed) {
+      alert('Strategy name cannot be empty');
+      return;
+    }
+
+    setIsSubmittingRename(true);
+    try {
+      if (renamingStrategy.isPreset) {
+        // Fork preset with new custom name
+        const res = await fetch(`${STOCK_API}/strategies/${renamingStrategy.id}/fork`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userEmail, userName })
+        });
+        if (!res.ok) throw new Error('Failed to fork preset for renaming');
+        const forked = await res.json();
+        const updateRes = await fetch(`${STOCK_API}/strategies/${forked.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name: trimmed, description: renameDesc.trim() })
+        });
+        if (!updateRes.ok) throw new Error('Failed to update renamed strategy');
+        const updatedFork = await updateRes.json();
+        onForkStrategy(updatedFork);
+        await onRefreshStrategies();
+        showToast(`Created personal copy renamed to "${trimmed}"`);
+      } else {
+        if (onRenameStrategy) {
+          await onRenameStrategy(renamingStrategy.id, trimmed, renameDesc.trim());
+        } else {
+          const res = await fetch(`${STOCK_API}/strategies/${renamingStrategy.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: trimmed, description: renameDesc.trim() })
+          });
+          if (!res.ok) throw new Error('Failed to rename strategy');
+        }
+        await onRefreshStrategies();
+        showToast(`Renamed algorithm to "${trimmed}"`);
+      }
+      setRenamingStrategy(null);
+    } catch (e: any) {
+      alert(`Error renaming strategy: ${e.message}`);
+    } finally {
+      setIsSubmittingRename(false);
+    }
+  };
+
+  const handleDelete = async (strat: IStrategy) => {
+    if (strat.isPreset) {
+      alert('Built-in quant preset algorithms cannot be deleted.');
+      return;
+    }
+
+    const confirmMsg = `Are you sure you want to delete "${strat.name}"?\n\nThis will permanently remove this algorithm from your workspace.`;
+    if (!confirm(confirmMsg)) return;
+
+    setDeletingId(strat.id);
+    try {
+      if (onDeleteStrategy) {
+        await onDeleteStrategy(strat.id);
+      } else {
+        const res = await fetch(`${STOCK_API}/strategies/${strat.id}`, {
+          method: 'DELETE'
+        });
+        if (!res.ok) throw new Error('Failed to delete strategy');
+      }
+
+      if (strat.id === activeStrategyId) {
+        onSelectStrategy('strat-ema-cross');
+      }
+      await onRefreshStrategies();
+      showToast(`Deleted "${strat.name}"`);
+    } catch (e: any) {
+      alert(`Error deleting strategy: ${e.message}`);
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   // Extract all unique tags
@@ -373,7 +478,8 @@ export default function StockStrategyMarketplace({
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {displayedStrategies.map(strat => {
             const isActive = strat.id === activeStrategyId;
-            const isAuthor = strat.authorEmail && strat.authorEmail.toLowerCase().trim() === userEmail.toLowerCase().trim();
+            const isCustomOrForked = !strat.isPreset;
+            const isAuthor = isCustomOrForked || (strat.authorEmail && strat.authorEmail.toLowerCase().trim() === userEmail.toLowerCase().trim());
 
             return (
               <div
@@ -387,11 +493,18 @@ export default function StockStrategyMarketplace({
                 {/* Top Section */}
                 <div className="space-y-3">
                   <div className="flex items-start justify-between gap-2">
-                    <div className="space-y-1 min-w-0">
+                    <div className="space-y-1 min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-sm sm:text-base text-on-surface group-hover:text-[#00dbe7] transition-colors truncate">
                           {strat.name}
                         </h3>
+                        <button
+                          onClick={() => handleOpenRename(strat)}
+                          className="p-1 rounded-md text-on-surface-variant hover:text-[#00dbe7] hover:bg-[#00dbe7]/10 transition-colors cursor-pointer"
+                          title={strat.isPreset ? "Fork & Rename this preset" : "Rename algorithm"}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </button>
                         {strat.isPreset && (
                           <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30">
                             CORE PRESET
@@ -550,6 +663,36 @@ export default function StockStrategyMarketplace({
                       <span>{forkingId === strat.id ? 'Forking...' : 'Fork'}</span>
                     </button>
 
+                    {/* For Custom / Forked strategies: Rename & Edit Rules & Delete */}
+                    {isCustomOrForked && (
+                      <>
+                        <button
+                          onClick={() => handleOpenRename(strat)}
+                          className="px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline/25 text-xs font-mono text-on-surface hover:text-[#00dbe7] flex items-center gap-1.5 transition-all cursor-pointer"
+                          title="Rename algorithm & description"
+                        >
+                          <Pencil className="w-3 h-3 text-[#00dbe7]" />
+                          <span>Rename</span>
+                        </button>
+                        <button
+                          onClick={() => onOpenBuilder(strat.id)}
+                          className="px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high border border-outline/25 text-xs font-mono text-on-surface hover:text-[#00dbe7] flex items-center gap-1.5 transition-all cursor-pointer"
+                          title="Edit conditions and indicators in builder"
+                        >
+                          <Sliders className="w-3 h-3 text-[#00dbe7]" />
+                          <span>Edit Rules</span>
+                        </button>
+                        <button
+                          onClick={() => handleDelete(strat)}
+                          disabled={deletingId === strat.id}
+                          className="p-1.5 rounded-lg bg-surface-container hover:bg-red-500/15 border border-outline/25 hover:border-red-500/40 text-on-surface-variant hover:text-[#ff6b6b] transition-all cursor-pointer disabled:opacity-50"
+                          title="Delete this algorithm"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    )}
+
                     {/* Activate in Workspace */}
                     {!isActive ? (
                       <button
@@ -562,14 +705,10 @@ export default function StockStrategyMarketplace({
                         Activate
                       </button>
                     ) : (
-                      isAuthor && (
-                        <button
-                          onClick={() => onOpenBuilder(strat.id)}
-                          className="px-3 py-1.5 rounded-lg bg-surface-container-high border border-outline/30 text-xs font-mono font-bold hover:text-[#00dbe7] cursor-pointer"
-                        >
-                          Edit Rules
-                        </button>
-                      )
+                      <span className="px-2.5 py-1.5 rounded-lg bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30 text-xs font-mono font-bold flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        Active
+                      </span>
                     )}
 
                   </div>
@@ -697,6 +836,103 @@ export default function StockStrategyMarketplace({
               )}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* ── RENAME ALGORITHM MODAL ── */}
+      {renamingStrategy && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-surface-container-low border border-outline/30 rounded-2xl w-full max-w-lg overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-5 border-b border-outline/15 bg-surface-container">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-[#00dbe7]/15 text-[#00dbe7]">
+                  <Pencil className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-on-surface">
+                    {renamingStrategy.isPreset ? 'Fork & Rename Preset Algorithm' : 'Rename Algorithm'}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant">
+                    {renamingStrategy.isPreset
+                      ? 'Presets are immutable benchmarks. Renaming creates an editable copy in your workspace.'
+                      : 'Update the title and description for this trading algorithm.'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setRenamingStrategy(null)}
+                className="p-1 rounded-lg text-on-surface-variant hover:text-on-surface transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 space-y-4 font-mono text-xs">
+              <div className="space-y-1.5">
+                <label className="text-[11px] uppercase font-bold text-on-surface-variant">
+                  Algorithm Name <span className="text-[#ff6b6b]">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={renameName}
+                  onChange={e => setRenameName(e.target.value)}
+                  placeholder="e.g. Adaptive EMA Trend Hunter"
+                  autoFocus
+                  className="w-full px-3 py-2.5 rounded-xl bg-surface-container-lowest border border-outline/30 text-on-surface text-xs font-mono focus:outline-none focus:border-[#00dbe7]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-[11px] uppercase font-bold text-on-surface-variant">
+                  Strategy Description
+                </label>
+                <textarea
+                  value={renameDesc}
+                  onChange={e => setRenameDesc(e.target.value)}
+                  placeholder="Briefly describe the trade entry, exit logic, or tuned parameters..."
+                  rows={3}
+                  className="w-full p-2.5 rounded-xl bg-surface-container-lowest border border-outline/30 text-on-surface text-xs font-mono focus:outline-none focus:border-[#00dbe7]"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-surface-container-lowest border border-outline/15 text-[11px] text-on-surface-variant space-y-1">
+                <div className="flex items-center justify-between">
+                  <span>Strategy ID:</span>
+                  <span className="text-on-surface">{renamingStrategy.id}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Execution Market:</span>
+                  <span className="text-on-surface">{renamingStrategy.market}</span>
+                </div>
+                {renamingStrategy.forkedFrom && (
+                  <div className="flex items-center justify-between text-purple-300">
+                    <span>Forked Origin:</span>
+                    <span>{renamingStrategy.forkedFrom.name}</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="flex items-center justify-end gap-2 p-4 border-t border-outline/15 bg-surface-container">
+              <button
+                onClick={() => setRenamingStrategy(null)}
+                className="px-4 py-2 rounded-xl bg-surface-container-high text-on-surface text-xs font-mono cursor-pointer hover:bg-surface-container-highest"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveRename}
+                disabled={isSubmittingRename || !renameName.trim()}
+                className="px-4 py-2 rounded-xl bg-[#00dbe7] text-[#002022] font-mono text-xs font-bold hover:brightness-110 transition-all cursor-pointer disabled:opacity-50 flex items-center gap-1.5 shadow-md"
+              >
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>{isSubmittingRename ? 'Saving...' : renamingStrategy.isPreset ? 'Fork & Save' : 'Save Changes'}</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

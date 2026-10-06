@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-06T12:31:10.482Z",
+    "packagedAt": "2026-10-06T12:45:09.654Z",
     "archiveFileName": "wp_stock_analyzer-v0.6.0.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v0.6.0.zip",
-    "sizeBytes": 38942,
-    "checksumSha256": "43f7c402f2c7d2c0d27ee83bd9d246d613a86b860e6f078ad384b027b5507672"
+    "sizeBytes": 38941,
+    "checksumSha256": "a5241e11ecc89f0795521a368d5eea48b75592880ac05434bc0834759699e0e4"
   },
   {
     "id": "wp_flow_designer",
@@ -25,11 +25,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-06T12:31:12.270Z",
+    "packagedAt": "2026-10-06T12:45:13.600Z",
     "archiveFileName": "wp_flow_designer-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.1.0.zip",
     "sizeBytes": 1836,
-    "checksumSha256": "33de77df27fa3ae54309fa6a9743b4ff8b72d243a2fc9e09a708e4051bbfc4cd"
+    "checksumSha256": "03eb8be816ff82f8fb6ed84ffe40773c23fa7910896ad36f6f7993fb0ea9f251"
   },
   {
     "id": "wp_doc_nexus",
@@ -41,11 +41,11 @@
     "iconSymbol": "description",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-06T12:31:13.305Z",
+    "packagedAt": "2026-10-06T12:45:15.024Z",
     "archiveFileName": "wp_doc_nexus-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.1.0.zip",
     "sizeBytes": 2289,
-    "checksumSha256": "e08d8e2dea557413967cb9cddec3df255b11397d0c42c0461434d563423300ab"
+    "checksumSha256": "430da7d826a5c87f2db178b42980fc1303aad31b28aa2f2457c1c6c6bf0d1823"
   },
   {
     "id": "wp_accounting",
@@ -57,10 +57,10 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-06T12:31:14.229Z",
+    "packagedAt": "2026-10-06T12:45:18.475Z",
     "archiveFileName": "wp_accounting-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.1.0.zip",
-    "sizeBytes": 1784,
-    "checksumSha256": "077a705b6d128b67332078361f75d963a08a76986e95730c21fb1b434f1b776a"
+    "sizeBytes": 1785,
+    "checksumSha256": "0081b13ba325e2b9ab9f479c77f93a2be75c163aa5628504b96b9b152dd6b436"
   }
 ]

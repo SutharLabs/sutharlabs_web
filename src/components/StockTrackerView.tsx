@@ -702,14 +702,17 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     setBuilderMode('BUILDER');
   }, []);
 
-  const handleDeleteStrategy = useCallback(async (id: string) => {
-    if (!confirm('Are you sure you want to delete this custom strategy?')) return;
+  const handleDeleteStrategy = useCallback(async (id: string, skipConfirm = false) => {
+    if (!skipConfirm && !confirm('Are you sure you want to delete this custom strategy?')) return;
     try {
       const res = await fetch(`${STOCK_API}/strategies/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setStrategies(prev => prev.filter(s => s.id !== id));
         if (selectedStrategyId === id) {
           setSelectedStrategyId('strat-ema-cross');
+          try {
+            localStorage.setItem('sutharlabs_active_strategy_id', 'strat-ema-cross');
+          } catch {}
         }
         setStrategyActionFeedback('Strategy removed successfully');
         setTimeout(() => setStrategyActionFeedback(null), 3000);
@@ -718,6 +721,24 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       console.error('Failed to delete strategy:', e);
     }
   }, [selectedStrategyId]);
+
+  const handleRenameStrategy = useCallback(async (id: string, newName: string, newDesc?: string) => {
+    try {
+      const res = await fetch(`${STOCK_API}/strategies/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName, description: newDesc })
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setStrategies(prev => prev.map(s => s.id === id ? updated : s));
+        setStrategyActionFeedback(`Renamed strategy to "${newName}"`);
+        setTimeout(() => setStrategyActionFeedback(null), 3000);
+      }
+    } catch (e) {
+      console.error('Failed to rename strategy:', e);
+    }
+  }, []);
 
   const handleSaveStrategy = useCallback(async () => {
     if (!builderName.trim()) {
@@ -4456,6 +4477,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       setSettingsActiveTab('BACKTEST');
                     }}
                     onRefreshStrategies={fetchStrategies}
+                    onDeleteStrategy={(id) => handleDeleteStrategy(id, true)}
+                    onRenameStrategy={handleRenameStrategy}
                     isDark={isDark}
                   />
                 )}
@@ -4485,6 +4508,19 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       </div>
 
                       <div className="flex items-center gap-2">
+                        {builderEditingId && !strategies.find(s => s.id === builderEditingId)?.isPreset && (
+                          <button
+                            onClick={() => {
+                              handleDeleteStrategy(builderEditingId);
+                              setBuilderMode('CATALOG');
+                            }}
+                            className="px-3 py-2 rounded-xl bg-red-500/15 border border-red-500/30 text-[#ff6b6b] hover:bg-red-500/25 text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all"
+                            title="Delete this custom strategy"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete Strategy</span>
+                          </button>
+                        )}
                         <button
                           onClick={() => setBuilderMode('CATALOG')}
                           className="px-3 py-2 rounded-xl bg-surface-container-low text-on-surface-variant hover:text-on-surface text-xs font-mono cursor-pointer"
