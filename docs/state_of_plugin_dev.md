@@ -17,12 +17,12 @@ SutharLabs operates a **Dual-Mode Hybrid Plugin Architecture**:
 
 All native workspace extensions are co-located in [`src/plugins/`](file:///d:/Code/SutharLabs/website/src/plugins/):
 
-| Plugin Name | Folder | Identifier | Category | Route | Endpoints |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Stock Tracker** | `src/plugins/StockTracker/` | `wp_stock_analyzer` | Finance | `/workspace/stock-tracker` | `/api/plugins/wp_stock_analyzer/*`, `/api/workspace/stock-analyzer/*` |
-| **Custom Flow** | `src/plugins/FlowDesigner/` | `wp_flow_designer` | Architecture | `/workspace/flow` | `/api/plugins/wp_flow_designer/*`, `/api/nodes`, `/api/nodes/sync` |
-| **Doc Nexus** | `src/plugins/DocNexus/` | `wp_doc_nexus` | Documentation | `/workspace/docnexus` | `/api/plugins/wp_doc_nexus/*`, `/api/docnexus/document` |
-| **Accounting** | `src/plugins/Accounting/` | `wp_accounting` | Operations | `/workspace/accounting` | `/api/plugins/wp_accounting/*`, `/api/invoices` |
+| Plugin Name | Folder | Identifier | Version | Category | Route | Endpoints |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Stock Tracker** | `src/plugins/StockTracker/` | `wp_stock_analyzer` | `v1.0.0` (Production) | Finance | `/workspace/stock-tracker` | `/api/plugins/wp_stock_analyzer/*`, `/api/workspace/stock-analyzer/*` |
+| **Custom Flow** | `src/plugins/FlowDesigner/` | `wp_flow_designer` | `v0.1.0` | Architecture | `/workspace/flow` | `/api/plugins/wp_flow_designer/*`, `/api/nodes`, `/api/nodes/sync` |
+| **Doc Nexus** | `src/plugins/DocNexus/` | `wp_doc_nexus` | `v0.1.0` | Documentation | `/workspace/docnexus` | `/api/plugins/wp_doc_nexus/*`, `/api/docnexus/document` |
+| **Accounting** | `src/plugins/Accounting/` | `wp_accounting` | `v0.1.0` | Operations | `/workspace/accounting` | `/api/plugins/wp_accounting/*`, `/api/invoices` |
 
 ---
 
