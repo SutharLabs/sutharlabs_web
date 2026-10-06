@@ -62,6 +62,7 @@ import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
 import { StockNewsArticle, StockSentimentReport } from '../plugins/StockTracker/news/types';
 import StockBacktestPanel from './StockBacktestPanel';
 import StockStrategyMarketplace from './StockStrategyMarketplace';
+import StockTrackerAlertModal, { StockTrackerAlertState } from './StockTrackerAlertModal';
 
 
 interface StockTrackerViewProps {
@@ -634,6 +635,31 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [strategySearchQuery, setStrategySearchQuery] = useState<string>('');
   const [strategyMarketFilter, setStrategyMarketFilter] = useState<'ALL' | 'IN' | 'US' | 'GLOBAL'>('ALL');
 
+  // ── Branded Custom Feedback & Confirmation Modal State ──
+  const [alertModal, setAlertModal] = useState<StockTrackerAlertState | null>(null);
+
+  const showAlert = useCallback((title: string, message: string, type: 'error' | 'warning' | 'info' | 'success' = 'error') => {
+    setAlertModal({
+      isOpen: true,
+      type,
+      title,
+      message,
+      confirmLabel: 'Dismiss'
+    });
+  }, []);
+
+  const showConfirm = useCallback((title: string, message: string, onConfirm: () => void, confirmLabel = 'Confirm Action', cancelLabel = 'Cancel') => {
+    setAlertModal({
+      isOpen: true,
+      type: 'warning',
+      title,
+      message,
+      confirmLabel,
+      cancelLabel,
+      onConfirm
+    });
+  }, []);
+
   // ── Database Fetch on Mount: Load Registered Strategies ───
   const fetchStrategies = useCallback(async () => {
     try {
@@ -703,24 +729,41 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   }, []);
 
   const handleDeleteStrategy = useCallback(async (id: string, skipConfirm = false) => {
-    if (!skipConfirm && !confirm('Are you sure you want to delete this custom strategy?')) return;
-    try {
-      const res = await fetch(`${STOCK_API}/strategies/${id}`, { method: 'DELETE' });
-      if (res.ok) {
-        setStrategies(prev => prev.filter(s => s.id !== id));
-        if (selectedStrategyId === id) {
-          setSelectedStrategyId('strat-ema-cross');
-          try {
-            localStorage.setItem('sutharlabs_active_strategy_id', 'strat-ema-cross');
-          } catch {}
+    const performDelete = async () => {
+      try {
+        const res = await fetch(`${STOCK_API}/strategies/${id}`, { method: 'DELETE' });
+        if (res.ok) {
+          setStrategies(prev => prev.filter(s => s.id !== id));
+          if (selectedStrategyId === id) {
+            setSelectedStrategyId('strat-ema-cross');
+            try {
+              localStorage.setItem('sutharlabs_active_strategy_id', 'strat-ema-cross');
+            } catch {}
+          }
+          setStrategyActionFeedback('Strategy removed successfully');
+          setTimeout(() => setStrategyActionFeedback(null), 3000);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          showAlert('Failed to Delete Strategy', errData.error || `Server responded with status ${res.status}`, 'error');
         }
-        setStrategyActionFeedback('Strategy removed successfully');
-        setTimeout(() => setStrategyActionFeedback(null), 3000);
+      } catch (e: any) {
+        showAlert('Deletion Error', e.message || 'Failed to remove strategy from database.', 'error');
       }
-    } catch (e) {
-      console.error('Failed to delete strategy:', e);
+    };
+
+    if (skipConfirm) {
+      await performDelete();
+    } else {
+      const target = strategies.find(s => s.id === id);
+      showConfirm(
+        'Delete Algorithm',
+        `Are you sure you want to permanently delete "${target?.name || 'this strategy'}"?\n\nThis action cannot be undone.`,
+        () => { performDelete(); },
+        'Delete Algorithm',
+        'Cancel'
+      );
     }
-  }, [selectedStrategyId]);
+  }, [selectedStrategyId, strategies, showAlert, showConfirm]);
 
   const handleRenameStrategy = useCallback(async (id: string, newName: string, newDesc?: string) => {
     try {
@@ -734,19 +777,22 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         setStrategies(prev => prev.map(s => s.id === id ? updated : s));
         setStrategyActionFeedback(`Renamed strategy to "${newName}"`);
         setTimeout(() => setStrategyActionFeedback(null), 3000);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        showAlert('Failed to Rename Strategy', errData.error || `Server responded with status ${res.status}`, 'error');
       }
-    } catch (e) {
-      console.error('Failed to rename strategy:', e);
+    } catch (e: any) {
+      showAlert('Rename Error', e.message || 'An unexpected error occurred while renaming.', 'error');
     }
-  }, []);
+  }, [showAlert]);
 
   const handleSaveStrategy = useCallback(async () => {
     if (!builderName.trim()) {
-      alert('Please enter a strategy name');
+      showAlert('Strategy Name Required', 'Please enter a name for your algorithmic trading strategy before saving.', 'warning');
       return;
     }
     if (builderEntryConditions.length === 0) {
-      alert('Please add at least 1 entry condition');
+      showAlert('Entry Conditions Required', 'Please configure at least 1 entry condition (BUY rule) to evaluate trade signals.', 'warning');
       return;
     }
     setIsSavingStrategy(true);
@@ -771,7 +817,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error('Failed to update strategy');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Server returned error (${res.status})`);
+        }
         savedStrategy = await res.json();
         setStrategies(prev => prev.map(s => s.id === savedStrategy.id ? savedStrategy : s));
       } else {
@@ -780,7 +829,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload)
         });
-        if (!res.ok) throw new Error('Failed to create strategy');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Server returned error (${res.status})`);
+        }
         savedStrategy = await res.json();
         setStrategies(prev => [...prev, savedStrategy]);
       }
@@ -793,11 +845,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       setTimeout(() => setStrategyActionFeedback(null), 4000);
       setBuilderMode('CATALOG');
     } catch (e: any) {
-      alert(`Error saving strategy: ${e.message}`);
+      showAlert('Error Saving Strategy', e.message || 'An unexpected error occurred while saving the strategy.', 'error');
     } finally {
       setIsSavingStrategy(false);
     }
-  }, [builderName, builderDesc, builderMarket, builderTimeframe, builderParameters, builderEntryConditions, builderExitConditions, builderEditingId]);
+  }, [builderName, builderDesc, builderMarket, builderTimeframe, builderParameters, builderEntryConditions, builderExitConditions, builderEditingId, showAlert]);
 
   const handleTestSandbox = useCallback(async () => {
     if (!symbol) return;
@@ -834,15 +886,15 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         const sig: StrategySignal = await res.json();
         setSandboxSignal(sig);
       } else {
-        const err = await res.json();
-        alert(`Evaluation error: ${err.error || 'Failed to evaluate'}`);
+        const err = await res.json().catch(() => ({}));
+        showAlert('Sandbox Evaluation Error', err.error || 'Failed to evaluate strategy conditions against live candles.', 'error');
       }
     } catch (e: any) {
-      alert(`Sandbox error: ${e.message}`);
+      showAlert('Sandbox Evaluation Error', e.message || 'Failed to evaluate strategy in sandbox.', 'error');
     } finally {
       setIsEvaluatingSandbox(false);
     }
-  }, [symbol, activeMarketKey, builderEditingId, builderName, builderDesc, builderMarket, builderTimeframe, builderParameters, builderEntryConditions, builderExitConditions]);
+  }, [symbol, activeMarketKey, builderEditingId, builderName, builderDesc, builderMarket, builderTimeframe, builderParameters, builderEntryConditions, builderExitConditions, showAlert]);
 
 
   // Main Workspace Right Panel View Mode: WATCHLIST (Default) | TELEMETRY | NEWS | ORDER | BACKTEST
@@ -5765,6 +5817,12 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </div>
         </div>
       )}
+
+      {/* ── Branded Custom Feedback & Confirmation Modal ── */}
+      <StockTrackerAlertModal
+        alert={alertModal}
+        onClose={() => setAlertModal(null)}
+      />
 
     </div>
   );

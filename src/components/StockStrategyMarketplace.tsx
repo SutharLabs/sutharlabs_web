@@ -30,6 +30,7 @@ import {
   X
 } from 'lucide-react';
 import { IStrategy, StrategyReview, VerifiedBacktestBadge } from '../plugins/StockTracker/strategies/types';
+import StockTrackerAlertModal, { StockTrackerAlertState } from './StockTrackerAlertModal';
 
 export interface StockStrategyMarketplaceProps {
   strategies: IStrategy[];
@@ -89,6 +90,31 @@ export default function StockStrategyMarketplace({
   const [forkingId, setForkingId] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Custom Alert & Confirm Modal State
+  const [alertModal, setAlertModal] = useState<StockTrackerAlertState | null>(null);
+
+  const showAlert = useCallback((title: string, message: string, type: 'error' | 'warning' | 'info' | 'success' = 'error') => {
+    setAlertModal({
+      isOpen: true,
+      type,
+      title,
+      message,
+      confirmLabel: 'Dismiss'
+    });
+  }, []);
+
+  const showConfirm = useCallback((title: string, message: string, onConfirm: () => void, confirmLabel = 'Confirm Action', cancelLabel = 'Cancel') => {
+    setAlertModal({
+      isOpen: true,
+      type: 'warning',
+      title,
+      message,
+      confirmLabel,
+      cancelLabel,
+      onConfirm
+    });
+  }, []);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
@@ -104,7 +130,7 @@ export default function StockStrategyMarketplace({
     if (!renamingStrategy) return;
     const trimmed = renameName.trim();
     if (!trimmed) {
-      alert('Strategy name cannot be empty');
+      showAlert('Strategy Name Required', 'Strategy name cannot be empty.', 'warning');
       return;
     }
 
@@ -117,14 +143,20 @@ export default function StockStrategyMarketplace({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userEmail, userName })
         });
-        if (!res.ok) throw new Error('Failed to fork preset for renaming');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to fork preset for renaming');
+        }
         const forked = await res.json();
         const updateRes = await fetch(`${STOCK_API}/strategies/${forked.id}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: trimmed, description: renameDesc.trim() })
         });
-        if (!updateRes.ok) throw new Error('Failed to update renamed strategy');
+        if (!updateRes.ok) {
+          const errData = await updateRes.json().catch(() => ({}));
+          throw new Error(errData.error || 'Failed to update renamed strategy');
+        }
         const updatedFork = await updateRes.json();
         onForkStrategy(updatedFork);
         await onRefreshStrategies();
@@ -138,14 +170,17 @@ export default function StockStrategyMarketplace({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ name: trimmed, description: renameDesc.trim() })
           });
-          if (!res.ok) throw new Error('Failed to rename strategy');
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'Failed to rename strategy');
+          }
         }
         await onRefreshStrategies();
         showToast(`Renamed algorithm to "${trimmed}"`);
       }
       setRenamingStrategy(null);
     } catch (e: any) {
-      alert(`Error renaming strategy: ${e.message}`);
+      showAlert('Rename Strategy Failed', e.message || 'An error occurred while renaming the strategy.', 'error');
     } finally {
       setIsSubmittingRename(false);
     }
@@ -153,34 +188,44 @@ export default function StockStrategyMarketplace({
 
   const handleDelete = async (strat: IStrategy) => {
     if (strat.isPreset) {
-      alert('Built-in quant preset algorithms cannot be deleted.');
+      showAlert('Protected Algorithm', 'Built-in quant preset algorithms cannot be deleted. You can fork them to create your own customizable version.', 'warning');
       return;
     }
 
-    const confirmMsg = `Are you sure you want to delete "${strat.name}"?\n\nThis will permanently remove this algorithm from your workspace.`;
-    if (!confirm(confirmMsg)) return;
+    const performDelete = async () => {
+      setDeletingId(strat.id);
+      try {
+        if (onDeleteStrategy) {
+          await onDeleteStrategy(strat.id);
+        } else {
+          const res = await fetch(`${STOCK_API}/strategies/${strat.id}`, {
+            method: 'DELETE'
+          });
+          if (!res.ok) {
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.error || 'Failed to delete strategy');
+          }
+        }
 
-    setDeletingId(strat.id);
-    try {
-      if (onDeleteStrategy) {
-        await onDeleteStrategy(strat.id);
-      } else {
-        const res = await fetch(`${STOCK_API}/strategies/${strat.id}`, {
-          method: 'DELETE'
-        });
-        if (!res.ok) throw new Error('Failed to delete strategy');
+        if (strat.id === activeStrategyId) {
+          onSelectStrategy('strat-ema-cross');
+        }
+        await onRefreshStrategies();
+        showToast(`Deleted "${strat.name}"`);
+      } catch (e: any) {
+        showAlert('Delete Strategy Failed', e.message || 'An error occurred while deleting the strategy.', 'error');
+      } finally {
+        setDeletingId(null);
       }
+    };
 
-      if (strat.id === activeStrategyId) {
-        onSelectStrategy('strat-ema-cross');
-      }
-      await onRefreshStrategies();
-      showToast(`Deleted "${strat.name}"`);
-    } catch (e: any) {
-      alert(`Error deleting strategy: ${e.message}`);
-    } finally {
-      setDeletingId(null);
-    }
+    showConfirm(
+      'Delete Algorithm',
+      `Are you sure you want to delete "${strat.name}"?\n\nThis will permanently remove this algorithm from your workspace.`,
+      () => { performDelete(); },
+      'Delete Algorithm',
+      'Cancel'
+    );
   };
 
   // Extract all unique tags
@@ -264,7 +309,7 @@ export default function StockStrategyMarketplace({
       await onRefreshStrategies();
       showToast(`Successfully forked "${strategy.name}" to your workspace!`);
     } catch (e: any) {
-      alert(`Fork error: ${e.message}`);
+      showAlert('Fork Strategy Failed', e.message || 'An error occurred while forking the strategy.', 'error');
     } finally {
       setForkingId(null);
     }
@@ -279,13 +324,13 @@ export default function StockStrategyMarketplace({
         headers: { 'Content-Type': 'application/json' }
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to generate verified badge');
       }
       await onRefreshStrategies();
       showToast('Verified Institutional Performance Badge generated successfully!');
     } catch (e: any) {
-      alert(`Verification error: ${e.message}`);
+      showAlert('Verification Failed', e.message || 'An error occurred while generating verified badge.', 'error');
     } finally {
       setVerifyingId(null);
     }
@@ -307,7 +352,7 @@ export default function StockStrategyMarketplace({
         })
       });
       if (!res.ok) {
-        const err = await res.json();
+        const err = await res.json().catch(() => ({}));
         throw new Error(err.error || 'Failed to submit review');
       }
       const { strategy: updatedStrategy } = await res.json();
@@ -316,7 +361,7 @@ export default function StockStrategyMarketplace({
       await onRefreshStrategies();
       showToast('Review and rating published to the community!');
     } catch (e: any) {
-      alert(`Review error: ${e.message}`);
+      showAlert('Review Submission Failed', e.message || 'An error occurred while publishing your review.', 'error');
     } finally {
       setIsSubmittingReview(false);
     }
@@ -936,6 +981,12 @@ export default function StockStrategyMarketplace({
           </div>
         </div>
       )}
+
+      {/* Branded Custom Feedback & Confirmation Modal */}
+      <StockTrackerAlertModal
+        alert={alertModal}
+        onClose={() => setAlertModal(null)}
+      />
 
     </div>
   );

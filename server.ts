@@ -264,7 +264,13 @@ app.use(express.json());
 app.use("/api/auth/signin", authLimiter);
 app.use("/api/auth/signup", authLimiter);
 app.use("/api/auth/change-password", authLimiter);
-app.use("/api/workspace/stock-analyzer", stockApiLimiter);
+app.use("/api/workspace/stock-analyzer", (req, res, next) => {
+  // Pure local database / JSON operations on strategies and watchlists do not invoke external market APIs
+  if (req.path.startsWith("/strategies") || req.path.startsWith("/watchlists")) {
+    return next();
+  }
+  return stockApiLimiter(req, res, next);
+});
 app.use("/api", generalApiLimiter);
 
 async function startServer() {

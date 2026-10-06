@@ -1,8 +1,8 @@
 [
   {
     "id": "strat-ema-cross",
-    "name": "EMA Golden / Death Cross",
-    "description": "Trend-following strategy that generates high-conviction signals on Fast and Slow Exponential Moving Average crossovers with dynamic trend filters.",
+    "name": "EMA Trend Momentum (Cross 9/21)",
+    "description": "Trend-following momentum strategy based on Exponential Moving Average crossovers.",
     "version": "1.2.0",
     "isPreset": true,
     "isPublic": true,
@@ -12,7 +12,7 @@
       "Golden Cross",
       "Swing Trading"
     ],
-    "clonesCount": 142,
+    "clonesCount": 145,
     "rating": 4.8,
     "reviewsCount": 3,
     "verifiedBadge": {
@@ -57,32 +57,14 @@
         "createdAt": "2026-10-05T09:05:00.000Z"
       }
     ],
-    "market": "GLOBAL",
-    "timeframe": "1D",
+    "market": "ALL",
+    "timeframe": "1d",
     "authorName": "SutharLabs Quantitative Core",
     "authorEmail": "core@sutharlabs.com",
-    "parameters": [
-      {
-        "id": "fastPeriod",
-        "name": "Fast EMA Period",
-        "type": "number",
-        "default": 20,
-        "min": 5,
-        "max": 100,
-        "step": 1,
-        "description": "Short-term momentum EMA period"
-      },
-      {
-        "id": "slowPeriod",
-        "name": "Slow EMA Period",
-        "type": "number",
-        "default": 50,
-        "min": 10,
-        "max": 200,
-        "step": 5,
-        "description": "Long-term baseline trend EMA period"
-      }
-    ],
+    "parameters": {
+      "fastPeriod": 9,
+      "slowPeriod": 21
+    },
     "rules": {
       "indicators": {
         "emaFast": {
@@ -119,7 +101,21 @@
       ]
     },
     "createdAt": "2026-10-01T00:00:00.000Z",
-    "updatedAt": "2026-10-05T00:00:00.000Z"
+    "updatedAt": "2026-10-06T13:07:22.545Z",
+    "entryConditions": [
+      {
+        "indicator": "EMA_9",
+        "operator": ">",
+        "target": "EMA_21"
+      }
+    ],
+    "exitConditions": [
+      {
+        "indicator": "EMA_9",
+        "operator": "<",
+        "target": "EMA_21"
+      }
+    ]
   },
   {
     "id": "strat-rsi-mean-reversion",
@@ -134,7 +130,7 @@
       "MACD Confluence",
       "Counter-Trend"
     ],
-    "clonesCount": 96,
+    "clonesCount": 97,
     "rating": 4.6,
     "reviewsCount": 2,
     "verifiedBadge": {

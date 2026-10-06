@@ -76,11 +76,11 @@ export const authLimiter = createRateLimiter({
   message: "Too many authentication attempts. Please try again in 5 minutes."
 });
 
-// 2. Heavy API limiter: 60 requests / minute per IP (protects Yahoo Finance / Stock API)
+// 2. Heavy API limiter: 600 requests / minute per IP (protects Yahoo Finance / Stock API)
 export const stockApiLimiter = createRateLimiter({
   windowMs: 60 * 1000,
-  max: 60,
-  message: "Stock Analyzer query limit reached (60 req/min). Please try again shortly."
+  max: 600,
+  message: "Stock Analyzer query limit reached (600 req/min). Please try again shortly."
 });
 
 // 3. General API limiter: 300 requests / minute per IP
