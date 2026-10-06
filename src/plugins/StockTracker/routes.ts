@@ -19,7 +19,12 @@ import {
   getStrategyById,
   createStrategy,
   updateStrategy,
-  deleteStrategy
+  deleteStrategy,
+  forkStrategy,
+  publishStrategy,
+  addStrategyReview,
+  deleteStrategyReview,
+  setVerifiedBacktestBadge
 } from "./strategies/store.js";
 import { evaluateStrategy } from "./strategies/engine.js";
 import { PRESET_STRATEGIES } from "./strategies/presets.js";
@@ -550,6 +555,118 @@ export function registerRoutes(router: Router) {
       res.json({ success: true, removedId: req.params.id });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // ── Stage 5: Community Strategy Marketplace & Verified Badge Endpoints ────
+
+  // POST /strategies/:id/publish (Toggle marketplace visibility & tags)
+  router.post("/strategies/:id/publish", (req: any, res: any) => {
+    try {
+      const { isPublic = true, tags = [] } = req.body;
+      const updated = publishStrategy(req.params.id, isPublic, tags);
+      if (!updated) {
+        return res.status(404).json({ error: "Strategy not found" });
+      }
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /strategies/:id/fork (1-Click clone strategy into user workspace)
+  router.post("/strategies/:id/fork", (req: any, res: any) => {
+    try {
+      const userEmail = (req.body?.userEmail || req.query?.userEmail || 'trader@sutharlabs.com').toLowerCase().trim();
+      const userName = req.body?.userName || req.query?.userName;
+      const forked = forkStrategy(req.params.id, userEmail, userName);
+      if (!forked) {
+        return res.status(404).json({ error: "Source strategy not found" });
+      }
+      res.status(201).json(forked);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /strategies/:id/reviews (Add or update community star review 1-5)
+  router.post("/strategies/:id/reviews", (req: any, res: any) => {
+    try {
+      const { rating, comment, userEmail, userName } = req.body;
+      if (!rating || rating < 1 || rating > 5) {
+        return res.status(400).json({ error: "Valid star rating (1 to 5) is required" });
+      }
+      const result = addStrategyReview(req.params.id, {
+        rating,
+        comment: comment || '',
+        userEmail: userEmail || 'trader@sutharlabs.com',
+        userName: userName || 'Community Trader'
+      });
+      if (!result) {
+        return res.status(404).json({ error: "Strategy not found" });
+      }
+      res.json(result);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // DELETE /strategies/:id/reviews (Delete user review)
+  router.delete("/strategies/:id/reviews", (req: any, res: any) => {
+    try {
+      const userEmail = (req.body?.userEmail || req.query?.userEmail || '').toLowerCase().trim();
+      if (!userEmail) {
+        return res.status(400).json({ error: "User email required to identify review" });
+      }
+      const updated = deleteStrategyReview(req.params.id, userEmail);
+      if (!updated) {
+        return res.status(404).json({ error: "Strategy not found" });
+      }
+      res.json(updated);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // POST /strategies/:id/verify (Execute server-side verified backtest badge)
+  router.post("/strategies/:id/verify", async (req: any, res: any) => {
+    try {
+      const stratId = req.params.id;
+      const strat = getStrategyById(stratId);
+      if (!strat) {
+        return res.status(404).json({ error: "Strategy not found" });
+      }
+
+      // Benchmark ticker by market region
+      const symbol = strat.market === 'US' ? 'AAPL' : 'RELIANCE.NS';
+      const range = '1y';
+
+      const report = await runBacktest({
+        symbol,
+        strategyId: strat.id,
+        range,
+        includeFriction: true
+      });
+
+      const verifiedBadge = {
+        verifiedAt: new Date().toISOString(),
+        symbol,
+        range,
+        netReturnPct: Number(report.metrics.netProfitPct.toFixed(1)),
+        annualizedCagr: Number(report.metrics.cagrPct.toFixed(1)),
+        sharpeRatio: Number(report.metrics.sharpeRatio.toFixed(2)),
+        winRatePct: Number(report.metrics.winRatePct.toFixed(1)),
+        maxDrawdownPct: Number(report.metrics.maxDrawdownPct.toFixed(1)),
+        totalTrades: report.metrics.totalTrades,
+        profitFactor: Number(report.metrics.profitFactor.toFixed(2)),
+        verifiedBy: 'SUTHARLABS_INSTITUTIONAL_VERIFIER'
+      };
+
+      const updated = setVerifiedBacktestBadge(stratId, verifiedBadge);
+      res.json(updated);
+    } catch (e: any) {
+      console.error("[Strategy Verify] Error:", e);
+      res.status(500).json({ error: e.message || "Failed to generate verified backtest badge" });
     }
   });
 

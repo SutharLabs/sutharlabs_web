@@ -378,7 +378,7 @@ export default function StockBacktestPanel({
                 onClick={onOpenStrategyBuilder}
                 className="text-[#00dbe7] hover:underline cursor-pointer lowercase text-[10px]"
               >
-                edit rules
+                marketplace & builder
               </button>
             )}
           </label>
@@ -392,8 +392,8 @@ export default function StockBacktestPanel({
           >
             {strategies.map(s => (
               <option key={s.id} value={s.id}>
-                {s.isPreset ? '⚡ ' : '🔧 '}
-                {s.name}
+                {s.verifiedBadge ? '🛡️ ' : s.isPreset ? '⚡ ' : '🔧 '}
+                {s.name} {s.rating ? `(★${s.rating.toFixed(1)})` : ''}
               </option>
             ))}
           </select>

@@ -101,9 +101,9 @@ async function seed() {
       name: "Stock Tracker",
       category: "Finance",
       type: "Native",
-      description: "Professional quantitative trading suite: interactive TradingView charts, drag-resizable split-pane workspace, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), visual condition builder, real-time news & dual AI sentiment analysis, and high-performance quantitative backtesting engine with localized friction & statutory tax modeling (STT, SEC, GST, SDRT, slippage).",
+      description: "Professional quantitative trading suite: interactive TradingView charts, drag-resizable split-pane workspace, multi-market global universes (India, US, Europe, Asia), pluggable algorithmic strategy engine (IStrategy), visual condition builder, real-time news & dual AI sentiment analysis, high-performance backtesting engine with localized friction modeling, and Stage 5 Community Algorithm Marketplace with 1-click cloning/forking, interactive 5-star reviews, and verified performance proofs.",
       iconSymbol: "monitoring",
-      version: "0.5.0"
+      version: "0.6.0"
     },
     {
       id: "wp_flow_designer",
@@ -189,6 +189,15 @@ async function seed() {
       minEngineVersion: "0.1.0",
       publishedBy: "Suthar Suresh",
       publishedAt: new Date("2026-10-06T03:30:00Z")
+    },
+    {
+      pluginId: "wp_stock_analyzer",
+      version: "0.6.0",
+      changelog: "Stage 5 Community Algorithm Marketplace, Cloneable Presets & Verified Ratings: Peer-to-peer quantitative trading marketplace enabling instant 1-click strategy cloning/forking, interactive 5-star community reviews, verifiable cryptographic backtest proofs (CAGR, Sharpe, Max Drawdown verified on real historical exchange data), public publishing toggle, curated tags, and algorithmic rule discovery.",
+      checksumSha256: "f07d2c39e248b90a6125a8123df1b312ea926f7c02b1f81d11b3304561284d7a",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh",
+      publishedAt: new Date("2026-10-06T12:00:00Z")
     },
 
     {

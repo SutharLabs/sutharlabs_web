@@ -469,9 +469,9 @@ export interface IMarketAdapter {
 | **Stage 1** | Professional Lightweight Charting, Global Universe Switcher, Multi-Indicator Stack | `v0.2.0` | **COMPLETED & SHIPPED** ✅ | Production Verified |
 | **Stage 2** | `IStrategy` Architecture, 4 Quant Presets, Server Engine, Visual Condition Builder UI | `v0.3.0` (Beta) | **COMPLETED & SHIPPED** ✅ | Production & Vercel Verified |
 | **Stage 3** | Live Financial News Feeds, Regional Feeds, Dual AI/Lexicon Engine & Confluence Alerts | `v0.4.0` (Beta) | **COMPLETED & SHIPPED** ✅ | Production Verified |
-| **Stage 4** | High-Performance Historical Backtester & Multi-Country Friction / Tax Modeling | `v0.5.0` | **NEXT UP** ⏳ | Specification Ready |
-| **Stage 5** | Community Strategy Marketplace, Verified Performance Badges & Strategy Forking | `v0.6.0` | Planned 📅 | Specification Ready |
-| **Stage 6** | Global Market Screener / Scanner & Automated Daily EOD Batch Trade Simulator | `v1.0.0` | Planned 📅 | Specification Ready |
+| **Stage 4** | High-Performance Historical Backtester & Multi-Country Friction / Tax Modeling | `v0.5.0` | **COMPLETED & SHIPPED** ✅ | Production Verified |
+| **Stage 5** | Community Strategy Marketplace, Verified Performance Badges & Strategy Forking | `v0.6.0` | **COMPLETED & SHIPPED** ✅ | Production Verified |
+| **Stage 6** | Global Market Screener / Scanner & Automated Daily EOD Batch Trade Simulator | `v1.0.0` | **NEXT UP** ⏳ | Specification Ready |
 
 ---
 
@@ -630,11 +630,45 @@ export interface IMarketAdapter {
 
 ---
 
-### Stage 5: Community Algorithm Marketplace & Ratings
-> **Target Version**: `v0.6.0` &bull; **Status**: Planned 📅
-- Allow users to publish their custom strategies to the SutharLabs catalog (`isPublic: true`).
-- Community rating modal (1-5 stars, reviews, paper trading verification).
-- Strategy Forking: Allow users to clone any published strategy, tweak parameters, and re-test.
+### Stage 5: Community Algorithm Marketplace & Verified Ratings
+> **Release Version**: `v0.6.0` (Beta) &bull; **Status**: **COMPLETED & SHIPPED** ✅
+
+#### Additions & Architectural Milestones Delivered:
+1. **Community Strategy Marketplace (`StockStrategyMarketplace.tsx`)**:
+   - High-contrast, glassmorphic marketplace interface with category filtering:
+     - `All Algorithms`
+     - `🛡️ Verified Proofs` (algorithms passing server-side deterministic verification)
+     - `⚡ Core Presets` (mathematical quant benchmarks)
+     - `🌐 Community` (public algorithms created by community quant traders)
+     - `👤 My Custom` (locally authored or cloned trading models)
+   - Dynamic sorting modes: Most Cloned, Highest Rated (★), Top Verified CAGR (%), and Recently Created.
+   - Filter chips for indicator tags (`#Trend Following`, `#Momentum`, `#Mean Reversion`, `#Breakout`, `#Volatility`, etc.).
+   - Strategy search query bar parsing strategy names, descriptions, parameters, and author credits.
+
+2. **1-Click Strategy Forking & Attribution Lineage**:
+   - Traders can clone/fork any public preset or community strategy in 1 click via `POST /strategies/:id/fork`.
+   - Generates an independent, fully editable copy tagged with `forkedFrom: <original_id>`.
+   - Automatically increments the author's clone counter (`clonesCount + 1`) to provide social proof and algorithmic popularity ranking.
+   - Preserves complete rule tree and parameter definitions for immediate visual customization in the Visual Condition Builder.
+
+3. **Verifiable Deterministic Backtest Badges (`VerifiedBacktestBadge`)**:
+   - Solves the retail trading problem of fabricated or cherry-picked backtest claims.
+   - Server-side verification endpoint (`POST /strategies/:id/verify`) executes an automated 1-Year historical backtest on standardized institutional benchmarks (e.g., `RELIANCE.NS`, `NVDA`).
+   - Issues a tamper-resistant proof badge containing:
+     - Verified CAGR %, Sharpe Ratio, Max Drawdown %, and Win Rate %
+     - Benchmark test asset and sample period window
+     - Cryptographic verification hash (`sha256:v1-...`) and audit timestamp
+   - Interactive modal allows inspecting the verified proof log before deploying capital.
+
+4. **Community Rating Engine & Review Discussions**:
+   - Interactive 1–5 star rating modal with real-time rolling average score calculation (`rating`) and review counts (`reviewsCount`).
+   - Community traders can leave verified feedback, edge-case observations, and market regime tips via `POST /strategies/:id/reviews`.
+   - Trader review cards show author avatar, star rating breakdown, timestamp, and review comment text.
+
+5. **Deep-Link Workflow Integration**:
+   - Direct 1-click bridge from Marketplace card to **Backtest Engine** (`onOpenBacktest`) with the strategy instantly mounted.
+   - Direct 1-click bridge to **Live Chart Signal Engine** (`onSelectStrategy`) to overlay real-time Buy/Sell indicators on TradingView charts.
+   - Quick header button and Settings Drawer integration for rapid algorithmic switching during active trading sessions.
 
 ---
 

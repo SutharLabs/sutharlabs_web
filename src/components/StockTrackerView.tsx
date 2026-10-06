@@ -61,6 +61,7 @@ import { IStrategy, StrategySignal, StrategyRuleCondition, StrategyParameter } f
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
 import { StockNewsArticle, StockSentimentReport } from '../plugins/StockTracker/news/types';
 import StockBacktestPanel from './StockBacktestPanel';
+import StockStrategyMarketplace from './StockStrategyMarketplace';
 
 
 interface StockTrackerViewProps {
@@ -2174,16 +2175,31 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           <button
             onClick={() => {
               setSettingsActiveTab('STRATEGIES');
+              setBuilderMode('CATALOG');
               setShowSettingsDrawer(true);
             }}
             className="hidden md:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/25 font-mono text-[11px] font-bold cursor-pointer hover:bg-[#00dbe7]/20 transition-all shadow-sm"
-            title="SutharLabs Stock Tracker v0.5.0 (Stage 4: High-Performance Backtesting Engine & Multi-Country Friction Modeling - Beta Stage)"
+            title="SutharLabs Stock Tracker v0.6.0 (Stage 5: Community Algorithm Marketplace, Cloneable Presets & Verified Ratings - Beta)"
           >
             <Cpu className="w-3.5 h-3.5 text-[#00dbe7]" />
-            <span>v0.5.0</span>
+            <span>v0.6.0</span>
             <span className="px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300 border border-amber-400/40 text-[9px] uppercase tracking-wider font-semibold">
               BETA
             </span>
+          </button>
+
+          {/* Quick Algo Marketplace Button */}
+          <button
+            onClick={() => {
+              setSettingsActiveTab('STRATEGIES');
+              setBuilderMode('CATALOG');
+              setShowSettingsDrawer(true);
+            }}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-[#00dbe7]/15 to-emerald-500/15 border border-[#00dbe7]/35 text-[#00dbe7] font-mono text-xs font-semibold hover:border-[#00dbe7] hover:brightness-110 transition-all cursor-pointer shadow-sm"
+            title="Explore Community Algorithmic Trading Marketplace"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-[#00dbe7]" />
+            <span>Algo Marketplace</span>
           </button>
 
           {/* Sliding Panel Trigger */}
@@ -3708,7 +3724,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <span>
                       {tab === 'WATCHLISTS' && 'Custom Watchlists'}
                       {tab === 'MARKET' && 'Market Universes'}
-                      {tab === 'STRATEGIES' && 'Strategy Builder'}
+                      {tab === 'STRATEGIES' && 'Algo Marketplace & Builder'}
                       {tab === 'BACKTEST' && 'Backtest Engine'}
                       {tab === 'NEWS_AI' && 'News & AI Sentiment'}
                       {tab === 'INDICATORS' && 'Indicator Mathematics'}
@@ -4397,229 +4413,53 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             {/* TAB: ALGORITHMIC STRATEGIES & VISUAL CONDITION BUILDER (STAGE 2) */}
             {settingsActiveTab === 'STRATEGIES' && (
               <div className="flex flex-col gap-6 text-xs font-mono">
-                {/* Mode 1: STRATEGY CATALOG */}
+                {/* Mode 1: COMMUNITY ALGORITHM MARKETPLACE & CATALOG (STAGE 5) */}
                 {builderMode === 'CATALOG' && (
-                  <div className="flex flex-col gap-5">
-                    {/* Header */}
-                    <div className="flex justify-between items-start gap-4 flex-wrap pb-3 border-b border-outline/15">
-                      <div>
-                        <span className="text-on-surface font-semibold text-base flex items-center gap-2">
-                          <Cpu className="w-5 h-5 text-[#00dbe7]" />
-                          Algorithmic Strategies & Visual Condition Builder
-                        </span>
-                        <p className="text-xs text-on-surface-variant font-sans mt-0.5">
-                          Battle-tested quant algorithms and visual rule builder for deterministic signal generation with zero AI latency.
-                        </p>
-                      </div>
-
-                      <button
-                        onClick={handleCreateNewStrategy}
-                        className="px-4 py-2 bg-[#00dbe7] text-[#002022] font-bold rounded-xl flex items-center gap-2 hover:brightness-110 transition-all cursor-pointer shadow-md text-xs font-mono"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Create Custom Strategy
-                      </button>
-                    </div>
-
-                    {/* Filter & Search Bar */}
-                    <div className="flex items-center gap-3 flex-wrap">
-                      <div className="flex-1 min-w-[200px] relative">
-                        <input
-                          value={strategySearchQuery}
-                          onChange={e => setStrategySearchQuery(e.target.value)}
-                          placeholder="Search strategies by name, rule or indicator..."
-                          className="w-full bg-surface-container-lowest border border-outline/25 rounded-xl px-3 py-2 text-xs font-mono text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:border-[#00dbe7]"
-                        />
-                      </div>
-
-                      <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-container-low border border-outline/20">
-                        {(['ALL', 'GLOBAL', 'IN', 'US'] as const).map(reg => (
-                          <button
-                            key={reg}
-                            onClick={() => setStrategyMarketFilter(reg)}
-                            className={`px-3 py-1 rounded-lg text-xs font-mono transition-all cursor-pointer ${
-                              strategyMarketFilter === reg
-                                ? 'bg-[#00dbe7]/20 text-[#00dbe7] font-bold border border-[#00dbe7]/40'
-                                : 'text-on-surface-variant hover:text-on-surface'
-                            }`}
-                          >
-                            {reg === 'ALL' ? 'All Markets' : reg === 'IN' ? '🇮🇳 India' : reg === 'US' ? '🇺🇸 US' : '🌐 Global'}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Feedback Toast */}
-                    {strategyActionFeedback && (
-                      <div className="p-3 rounded-xl bg-[#00e476]/15 border border-[#00e476]/40 text-[#00e476] flex items-center gap-2 animate-in fade-in duration-200">
-                        <CheckCircle2 className="w-4 h-4 shrink-0" />
-                        <span>{strategyActionFeedback}</span>
-                      </div>
-                    )}
-
-                    {/* Strategy Cards Grid */}
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                      {strategies
-                        .filter(s => {
-                          const matchesQuery = !strategySearchQuery || 
-                            s.name.toLowerCase().includes(strategySearchQuery.toLowerCase()) ||
-                            s.description.toLowerCase().includes(strategySearchQuery.toLowerCase()) ||
-                            (s.parameters || []).some(p => p.name.toLowerCase().includes(strategySearchQuery.toLowerCase()));
-                          const matchesMarket = strategyMarketFilter === 'ALL' || s.market === 'GLOBAL' || s.market === strategyMarketFilter || s.market === 'BOTH';
-                          return matchesQuery && matchesMarket;
-                        })
-                        .map(strat => {
-                          const isActive = selectedStrategyId === strat.id;
-                          return (
-                            <div
-                              key={strat.id}
-                              className={`rounded-xl p-5 border transition-all flex flex-col justify-between gap-4 ${
-                                isActive
-                                  ? 'bg-[#00dbe7]/5 border-[#00dbe7]/60 shadow-[0_0_15px_rgba(0,219,231,0.15)] ring-1 ring-[#00dbe7]/30'
-                                  : 'bg-surface-container-low border-outline/20 hover:border-outline/40'
-                              }`}
-                            >
-                              <div className="flex flex-col gap-3">
-                                {/* Title and Type Badges */}
-                                <div className="flex justify-between items-start gap-2">
-                                  <div>
-                                    <h4 className="font-bold text-sm text-on-surface flex items-center gap-2">
-                                      {strat.isPreset ? '⚡' : '🔧'} {strat.name}
-                                    </h4>
-                                    <span className="text-[10px] text-on-surface-variant font-mono">
-                                      v{strat.version} • {strat.authorName || 'Quant Core'}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 flex-wrap">
-                                    <span className={`text-[10px] font-mono px-2 py-0.5 rounded-full border ${
-                                      strat.isPreset
-                                        ? 'bg-blue-500/15 text-blue-400 border-blue-500/30'
-                                        : 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/30'
-                                    }`}>
-                                      {strat.isPreset ? 'Quant Preset' : 'Custom'}
-                                    </span>
-                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-container-high border border-outline/20 text-on-surface-variant">
-                                      {strat.timeframe}
-                                    </span>
-                                    <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-surface-container-high border border-outline/20 text-on-surface-variant">
-                                      {strat.market}
-                                    </span>
-                                  </div>
-                                </div>
-
-                                {/* Description */}
-                                <p className="text-xs text-on-surface-variant/90 font-sans leading-relaxed">
-                                  {strat.description}
-                                </p>
-
-                                {/* Parameters Badges */}
-                                {strat.parameters && strat.parameters.length > 0 && (
-                                  <div className="flex flex-wrap gap-1.5 pt-1">
-                                    {strat.parameters.map(p => (
-                                      <span key={p.id} className="text-[10px] font-mono px-2 py-0.5 rounded bg-surface-container border border-outline/15 text-on-surface-variant">
-                                        <span className="opacity-70">{p.id}:</span> <strong className="text-on-surface">{String(p.default)}</strong>
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-
-                                {/* Rules Summary */}
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[10px] font-mono bg-surface-container-lowest/80 p-3 rounded-lg border border-outline/10">
-                                  <div>
-                                    <span className="text-[#00e476] font-bold block mb-1">Entry Rules (BUY):</span>
-                                    {strat.rules?.entryConditions && strat.rules.entryConditions.length > 0 ? (
-                                      <ul className="space-y-0.5 text-on-surface-variant">
-                                        {strat.rules.entryConditions.map((c, i) => (
-                                          <li key={i} className="truncate">
-                                            • {c.indicator} {c.operator} {c.value}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    ) : (
-                                      <span className="text-on-surface-variant opacity-60">Quant mathematical formula</span>
-                                    )}
-                                  </div>
-
-                                  <div>
-                                    <span className="text-[#ff6b6b] font-bold block mb-1">Exit Rules (SELL):</span>
-                                    {strat.rules?.exitConditions && strat.rules.exitConditions.length > 0 ? (
-                                      <ul className="space-y-0.5 text-on-surface-variant">
-                                        {strat.rules.exitConditions.map((c, i) => (
-                                          <li key={i} className="truncate">
-                                            • {c.indicator} {c.operator} {c.value}
-                                          </li>
-                                        ))}
-                                      </ul>
-                                    ) : (
-                                      <span className="text-on-surface-variant opacity-60">Trailing SL / Risk Targets</span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Card Actions Footer */}
-                              <div className="flex items-center justify-between gap-2 pt-3 border-t border-outline/15 flex-wrap">
-                                <div>
-                                  {isActive ? (
-                                    <span className="px-3 py-1.5 rounded-lg bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30 font-bold flex items-center gap-1.5 text-xs">
-                                      <Check className="w-3.5 h-3.5" />
-                                      Active on Chart
-                                    </span>
-                                  ) : (
-                                    <button
-                                      onClick={() => {
-                                        setSelectedStrategyId(strat.id);
-                                        try {
-                                          localStorage.setItem('sutharlabs_active_strategy_id', strat.id);
-                                        } catch {}
-                                        setStrategyActionFeedback(`Activated "${strat.name}" for live chart signals.`);
-                                        setTimeout(() => setStrategyActionFeedback(null), 3000);
-                                      }}
-                                      className="px-3 py-1.5 rounded-lg bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30 hover:bg-[#00dbe7]/25 font-bold flex items-center gap-1.5 text-xs transition-all cursor-pointer"
-                                    >
-                                      <Play className="w-3 h-3" />
-                                      Activate for Live Signals
-                                    </button>
-                                  )}
-                                </div>
-
-                                <div className="flex items-center gap-1.5">
-                                  <button
-                                    onClick={() => handleCloneStrategy(strat)}
-                                    className="px-2.5 py-1.5 rounded-lg bg-surface-container border border-outline/20 hover:border-[#00dbe7] text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1.5 text-xs cursor-pointer"
-                                    title="Clone strategy into custom condition builder"
-                                  >
-                                    <Copy className="w-3.5 h-3.5" />
-                                    Clone
-                                  </button>
-
-                                  {!strat.isPreset && (
-                                    <>
-                                      <button
-                                        onClick={() => handleEditStrategy(strat)}
-                                        className="px-2.5 py-1.5 rounded-lg bg-surface-container border border-outline/20 hover:border-[#00dbe7] text-on-surface-variant hover:text-on-surface transition-all flex items-center gap-1.5 text-xs cursor-pointer"
-                                        title="Edit this custom strategy"
-                                      >
-                                        <Edit2 className="w-3.5 h-3.5" />
-                                        Edit
-                                      </button>
-                                      <button
-                                        onClick={() => handleDeleteStrategy(strat.id)}
-                                        className="p-1.5 rounded-lg bg-surface-container border border-outline/20 hover:border-[#ff6b6b] text-on-surface-variant hover:text-[#ff6b6b] transition-all cursor-pointer"
-                                        title="Delete custom strategy"
-                                      >
-                                        <Trash2 className="w-3.5 h-3.5" />
-                                      </button>
-                                    </>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                    </div>
-                  </div>
+                  <StockStrategyMarketplace
+                    strategies={strategies}
+                    activeStrategyId={selectedStrategyId}
+                    userEmail={userEmail}
+                    userName={userEmail ? userEmail.split('@')[0] : 'Trader'}
+                    onSelectStrategy={(id) => {
+                      setSelectedStrategyId(id);
+                      try {
+                        localStorage.setItem('sutharlabs_active_strategy_id', id);
+                      } catch {}
+                      const matched = strategies.find(s => s.id === id);
+                      setStrategyActionFeedback(`Activated "${matched?.name || id}" for live chart signals.`);
+                      setTimeout(() => setStrategyActionFeedback(null), 3000);
+                    }}
+                    onForkStrategy={(forked) => {
+                      fetchStrategies();
+                      setSelectedStrategyId(forked.id);
+                      try {
+                        localStorage.setItem('sutharlabs_active_strategy_id', forked.id);
+                      } catch {}
+                      setStrategyActionFeedback(`Forked "${forked.name}" into your custom strategy library!`);
+                      setTimeout(() => setStrategyActionFeedback(null), 4000);
+                    }}
+                    onOpenBuilder={(strategyId) => {
+                      if (strategyId) {
+                        const strat = strategies.find(s => s.id === strategyId);
+                        if (strat) {
+                          handleEditStrategy(strat);
+                          return;
+                        }
+                      }
+                      handleCreateNewStrategy();
+                    }}
+                    onOpenBacktest={(strategyId) => {
+                      setSelectedStrategyId(strategyId);
+                      try {
+                        localStorage.setItem('sutharlabs_active_strategy_id', strategyId);
+                      } catch {}
+                      setSettingsActiveTab('BACKTEST');
+                    }}
+                    onRefreshStrategies={fetchStrategies}
+                    isDark={isDark}
+                  />
                 )}
+
 
                 {/* Mode 2: VISUAL CONDITION BUILDER FORM */}
                 {builderMode === 'BUILDER' && (
@@ -4631,7 +4471,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                           onClick={() => setBuilderMode('CATALOG')}
                           className="px-3 py-1.5 rounded-xl bg-surface-container-low border border-outline/20 hover:border-[#00dbe7] text-on-surface font-mono text-xs flex items-center gap-1.5 cursor-pointer"
                         >
-                          ← Back to Catalog
+                          ← Back to Algo Marketplace
                         </button>
                         <div>
                           <h3 className="font-bold text-base text-on-surface flex items-center gap-2">

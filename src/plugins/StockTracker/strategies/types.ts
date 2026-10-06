@@ -51,6 +51,30 @@ export interface StrategySignal {
   };
 }
 
+export interface StrategyReview {
+  id: string;
+  strategyId: string;
+  userEmail: string;
+  userName: string;
+  rating: number; // 1 to 5 stars
+  comment: string;
+  createdAt: string;
+}
+
+export interface VerifiedBacktestBadge {
+  verifiedAt: string;
+  symbol: string;
+  range: string;
+  netReturnPct: number;
+  annualizedCagr: number;
+  sharpeRatio: number;
+  winRatePct: number;
+  maxDrawdownPct: number;
+  totalTrades: number;
+  profitFactor: number;
+  verifiedBy: string;
+}
+
 export interface IStrategy {
   id: string;
   name: string;
@@ -60,6 +84,17 @@ export interface IStrategy {
   version: string;
   isPreset: boolean;
   isPublic: boolean;
+  tags?: string[];
+  clonesCount?: number;
+  rating?: number;
+  reviewsCount?: number;
+  reviews?: StrategyReview[];
+  verifiedBadge?: VerifiedBacktestBadge;
+  forkedFrom?: {
+    id: string;
+    name: string;
+    authorName?: string;
+  };
   market: 'IN' | 'US' | 'BOTH' | 'GLOBAL';
   timeframe: '5m' | '15m' | '1h' | '1D';
   parameters: StrategyParameter[];
