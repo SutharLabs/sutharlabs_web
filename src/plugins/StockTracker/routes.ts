@@ -36,7 +36,7 @@ import {
   getRegionCurrencyInfo
 } from "./backtest/index.js";
 import { runMarketScan, dispatchWebhookAlert } from "./scanner/index.js";
-import { runEODSimulation, getEODHistory, getEODPortfolio } from "./simulator/index.js";
+import { runEODSimulation, getEODHistory, getEODPortfolio, resetSimulator } from "./simulator/index.js";
 import { readJsonData, writeJsonData } from "./storageUtils.js";
 
 export interface WatchlistItem {
@@ -935,6 +935,17 @@ export function registerRoutes(router: Router) {
       res.json(portfolio);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  router.post("/simulator/reset", (req: any, res: any) => {
+    try {
+      const { initialCapital, marketRegion } = req.body || {};
+      const resetState = resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN");
+      res.json({ success: true, message: "Trade Simulator reset successfully.", portfolio: resetState });
+    } catch (e: any) {
+      console.error("[Trade Simulator] Reset error:", e);
+      res.status(500).json({ error: e.message || "Failed to reset simulator." });
     }
   });
 }

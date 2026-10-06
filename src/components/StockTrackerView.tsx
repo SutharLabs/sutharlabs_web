@@ -2486,7 +2486,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 setShowSettingsDrawer(true);
               }}
               className="h-8 px-2.5 sm:px-3 rounded-lg bg-surface-container-low border border-outline/25 text-on-surface hover:text-[#00e476] hover:border-[#00e476]/50 font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 shrink-0"
-              title="Open Automated EOD Batch Trade Simulator"
+              title="Open Automated Trade Simulator"
             >
               <Play className="w-3.5 h-3.5 text-[#00e476]" />
               <span>Simulator</span>
@@ -4030,7 +4030,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       {tab === 'MARKET' && 'Market Universes'}
                       {tab === 'STRATEGIES' && 'Algo Marketplace & Builder'}
                       {tab === 'SCANNER' && 'Market Screener'}
-                      {tab === 'SIMULATOR' && 'EOD Trade Simulator'}
+                      {tab === 'SIMULATOR' && 'Trade Simulator'}
                       {tab === 'BACKTEST' && 'Backtest Engine'}
                       {tab === 'NEWS_AI' && 'News & AI Sentiment'}
                       {tab === 'INDICATORS' && 'Indicator Mathematics'}
@@ -5247,12 +5247,15 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
             )}
 
-            {/* TAB: AUTOMATED END-OF-DAY (EOD) BATCH TRADE SIMULATOR (STAGE 6) */}
+            {/* TAB: AUTOMATED TRADE SIMULATOR (STAGE 6) */}
             {settingsActiveTab === 'SIMULATOR' && (
               <div className="flex flex-col gap-6">
                 <StockSimulatorPanel
                   strategies={strategies}
                   activeStrategyId={selectedStrategyId}
+                  activeMarketKey={activeMarketKey}
+                  currencySymbol={activeUniverse?.currencySymbol || (activeMarketKey === 'IN' ? '₹' : '$')}
+                  currencyCode={activeUniverse?.currencyCode || (activeMarketKey === 'IN' ? 'INR' : 'USD')}
                   userEmail={userEmail}
                   onSelectSymbol={(sym) => {
                     const fmt = formatTickerDisplay(sym);

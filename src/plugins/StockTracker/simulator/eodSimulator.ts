@@ -85,16 +85,29 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     strategy = PRESET_STRATEGIES.find(p => p.id === "strat-ema-cross") || PRESET_STRATEGIES[0];
   }
 
-  // 2. Resolve tracked watchlist assets for EOD evaluation
+  // 2. Resolve tracked assets for Simulation based on selected market
   const trackedSymbols: Array<{ symbol: string; market: string }> = [];
+  const targetMarket = ((options as any).market || (options as any).marketRegion || "IN").toUpperCase();
+
   if (options.watchlistSymbols && options.watchlistSymbols.length > 0) {
     options.watchlistSymbols.forEach(s => trackedSymbols.push({ symbol: s, market: detectMarketRegion(s) }));
   } else {
-    // Default to Indian NIFTY benchmarks + US Top Tech leaders
-    const universeIN = (MARKET_UNIVERSES as any)["IN"]?.stocks || [];
-    const universeUS = (MARKET_UNIVERSES as any)["US"]?.stocks || [];
-    universeIN.slice(0, 8).forEach((s: any) => trackedSymbols.push({ symbol: s.symbol, market: "IN" }));
-    universeUS.slice(0, 6).forEach((s: any) => trackedSymbols.push({ symbol: s.symbol, market: "US" }));
+    // If Indian market selected, scan Indian NIFTY universe
+    if (targetMarket === "IN") {
+      const universeIN = (MARKET_UNIVERSES as any)["IN"]?.stocks || [];
+      universeIN.forEach((s: any) => trackedSymbols.push({ symbol: s.symbol, market: "IN" }));
+    } else if (targetMarket === "US") {
+      const universeUS = (MARKET_UNIVERSES as any)["US"]?.stocks || [];
+      universeUS.forEach((s: any) => trackedSymbols.push({ symbol: s.symbol, market: "US" }));
+    } else {
+      const marketUniverse = (MARKET_UNIVERSES as any)[targetMarket]?.stocks || [];
+      if (marketUniverse.length > 0) {
+        marketUniverse.forEach((s: any) => trackedSymbols.push({ symbol: s.symbol, market: targetMarket }));
+      } else {
+        const universeIN = (MARKET_UNIVERSES as any)["IN"]?.stocks || [];
+        universeIN.forEach((s: any) => trackedSymbols.push({ symbol: s.symbol, market: "IN" }));
+      }
+    }
   }
 
   const closedTrades: EODTradeExecution[] = [];
@@ -311,4 +324,20 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
   appendHistoryReport(report);
   return report;
+}
+
+/**
+ * Resets the Trade Simulator virtual portfolio state and clears history.
+ */
+export function resetSimulator(initialCash: number = 100000, marketRegion: string = "IN"): PersistedEODState {
+  const freshState: PersistedEODState = {
+    cash: initialCash,
+    initialCash: initialCash,
+    positions: [],
+    lastRunDate: undefined,
+    totalRealizedPnL: 0
+  };
+  saveSimulatorStore(freshState);
+  writeJsonData("eod_simulation_history.json", []);
+  return freshState;
 }

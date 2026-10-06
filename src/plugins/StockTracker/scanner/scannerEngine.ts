@@ -19,7 +19,7 @@ import { readJsonData } from "../storageUtils.js";
 export async function runMarketScan(options: ScannerFilterOptions): Promise<ScannerReport> {
   const startTime = Date.now();
   const timeframe = options.timeframe || "1d";
-  const universeKey = (options.universeKey || "IN").toUpperCase();
+  const universeKey = ((options as any).universe || options.universeKey || (options as any).market || "IN").toUpperCase();
 
   // 1. Resolve active strategy
   let strategy: IStrategy | undefined;
@@ -134,8 +134,8 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
           displaySymbol: fmt.displaySymbol,
           market: targetMarket,
           exchange: meta.exchange || quote?.exchange || fmt.exchange || "GLOBAL",
-          currency: quote?.currency || (targetMarket === "IN" ? "INR" : "USD"),
-          currencySymbol: quote?.currency_symbol || (targetMarket === "IN" ? "₹" : "$"),
+          currency: (targetMarket === "IN" || normSym.endsWith(".NS") || normSym.endsWith(".BO")) ? "INR" : (quote?.currency || "USD"),
+          currencySymbol: (targetMarket === "IN" || normSym.endsWith(".NS") || normSym.endsWith(".BO")) ? "₹" : (quote?.currency_symbol || (targetMarket === "EU" ? "€" : "$")),
           currentPrice: parseFloat(currentPrice.toFixed(2)),
           change24h: parseFloat(change24h.toFixed(2)),
           changePercent24h: parseFloat(changePercent24h.toFixed(2)),

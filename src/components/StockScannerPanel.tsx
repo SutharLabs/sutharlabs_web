@@ -64,6 +64,13 @@ export default function StockScannerPanel({
   const [signalFilter, setSignalFilter] = useState<'ALL' | 'BUY' | 'SELL' | 'HIGH_CONVICTION'>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Synchronize universe with active market whenever changed
+  useEffect(() => {
+    if (activeUniverseKey) {
+      setSelectedUniverse(activeUniverseKey);
+    }
+  }, [activeUniverseKey]);
+
   // Execution & Results State
   const [report, setReport] = useState<ScannerReport | null>(null);
   const [isScanning, setIsScanning] = useState<boolean>(false);
@@ -101,10 +108,14 @@ export default function StockScannerPanel({
         if (watchlistSymbols.length > 0) {
           payload.customSymbols = watchlistSymbols;
         } else {
-          payload.universe = 'IN';
+          payload.universe = activeUniverseKey || 'IN';
+          payload.universeKey = activeUniverseKey || 'IN';
+          payload.market = activeUniverseKey || 'IN';
         }
       } else {
         payload.universe = selectedUniverse;
+        payload.universeKey = selectedUniverse;
+        payload.market = selectedUniverse;
       }
 
       const res = await fetch(`${STOCK_API}/scanner/scan`, {

@@ -24,6 +24,7 @@ import {
   Receipt
 } from 'lucide-react';
 import { IStrategy } from '../plugins/StockTracker/strategies/types';
+import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
 import {
   EODPosition,
   EODSimulationReport,
@@ -35,6 +36,9 @@ import {
 export interface StockSimulatorPanelProps {
   strategies: IStrategy[];
   activeStrategyId: string;
+  activeMarketKey?: string;
+  currencySymbol?: string;
+  currencyCode?: string;
   userEmail?: string;
   onSelectSymbol: (symbol: string) => void;
   isDark?: boolean;
@@ -45,15 +49,56 @@ const STOCK_API = '/api/workspace/stock-analyzer';
 export default function StockSimulatorPanel({
   strategies,
   activeStrategyId,
+  activeMarketKey = 'IN',
+  currencySymbol,
+  currencyCode,
   userEmail,
   onSelectSymbol,
   isDark = true
 }: StockSimulatorPanelProps) {
+  const currencySign = currencySymbol || (activeMarketKey === 'IN' ? '₹' : activeMarketKey === 'EU' ? '€' : '$');
+
   // Strategy & Simulation Config
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>(activeStrategyId || 'strat-ema-cross');
   const [allocationPct, setAllocationPct] = useState<number>(0.20);
   const [trailingStopPct, setTrailingStopPct] = useState<number>(3.0);
   const [enableTrailingStop, setEnableTrailingStop] = useState<boolean>(true);
+
+  // Complete Catalog of Strategies (Presets + Custom + Community)
+  const [allStrategies, setAllStrategies] = useState<IStrategy[]>(() => {
+    const map = new Map<string, IStrategy>();
+    PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+    if (strategies && strategies.length > 0) strategies.forEach(s => map.set(s.id, s));
+    return Array.from(map.values());
+  });
+
+  useEffect(() => {
+    const loadFullStrategies = async () => {
+      try {
+        const res = await fetch(`${STOCK_API}/strategies`);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data) && data.length > 0) {
+            const map = new Map<string, IStrategy>();
+            PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+            data.forEach(s => map.set(s.id, s));
+            if (strategies) strategies.forEach(s => map.set(s.id, s));
+            setAllStrategies(Array.from(map.values()));
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('[Simulator] Error fetching strategies list:', e);
+      }
+      if (strategies && strategies.length > 0) {
+        const map = new Map<string, IStrategy>();
+        PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+        strategies.forEach(s => map.set(s.id, s));
+        setAllStrategies(Array.from(map.values()));
+      }
+    };
+    loadFullStrategies();
+  }, [strategies]);
 
   // Live Portfolio & History State
   const [portfolio, setPortfolio] = useState<EODPortfolioStore | null>(null);
@@ -61,6 +106,8 @@ export default function StockSimulatorPanel({
   const [latestReport, setLatestReport] = useState<EODSimulationReport | null>(null);
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState<boolean>(false);
   const [isRunningSim, setIsRunningSim] = useState<boolean>(false);
+  const [isResettingSim, setIsResettingSim] = useState<boolean>(false);
+  const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
@@ -90,7 +137,7 @@ export default function StockSimulatorPanel({
         }
       }
     } catch (err: any) {
-      console.warn('[EOD Simulator] Error loading portfolio/history:', err);
+      console.warn('[Trade Simulator] Error loading portfolio/history:', err);
     } finally {
       setIsLoadingPortfolio(false);
     }
@@ -100,16 +147,18 @@ export default function StockSimulatorPanel({
     fetchPortfolioAndHistory();
   }, [fetchPortfolioAndHistory]);
 
-  // Execute EOD Simulation Run
+  // Execute Trade Simulation Run
   const handleRunSimulation = async () => {
     setIsRunningSim(true);
     setErrorMessage(null);
 
     try {
-      const payload: EODSimulationOptions = {
+      const payload: any = {
         strategyId: selectedStrategyId,
         capitalAllocationPct: allocationPct,
         trailingStopPct: enableTrailingStop ? trailingStopPct : undefined,
+        market: activeMarketKey || 'IN',
+        marketRegion: activeMarketKey || 'IN',
         userEmail
       };
 
@@ -129,9 +178,39 @@ export default function StockSimulatorPanel({
       setExpandedRunId(report.id);
       await fetchPortfolioAndHistory();
     } catch (err: any) {
-      setErrorMessage(err.message || 'Failed to execute EOD daily simulation.');
+      setErrorMessage(err.message || 'Failed to execute trade simulation.');
     } finally {
       setIsRunningSim(false);
+    }
+  };
+
+  // Reset Trade Simulator Portfolio & History
+  const handleResetSimulator = async () => {
+    setIsResettingSim(true);
+    setErrorMessage(null);
+    try {
+      const res = await fetch(`${STOCK_API}/simulator/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          initialCapital: 100000,
+          marketRegion: activeMarketKey || 'IN'
+        })
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || 'Failed to reset simulator.');
+      }
+      const data = await res.json();
+      setPortfolio(data.portfolio || null);
+      setLatestReport(null);
+      setHistoryRuns([]);
+      setShowResetConfirm(false);
+      await fetchPortfolioAndHistory();
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to reset trade simulator.');
+    } finally {
+      setIsResettingSim(false);
     }
   };
 
@@ -167,8 +246,8 @@ export default function StockSimulatorPanel({
   }, [portfolio]);
 
   const selectedStrategy = useMemo(() => {
-    return strategies.find(s => s.id === selectedStrategyId) || strategies[0];
-  }, [strategies, selectedStrategyId]);
+    return allStrategies.find(s => s.id === selectedStrategyId) || allStrategies[0];
+  }, [allStrategies, selectedStrategyId]);
 
   return (
     <div className="flex flex-col gap-6 text-xs font-mono">
@@ -182,28 +261,67 @@ export default function StockSimulatorPanel({
               </span>
               <div>
                 <h2 className="text-base font-bold text-on-surface font-sans flex items-center gap-2">
-                  Automated End-of-Day (EOD) Batch Trade Simulator
+                  Automated Trade Simulator
                   <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#00e476]/20 text-[#00e476] font-mono font-bold">
                     Stage 6 Production
                   </span>
                 </h2>
                 <p className="text-xs text-on-surface-variant font-sans mt-0.5">
-                  Simulate daily closing candle trade triggers, auto-manage SL/TP & trailing stops, with realistic transaction fees.
+                  Simulate algorithmic trade triggers, auto-manage SL/TP & trailing stops, with realistic transaction fees.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Trigger Simulation Button */}
-          <button
-            onClick={handleRunSimulation}
-            disabled={isRunningSim}
-            className="px-6 py-2.5 bg-[#00e476] text-[#002022] font-bold rounded-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap self-stretch md:self-auto justify-center"
-          >
-            <Play className={`w-4 h-4 fill-current ${isRunningSim ? 'animate-pulse' : ''}`} />
-            <span>{isRunningSim ? 'Simulating EOD Trading Session...' : 'Run EOD Daily Simulation'}</span>
-          </button>
+          {/* Action Buttons: Reset & Run */}
+          <div className="flex items-center gap-2.5 self-stretch md:self-auto flex-wrap">
+            <button
+              onClick={() => setShowResetConfirm(true)}
+              disabled={isRunningSim || isResettingSim}
+              className="px-4 py-2.5 bg-surface-container-high hover:bg-rose-500/20 text-on-surface hover:text-rose-400 border border-outline/30 rounded-xl font-bold cursor-pointer flex items-center gap-2 transition-all disabled:opacity-50 text-xs"
+              title="Reset virtual portfolio cash, open positions, and trade history"
+            >
+              <RotateCcw className={`w-3.5 h-3.5 ${isResettingSim ? 'animate-spin' : ''}`} />
+              <span>{isResettingSim ? 'Resetting...' : 'Reset Simulator'}</span>
+            </button>
+
+            <button
+              onClick={handleRunSimulation}
+              disabled={isRunningSim || isResettingSim}
+              className="px-6 py-2.5 bg-[#00e476] text-[#002022] font-bold rounded-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap justify-center text-xs"
+            >
+              <Play className={`w-4 h-4 fill-current ${isRunningSim ? 'animate-pulse' : ''}`} />
+              <span>{isRunningSim ? 'Running Trade Simulation...' : 'Run Trade Simulation'}</span>
+            </button>
+          </div>
         </div>
+
+        {/* Reset Confirmation Banner */}
+        {showResetConfirm && (
+          <div className="p-3.5 rounded-xl bg-surface-container-high border border-outline/30 flex items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2 text-on-surface">
+              <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="text-xs">
+                Reset Trade Simulator to initial capital ({currencySign}100,000) and clear all open positions & history?
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowResetConfirm(false)}
+                className="px-3 py-1 rounded-lg bg-surface-container border border-outline/20 text-on-surface-variant hover:text-on-surface cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleResetSimulator}
+                disabled={isResettingSim}
+                className="px-3.5 py-1 rounded-lg bg-rose-500 text-white font-bold hover:brightness-110 cursor-pointer text-xs flex items-center gap-1.5"
+              >
+                {isResettingSim ? 'Resetting...' : 'Confirm Reset'}
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Configuration Options Bar */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-3 border-t border-outline/10">
@@ -211,7 +329,7 @@ export default function StockSimulatorPanel({
           <div>
             <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
               <Zap className="w-3 h-3 text-[#00dbe7]" />
-              Simulation Strategy
+              Simulation Strategy ({allStrategies.length} Available)
             </label>
             <select
               value={selectedStrategyId}
@@ -219,9 +337,9 @@ export default function StockSimulatorPanel({
               disabled={isRunningSim}
               className="w-full bg-surface-container-lowest border border-outline/30 rounded-xl px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00e476]"
             >
-              {strategies.map(s => (
+              {allStrategies.map(s => (
                 <option key={s.id} value={s.id}>
-                  {s.name} ({s.market})
+                  {s.name} ({s.market || 'GLOBAL'})
                 </option>
               ))}
             </select>
@@ -305,7 +423,7 @@ export default function StockSimulatorPanel({
           <span className="text-[10px] text-on-surface-variant uppercase font-mono">Total Portfolio Equity</span>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-xl font-bold font-mono text-on-surface">
-              ${portfolioMetrics.totalEquity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {currencySign}{portfolioMetrics.totalEquity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <div className={`text-[10px] font-bold mt-1 flex items-center gap-0.5 ${portfolioMetrics.totalReturnPct >= 0 ? 'text-[#00e476]' : 'text-rose-400'}`}>
@@ -318,11 +436,11 @@ export default function StockSimulatorPanel({
           <span className="text-[10px] text-on-surface-variant uppercase font-mono">Available Cash</span>
           <div className="flex items-baseline gap-1 mt-1">
             <span className="text-xl font-bold font-mono text-[#00dbe7]">
-              ${portfolioMetrics.cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {currencySign}{portfolioMetrics.cash.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
           <span className="text-[10px] text-on-surface-variant mt-1">
-            Allocated: ${portfolioMetrics.positionsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            Allocated: {currencySign}{portfolioMetrics.positionsValue.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
         </div>
 
@@ -331,7 +449,7 @@ export default function StockSimulatorPanel({
           <span className="text-[10px] text-on-surface-variant uppercase font-mono">Realized PnL (Closed)</span>
           <div className="flex items-baseline gap-1 mt-1">
             <span className={`text-xl font-bold font-mono ${portfolioMetrics.realizedPnL >= 0 ? 'text-[#00e476]' : 'text-rose-400'}`}>
-              {portfolioMetrics.realizedPnL >= 0 ? '+' : ''}${portfolioMetrics.realizedPnL.toFixed(2)}
+              {portfolioMetrics.realizedPnL >= 0 ? '+' : ''}{currencySign}{portfolioMetrics.realizedPnL.toFixed(2)}
             </span>
           </div>
           <span className="text-[10px] text-on-surface-variant mt-1">
@@ -347,7 +465,7 @@ export default function StockSimulatorPanel({
               {portfolioMetrics.openPositionsCount}
             </span>
             <span className={`text-xs font-bold ${portfolioMetrics.totalUnrealizedPnL >= 0 ? 'text-[#00e476]' : 'text-rose-400'}`}>
-              ({portfolioMetrics.totalUnrealizedPnL >= 0 ? '+' : ''}${portfolioMetrics.totalUnrealizedPnL.toFixed(2)} float)
+              ({portfolioMetrics.totalUnrealizedPnL >= 0 ? '+' : ''}{currencySign}{portfolioMetrics.totalUnrealizedPnL.toFixed(2)} float)
             </span>
           </div>
           <span className="text-[10px] text-on-surface-variant mt-1">
@@ -368,7 +486,7 @@ export default function StockSimulatorPanel({
             </div>
             <div className="flex items-center gap-3">
               <span className={`text-xs font-bold ${latestReport.netDailyPnL >= 0 ? 'text-[#00e476]' : 'text-rose-400'}`}>
-                Daily PnL: {latestReport.netDailyPnL >= 0 ? '+' : ''}${latestReport.netDailyPnL.toFixed(2)} ({latestReport.netDailyPnLPct.toFixed(2)}%)
+                Daily PnL: {latestReport.netDailyPnL >= 0 ? '+' : ''}{currencySign}{latestReport.netDailyPnL.toFixed(2)} ({latestReport.netDailyPnLPct.toFixed(2)}%)
               </span>
             </div>
           </div>
@@ -395,7 +513,7 @@ export default function StockSimulatorPanel({
             <Briefcase className="w-8 h-8 opacity-40 text-[#00e476]" />
             <p className="font-sans">No open positions currently in virtual simulator portfolio.</p>
             <p className="text-xs">
-              Click &quot;Run EOD Daily Simulation&quot; above to scan your watchlist assets for new entry signals.
+              Click &quot;Run Trade Simulation&quot; above to scan your selected market assets for new entry signals.
             </p>
           </div>
         ) : (
@@ -442,28 +560,28 @@ export default function StockSimulatorPanel({
                       </td>
 
                       <td className="py-3 px-3 text-right text-on-surface">
-                        ${pos.entryPrice.toFixed(2)}
+                        {currencySign}{pos.entryPrice.toFixed(2)}
                       </td>
 
                       <td className="py-3 px-3 text-right font-bold text-on-surface">
-                        ${pos.currentPrice.toFixed(2)}
+                        {currencySign}{pos.currentPrice.toFixed(2)}
                       </td>
 
                       <td className="py-3 px-3 text-center">
                         <span className="px-2 py-0.5 rounded bg-rose-500/15 text-rose-400 font-bold text-[10px]">
-                          ${pos.stopLoss.toFixed(2)}
+                          {currencySign}{pos.stopLoss.toFixed(2)}
                         </span>
                       </td>
 
                       <td className="py-3 px-3 text-center">
                         <span className="px-2 py-0.5 rounded bg-[#00e476]/15 text-[#00e476] font-bold text-[10px]">
-                          ${pos.takeProfit.toFixed(2)}
+                          {currencySign}{pos.takeProfit.toFixed(2)}
                         </span>
                       </td>
 
                       <td className="py-3 px-3 text-right">
                         <div className={`font-bold ${isProfit ? 'text-[#00e476]' : 'text-rose-400'}`}>
-                          {isProfit ? '+' : ''}${pos.unrealizedPnL.toFixed(2)}
+                          {isProfit ? '+' : ''}{currencySign}{pos.unrealizedPnL.toFixed(2)}
                         </div>
                         <div className={`text-[10px] ${isProfit ? 'text-[#00e476]' : 'text-rose-400'}`}>
                           {isProfit ? '+' : ''}{pos.unrealizedPnLPct.toFixed(2)}%
@@ -536,10 +654,10 @@ export default function StockSimulatorPanel({
 
                     <div className="text-right">
                       <div className={`font-bold text-xs ${isPositive ? 'text-[#00e476]' : 'text-rose-400'}`}>
-                        {isPositive ? '+' : ''}${run.netDailyPnL.toFixed(2)} ({run.netDailyPnLPct.toFixed(2)}%)
+                        {isPositive ? '+' : ''}{currencySign}{run.netDailyPnL.toFixed(2)} ({run.netDailyPnLPct.toFixed(2)}%)
                       </div>
                       <div className="text-[10px] text-on-surface-variant">
-                        Cap: ${run.endingCapital.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                        Cap: {currencySign}{run.endingCapital.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                       </div>
                     </div>
                   </div>
@@ -566,15 +684,15 @@ export default function StockSimulatorPanel({
                                 <div>
                                   <span className="font-bold text-on-surface">{t.symbol}</span>
                                   <span className="text-[10px] text-on-surface-variant ml-2">
-                                    {t.shares} shares @ ${t.price} ({t.reason})
+                                    {t.shares} shares @ {currencySign}{t.price} ({t.reason})
                                   </span>
                                 </div>
                                 <div className="text-right">
                                   <span className={`font-bold ${t.realizedPnL >= 0 ? 'text-[#00e476]' : 'text-rose-400'}`}>
-                                    {t.realizedPnL >= 0 ? '+' : ''}${t.realizedPnL.toFixed(2)} ({t.realizedPnLPct.toFixed(2)}%)
+                                    {t.realizedPnL >= 0 ? '+' : ''}{currencySign}{t.realizedPnL.toFixed(2)} ({t.realizedPnLPct.toFixed(2)}%)
                                   </span>
                                   <span className="text-[9px] text-on-surface-variant ml-2">
-                                    Friction: ${t.friction.toFixed(2)}
+                                    Friction: {currencySign}{t.friction.toFixed(2)}
                                   </span>
                                 </div>
                               </div>
@@ -598,7 +716,7 @@ export default function StockSimulatorPanel({
                                 <div>
                                   <span className="font-bold text-[#00e476]">{t.symbol}</span>
                                   <span className="text-[10px] text-on-surface-variant ml-2">
-                                    Bought {t.shares} shares @ ${t.price}
+                                    Bought {t.shares} shares @ {currencySign}{t.price}
                                   </span>
                                 </div>
                                 <span className="text-[10px] text-on-surface-variant">
