@@ -86,9 +86,9 @@ const PLUGIN_METADATA_REGISTRY: Record<string, {
     features: [
       'Interactive TradingView Lightweight Charts with zoom, pan, crosshair, and volume histogram',
       'Multi-Market Global Universes supporting India (NSE/BSE), US, Europe (LSE/DAX), China/HK, and Japan',
-      'Pluggable Strategy Engine (IStrategy) with 4 battle-tested quant presets (EMA Cross, RSI Reversion, BB Breakout, Supertrend)',
-      'Visual Strategy Condition Builder for zero-latency deterministic Buy/Sell rule creation with live sandbox test',
-      'Database-backed custom watchlists with multi-currency conversion and paper trading risk management'
+      'Pluggable Strategy Engine (IStrategy) with quantitative presets, Visual Condition Builder, and live test sandbox',
+      'High-Performance Historical Backtesting Engine with multi-country statutory tax & friction modeling (STT, SEC, GST, SDRT)',
+      'Community Algorithm Marketplace with 1-click cloning/forking, interactive 5-star reviews, and verified performance proofs'
     ],
     permissions: [
       { name: 'External Network', description: 'Streams global market quotes and candle feeds via Yahoo Finance APIs', granted: true },

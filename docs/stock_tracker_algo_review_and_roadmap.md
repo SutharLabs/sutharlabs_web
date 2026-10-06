@@ -2,8 +2,8 @@
 ## Comprehensive Architectural Review, Industry Benchmark & Implementation Roadmap
 
 > **Author**: SutharLabs Software Research & Engineering Studio  
-> **Document Version**: 1.3.0 (Updated post Stage 1, Stage 2 & Stage 3 Delivery)  
-> **Current Plugin Release**: `v0.4.0` (Beta)  
+> **Document Version**: 1.6.0 (Updated post Stage 1, Stage 2, Stage 3, Stage 4 & Stage 5 Delivery)  
+> **Current Plugin Release**: `v0.6.0` (Beta)  
 > **Scope**: Equity & Derivatives Market Analytics, Algorithmic Signal Generation, Multi-Timeframe Backtesting, Community Strategy Marketplace, and End-of-Day (EOD) Trade Simulation across Global Markets (India NSE/BSE, US NYSE/NASDAQ, Europe LSE/Euronext/DAX, and East Asia HKEX/China CSI 300/Japan TSE).
 
 ---
