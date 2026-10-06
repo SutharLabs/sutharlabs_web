@@ -11,10 +11,7 @@ import { PRESET_STRATEGIES } from "../strategies/presets.js";
 import { evaluateStrategy } from "../strategies/engine.js";
 import { IStrategy } from "../strategies/types.js";
 import { ScannerCandidate, ScannerFilterOptions, ScannerReport, WebhookAlertPayload } from "./types.js";
-import fs from "fs";
-import path from "path";
-
-const WATCHLISTS_DATA_PATH = path.join(process.cwd(), "data", "watchlists.json");
+import { readJsonData } from "../storageUtils.js";
 
 /**
  * Executes a concurrent technical scan across a selected market universe or watchlist.
@@ -46,19 +43,17 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
     options.customSymbols.forEach(s => targets.push({ symbol: s, market: universeKey }));
   } else if (options.watchlistId) {
     try {
-      if (fs.existsSync(WATCHLISTS_DATA_PATH)) {
-        const watchlists = JSON.parse(fs.readFileSync(WATCHLISTS_DATA_PATH, "utf8"));
-        const matched = watchlists.find((w: any) => w.id === options.watchlistId);
-        if (matched && matched.items && matched.items.length > 0) {
-          matched.items.forEach((item: any) => {
-            targets.push({
-              symbol: item.symbol,
-              name: item.name,
-              market: item.market || universeKey,
-              exchange: item.exchange
-            });
+      const watchlists = readJsonData<any[]>("watchlists.json", []);
+      const matched = watchlists.find((w: any) => w.id === options.watchlistId);
+      if (matched && matched.items && matched.items.length > 0) {
+        matched.items.forEach((item: any) => {
+          targets.push({
+            symbol: item.symbol,
+            name: item.name,
+            market: item.market || universeKey,
+            exchange: item.exchange
           });
-        }
+        });
       }
     } catch (e) {
       console.warn("[Scanner] Failed reading watchlists:", e);

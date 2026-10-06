@@ -37,6 +37,7 @@ import {
 } from "./backtest/index.js";
 import { runMarketScan, dispatchWebhookAlert } from "./scanner/index.js";
 import { runEODSimulation, getEODHistory, getEODPortfolio } from "./simulator/index.js";
+import { readJsonData, writeJsonData } from "./storageUtils.js";
 
 export interface WatchlistItem {
   symbol: string;
@@ -58,8 +59,6 @@ export interface WatchlistRecord {
   createdAt: string;
   updatedAt: string;
 }
-
-const WATCHLISTS_DATA_PATH = path.join(process.cwd(), "data", "watchlists.json");
 
 const SEED_WATCHLISTS: WatchlistRecord[] = [
   {
@@ -110,22 +109,11 @@ const SEED_WATCHLISTS: WatchlistRecord[] = [
   }
 ];
 
-function ensureDataDirectory() {
-  const dir = path.dirname(WATCHLISTS_DATA_PATH);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-}
-
 function loadWatchlistsFromDisk(): WatchlistRecord[] {
-  ensureDataDirectory();
   try {
-    if (fs.existsSync(WATCHLISTS_DATA_PATH)) {
-      const content = fs.readFileSync(WATCHLISTS_DATA_PATH, "utf8");
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
-      }
+    const parsed = readJsonData<WatchlistRecord[]>("watchlists.json", []);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      return parsed;
     }
   } catch (err) {
     console.error("[Watchlist DB] Error reading watchlists.json:", err);
@@ -136,9 +124,8 @@ function loadWatchlistsFromDisk(): WatchlistRecord[] {
 }
 
 function saveWatchlistsToDisk(watchlists: WatchlistRecord[]): void {
-  ensureDataDirectory();
   try {
-    fs.writeFileSync(WATCHLISTS_DATA_PATH, JSON.stringify(watchlists, null, 2), "utf8");
+    writeJsonData("watchlists.json", watchlists);
   } catch (err) {
     console.error("[Watchlist DB] Error saving watchlists.json:", err);
   }

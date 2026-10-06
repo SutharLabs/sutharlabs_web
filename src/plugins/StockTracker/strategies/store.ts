@@ -4,26 +4,15 @@ import crypto from 'crypto';
 import { IStrategy, StrategyReview, VerifiedBacktestBadge } from './types.js';
 import { PRESET_STRATEGIES } from './presets.js';
 
-const STRATEGIES_DATA_PATH = path.join(process.cwd(), 'data', 'strategies.json');
-
-function ensureDataDirectory() {
-  const dir = path.dirname(STRATEGIES_DATA_PATH);
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-}
+import { readJsonData, writeJsonData } from '../storageUtils.js';
 
 export function loadStrategiesFromDisk(): IStrategy[] {
-  ensureDataDirectory();
   try {
-    if (fs.existsSync(STRATEGIES_DATA_PATH)) {
-      const content = fs.readFileSync(STRATEGIES_DATA_PATH, 'utf8');
-      const parsed = JSON.parse(content);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        // Merge preset definitions while keeping custom strategies
-        const customOnly = parsed.filter((s: IStrategy) => !s.isPreset);
-        return [...PRESET_STRATEGIES, ...customOnly];
-      }
+    const parsed = readJsonData<IStrategy[]>('strategies.json', []);
+    if (Array.isArray(parsed) && parsed.length > 0) {
+      // Merge preset definitions while keeping custom strategies
+      const customOnly = parsed.filter((s: IStrategy) => !s.isPreset);
+      return [...PRESET_STRATEGIES, ...customOnly];
     }
   } catch (err) {
     console.error('[Strategies DB] Error reading strategies.json:', err);
@@ -35,9 +24,8 @@ export function loadStrategiesFromDisk(): IStrategy[] {
 }
 
 export function saveStrategiesToDisk(strategies: IStrategy[]): void {
-  ensureDataDirectory();
   try {
-    fs.writeFileSync(STRATEGIES_DATA_PATH, JSON.stringify(strategies, null, 2), 'utf8');
+    writeJsonData('strategies.json', strategies);
   } catch (err) {
     console.error('[Strategies DB] Error saving strategies.json:', err);
   }

@@ -12,6 +12,7 @@ import { getStrategyById } from "../strategies/store.js";
 import { PRESET_STRATEGIES } from "../strategies/presets.js";
 import { evaluateStrategy } from "../strategies/engine.js";
 import { calculateRegionalFriction, detectMarketRegion } from "../backtest/friction.js";
+import { readJsonData, writeJsonData } from "../storageUtils.js";
 import {
   EODPosition,
   EODTradeExecution,
@@ -19,10 +20,6 @@ import {
   EODSimulationReport,
   EODSimulationOptions
 } from "./types.js";
-
-const SIMULATOR_DATA_DIR = path.join(process.cwd(), "data");
-const EOD_PORTFOLIO_PATH = path.join(SIMULATOR_DATA_DIR, "eod_portfolio.json");
-const EOD_HISTORY_PATH = path.join(SIMULATOR_DATA_DIR, "eod_simulation_history.json");
 
 interface PersistedEODState {
   cash: number;
@@ -32,54 +29,37 @@ interface PersistedEODState {
   totalRealizedPnL: number;
 }
 
+const DEFAULT_INITIAL_STATE: PersistedEODState = {
+  cash: 100000,
+  initialCash: 100000,
+  positions: [],
+  lastRunDate: undefined,
+  totalRealizedPnL: 0
+};
+
 function ensureSimulatorStore(): PersistedEODState {
-  if (!fs.existsSync(SIMULATOR_DATA_DIR)) {
-    fs.mkdirSync(SIMULATOR_DATA_DIR, { recursive: true });
+  const store = readJsonData<PersistedEODState>("eod_portfolio.json", DEFAULT_INITIAL_STATE);
+  if (!store || typeof store.cash !== "number") {
+    return { ...DEFAULT_INITIAL_STATE };
   }
-
-  if (fs.existsSync(EOD_PORTFOLIO_PATH)) {
-    try {
-      const data = JSON.parse(fs.readFileSync(EOD_PORTFOLIO_PATH, "utf8"));
-      return data;
-    } catch {
-      // Fall through to initial state
-    }
-  }
-
-  const initialState: PersistedEODState = {
-    cash: 100000,
-    initialCash: 100000,
-    positions: [],
-    lastRunDate: undefined,
-    totalRealizedPnL: 0
-  };
-  fs.writeFileSync(EOD_PORTFOLIO_PATH, JSON.stringify(initialState, null, 2), "utf8");
-  return initialState;
+  return store;
 }
 
 function saveSimulatorStore(state: PersistedEODState) {
-  fs.writeFileSync(EOD_PORTFOLIO_PATH, JSON.stringify(state, null, 2), "utf8");
+  writeJsonData("eod_portfolio.json", state);
 }
 
 function appendHistoryReport(report: EODSimulationReport) {
-  let history: EODSimulationReport[] = [];
-  if (fs.existsSync(EOD_HISTORY_PATH)) {
-    try {
-      history = JSON.parse(fs.readFileSync(EOD_HISTORY_PATH, "utf8"));
-    } catch {}
-  }
+  let history = readJsonData<EODSimulationReport[]>("eod_simulation_history.json", []);
+  if (!Array.isArray(history)) history = [];
   history.unshift(report);
   if (history.length > 50) history = history.slice(0, 50); // Keep last 50 runs
-  fs.writeFileSync(EOD_HISTORY_PATH, JSON.stringify(history, null, 2), "utf8");
+  writeJsonData("eod_simulation_history.json", history);
 }
 
 export function getEODHistory(): EODSimulationReport[] {
-  if (fs.existsSync(EOD_HISTORY_PATH)) {
-    try {
-      return JSON.parse(fs.readFileSync(EOD_HISTORY_PATH, "utf8"));
-    } catch {}
-  }
-  return [];
+  const history = readJsonData<EODSimulationReport[]>("eod_simulation_history.json", []);
+  return Array.isArray(history) ? history : [];
 }
 
 export function getEODPortfolio(): PersistedEODState {
