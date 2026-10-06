@@ -74,6 +74,7 @@ export function compareSemverDesc(v1?: string, v2?: string): number {
 const PLUGIN_METADATA_REGISTRY: Record<string, {
   publisher: string;
   tags: string[];
+  highlights: string[];
   features: string[];
   permissions: { name: string; description: string; granted: boolean }[];
   accentColor: string;
@@ -83,6 +84,12 @@ const PLUGIN_METADATA_REGISTRY: Record<string, {
   wp_stock_analyzer: {
     publisher: 'SutharLabs Quantitative Systems',
     tags: ['TradingView Charts', 'Global Equities', 'Quant Algorithms', 'Condition Builder', 'Neon DB'],
+    highlights: [
+      'Multi-Market TradingView Live Charts (NSE, BSE, US, EU)',
+      'Pluggable Strategy Engine & Visual Condition Builder',
+      'Historical Backtesting with Statutory Tax Modeling',
+      'Multi-Market Screener & Automated EOD Trade Simulator'
+    ],
     features: [
       'Interactive TradingView Lightweight Charts with zoom, pan, crosshair, and volume histogram',
       'Multi-Market Global Universes supporting India (NSE/BSE), US, Europe (LSE/DAX), China/HK, and Japan',
@@ -103,6 +110,12 @@ const PLUGIN_METADATA_REGISTRY: Record<string, {
   wp_flow_designer: {
     publisher: 'SutharLabs Architecture Group',
     tags: ['Visual Canvas', 'Topology Nodes', 'Microservices', 'JSON Export'],
+    highlights: [
+      'Interactive Drag-and-Drop Node Architecture Canvas',
+      'Dynamic Spline Curvature & Port Snapping Routing',
+      'Live State Inspection & Pipeline Processor Triggers',
+      'Full Architectural JSON State Import / Export'
+    ],
     features: [
       'Interactive drag-and-drop node graph canvas for system architecture',
       'Bi-directional connection ports with dynamic spline curvature',
@@ -121,6 +134,12 @@ const PLUGIN_METADATA_REGISTRY: Record<string, {
   wp_doc_nexus: {
     publisher: 'SutharLabs Knowledge Core',
     tags: ['Markdown Studio', 'Syntax Highlighting', 'Live Preview', 'Cloud Sync'],
+    highlights: [
+      'Split-Pane Markdown Studio with Instant Live Render',
+      'GitHub Flavored Tables, Fences & Alert Blocks',
+      'Automated Background Cloud Sync & Conflict Guard',
+      'Collaborative Document Locks & Version Timestamping'
+    ],
     features: [
       'Split-pane markdown documentation editor with instant live render',
       'GitHub Flavored Markdown support including tables, alerts, and code fences',
@@ -139,6 +158,12 @@ const PLUGIN_METADATA_REGISTRY: Record<string, {
   wp_accounting: {
     publisher: 'SutharLabs Enterprise Suite',
     tags: ['Ledger', 'Double-Entry', 'Invoicing', 'Tax Audit'],
+    highlights: [
+      'Deterministic Double-Entry Ledger Engine',
+      'Automated Invoicing & Status Reconciliation',
+      'Exportable Audit Trails with CSV Exporter',
+      'Cryptographic Admin Role Verification'
+    ],
     features: [
       'Double-entry transaction sequences with deterministic balance auditing',
       'Automated invoice generation and payment status tracking',
@@ -159,6 +184,11 @@ const PLUGIN_METADATA_REGISTRY: Record<string, {
 const DEFAULT_METADATA = {
   publisher: 'Verified Extension Publisher',
   tags: ['Sandboxed Extension', 'V8 Runtime', 'Zero-Latency', 'Isolated'],
+  highlights: [
+    'Sandboxed isolated runtime with zero-latency event bus',
+    'Automated state persistence with cloud sync',
+    'Real-time developer telemetry & audit logging'
+  ],
   features: [
     'Fully sandboxed execution within isolated workspace runtime',
     'Integrated with SutharLabs event bus and live telemetry',
@@ -526,63 +556,64 @@ export default function WorkspacePluginStore({
         </div>
       </div>
 
-      {/* Spotlight Extension Banner */}
+      {/* Spotlight Extension Banner - Compact & Focused on Key Selling Points */}
       {spotlightPlugin && (
-        <div className="relative overflow-hidden rounded-2xl border border-[#00dbe7]/30 bg-gradient-to-br from-cyan-500/10 via-surface-container-low/90 to-purple-500/10 dark:from-[#002022]/80 dark:via-[#0e1420]/90 dark:to-[#1e1035]/60 p-6 sm:p-7 shadow-xl backdrop-blur-xl group hover:border-[#00dbe7]/60 transition-all duration-300">
+        <div className="relative overflow-hidden rounded-2xl border border-[#00dbe7]/30 bg-gradient-to-br from-cyan-500/10 via-surface-container-low/90 to-purple-500/10 dark:from-[#002022]/80 dark:via-[#0e1420]/90 dark:to-[#1e1035]/60 p-4 sm:p-5 shadow-xl backdrop-blur-xl group hover:border-[#00dbe7]/60 transition-all duration-300">
           {/* Ambient background glows */}
-          <div className="absolute top-0 right-0 w-96 h-96 bg-[#00dbe7]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20 group-hover:bg-[#00dbe7]/15 transition-all" />
-          <div className="absolute bottom-0 left-1/3 w-64 h-64 bg-[#ce5dff]/10 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute top-0 right-0 w-80 h-80 bg-[#00dbe7]/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20 group-hover:bg-[#00dbe7]/15 transition-all" />
+          <div className="absolute bottom-0 left-1/3 w-56 h-56 bg-[#ce5dff]/10 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
-            <div className="flex items-start gap-4 sm:gap-5 flex-1">
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl bg-gradient-to-br from-[#00dbe7]/15 to-[#ce5dff]/15 dark:from-[#00363a] dark:to-[#001416] border-2 border-[#00dbe7]/50 flex items-center justify-center shrink-0 shadow-lg shadow-[#00dbe7]/20 group-hover:scale-105 transition-transform duration-300">
-                <span className="material-symbols-outlined text-[#00838f] dark:text-[#74f5ff] text-3xl sm:text-4xl">
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-4 sm:gap-5">
+            <div className="flex items-start gap-3.5 sm:gap-4 flex-1 min-w-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl bg-gradient-to-br from-[#00dbe7]/15 to-[#ce5dff]/15 dark:from-[#00363a] dark:to-[#001416] border-2 border-[#00dbe7]/50 flex items-center justify-center shrink-0 shadow-md shadow-[#00dbe7]/20 group-hover:scale-105 transition-transform duration-300">
+                <span className="material-symbols-outlined text-[#00838f] dark:text-[#74f5ff] text-2xl sm:text-3xl">
                   {spotlightPlugin.iconSymbol}
                 </span>
               </div>
 
-              <div className="flex-1">
-                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
                   <span className="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-[#00e476]/15 dark:bg-[#00fb83]/20 text-[#008744] dark:text-[#00fb83] border border-[#00e476]/40 dark:border-[#00fb83]/40 flex items-center gap-1">
                     <span className="material-symbols-outlined text-xs">star</span>
-                    Spotlight Featured Extension
+                    Spotlight Featured
                   </span>
-                  <span className="text-xs font-mono text-[#00838f] dark:text-[#00dbe7] bg-[#00dbe7]/10 px-2 py-0.5 rounded border border-[#00dbe7]/30 font-semibold">
+                  <span className="text-[11px] font-mono text-[#00838f] dark:text-[#00dbe7] bg-[#00dbe7]/10 px-2 py-0.5 rounded border border-[#00dbe7]/30 font-semibold">
                     {spotlightPlugin.category}
                   </span>
                   <span className="text-xs font-mono text-on-surface-variant font-medium">v{spotlightPlugin.version}</span>
                   {isBetaVersion(spotlightPlugin.version) && (
                     <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase bg-amber-400/15 text-amber-500 dark:text-amber-300 border border-amber-400/30 flex items-center gap-1">
                       <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span>
-                      Beta Stage
+                      Beta
                     </span>
                   )}
                 </div>
 
-                <h2 className="text-xl sm:text-2xl font-bold text-on-surface group-hover:text-[#00838f] dark:group-hover:text-[#74f5ff] transition-colors mt-1.5">
+                <h2 className="text-lg sm:text-xl font-bold text-on-surface group-hover:text-[#00838f] dark:group-hover:text-[#74f5ff] transition-colors mt-1 leading-tight">
                   {spotlightPlugin.name}
                 </h2>
 
-                <p className="text-xs sm:text-sm text-on-surface-variant dark:text-[#b9cacb] mt-1 max-w-3xl leading-relaxed">
+                <p className="text-xs text-on-surface-variant dark:text-[#b9cacb] mt-0.5 line-clamp-1 max-w-3xl leading-relaxed">
                   {spotlightPlugin.description}
                 </p>
 
-                {/* Tags preview */}
-                <div className="flex items-center gap-2 mt-3 flex-wrap">
-                  {getPluginMeta(spotlightPlugin.id).tags.map(tag => (
-                    <span
-                      key={tag}
-                      className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-surface-container-high/60 dark:bg-white/5 text-on-surface-variant dark:text-[#e5e1e4]/90 border border-outline/20 dark:border-white/10"
+                {/* Key Selling Points / Highlights */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1.5 mt-2.5 max-w-2xl">
+                  {getPluginMeta(spotlightPlugin.id).highlights.map((point, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center gap-1.5 text-xs font-mono text-on-surface dark:text-[#d3e5e6]"
                     >
-                      {tag}
-                    </span>
+                      <span className="material-symbols-outlined text-[15px] text-[#00e476] shrink-0">check_circle</span>
+                      <span className="truncate">{point}</span>
+                    </div>
                   ))}
                 </div>
               </div>
             </div>
 
             {/* Spotlight CTA */}
-            <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-3 pt-4 sm:pt-0 border-t sm:border-t-0 border-outline/10">
+            <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2.5 pt-3 sm:pt-0 border-t sm:border-t-0 border-outline/10 shrink-0">
               <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-mono">
                 {spotlightPlugin.rating && spotlightPlugin.rating > 0 ? (
                   <>
@@ -598,14 +629,14 @@ export default function WorkspacePluginStore({
                 </span>
               </div>
 
-              <div className="flex items-center gap-2.5 w-full sm:w-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => {
                     setActiveModalPlugin(spotlightPlugin);
                     setModalTab('overview');
                   }}
-                  className="h-10 px-4 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] transition-all bg-surface-container-low/60 hover:bg-surface-container flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  className="h-9 px-3.5 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] transition-all bg-surface-container-low/60 hover:bg-surface-container flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <span className="material-symbols-outlined text-[16px] leading-none text-on-surface-variant">info</span>
                   <span>Details</span>
@@ -622,7 +653,7 @@ export default function WorkspacePluginStore({
                           type="button"
                           disabled={loadingPluginId === spotlightPlugin.id}
                           onClick={() => handleInstall(spotlightPlugin.id, spotlightPlugin.name)}
-                          className="h-10 px-4 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-md shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                          className="h-9 px-3.5 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-md shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                           title={`Upgrade from v${inst?.installedVersion} to v${spotlightPlugin.version}`}
                         >
                           {loadingPluginId === spotlightPlugin.id ? (
@@ -635,7 +666,7 @@ export default function WorkspacePluginStore({
                           )}
                         </button>
                       ) : (
-                        <span className="h-10 px-3.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
+                        <span className="h-9 px-3.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
                           <span className="material-symbols-outlined text-[16px] leading-none text-[#00a854] dark:text-[#00fb83]">check_circle</span>
                           <span>Installed</span>
                         </span>
@@ -644,7 +675,7 @@ export default function WorkspacePluginStore({
                         type="button"
                         disabled={loadingPluginId === spotlightPlugin.id}
                         onClick={() => handleUninstall(spotlightPlugin.id, spotlightPlugin.name)}
-                        className="h-10 px-3.5 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        className="h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
                         {loadingPluginId === spotlightPlugin.id ? (
                           <span className="material-symbols-outlined text-[16px] leading-none animate-spin">progress_activity</span>
@@ -662,7 +693,7 @@ export default function WorkspacePluginStore({
                     type="button"
                     disabled={loadingPluginId === spotlightPlugin.id}
                     onClick={() => handleInstall(spotlightPlugin.id, spotlightPlugin.name)}
-                    className="h-10 px-5 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-lg hover:shadow-[#00dbe7]/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="h-9 px-4 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-lg hover:shadow-[#00dbe7]/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     {loadingPluginId === spotlightPlugin.id ? (
                       <span className="material-symbols-outlined text-[16px] leading-none animate-spin">progress_activity</span>
