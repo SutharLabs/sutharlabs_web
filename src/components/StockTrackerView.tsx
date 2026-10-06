@@ -965,18 +965,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     tickerScrollRef.current.scrollBy({ left: offset, behavior: 'smooth' });
   }, []);
 
-  useEffect(() => {
-    checkTickerScroll();
-    const el = tickerScrollRef.current;
-    if (!el) return;
-    el.addEventListener('scroll', checkTickerScroll, { passive: true });
-    const ro = new ResizeObserver(checkTickerScroll);
-    ro.observe(el);
-    return () => {
-      el.removeEventListener('scroll', checkTickerScroll);
-      ro.disconnect();
-    };
-  }, [checkTickerScroll, activeWatchlist?.symbols, watchlistQuotes]);
+
 
   // Handle Splitter Mouse Drag
   const handleSplitterMouseDown = useCallback((e: React.MouseEvent) => {
@@ -1312,6 +1301,20 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   useEffect(() => {
     fetchWatchlistQuotes(activeWatchlist);
   }, [activeWatchlist.id, activeWatchlist.symbols, activeWatchlist.items, fetchWatchlistQuotes]);
+
+  // Sync Watchlist Ticker Strip Horizontal Scroll Indicators
+  useEffect(() => {
+    checkTickerScroll();
+    const el = tickerScrollRef.current;
+    if (!el) return;
+    el.addEventListener('scroll', checkTickerScroll, { passive: true });
+    const ro = new ResizeObserver(checkTickerScroll);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener('scroll', checkTickerScroll);
+      ro.disconnect();
+    };
+  }, [checkTickerScroll, activeWatchlist?.symbols, watchlistQuotes]);
 
   // Currency helper
   const curSymbol = reportingCurrency !== 'AUTO'
