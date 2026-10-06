@@ -1,5 +1,95 @@
 [
   {
+    "id": "eod-run-1791308568359-ba743a",
+    "simulatedDate": "2026-10-06",
+    "executionTimestamp": "2026-10-06T17:42:48.359Z",
+    "strategyId": "strat-ema-cross",
+    "strategyName": "EMA Golden / Death Cross",
+    "startingCapital": 99839.24,
+    "endingCapital": 99894.58,
+    "netDailyPnL": 55.34,
+    "netDailyPnLPct": 0.06,
+    "totalOpenPositions": 4,
+    "totalTradesExecuted": 0,
+    "closedPositions": [],
+    "openedPositions": [],
+    "updatedTrailingStops": [
+      {
+        "symbol": "META",
+        "oldStop": 719.89,
+        "newStop": 720.75,
+        "highPrice": 743.04
+      }
+    ],
+    "activePositions": [
+      {
+        "id": "pos-1791295336953-a057",
+        "symbol": "AAPL",
+        "name": "Apple Inc.",
+        "market": "US",
+        "shares": 45,
+        "entryPrice": 331.76,
+        "currentPrice": 332.88,
+        "stopLoss": 323.17,
+        "takeProfit": 347.58,
+        "highestPriceSinceEntry": 333.17,
+        "unrealizedPnL": 50.4,
+        "unrealizedPnLPct": 0.34,
+        "entryDate": "2026-10-06",
+        "status": "OPEN"
+      },
+      {
+        "id": "pos-1791295337094-2faa",
+        "symbol": "MSFT",
+        "name": "Microsoft Corporation",
+        "market": "US",
+        "shares": 23,
+        "entryPrice": 534.33,
+        "currentPrice": 531.96,
+        "stopLoss": 516.83,
+        "takeProfit": 563.49,
+        "highestPriceSinceEntry": 534.33,
+        "unrealizedPnL": -54.51,
+        "unrealizedPnLPct": -0.44,
+        "entryDate": "2026-10-06",
+        "status": "OPEN"
+      },
+      {
+        "id": "pos-1791295337236-a5df",
+        "symbol": "NVDA",
+        "name": "NVIDIA Corporation",
+        "market": "US",
+        "shares": 45,
+        "entryPrice": 242.15,
+        "currentPrice": 239.73,
+        "stopLoss": 233.7,
+        "takeProfit": 256.24,
+        "highestPriceSinceEntry": 242.15,
+        "unrealizedPnL": -108.9,
+        "unrealizedPnLPct": -1,
+        "entryDate": "2026-10-06",
+        "status": "OPEN"
+      },
+      {
+        "id": "pos-1791295337660-f0e5",
+        "symbol": "META",
+        "name": "Meta Platforms, Inc.",
+        "market": "US",
+        "shares": 12,
+        "entryPrice": 740.45,
+        "currentPrice": 743.04,
+        "stopLoss": 720.75,
+        "takeProfit": 799.69,
+        "highestPriceSinceEntry": 743.04,
+        "unrealizedPnL": 31.08,
+        "unrealizedPnLPct": 0.35,
+        "entryDate": "2026-10-06",
+        "status": "OPEN"
+      }
+    ],
+    "digest": "EOD Batch Simulation completed for 2026-10-06. Positions closed: 0, New positions: 0, Trailing stops raised: 1. Daily PnL: +55.34 (0.06%). Total Equity: 99894.58."
+  },
+  {
     "id": "eod-run-1791307406068-46264e",
     "simulatedDate": "2026-10-06",
     "executionTimestamp": "2026-10-06T17:23:26.068Z",

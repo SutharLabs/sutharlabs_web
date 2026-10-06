@@ -2433,10 +2433,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 setShowSettingsDrawer(true);
               }}
               className="h-8 px-2.5 rounded-lg bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 font-mono text-xs font-bold cursor-pointer hover:bg-[#00e476]/20 transition-all shadow-sm flex items-center gap-1.5 shrink-0"
-              title="SutharLabs Stock Tracker v1.0.0 (Stage 6: Multi-Market Screener, Autonomous EOD Trade Simulator & Webhook Alerts - Production)"
+              title="SutharLabs Stock Tracker v1.0.2 (Stage 6: Multi-Market Screener, Autonomous Trade Simulator & Webhook Alerts - Production)"
             >
               <Cpu className="w-3.5 h-3.5 text-[#00e476]" />
-              <span>v1.0.0</span>
+              <span>v1.0.2</span>
               <span className="px-1.5 py-0.2 rounded bg-[#00e476]/20 text-[#00e476] border border-[#00e476]/40 text-[9px] uppercase tracking-wider font-semibold">
                 PROD
               </span>

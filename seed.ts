@@ -103,7 +103,7 @@ async function seed() {
       type: "Native",
       description: "Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.",
       iconSymbol: "monitoring",
-      version: "1.0.1"
+      version: "1.0.2"
     },
     {
       id: "wp_flow_designer",
