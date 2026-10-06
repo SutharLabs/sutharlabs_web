@@ -97,6 +97,13 @@ export default function StockSimulatorPanel({
   const [allStrategies, setAllStrategies] = useState<IStrategy[]>(() => {
     const map = new Map<string, IStrategy>();
     PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+    try {
+      const rawCustom = localStorage.getItem('sutharlabs_custom_strategies');
+      if (rawCustom) {
+        const parsed = JSON.parse(rawCustom);
+        if (Array.isArray(parsed)) parsed.forEach((s: IStrategy) => map.set(s.id, s));
+      }
+    } catch {}
     if (strategies && strategies.length > 0) strategies.forEach(s => map.set(s.id, s));
     return Array.from(map.values());
   });
@@ -111,6 +118,13 @@ export default function StockSimulatorPanel({
             const map = new Map<string, IStrategy>();
             PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
             data.forEach(s => map.set(s.id, s));
+            try {
+              const rawCustom = localStorage.getItem('sutharlabs_custom_strategies');
+              if (rawCustom) {
+                const parsed = JSON.parse(rawCustom);
+                if (Array.isArray(parsed)) parsed.forEach((s: IStrategy) => map.set(s.id, s));
+              }
+            } catch {}
             if (strategies) strategies.forEach(s => map.set(s.id, s));
             setAllStrategies(Array.from(map.values()));
             return;
@@ -122,6 +136,13 @@ export default function StockSimulatorPanel({
       if (strategies && strategies.length > 0) {
         const map = new Map<string, IStrategy>();
         PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+        try {
+          const rawCustom = localStorage.getItem('sutharlabs_custom_strategies');
+          if (rawCustom) {
+            const parsed = JSON.parse(rawCustom);
+            if (Array.isArray(parsed)) parsed.forEach((s: IStrategy) => map.set(s.id, s));
+          }
+        } catch {}
         strategies.forEach(s => map.set(s.id, s));
         setAllStrategies(Array.from(map.values()));
       }
@@ -150,18 +171,41 @@ export default function StockSimulatorPanel({
         fetch(`${STOCK_API}/simulator/history${emailQuery}`).catch(() => null)
       ]);
 
+      const resetAtStr = typeof window !== 'undefined' ? localStorage.getItem('sutharlabs_simulator_reset_at') : null;
+      const resetAt = resetAtStr ? parseInt(resetAtStr, 10) : 0;
+
       if (portRes && portRes.ok) {
         const portData = await portRes.json();
+        // If a reset occurred and positions were opened before resetAt, sanitize them
+        if (resetAt && Array.isArray(portData.positions)) {
+          const validPositions = portData.positions.filter((p: any) => {
+            const entryTs = p.entryDate ? new Date(p.entryDate).getTime() : 0;
+            return entryTs >= resetAt;
+          });
+          portData.positions = validPositions;
+        }
         setPortfolio(portData);
       }
 
       if (histRes && histRes.ok) {
         const histData = await histRes.json();
         if (Array.isArray(histData)) {
-          setHistoryRuns(histData);
-          if (histData.length > 0 && !latestReport) {
-            setLatestReport(histData[0]);
-            setExpandedRunId(histData[0].id);
+          const validRuns = resetAt
+            ? histData.filter((r: any) => new Date(r.executionTimestamp || 0).getTime() >= resetAt)
+            : histData;
+          setHistoryRuns(validRuns);
+          if (validRuns.length > 0) {
+            setLatestReport(prev => {
+              if (prev && validRuns.some(r => r.id === prev.id)) return prev;
+              return validRuns[0];
+            });
+            setExpandedRunId(prev => {
+              if (prev && validRuns.some(r => r.id === prev)) return prev;
+              return validRuns[0].id;
+            });
+          } else {
+            setLatestReport(null);
+            setExpandedRunId(null);
           }
         }
       }
@@ -170,7 +214,7 @@ export default function StockSimulatorPanel({
     } finally {
       setIsLoadingPortfolio(false);
     }
-  }, [userEmail, latestReport]);
+  }, [userEmail]);
 
   useEffect(() => {
     fetchPortfolioAndHistory();
@@ -267,6 +311,12 @@ export default function StockSimulatorPanel({
       }
     }
 
+    // Mark reset timestamp in localStorage so stale history and trades are permanently fenced
+    const nowTs = Date.now();
+    try {
+      localStorage.setItem('sutharlabs_simulator_reset_at', String(nowTs));
+    } catch {}
+
     // Fresh reset state
     const defaultReset = {
       cash: 100000,
@@ -284,10 +334,6 @@ export default function StockSimulatorPanel({
     setHistoryRuns([]);
     setShowResetConfirm(false);
     setIsResettingSim(false);
-
-    if (resetSucceeded) {
-      await fetchPortfolioAndHistory().catch(() => {});
-    }
   };
 
   // Compute Live Portfolio Financial Metrics
@@ -352,7 +398,12 @@ export default function StockSimulatorPanel({
           {/* Action Buttons: Reset & Run */}
           <div className="flex items-center gap-2.5 self-stretch md:self-auto flex-wrap">
             <button
-              onClick={() => setShowResetConfirm(true)}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowResetConfirm(true);
+              }}
               disabled={isRunningSim || isResettingSim}
               className="px-4 py-2.5 bg-surface-container-high hover:bg-rose-500/20 text-on-surface hover:text-rose-400 border border-outline/30 rounded-xl font-bold cursor-pointer flex items-center gap-2 transition-all disabled:opacity-50 text-xs"
               title="Reset virtual portfolio cash, open positions, and trade history"
@@ -362,7 +413,12 @@ export default function StockSimulatorPanel({
             </button>
 
             <button
-              onClick={handleRunSimulation}
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                handleRunSimulation();
+              }}
               disabled={isRunningSim || isResettingSim}
               className="px-6 py-2.5 bg-[#00e476] text-[#002022] font-bold rounded-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap justify-center text-xs"
             >
@@ -383,13 +439,23 @@ export default function StockSimulatorPanel({
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => setShowResetConfirm(false)}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setShowResetConfirm(false);
+                }}
                 className="px-3 py-1 rounded-lg bg-surface-container border border-outline/20 text-on-surface-variant hover:text-on-surface cursor-pointer text-xs"
               >
                 Cancel
               </button>
               <button
-                onClick={handleResetSimulator}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  handleResetSimulator();
+                }}
                 disabled={isResettingSim}
                 className="px-3.5 py-1 rounded-lg bg-rose-500 text-white font-bold hover:brightness-110 cursor-pointer text-xs flex items-center gap-1.5"
               >

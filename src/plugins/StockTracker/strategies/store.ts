@@ -26,6 +26,13 @@ export function loadStrategiesFromDisk(): IStrategy[] {
 export function saveStrategiesToDisk(strategies: IStrategy[]): void {
   try {
     writeJsonData('strategies.json', strategies);
+    // Also save directly to process.cwd()/data/strategies.json if local directory exists
+    try {
+      const localDataPath = path.join(process.cwd(), 'data', 'strategies.json');
+      if (fs.existsSync(path.dirname(localDataPath))) {
+        fs.writeFileSync(localDataPath, JSON.stringify(strategies, null, 2), 'utf8');
+      }
+    } catch {}
   } catch (err) {
     console.error('[Strategies DB] Error saving strategies.json:', err);
   }

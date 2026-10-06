@@ -355,5 +355,20 @@ export function resetSimulator(initialCash: number = 100000, marketRegion: strin
   };
   saveSimulatorStore(freshState);
   writeJsonData("eod_simulation_history.json", []);
+
+  // Also aggressively clear local development data directory files if writable
+  try {
+    const localDataDir = path.join(process.cwd(), "data");
+    const localHistoryPath = path.join(localDataDir, "eod_simulation_history.json");
+    const localPortfolioPath = path.join(localDataDir, "eod_portfolio.json");
+    if (fs.existsSync(localHistoryPath)) {
+      fs.writeFileSync(localHistoryPath, "[]\n", "utf8");
+    }
+    if (fs.existsSync(localPortfolioPath)) {
+      fs.writeFileSync(localPortfolioPath, JSON.stringify(freshState, null, 2), "utf8");
+    }
+  } catch {}
+
   return freshState;
 }
+

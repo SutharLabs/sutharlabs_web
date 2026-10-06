@@ -69,6 +69,13 @@ export default function StockScannerPanel({
   const [allStrategies, setAllStrategies] = useState<IStrategy[]>(() => {
     const map = new Map<string, IStrategy>();
     PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+    try {
+      const rawCustom = localStorage.getItem('sutharlabs_custom_strategies');
+      if (rawCustom) {
+        const parsed = JSON.parse(rawCustom);
+        if (Array.isArray(parsed)) parsed.forEach((s: IStrategy) => map.set(s.id, s));
+      }
+    } catch {}
     if (strategies && strategies.length > 0) strategies.forEach(s => map.set(s.id, s));
     return Array.from(map.values());
   });
@@ -83,6 +90,13 @@ export default function StockScannerPanel({
             const map = new Map<string, IStrategy>();
             PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
             data.forEach(s => map.set(s.id, s));
+            try {
+              const rawCustom = localStorage.getItem('sutharlabs_custom_strategies');
+              if (rawCustom) {
+                const parsed = JSON.parse(rawCustom);
+                if (Array.isArray(parsed)) parsed.forEach((s: IStrategy) => map.set(s.id, s));
+              }
+            } catch {}
             if (strategies) strategies.forEach(s => map.set(s.id, s));
             setAllStrategies(Array.from(map.values()));
             return;
@@ -94,6 +108,13 @@ export default function StockScannerPanel({
       if (strategies && strategies.length > 0) {
         const map = new Map<string, IStrategy>();
         PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+        try {
+          const rawCustom = localStorage.getItem('sutharlabs_custom_strategies');
+          if (rawCustom) {
+            const parsed = JSON.parse(rawCustom);
+            if (Array.isArray(parsed)) parsed.forEach((s: IStrategy) => map.set(s.id, s));
+          }
+        } catch {}
         strategies.forEach(s => map.set(s.id, s));
         setAllStrategies(Array.from(map.values()));
       }

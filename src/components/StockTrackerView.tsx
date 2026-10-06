@@ -670,7 +670,20 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [addSymbolInputs, setAddSymbolInputs] = useState<Record<string, string>>({});
 
   // ── Algorithmic Strategy Registry & Execution State (Stage 2) ───
-  const [strategies, setStrategies] = useState<IStrategy[]>(PRESET_STRATEGIES);
+  const [strategies, setStrategies] = useState<IStrategy[]>(() => {
+    const map = new Map<string, IStrategy>();
+    PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+    try {
+      const localCustom = localStorage.getItem('sutharlabs_custom_strategies');
+      if (localCustom) {
+        const parsed = JSON.parse(localCustom);
+        if (Array.isArray(parsed)) {
+          parsed.forEach((s: IStrategy) => map.set(s.id, s));
+        }
+      }
+    } catch {}
+    return Array.from(map.values());
+  });
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>(() => {
     try {
       return localStorage.getItem('sutharlabs_active_strategy_id') || 'strat-ema-cross';
@@ -734,7 +747,40 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data) && data.length > 0) {
-          setStrategies(data);
+          const map = new Map<string, IStrategy>();
+          PRESET_STRATEGIES.forEach(s => map.set(s.id, s));
+          data.forEach((s: IStrategy) => map.set(s.id, s));
+
+          // Retain any user custom strategies from localStorage that might be missing on cold server
+          try {
+            const localCustom = localStorage.getItem('sutharlabs_custom_strategies');
+            if (localCustom) {
+              const parsed = JSON.parse(localCustom);
+              if (Array.isArray(parsed)) {
+                parsed.forEach((s: IStrategy) => {
+                  if (!map.has(s.id)) {
+                    map.set(s.id, s);
+                    // Sync missing strategy back to backend
+                    fetch(`${STOCK_API}/strategies`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(s)
+                    }).catch(() => {});
+                  }
+                });
+              }
+            }
+          } catch {}
+
+          const merged = Array.from(map.values());
+          setStrategies(merged);
+
+          // Update localStorage cache of custom strategies
+          try {
+            const customOnly = merged.filter(s => !s.isPreset);
+            localStorage.setItem('sutharlabs_custom_strategies', JSON.stringify(customOnly));
+          } catch {}
+          return;
         }
       }
     } catch (e) {
@@ -801,6 +847,15 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         const res = await fetch(`${STOCK_API}/strategies/${id}`, { method: 'DELETE' });
         if (res.ok) {
           setStrategies(prev => prev.filter(s => s.id !== id));
+          try {
+            const rawCustom = localStorage.getItem('sutharlabs_custom_strategies');
+            if (rawCustom) {
+              const list: IStrategy[] = JSON.parse(rawCustom);
+              if (Array.isArray(list)) {
+                localStorage.setItem('sutharlabs_custom_strategies', JSON.stringify(list.filter(s => s.id !== id)));
+              }
+            }
+          } catch {}
           if (selectedStrategyId === id) {
             setSelectedStrategyId('strat-ema-cross');
             try {
@@ -842,6 +897,15 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       if (res.ok) {
         const updated = await res.json();
         setStrategies(prev => prev.map(s => s.id === id ? updated : s));
+        try {
+          const rawCustom = localStorage.getItem('sutharlabs_custom_strategies');
+          if (rawCustom) {
+            const list: IStrategy[] = JSON.parse(rawCustom);
+            if (Array.isArray(list)) {
+              localStorage.setItem('sutharlabs_custom_strategies', JSON.stringify(list.map(s => s.id === id ? updated : s)));
+            }
+          }
+        } catch {}
         setStrategyActionFeedback(`Renamed strategy to "${newName}"`);
         setTimeout(() => setStrategyActionFeedback(null), 3000);
       } else {
@@ -867,6 +931,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       const payload = {
         name: builderName.trim(),
         description: builderDesc.trim(),
+        authorEmail: userEmail || 'trader@sutharlabs.com',
+        authorName: userEmail ? userEmail.split('@')[0] : 'Algorithmic Trader',
         market: builderMarket,
         timeframe: builderTimeframe,
         parameters: builderParameters,
@@ -904,6 +970,22 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         setStrategies(prev => [...prev, savedStrategy]);
       }
 
+      // Persist saved strategy to localStorage so it is never lost across server restarts or reloads
+      try {
+        const rawCustom = localStorage.getItem('sutharlabs_custom_strategies');
+        let customList: IStrategy[] = rawCustom ? JSON.parse(rawCustom) : [];
+        if (!Array.isArray(customList)) customList = [];
+        const existingIdx = customList.findIndex(s => s.id === savedStrategy.id);
+        if (existingIdx >= 0) {
+          customList[existingIdx] = savedStrategy;
+        } else {
+          customList.push(savedStrategy);
+        }
+        localStorage.setItem('sutharlabs_custom_strategies', JSON.stringify(customList));
+      } catch (err) {
+        console.warn('[Strategies] Could not persist to localStorage:', err);
+      }
+
       setSelectedStrategyId(savedStrategy.id);
       try {
         localStorage.setItem('sutharlabs_active_strategy_id', savedStrategy.id);
@@ -916,7 +998,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     } finally {
       setIsSavingStrategy(false);
     }
-  }, [builderName, builderDesc, builderMarket, builderTimeframe, builderParameters, builderEntryConditions, builderExitConditions, builderEditingId, showAlert]);
+  }, [builderName, builderDesc, builderMarket, builderTimeframe, builderParameters, builderEntryConditions, builderExitConditions, builderEditingId, userEmail, showAlert]);
 
   const handleTestSandbox = useCallback(async () => {
     if (!symbol) return;
@@ -1202,9 +1284,33 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     } catch {}
   }, []);
 
-  // Sliding Settings Overlay
-  const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(false);
-  const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'STRATEGIES' | 'SCANNER' | 'SIMULATOR' | 'BACKTEST' | 'NEWS_AI' | 'INDICATORS' | 'TRADING' | 'FEEDS' | 'PERFORMANCE'>('WATCHLISTS');
+  // Sliding Settings Overlay with session persistence
+  const [showSettingsDrawer, setShowSettingsDrawer] = useState<boolean>(() => {
+    try {
+      return sessionStorage.getItem('sutharlabs_show_drawer') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [settingsActiveTab, setSettingsActiveTab] = useState<'WATCHLISTS' | 'MARKET' | 'STRATEGIES' | 'SCANNER' | 'SIMULATOR' | 'BACKTEST' | 'NEWS_AI' | 'INDICATORS' | 'TRADING' | 'FEEDS' | 'PERFORMANCE'>(() => {
+    try {
+      const tab = sessionStorage.getItem('sutharlabs_drawer_tab');
+      if (tab) return tab as any;
+    } catch {}
+    return 'WATCHLISTS';
+  });
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('sutharlabs_show_drawer', showSettingsDrawer ? 'true' : 'false');
+    } catch {}
+  }, [showSettingsDrawer]);
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('sutharlabs_drawer_tab', settingsActiveTab);
+    } catch {}
+  }, [settingsActiveTab]);
 
   // Editable Data Feed Settings
   const [selectedDataSource, setSelectedDataSource] = useState<string>('YAHOO');
@@ -4738,6 +4844,18 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       setTimeout(() => setStrategyActionFeedback(null), 3000);
                     }}
                     onForkStrategy={(forked) => {
+                      try {
+                        const rawCustom = localStorage.getItem('sutharlabs_custom_strategies');
+                        let customList: IStrategy[] = rawCustom ? JSON.parse(rawCustom) : [];
+                        if (!Array.isArray(customList)) customList = [];
+                        const existingIdx = customList.findIndex(s => s.id === forked.id);
+                        if (existingIdx >= 0) {
+                          customList[existingIdx] = forked;
+                        } else {
+                          customList.push(forked);
+                        }
+                        localStorage.setItem('sutharlabs_custom_strategies', JSON.stringify(customList));
+                      } catch {}
                       fetchStrategies();
                       setSelectedStrategyId(forked.id);
                       try {
@@ -4827,7 +4945,42 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
                     {/* Section 1: Metadata */}
                     <div className="bg-surface-container-low p-5 rounded-xl border border-outline/20 flex flex-col gap-4">
-                      <span className="text-on-surface font-semibold text-sm">Strategy Identification & Scope</span>
+                      <div className="flex justify-between items-center">
+                        <span className="text-on-surface font-semibold text-sm">Strategy Identification & Scope</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] text-[#00dbe7] uppercase font-bold flex items-center gap-1">
+                            <Sparkles className="w-3 h-3" />
+                            Preset Template:
+                          </span>
+                          <select
+                            onChange={(e) => {
+                              const templateId = e.target.value;
+                              if (!templateId) return;
+                              const targetPreset = PRESET_STRATEGIES.find(p => p.id === templateId);
+                              if (targetPreset) {
+                                setBuilderName(`${targetPreset.name} (Custom)`);
+                                setBuilderDesc(targetPreset.description);
+                                setBuilderMarket(targetPreset.market);
+                                setBuilderTimeframe(targetPreset.timeframe);
+                                setBuilderParameters(targetPreset.parameters ? JSON.parse(JSON.stringify(targetPreset.parameters)) : []);
+                                setBuilderEntryConditions(targetPreset.rules?.entryConditions ? JSON.parse(JSON.stringify(targetPreset.rules.entryConditions)) : []);
+                                setBuilderExitConditions(targetPreset.rules?.exitConditions ? JSON.parse(JSON.stringify(targetPreset.rules.exitConditions)) : []);
+                                setStrategyActionFeedback(`Pre-populated builder with "${targetPreset.name}" rules!`);
+                                setTimeout(() => setStrategyActionFeedback(null), 3500);
+                              }
+                            }}
+                            className="bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer"
+                            defaultValue=""
+                          >
+                            <option value="" disabled>-- Load Quant Preset Template --</option>
+                            {PRESET_STRATEGIES.map(p => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({p.market} • {p.timeframe})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div className="md:col-span-2 flex flex-col gap-1.5">
                           <label className="text-[11px] text-on-surface-variant uppercase">Strategy Name</label>
@@ -4992,16 +5145,22 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                               }}
                               className="bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer"
                             >
-                              <option value="rsi">RSI (Relative Strength Index)</option>
+                              <option value="rsi">RSI - 14 (Relative Strength)</option>
+                              <option value="rsi_2">RSI - 2 (Connors Pullback)</option>
                               <option value="macd">MACD Line</option>
                               <option value="macd_signal">MACD Signal Line</option>
+                              <option value="macd_hist">MACD Histogram</option>
                               <option value="ema_fast">Fast EMA (20)</option>
                               <option value="ema_slow">Slow EMA (50)</option>
+                              <option value="ema_200">200 EMA (Trend Benchmark)</option>
                               <option value="price">Current Close Price</option>
                               <option value="bb_upper">Bollinger Band Upper</option>
+                              <option value="bb_middle">Bollinger Middle (20 SMA)</option>
                               <option value="bb_lower">Bollinger Band Lower</option>
-                              <option value="supertrend">Supertrend Line</option>
+                              <option value="supertrend">Supertrend Trendline</option>
                               <option value="volume">Trading Volume</option>
+                              <option value="volume_ma">Volume 20-period MA</option>
+                              <option value="volume_ratio">Relative Volume Ratio</option>
                             </select>
 
                             {/* Operator */}
@@ -5083,16 +5242,22 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                               }}
                               className="bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer"
                             >
-                              <option value="rsi">RSI (Relative Strength Index)</option>
+                              <option value="rsi">RSI - 14 (Relative Strength)</option>
+                              <option value="rsi_2">RSI - 2 (Connors Pullback)</option>
                               <option value="macd">MACD Line</option>
                               <option value="macd_signal">MACD Signal Line</option>
+                              <option value="macd_hist">MACD Histogram</option>
                               <option value="ema_fast">Fast EMA (20)</option>
                               <option value="ema_slow">Slow EMA (50)</option>
+                              <option value="ema_200">200 EMA (Trend Benchmark)</option>
                               <option value="price">Current Close Price</option>
                               <option value="bb_upper">Bollinger Band Upper</option>
+                              <option value="bb_middle">Bollinger Middle (20 SMA)</option>
                               <option value="bb_lower">Bollinger Band Lower</option>
                               <option value="supertrend">Supertrend Line</option>
                               <option value="volume">Trading Volume</option>
+                              <option value="volume_ma">Volume 20-period MA</option>
+                              <option value="volume_ratio">Relative Volume Ratio</option>
                             </select>
 
                             {/* Operator */}
