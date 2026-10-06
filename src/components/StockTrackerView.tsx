@@ -2157,9 +2157,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       )}
 
       {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (CLEAN, ONLY ACTIVE MARKET) ── */}
-      <div className="relative z-50 glass-panel rounded-xl p-2.5 sm:p-3 border border-outline/20 flex items-center justify-between gap-3 bg-surface-container-lowest/80 shadow-sm">
+      {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (CLEAN, UNIFORM HEIGHT & DESIGN) ── */}
+      <div className="relative z-50 glass-panel rounded-xl p-2.5 border border-outline/20 flex items-center justify-between gap-3 bg-surface-container-lowest/80 shadow-sm">
         
-        {/* Left Group: Continuous Active Market Selector, Session Pill & Search Box (Stable Width) */}
+        {/* Left Group: Continuous Active Market Selector, Session Pill, Search Box & Stock Price */}
         <div className="flex items-center gap-2 shrink-0">
           {/* Active Market Badge (Click to open Market Settings in Drawer) */}
           <button
@@ -2167,7 +2168,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               setSettingsActiveTab('MARKET');
               setShowSettingsDrawer(true);
             }}
-            className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1.5 rounded-lg bg-surface-container-low text-on-surface border border-outline/25 hover:border-[#00dbe7] transition-all cursor-pointer font-mono text-xs shadow-sm group shrink-0"
+            className="h-8 px-2.5 sm:px-3 rounded-lg bg-surface-container-low text-on-surface border border-outline/25 hover:border-[#00dbe7] transition-all cursor-pointer font-mono text-xs shadow-sm flex items-center gap-1.5 sm:gap-2 shrink-0 group"
             title="Click to change Market Universe in Settings"
           >
             <span className="text-base leading-none">{activeUniverse?.flag || '🇮🇳'}</span>
@@ -2178,15 +2179,15 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
           {/* Market Session Active/Closed Pill */}
           {quote?.market_state && (
-            <span className="hidden md:flex items-center gap-1.5 font-mono text-[11px] px-2.5 py-1 rounded-md bg-surface-container-low text-on-surface-variant border border-outline/10 shrink-0 whitespace-nowrap">
+            <span className="h-8 px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant border border-outline/20 font-mono text-[11px] hidden md:flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-sm">
               <span className={`w-2 h-2 rounded-full ${quote.market_open ? 'bg-[#00e476] animate-pulse' : 'bg-slate-400'}`} />
               <span>{quote.market_open ? 'SESSION ACTIVE' : `CLOSED (${quote.market_state})`}</span>
             </span>
           )}
 
-          {/* Continuous Search & Ticker Input with Real-Time Suggestions */}
-          <div className="relative w-44 sm:w-52 md:w-60 shrink-0 z-50">
-            <div className="relative flex items-center">
+          {/* Continuous Search & Ticker Input with Real-Time Suggestions (Spacious Width) */}
+          <div className="relative w-56 sm:w-72 md:w-80 shrink-0 h-8 z-50">
+            <div className="relative flex items-center h-full">
               <input
                 value={symbolInput}
                 onChange={e => {
@@ -2210,8 +2211,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     }
                   }
                 }}
-                placeholder="Search symbol/company..."
-                className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg pl-2.5 pr-14 py-1.5 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] tracking-wider"
+                placeholder="Search symbol or company..."
+                className="h-8 w-full bg-surface-container-lowest border border-outline/30 rounded-lg pl-2.5 pr-14 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] tracking-wider"
               />
               {isSearching && (
                 <span className="absolute right-12 w-2 h-2 rounded-full bg-[#00dbe7] animate-ping" />
@@ -2229,7 +2230,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   }
                   setShowDropdown(false);
                 }}
-                className="absolute right-1 top-1 bottom-1 px-2.5 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-md hover:brightness-110 transition-all cursor-pointer whitespace-nowrap"
+                className="absolute right-1 top-1 bottom-1 px-2.5 bg-[#00dbe7] text-[#002022] text-xs font-mono font-bold uppercase rounded-md hover:brightness-110 transition-all cursor-pointer flex items-center justify-center whitespace-nowrap"
               >
                 Load
               </button>
@@ -2309,6 +2310,19 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
             )}
           </div>
+
+          {/* Continuous Live Stock Price Pill (In Same Group) */}
+          <div className="h-8 px-2.5 rounded-lg bg-surface-container-low border border-outline/25 font-mono text-xs flex items-center gap-1.5 sm:gap-2 shrink-0 shadow-sm">
+            <span className="font-bold text-on-surface text-xs leading-none">
+              {curSymbol}{quote?.current_price?.toFixed(2) ?? '—'}
+            </span>
+            <span className={`h-5 px-1.5 rounded flex items-center gap-0.5 text-[10px] sm:text-[11px] font-bold leading-none ${
+              isPositive ? 'bg-[#00e476]/15 text-[#00e476]' : 'bg-[#ff6b6b]/15 text-[#ff6b6b]'
+            }`}>
+              {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+              <span>{isPositive ? '+' : ''}{quote?.change_percent?.toFixed(2) ?? '0'}%</span>
+            </span>
+          </div>
         </div>
 
         {/* Right Group: Action Tools with Horizontal Scroll Carousel Navigation */}
@@ -2318,7 +2332,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             <button
               type="button"
               onClick={() => scrollTopTools('left')}
-              className="absolute left-0 z-20 flex items-center justify-center w-6 h-7 rounded-md bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
+              className="absolute left-0 z-20 flex items-center justify-center w-6 h-8 rounded-lg bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
               title="Scroll action tools left"
             >
               <ChevronLeft className="w-3.5 h-3.5" />
@@ -2330,7 +2344,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             <button
               type="button"
               onClick={() => scrollTopTools('right')}
-              className="absolute right-0 z-20 flex items-center justify-center w-6 h-7 rounded-md bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
+              className="absolute right-0 z-20 flex items-center justify-center w-6 h-8 rounded-lg bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
               title="Scroll action tools right"
             >
               <ChevronRight className="w-3.5 h-3.5" />
@@ -2345,28 +2359,15 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 topToolsScrollRef.current.scrollLeft += e.deltaY;
               }
             }}
-            className="flex items-center gap-2 sm:gap-2.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth py-0.5 px-6 whitespace-nowrap"
+            className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth py-0.5 px-6 whitespace-nowrap"
           >
-            {/* 1. Live Quote Pill */}
-            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-              <span className="font-mono text-sm sm:text-base font-bold text-on-surface">
-                {curSymbol}{quote?.current_price?.toFixed(2) ?? '—'}
-              </span>
-              <span className={`flex items-center gap-0.5 font-mono text-[11px] sm:text-xs px-1.5 sm:px-2 py-0.5 rounded ${
-                isPositive ? 'bg-[#00e476]/15 text-[#00e476]' : 'bg-[#ff6b6b]/15 text-[#ff6b6b]'
-              }`}>
-                {isPositive ? <TrendingUp className="w-3.5 h-3.5" /> : <TrendingDown className="w-3.5 h-3.5" />}
-                <span>{isPositive ? '+' : ''}{quote?.change_percent?.toFixed(2) ?? '0'}%</span>
-              </span>
-            </div>
-
-            {/* 2. Version & Stage Badge (Stage 6 v1.0.0 Production Milestone) */}
+            {/* 1. Version & Stage Badge (Stage 6 v1.0.0 Production Milestone) */}
             <button
               onClick={() => {
                 setSettingsActiveTab('SCANNER');
                 setShowSettingsDrawer(true);
               }}
-              className="hidden sm:flex items-center gap-1.5 px-2 py-1.5 rounded-lg bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 font-mono text-[11px] font-bold cursor-pointer hover:bg-[#00e476]/20 transition-all shadow-sm shrink-0"
+              className="h-8 px-2.5 rounded-lg bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 font-mono text-xs font-bold cursor-pointer hover:bg-[#00e476]/20 transition-all shadow-sm flex items-center gap-1.5 shrink-0"
               title="SutharLabs Stock Tracker v1.0.0 (Stage 6: Multi-Market Screener, Autonomous EOD Trade Simulator & Webhook Alerts - Production)"
             >
               <Cpu className="w-3.5 h-3.5 text-[#00e476]" />
@@ -2376,50 +2377,50 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </span>
             </button>
 
-            {/* 3. Quick Algo Marketplace Button */}
+            {/* 2. Quick Algo Marketplace Button */}
             <button
               onClick={() => {
                 setSettingsActiveTab('STRATEGIES');
                 setBuilderMode('CATALOG');
                 setShowSettingsDrawer(true);
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-gradient-to-r from-[#00dbe7]/15 to-emerald-500/15 border border-[#00dbe7]/35 text-[#00dbe7] font-mono text-xs font-semibold hover:border-[#00dbe7] hover:brightness-110 transition-all cursor-pointer shadow-sm shrink-0"
+              className="h-8 px-2.5 sm:px-3 rounded-lg bg-surface-container-low text-[#00dbe7] border border-outline/25 hover:border-[#00dbe7]/50 font-mono text-xs font-semibold hover:brightness-110 transition-all cursor-pointer shadow-sm flex items-center gap-1.5 shrink-0"
               title="Explore Community Algorithmic Trading Marketplace"
             >
               <Sparkles className="w-3.5 h-3.5 text-[#00dbe7]" />
               <span>Algo Marketplace</span>
             </button>
 
-            {/* 4. Sliding Settings Overlay Trigger */}
+            {/* 3. Sliding Settings Overlay Trigger */}
             <button
               onClick={() => setShowSettingsDrawer(true)}
-              className="px-3 py-1.5 border border-outline/30 rounded-lg text-xs font-mono flex items-center gap-1.5 transition-colors cursor-pointer bg-surface-container-low hover:text-[#00dbe7] hover:border-[#00dbe7]/50 shadow-sm shrink-0"
+              className="h-8 px-2.5 sm:px-3 rounded-lg bg-surface-container-low border border-outline/25 text-on-surface hover:text-[#00dbe7] hover:border-[#00dbe7]/50 font-mono text-xs transition-colors cursor-pointer shadow-sm flex items-center gap-1.5 shrink-0"
               title="Open Settings & Workspace Preferences"
             >
               <Sliders className="w-3.5 h-3.5 text-[#00dbe7]" />
               <span>Settings</span>
             </button>
 
-            {/* 5. Quick Screener Button (Moved to End as requested) */}
+            {/* 4. Quick Screener Button (Moved to End as requested) */}
             <button
               onClick={() => {
                 setSettingsActiveTab('SCANNER');
                 setShowSettingsDrawer(true);
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-outline/30 text-on-surface hover:text-[#00dbe7] hover:border-[#00dbe7]/50 font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm shrink-0"
+              className="h-8 px-2.5 sm:px-3 rounded-lg bg-surface-container-low border border-outline/25 text-on-surface hover:text-[#00dbe7] hover:border-[#00dbe7]/50 font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 shrink-0"
               title="Open Global Multi-Market Screener"
             >
               <Eye className="w-3.5 h-3.5 text-[#00dbe7]" />
               <span>Screener</span>
             </button>
 
-            {/* 6. Quick Simulator Button (Moved to End as requested) */}
+            {/* 5. Quick Simulator Button (Moved to End as requested) */}
             <button
               onClick={() => {
                 setSettingsActiveTab('SIMULATOR');
                 setShowSettingsDrawer(true);
               }}
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-surface-container-low border border-outline/30 text-on-surface hover:text-[#00e476] hover:border-[#00e476]/50 font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm shrink-0"
+              className="h-8 px-2.5 sm:px-3 rounded-lg bg-surface-container-low border border-outline/25 text-on-surface hover:text-[#00e476] hover:border-[#00e476]/50 font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 shrink-0"
               title="Open Automated EOD Batch Trade Simulator"
             >
               <Play className="w-3.5 h-3.5 text-[#00e476]" />
