@@ -1196,6 +1196,18 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     } catch {}
   }, [activeWatchlistId]);
 
+  // Close settings floating hover window on Escape
+  useEffect(() => {
+    if (!showSettingsDrawer) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowSettingsDrawer(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showSettingsDrawer]);
+
   const activeWatchlist = useMemo(() => {
     return watchlists.find(w => w.id === activeWatchlistId) || watchlists[0] || DEFAULT_WATCHLISTS[0];
   }, [watchlists, activeWatchlistId]);
@@ -3719,17 +3731,17 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         )}
       </div>
 
-      {/* ── 4. 3/4-WIDTH SLIDING SETTINGS OVERLAY PANEL (FULLY EDITABLE) ──────── */}
+      {/* ── 4. FULL-VIEWPORT EXPANDED FLOATING HOVER WINDOW (CENTERED POPUP) ──────── */}
       {showSettingsDrawer && (
-        <div className="fixed inset-0 z-[100] flex justify-end">
-          {/* Backdrop blur */}
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center p-2.5 sm:p-4 md:p-5 lg:p-6 bg-black/75 backdrop-blur-md transition-opacity animate-in fade-in duration-200"
+          onClick={() => setShowSettingsDrawer(false)}
+        >
+          {/* Centered Hover Window: Maximizes usable screen space with symmetrical margins on both sides */}
           <div
-            onClick={() => setShowSettingsDrawer(false)}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity animate-in fade-in duration-200"
-          />
-
-          {/* Drawer container: Covers 3/4 (75%) of usable space with max-w-6xl */}
-          <div className="relative w-full sm:w-[85vw] md:w-[75vw] lg:w-[75vw] max-w-6xl h-full max-h-screen bg-surface-container border-l border-outline/30 flex flex-col shadow-2xl z-10 animate-in slide-in-from-right duration-300">
+            onClick={e => e.stopPropagation()}
+            className="relative w-full max-w-[98vw] 2xl:max-w-[1850px] h-full max-h-[96vh] bg-surface-container rounded-2xl sm:rounded-3xl border border-outline/30 flex flex-col shadow-[0_25px_80px_rgba(0,0,0,0.85)] z-10 overflow-hidden animate-in slide-in-from-right duration-300"
+          >
             
             {/* Pinned Top Bar: Header & Horizontal Option Tabs (Never scrolled away or hidden) */}
             <div className="shrink-0 bg-surface-container px-6 sm:px-8 pt-6 sm:pt-7 pb-3 border-b border-outline/20 z-20 flex flex-col gap-4">
@@ -3759,8 +3771,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 </div>
                 <button
                   onClick={() => setShowSettingsDrawer(false)}
-                  className="p-1.5 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer"
-                  title="Close settings"
+                  className="p-2 rounded-xl text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high border border-outline/10 hover:border-outline/30 transition-all cursor-pointer"
+                  title="Close hover window (Esc)"
                 >
                   <X className="w-5 h-5" />
                 </button>
