@@ -11,6 +11,13 @@ import { resetSimulator } from "./src/plugins/StockTracker/simulator/index.js";
 import { getSystemTelemetry } from "./src/services/telemetryService.js";
 import { notifyAdminNewInquiry } from "./src/services/emailService.js";
 import {
+  isBlobConfigured,
+  uploadToBlob,
+  deleteFromBlob,
+  listStoredBlobs,
+  verifyBlobWebhookSignature
+} from "./src/services/blobStorage.js";
+import {
   securityHeaders,
   requestLogger,
   authLimiter,
@@ -1202,24 +1209,141 @@ app.post("/api/plugins/upload", authenticateToken, requireAdmin, upload.single("
 
     const checksumSha256 = crypto.createHash("sha256").update(req.file.buffer).digest("hex");
     const filename = req.file.originalname || "plugin-package.zip";
-    const storageDir = path.join(process.cwd(), "storage", "plugins");
-    if (!fs.existsSync(storageDir)) {
-      fs.mkdirSync(storageDir, { recursive: true });
-    }
+    let packageUrl = "";
 
-    const savedPath = path.join(storageDir, `${Date.now()}_${filename}`);
-    fs.writeFileSync(savedPath, req.file.buffer);
+    if (isBlobConfigured()) {
+      const blob = await uploadToBlob(`plugins/${Date.now()}_${filename}`, req.file.buffer, {
+        contentType: req.file.mimetype || "application/octet-stream"
+      });
+      packageUrl = blob.url;
+    } else {
+      const storageDir = path.join(process.cwd(), "storage", "plugins");
+      if (!fs.existsSync(storageDir)) {
+        fs.mkdirSync(storageDir, { recursive: true });
+      }
+
+      const savedPath = path.join(storageDir, `${Date.now()}_${filename}`);
+      fs.writeFileSync(savedPath, req.file.buffer);
+      packageUrl = `/storage/plugins/${path.basename(savedPath)}`;
+    }
 
     res.json({
       success: true,
       filename,
       size: req.file.size,
       checksumSha256,
-      packageUrl: `/storage/plugins/${path.basename(savedPath)}`
+      packageUrl,
+      storageType: isBlobConfigured() ? "vercel_blob" : "local_disk"
     });
   } catch (error) {
     console.error("Failed to upload plugin package:", error);
     res.status(500).json({ error: "Failed to process plugin package archive." });
+  }
+});
+
+// Blob Storage: Upload file (general endpoint)
+app.post("/api/blob/upload", authenticateToken, upload.single("file"), async (req: any, res: any) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file provided for upload." });
+    }
+    const folder = req.body.folder || "uploads";
+    const filename = `${folder}/${Date.now()}_${req.file.originalname || "file"}`;
+
+    if (isBlobConfigured()) {
+      const blob = await uploadToBlob(filename, req.file.buffer, {
+        contentType: req.file.mimetype || "application/octet-stream"
+      });
+      return res.json({
+        success: true,
+        url: blob.url,
+        pathname: blob.pathname,
+        size: req.file.size,
+        contentType: req.file.mimetype,
+        storageType: "vercel_blob"
+      });
+    }
+
+    // Local disk fallback
+    const storageDir = path.join(process.cwd(), "storage", folder);
+    if (!fs.existsSync(storageDir)) {
+      fs.mkdirSync(storageDir, { recursive: true });
+    }
+    const localName = `${Date.now()}_${req.file.originalname || "file"}`;
+    fs.writeFileSync(path.join(storageDir, localName), req.file.buffer);
+    return res.json({
+      success: true,
+      url: `/storage/${folder}/${localName}`,
+      pathname: localName,
+      size: req.file.size,
+      contentType: req.file.mimetype,
+      storageType: "local_disk"
+    });
+  } catch (err: any) {
+    console.error("Blob upload error:", err);
+    res.status(500).json({ error: err.message || "Failed to upload file." });
+  }
+});
+
+// Blob Storage: Health & configuration status check
+app.get("/api/blob/status", (_req: any, res: any) => {
+  res.json({
+    configured: isBlobConfigured(),
+    storeId: process.env.BLOB_STORE_ID || null,
+    hasToken: Boolean(process.env.BLOB_READ_WRITE_TOKEN),
+    hasWebhookKey: Boolean(process.env.BLOB_WEBHOOK_PUBLIC_KEY)
+  });
+});
+
+// Blob Storage: List blobs (Admin only)
+app.get("/api/blob/list", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    if (!isBlobConfigured()) {
+      return res.status(503).json({ error: "Vercel Blob storage is not configured." });
+    }
+    const prefix = req.query.prefix as string | undefined;
+    const limit = req.query.limit ? Number(req.query.limit) : 50;
+    const cursor = req.query.cursor as string | undefined;
+    const result = await listStoredBlobs({ prefix, limit, cursor });
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to list blobs." });
+  }
+});
+
+// Blob Storage: Delete blob by URL (Admin only)
+app.delete("/api/blob/delete", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const { url } = req.body || req.query || {};
+    if (!url) {
+      return res.status(400).json({ error: "Blob url is required." });
+    }
+    await deleteFromBlob(url);
+    res.json({ success: true, message: "Blob deleted successfully." });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to delete blob." });
+  }
+});
+
+// Blob Storage: Webhook receiver with Ed25519 signature verification
+app.post("/api/blob/webhook", (req: any, res: any) => {
+  try {
+    const signature = req.headers["x-vercel-signature"] || req.headers["x-blob-signature"];
+    const payload = JSON.stringify(req.body);
+
+    if (process.env.BLOB_WEBHOOK_PUBLIC_KEY && signature) {
+      const isValid = verifyBlobWebhookSignature(payload, signature as string);
+      if (!isValid) {
+        console.warn("[Blob Webhook] Invalid signature rejected.");
+        return res.status(401).json({ error: "Invalid webhook signature." });
+      }
+    }
+
+    console.log("[Blob Webhook] Verified event payload successfully.");
+    res.json({ received: true });
+  } catch (err: any) {
+    console.error("[Blob Webhook] Error:", err);
+    res.status(500).json({ error: "Webhook processing error." });
   }
 });
 

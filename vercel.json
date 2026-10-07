@@ -1,6 +1,12 @@
 {
   "buildCommand": "npm install && npx prisma generate && vite build",
   "outputDirectory": "dist",
+  "crons": [
+    {
+      "path": "/api/workspace/stock-analyzer/simulator/run-eod",
+      "schedule": "0 10 * * 1-5"
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/server?apiPath=$1" },
     { "source": "/(.*)", "destination": "/index.html" }

@@ -910,9 +910,10 @@ export function registerRoutes(router: Router) {
   });
 
   // ── Stage 6: Automated End-of-Day (EOD) Batch Trade Simulator ──
-  router.post("/simulator/run-eod", async (req: any, res: any) => {
+  router.all(["/simulator/run-eod", "/simulator/run-eod/"], async (req: any, res: any) => {
     try {
-      const report = await runEODSimulation(req.body || {});
+      const payload = req.method === "GET" ? req.query : (req.body || {});
+      const report = await runEODSimulation(payload);
       res.json(report);
     } catch (e: any) {
       console.error("[EOD Simulator] Simulation run failure:", e);

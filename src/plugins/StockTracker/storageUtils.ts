@@ -1,6 +1,7 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
+import { isBlobConfigured, saveJsonBlob, fetchJsonBlob } from "../../services/blobStorage.js";
 
 // In-memory fallback map for environments where filesystem writes are completely restricted
 const memoryCache = new Map<string, any>();
@@ -124,6 +125,13 @@ export function writeJsonData<T>(fileName: string, data: T): void {
   // Always update memory cache so subsequent reads within process reflect current state
   memoryCache.set(fileName, data);
 
+  // Sync to Vercel Blob cloud storage asynchronously when configured
+  if (isBlobConfigured()) {
+    saveJsonBlob(`stock-analyzer/${fileName}`, data).catch((blobErr) => {
+      console.warn(`[Storage] Background Vercel Blob sync failed for ${fileName}:`, blobErr);
+    });
+  }
+
   const targetPath = resolveDataFilePath(fileName);
   try {
     const dir = path.dirname(targetPath);
@@ -143,4 +151,28 @@ export function writeJsonData<T>(fileName: string, data: T): void {
   } catch (tmpErr) {
     console.warn(`[Storage] Secondary /tmp write failed for ${fileName}, relying on memory cache:`, tmpErr);
   }
+}
+
+/**
+ * Loads a JSON file directly from Vercel Blob cloud storage if not found in local cache.
+ */
+export async function syncFromBlob<T>(fileName: string): Promise<T | null> {
+  if (!isBlobConfigured()) return null;
+
+  try {
+    const blobData = await fetchJsonBlob<T>(`stock-analyzer/${fileName}`);
+    if (blobData) {
+      memoryCache.set(fileName, blobData);
+      try {
+        const targetPath = resolveDataFilePath(fileName);
+        const dir = path.dirname(targetPath);
+        if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+        fs.writeFileSync(targetPath, JSON.stringify(blobData, null, 2), "utf8");
+      } catch {}
+      return blobData;
+    }
+  } catch (err) {
+    console.warn(`[Storage] Failed to sync ${fileName} from Vercel Blob:`, err);
+  }
+  return null;
 }
