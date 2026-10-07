@@ -424,8 +424,13 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
         } else if (low <= pos.stopLoss) {
           closed = true;
           exitPrice = pos.stopLoss;
-          exitReason = `Stop-Loss triggered at ${exitPrice.toFixed(2)} (Low: ${low.toFixed(2)})`;
-          exitType = "STOP_LOSS";
+          if (pos.stopLoss > pos.entryPrice) {
+            exitType = "TRAILING_STOP_EXIT";
+            exitReason = `Trailing Stop profit protection triggered at ${exitPrice.toFixed(2)} (Locked in gain above entry ${pos.entryPrice.toFixed(2)})`;
+          } else {
+            exitType = "STOP_LOSS";
+            exitReason = `Stop-Loss triggered at ${exitPrice.toFixed(2)} (Low: ${low.toFixed(2)})`;
+          }
         }
 
         if (closed) {
@@ -448,6 +453,10 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
           store.totalFrictionPaid += friction.totalFriction;
           if (realizedPnL >= 0) store.winCount += 1;
           else store.lossCount += 1;
+
+          if (exitType === "TAKE_PROFIT" && realizedPnL < 0) {
+            exitReason += ` (Net loss of ${realizedPnL.toFixed(2)} due to ${friction.totalFriction.toFixed(2)} friction/STT fees)`;
+          }
 
           const tradeExecution: EODTradeExecution = {
             id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
@@ -509,8 +518,13 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
         const candle = candles[candleIndex];
         const entryPrice = candle.close;
 
-        const quote = quotesMap.get(item.symbol) || { price: entryPrice };
-        const signal = evaluateStrategy(strategy, candlesUpToDate, quote, {});
+        const quote = {
+          symbol: item.symbol,
+          current_price: entryPrice,
+          price: entryPrice,
+          name: quotesMap.get(item.symbol)?.name || formatTickerDisplay(item.symbol).cleanSymbol
+        };
+        const signal = evaluateStrategy(strategy, candlesUpToDate, quote as any, {});
 
         if (signal.action === "BUY" && signal.confidence >= 0.55) {
           const maxCapitalForTrade = store.cash * allocationPct;
@@ -530,8 +544,16 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
               store.cash -= totalCost;
               store.totalFrictionPaid += friction.totalFriction;
 
-              const stopLoss = signal.stopLoss || parseFloat((entryPrice * 0.95).toFixed(2));
-              const takeProfit = signal.targetPrice || (signal as any).takeProfit || parseFloat((entryPrice * 1.10).toFixed(2));
+              // Strictly ensure Take Profit > Entry Price and Stop Loss < Entry Price
+              const rawTP = signal.targetPrice || (signal as any).takeProfit;
+              const takeProfit = (rawTP && rawTP > entryPrice * 1.01)
+                ? parseFloat(rawTP.toFixed(2))
+                : parseFloat((entryPrice * 1.10).toFixed(2));
+
+              const rawSL = signal.stopLoss;
+              const stopLoss = (rawSL && rawSL < entryPrice * 0.99)
+                ? parseFloat(rawSL.toFixed(2))
+                : parseFloat((entryPrice * 0.95).toFixed(2));
 
               const isIndian = item.symbol.endsWith('.NS') || item.symbol.endsWith('.BO') || item.market === 'IN';
               const isEU = item.symbol.endsWith('.L') || item.symbol.endsWith('.DE') || item.symbol.endsWith('.PA') || item.market === 'EU';
@@ -684,12 +706,17 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
         exitReason = `Take-Profit limit target reached at ${exitPrice.toFixed(2)} (High: ${high.toFixed(2)})`;
         exitType = "TAKE_PROFIT";
       }
-      // Check Stop Loss Hit
+      // Check Stop Loss / Trailing Stop Hit
       else if (low <= pos.stopLoss) {
         closed = true;
         exitPrice = pos.stopLoss;
-        exitReason = `Stop-Loss triggered at ${exitPrice.toFixed(2)} (Low: ${low.toFixed(2)})`;
-        exitType = "STOP_LOSS";
+        if (pos.stopLoss > pos.entryPrice) {
+          exitType = "TRAILING_STOP_EXIT";
+          exitReason = `Trailing Stop profit protection triggered at ${exitPrice.toFixed(2)} (Locked in gain above entry ${pos.entryPrice.toFixed(2)})`;
+        } else {
+          exitType = "STOP_LOSS";
+          exitReason = `Stop-Loss triggered at ${exitPrice.toFixed(2)} (Low: ${low.toFixed(2)})`;
+        }
       }
 
       if (closed) {
@@ -712,6 +739,10 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
         store.totalFrictionPaid += friction.totalFriction;
         if (realizedPnL >= 0) store.winCount += 1;
         else store.lossCount += 1;
+
+        if (exitType === "TAKE_PROFIT" && realizedPnL < 0) {
+          exitReason += ` (Net loss of ${realizedPnL.toFixed(2)} due to ${friction.totalFriction.toFixed(2)} friction/STT fees)`;
+        }
 
         const tradeExecution: EODTradeExecution = {
           id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
@@ -799,8 +830,16 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             store.cash -= totalCost;
             store.totalFrictionPaid += friction.totalFriction;
 
-            const stopLoss = signal.stopLoss || parseFloat((entryPrice * 0.95).toFixed(2));
-            const takeProfit = signal.targetPrice || (signal as any).takeProfit || parseFloat((entryPrice * 1.10).toFixed(2));
+            // Strictly ensure Take Profit > Entry Price and Stop Loss < Entry Price
+            const rawTP = signal.targetPrice || (signal as any).takeProfit;
+            const takeProfit = (rawTP && rawTP > entryPrice * 1.01)
+              ? parseFloat(rawTP.toFixed(2))
+              : parseFloat((entryPrice * 1.10).toFixed(2));
+
+            const rawSL = signal.stopLoss;
+            const stopLoss = (rawSL && rawSL < entryPrice * 0.99)
+              ? parseFloat(rawSL.toFixed(2))
+              : parseFloat((entryPrice * 0.95).toFixed(2));
 
             const isIndian = normSym.endsWith('.NS') || normSym.endsWith('.BO') || item.market === 'IN';
             const isEU = normSym.endsWith('.L') || normSym.endsWith('.DE') || normSym.endsWith('.PA') || item.market === 'EU';
