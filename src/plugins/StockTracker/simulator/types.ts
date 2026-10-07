@@ -53,6 +53,7 @@ export interface EODTrailingStopUpdate {
 
 export interface EODSimulationReport {
   id: string;
+  simulationId: string;          // which simulation instance produced this report
   simulatedDate: string;
   executionTimestamp: string;
   strategyId: string;
@@ -70,9 +71,12 @@ export interface EODSimulationReport {
   digest: string;
   replayMode?: 'SINGLE_STEP' | 'HISTORICAL_REPLAY';
   replayedDaysCount?: number;
+  hadTrades: boolean;             // true = trades occurred; false = no-trade portfolio update
 }
 
 export interface EODSimulationOptions {
+  simulationId?: string;         // unique id for this simulation instance (default: "default")
+  simulationLabel?: string;      // human-readable name shown in the UI
   userEmail?: string;
   strategyId?: string;
   universeKey?: string;
@@ -87,6 +91,21 @@ export interface EODSimulationOptions {
   startDate?: string; // 'YYYY-MM-DD'
   endDate?: string; // 'YYYY-MM-DD'
   replayDays?: number; // e.g. 30, 60, 90, 180
+}
+
+/** Registry entry tracking every active simulation instance. */
+export interface SimulationRegistryEntry {
+  id: string;                    // simulationId key
+  label: string;                 // human-readable name
+  strategyId?: string;
+  strategyName?: string;
+  market?: string;
+  initialCash?: number;
+  createdAt: string;             // ISO timestamp
+  lastRunAt?: string;            // ISO timestamp of most recent run
+  lastTradeAt?: string;          // ISO timestamp of most recent run with actual trades
+  totalRuns: number;
+  totalTradeRuns: number;        // runs that produced at least one trade
 }
 
 export interface EODPortfolioStore {

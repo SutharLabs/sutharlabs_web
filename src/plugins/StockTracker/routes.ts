@@ -36,7 +36,15 @@ import {
   getRegionCurrencyInfo
 } from "./backtest/index.js";
 import { runMarketScan, dispatchWebhookAlert } from "./scanner/index.js";
-import { runEODSimulation, getEODHistory, getEODPortfolio, resetSimulator, closeEODPosition } from "./simulator/index.js";
+import {
+  runEODSimulation,
+  getEODHistory,
+  getEODPortfolio,
+  resetSimulator,
+  closeEODPosition,
+  listSimulations,
+  deleteSimulation
+} from "./simulator/index.js";
 import { readJsonData, writeJsonData } from "./storageUtils.js";
 
 export interface WatchlistItem {
@@ -910,6 +918,27 @@ export function registerRoutes(router: Router) {
   });
 
   // ── Stage 6: Automated End-of-Day (EOD) Batch Trade Simulator ──
+  // List all registered simulations
+  router.get("/simulator/simulations", (_req: any, res: any) => {
+    try {
+      const simulations = listSimulations();
+      res.json(simulations);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Delete a simulation from registry
+  router.delete("/simulator/simulations/:simId", (req: any, res: any) => {
+    try {
+      const { simId } = req.params;
+      deleteSimulation(simId);
+      res.json({ success: true, message: `Simulation ${simId} removed.` });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
   router.all(["/simulator/run-eod", "/simulator/run-eod/"], async (req: any, res: any) => {
     try {
       const payload = req.method === "GET" ? req.query : (req.body || {});
@@ -921,18 +950,20 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  router.get("/simulator/history", (_req: any, res: any) => {
+  router.get("/simulator/history", (req: any, res: any) => {
     try {
-      const history = getEODHistory();
+      const simId = (req.query.simulationId || req.query.simId || "default") as string;
+      const history = getEODHistory(simId);
       res.json(history);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  router.get("/simulator/portfolio", (_req: any, res: any) => {
+  router.get("/simulator/portfolio", (req: any, res: any) => {
     try {
-      const portfolio = getEODPortfolio();
+      const simId = (req.query.simulationId || req.query.simId || "default") as string;
+      const portfolio = getEODPortfolio(simId);
       res.json(portfolio);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -941,11 +972,12 @@ export function registerRoutes(router: Router) {
 
   router.post("/simulator/close-position", async (req: any, res: any) => {
     try {
-      const { positionId } = req.body || {};
+      const { positionId, simId, simulationId } = req.body || {};
       if (!positionId) {
         return res.status(400).json({ error: "positionId is required" });
       }
-      const result = await closeEODPosition(positionId);
+      const targetSimId = simulationId || simId || "default";
+      const result = await closeEODPosition(positionId, targetSimId);
       if (!result.success) {
         return res.status(404).json({ error: "Position not found in portfolio" });
       }
@@ -958,9 +990,10 @@ export function registerRoutes(router: Router) {
 
   router.all(["/simulator/reset", "/simulator/reset/"], (req: any, res: any) => {
     try {
-      const { initialCapital, marketRegion } = req.body || req.query || {};
-      const resetState = resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN");
-      res.json({ success: true, message: "Trade Simulator reset successfully.", portfolio: resetState });
+      const { initialCapital, marketRegion, simId, simulationId } = req.body || req.query || {};
+      const targetSimId = simulationId || simId || "default";
+      const resetState = resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN", targetSimId);
+      res.json({ success: true, message: `Trade Simulator (${targetSimId}) reset successfully.`, portfolio: resetState });
     } catch (e: any) {
       console.error("[Trade Simulator] Reset error:", e);
       res.status(500).json({ error: e.message || "Failed to reset simulator." });

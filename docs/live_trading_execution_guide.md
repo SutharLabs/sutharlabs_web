@@ -10,14 +10,16 @@
 2. [What "Live Trading" Means in This Context](#what-live-means)
 3. [Execution Methods Comparison](#comparison-table)
 4. [Option 1 — Vercel Cron Jobs (Native)](#option-1-vercel-cron)
-5. [Option 2 — Cron-Job.org (Free External Cron)](#option-2-cronjob-org)
-6. [Option 3 — Client-Side Polling (UI Session)](#option-3-client-polling)
-7. [Option 4 — GitHub Actions Scheduled Workflow](#option-4-github-actions)
-8. [Option 5 — Upstash QStash (Serverless Queue)](#option-5-upstash-qstash)
-9. [Securing the Endpoint](#securing-the-endpoint)
-10. [Vercel Blob State Persistence](#vercel-blob-persistence)
-11. [Data Source Limitations (Yahoo Finance)](#data-source-limits)
-12. [Recommended Setup](#recommended-setup)
+5. [Option 2 — Cron-Job.org (Free External Cron & 1-Minute Schedules)](#option-2-cronjob-org)
+6. [Simultaneous Multi-Simulation Tracking](#simultaneous-multi-simulation-tracking)
+7. [Smart Selective Logging (Preventing Log Bloat)](#smart-selective-logging)
+8. [Option 3 — Client-Side Polling (UI Session)](#option-3-client-polling)
+9. [Option 4 — GitHub Actions Scheduled Workflow](#option-4-github-actions)
+10. [Option 5 — Upstash QStash (Serverless Queue)](#option-5-upstash-qstash)
+11. [Securing the Endpoint](#securing-the-endpoint)
+12. [Vercel Blob State Persistence](#vercel-blob-persistence)
+13. [Data Source Limitations (Yahoo Finance)](#data-source-limits)
+14. [Recommended Setup](#recommended-setup)
 
 ---
 
@@ -126,13 +128,24 @@ This fires every 5 minutes between 3:30 AM - 10:30 AM UTC (9:00 AM - 4:00 PM IST
 
 This is the **recommended approach for live execution on the free Vercel Hobby plan**.
 
-### Exact URL to Configure
+### Exact URLs to Configure
 
+#### 1. Default Portfolio
 ```
 https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod
 ```
 
-### Setup Steps
+#### 2. Specific Named Simulation Instance (e.g. `nifty_momentum`)
+```
+https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=nifty_momentum
+```
+
+#### 3. Fully Customized Simulation (Custom Strategy, Market & Sizing)
+```
+https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=us_tech_breakout&strategyId=strat-donchian-breakout&market=US&capitalAllocationPct=0.20
+```
+
+### Setup Steps for Cron-Job.org
 
 1. Go to **https://cron-job.org** and create a free account.
 2. Click **"Create cronjob"**.
@@ -140,32 +153,115 @@ https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod
 
 | Field | Value |
 |---|---|
-| **Title** | SutharLabs — Live Trade Simulation |
-| **URL** | `https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod` |
+| **Title** | SutharLabs — Live Simulation (`nifty_momentum`) |
+| **URL** | `https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=nifty_momentum` |
 | **HTTP Method** | `GET` |
-| **Schedule** | Every 5 minutes (see below) |
-| **Notifications** | Enable email on failure (optional) |
+| **Schedule** | Every 1 minute (`* * * * *`) or Every 5 minutes (`*/5 * * * *`) |
+| **Notifications** | Enable email on failure |
 
-4. For the schedule, select **"Every N minutes"** and set to `5`.
-   - Custom cron expression for 24/7: `*/5 * * * *`
-   - For Indian market hours only (UTC): `*/5 2-10 * * 1-5` (fires every 5 min between 7:30 AM - 3:30 PM UTC = 1 PM - 9 PM IST, Mon-Fri)
+4. For schedule:
+   - **Every 1 minute (24/7)**: Set interval to `1 minute` or cron expression `* * * * *`
+   - **Market Hours Only (Indian Market UTC)**: `* 3-10 * * 1-5` (every minute between 3:30 AM - 10:30 AM UTC = 9:00 AM - 4:00 PM IST, Mon-Fri)
+   - **Market Hours Only (US Market UTC)**: `* 13-20 * * 1-5` (every minute between 1:30 PM - 8:00 PM UTC = 9:30 AM - 4:00 PM EDT, Mon-Fri)
 
-5. Click **"Create"**. Cron-Job.org will ping your URL every 5 minutes automatically.
+5. Click **"Create"**. Cron-Job.org will ping your URL on schedule automatically.
 
-### Adding a Secret Header (Recommended)
+---
 
-In Cron-Job.org's job settings, add a request header to authenticate calls:
+## Simultaneous Multi-Simulation Tracking
 
-| Header Name | Header Value |
-|---|---|
-| `X-Cron-Secret` | `your-secret-string-here` |
+The simulator supports running **unlimited concurrent simulations** in parallel. Each simulation instance is completely isolated with its own:
+- Dedicated virtual cash ledger (`eod_portfolio_<simId>.json`)
+- Dedicated audit history ledger (`eod_simulation_history_<simId>.json`)
+- Independent strategy, market universe, and position sizing
 
-Then validate it in your route (see Securing the Endpoint section below).
+### Supported Query / Payload Parameters
 
-### Monitoring
+Any parameter can be passed either as a URL query param (for `GET` from Cron-Job.org) or in the JSON body (for `POST` from scripts):
 
-- Cron-Job.org shows a **history log** of every execution, HTTP status code returned, and execution time.
-- You can set up **email alerts** for failed runs (non-200 responses).
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `simulationId` | string | `"default"` | Unique slug/ID identifying this simulation instance |
+| `simulationLabel`| string | `simulationId` | Human-readable name displayed in the UI |
+| `strategyId` | string | `"strat-ema-cross"`| Strategy model ID to evaluate (e.g. `strat-macd-div`, `strat-rsi-oversold`) |
+| `market` | string | `"IN"` | Target market: `"IN"` (NSE), `"US"` (NYSE/NASDAQ), `"EU"` (Euronext) |
+| `capitalAllocationPct`| number | `0.15` (15%) | Max capital allocated per trade |
+| `trailingStopPct` | number | `3.0` (3%) | Trailing stop ratchet % below peak |
+| `forcedCapital` | number | *preserved* | Override virtual cash starting balance |
+
+### Example: Running 3 Different Strategies Concurrently on Cron-Job.org
+
+You can set up 3 separate cron jobs on Cron-Job.org to compare performance across different models:
+
+1. **Job 1 (Indian EMA Trend Following)**:
+   ```
+   https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=in_ema_trend&strategyId=strat-ema-cross&market=IN
+   ```
+2. **Job 2 (US RSI Dip Buyer)**:
+   ```
+   https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=us_rsi_dip&strategyId=strat-rsi-oversold&market=US
+   ```
+3. **Job 3 (Breakout Model with 25% Allocation)**:
+   ```
+   https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=breakout_heavy&strategyId=strat-donchian-breakout&market=IN&capitalAllocationPct=0.25
+   ```
+
+### Managing Simulations via API & UI
+
+- **In the UI**: Use the **"Simulation Instance"** dropdown at the top of the Trade Simulator tab in the web dashboard to switch between instances, create new ones, or delete old ones.
+- **List All Instances**:
+  ```http
+  GET /api/workspace/stock-analyzer/simulator/simulations
+  ```
+- **Inspect Specific History**:
+  ```http
+  GET /api/workspace/stock-analyzer/simulator/history?simulationId=in_ema_trend
+  ```
+- **Inspect Specific Portfolio**:
+  ```http
+  GET /api/workspace/stock-analyzer/simulator/portfolio?simulationId=in_ema_trend
+  ```
+- **Reset Specific Simulation**:
+  ```http
+  POST /api/workspace/stock-analyzer/simulator/reset
+  Content-Type: application/json
+  {"simulationId": "in_ema_trend", "initialCapital": 100000}
+  ```
+
+---
+
+## Smart Selective Logging
+
+### The 1-Minute Cron Problem
+When Cron-Job.org pings an endpoint every 1 minute, it executes **1,440 requests per day**. If every run appended a new row to the history ledger:
+- History would grow to **43,200 rows in a month**
+- JSON payloads would exceed multiple megabytes
+- Vercel function responses would slow down and hit memory limits
+- Audit logs would be cluttered with thousands of identical "No trades" entries
+
+### How SutharLabs Solves This
+The simulator implements **smart event-based logging**:
+
+```mermaid
+graph TD
+    Trigger["Cron-Job.org Ping (Every 1m)"] --> Fetch["Fetch Live Prices & Check Strategy"]
+    Fetch --> Decision{"Did trades execute?<br/>(Buy or Sell)"}
+    Decision -- Yes --> NewRow["Append New History Entry<br/>with Trade Details & Reasoning"]
+    Decision -- No --> UpdateSnap["In-Place Update of Latest Equity Snapshot<br/>(Ending Capital, Open Position Values, PnL)"]
+    NewRow --> Save["Persist State to Storage"]
+    UpdateSnap --> Save
+```
+
+1. **Trade Runs (`hadTrades: true`)**:
+   - When a new stock is bought or an existing position hits take-profit / stop-loss.
+   - Appends a new entry to `history` with execution price, friction, rationale, and timestamps.
+2. **No-Trade Runs (`hadTrades: false`)**:
+   - When prices fluctuate but no signals trigger.
+   - **Does NOT create a new history row**.
+   - Instead, silently updates the latest entry's portfolio valuation (`endingCapital`, `activePositions`, `netDailyPnL`) and updates current cash in `portfolio.json`.
+3. **Audit Clarity**:
+   - The UI displays an explicit badge: `Trade Executed (N trades)` vs `Equity Snapshot`.
+   - Your audit ledger stays compact, meaningful, and fast forever.
 
 ---
 

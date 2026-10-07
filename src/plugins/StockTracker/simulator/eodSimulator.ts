@@ -18,8 +18,69 @@ import {
   EODTradeExecution,
   EODTrailingStopUpdate,
   EODSimulationReport,
-  EODSimulationOptions
+  EODSimulationOptions,
+  SimulationRegistryEntry
 } from "./types.js";
+
+// ── Storage Key Helpers ──────────────────────────────────────────────────────
+// 'default' maps to legacy file names for backward-compatibility.
+// Every other simulationId gets its own namespaced file.
+const SIM_REGISTRY_KEY = "eod_simulations_registry.json";
+
+function portfolioKey(simId: string): string {
+  return simId === "default" ? "eod_portfolio.json" : `eod_portfolio_${simId}.json`;
+}
+function historyKey(simId: string): string {
+  return simId === "default" ? "eod_simulation_history.json" : `eod_simulation_history_${simId}.json`;
+}
+function localPortfolioPath(simId: string): string {
+  const dir = path.join(process.cwd(), "data");
+  return path.join(dir, portfolioKey(simId));
+}
+function localHistoryPath(simId: string): string {
+  const dir = path.join(process.cwd(), "data");
+  return path.join(dir, historyKey(simId));
+}
+
+// ── Simulation Registry ───────────────────────────────────────────────────────
+function readRegistry(): SimulationRegistryEntry[] {
+  const reg = readJsonData<SimulationRegistryEntry[]>(SIM_REGISTRY_KEY, []);
+  return Array.isArray(reg) ? reg : [];
+}
+
+function upsertRegistry(
+  simId: string,
+  patch: Partial<SimulationRegistryEntry>
+): void {
+  const reg = readRegistry();
+  const nowIso = new Date().toISOString();
+  const idx = reg.findIndex(r => r.id === simId);
+  if (idx >= 0) {
+    reg[idx] = { ...reg[idx], ...patch, lastRunAt: patch.lastRunAt ?? nowIso };
+  } else {
+    reg.push({
+      id: simId,
+      label: patch.label || simId,
+      createdAt: nowIso,
+      lastRunAt: nowIso,
+      totalRuns: 0,
+      totalTradeRuns: 0,
+      ...patch
+    });
+  }
+  writeJsonData(SIM_REGISTRY_KEY, reg);
+}
+
+export function listSimulations(): SimulationRegistryEntry[] {
+  return readRegistry();
+}
+
+export function deleteSimulation(simId: string): void {
+  if (simId === "default") throw new Error("Cannot delete the default simulation.");
+  const reg = readRegistry().filter(r => r.id !== simId);
+  writeJsonData(SIM_REGISTRY_KEY, reg);
+  // Note: blob entries for the portfolio/history keys become orphaned but are harmless.
+}
 
 export interface PersistedEODState {
   cash: number;
@@ -47,8 +108,8 @@ const DEFAULT_INITIAL_STATE: PersistedEODState = {
   lastUpdated: undefined
 };
 
-function ensureSimulatorStore(): PersistedEODState {
-  const store = readJsonData<PersistedEODState>("eod_portfolio.json", DEFAULT_INITIAL_STATE);
+function ensureSimulatorStore(simId: string): PersistedEODState {
+  const store = readJsonData<PersistedEODState>(portfolioKey(simId), DEFAULT_INITIAL_STATE);
   if (!store || typeof store.cash !== "number") {
     return { ...DEFAULT_INITIAL_STATE };
   }
@@ -61,47 +122,91 @@ function ensureSimulatorStore(): PersistedEODState {
   return store;
 }
 
-function saveSimulatorStore(state: PersistedEODState) {
-  writeJsonData("eod_portfolio.json", state);
+function saveSimulatorStore(state: PersistedEODState, simId: string) {
+  writeJsonData(portfolioKey(simId), state);
   try {
-    const localDataDir = path.join(process.cwd(), "data");
-    const localPortfolioPath = path.join(localDataDir, "eod_portfolio.json");
-    if (fs.existsSync(localDataDir)) {
-      fs.writeFileSync(localPortfolioPath, JSON.stringify(state, null, 2), "utf8");
+    const localPath = localPortfolioPath(simId);
+    const dir = path.dirname(localPath);
+    if (fs.existsSync(dir)) {
+      fs.writeFileSync(localPath, JSON.stringify(state, null, 2), "utf8");
     }
   } catch {}
 }
 
-function appendHistoryReport(report: EODSimulationReport) {
-  let history = readJsonData<EODSimulationReport[]>("eod_simulation_history.json", []);
+/**
+ * Append a full report to history — called ONLY when trades occurred.
+ */
+function appendHistoryReport(report: EODSimulationReport, simId: string) {
+  let history = readJsonData<EODSimulationReport[]>(historyKey(simId), []);
   if (!Array.isArray(history)) history = [];
   history.unshift(report);
   if (history.length > 100) history = history.slice(0, 100); // Keep last 100 runs
-  writeJsonData("eod_simulation_history.json", history);
+  writeJsonData(historyKey(simId), history);
 
   try {
-    const localDataDir = path.join(process.cwd(), "data");
-    const localHistoryPath = path.join(localDataDir, "eod_simulation_history.json");
-    if (fs.existsSync(localDataDir)) {
-      fs.writeFileSync(localHistoryPath, JSON.stringify(history, null, 2), "utf8");
+    const localPath = localHistoryPath(simId);
+    const dir = path.dirname(localPath);
+    if (fs.existsSync(dir)) {
+      fs.writeFileSync(localPath, JSON.stringify(history, null, 2), "utf8");
     }
   } catch {}
 }
 
-export function getEODHistory(): EODSimulationReport[] {
-  const history = readJsonData<EODSimulationReport[]>("eod_simulation_history.json", []);
+/**
+ * For no-trade runs: silently update the latest history entry's portfolio snapshot
+ * (endingCapital, activePositions, netDailyPnL) instead of adding a new row.
+ */
+function updateHistoryPortfolioSnapshot(
+  report: EODSimulationReport,
+  simId: string
+) {
+  let history = readJsonData<EODSimulationReport[]>(historyKey(simId), []);
+  if (!Array.isArray(history)) history = [];
+
+  if (history.length > 0) {
+    // Patch the most-recent entry's equity snapshot
+    history[0] = {
+      ...history[0],
+      endingCapital: report.endingCapital,
+      netDailyPnL: report.netDailyPnL,
+      netDailyPnLPct: report.netDailyPnLPct,
+      totalOpenPositions: report.totalOpenPositions,
+      activePositions: report.activePositions,
+      updatedTrailingStops: report.updatedTrailingStops,
+      executionTimestamp: report.executionTimestamp,
+      digest: report.digest
+    };
+    writeJsonData(historyKey(simId), history);
+    try {
+      const localPath = localHistoryPath(simId);
+      const dir = path.dirname(localPath);
+      if (fs.existsSync(dir)) {
+        fs.writeFileSync(localPath, JSON.stringify(history, null, 2), "utf8");
+      }
+    } catch {}
+  } else {
+    // No existing entries at all — write the first one even without trades
+    appendHistoryReport(report, simId);
+  }
+}
+
+export function getEODHistory(simId: string = "default"): EODSimulationReport[] {
+  const history = readJsonData<EODSimulationReport[]>(historyKey(simId), []);
   return Array.isArray(history) ? history : [];
 }
 
-export function getEODPortfolio(): PersistedEODState {
-  return ensureSimulatorStore();
+export function getEODPortfolio(simId: string = "default"): PersistedEODState {
+  return ensureSimulatorStore(simId);
 }
 
 /**
  * Manually closes an open paper trading position at current price.
  */
-export async function closeEODPosition(positionId: string): Promise<{ success: boolean; closedTrade?: EODTradeExecution; portfolio: PersistedEODState }> {
-  const store = ensureSimulatorStore();
+export async function closeEODPosition(
+  positionId: string,
+  simId: string = "default"
+): Promise<{ success: boolean; closedTrade?: EODTradeExecution; portfolio: PersistedEODState }> {
+  const store = ensureSimulatorStore(simId);
   const posIdx = store.positions.findIndex(p => p.id === positionId);
   if (posIdx === -1) {
     return { success: false, portfolio: store };
@@ -167,7 +272,7 @@ export async function closeEODPosition(positionId: string): Promise<{ success: b
   store.positions.splice(posIdx, 1);
   store.closedTrades.unshift(closedTrade);
   store.lastUpdated = nowIso;
-  saveSimulatorStore(store);
+  saveSimulatorStore(store, simId);
 
   return { success: true, closedTrade, portfolio: store };
 }
@@ -178,7 +283,11 @@ export async function closeEODPosition(positionId: string): Promise<{ success: b
  * and Historical Replay (iterating chronologically through historical date bars from startDate to endDate).
  */
 export async function runEODSimulation(options: EODSimulationOptions = {}): Promise<EODSimulationReport> {
-  const store = ensureSimulatorStore();
+  // ── Resolve simulation instance ─────────────────────────────────────────────
+  const simId = (options.simulationId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const nowIsoStart = new Date().toISOString();
+
+  const store = ensureSimulatorStore(simId);
   if (options.forcedCapital && options.forcedCapital > 0) {
     store.cash = options.forcedCapital;
     store.initialCash = options.forcedCapital;
@@ -192,6 +301,20 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   if (!strategy) {
     strategy = PRESET_STRATEGIES.find(p => p.id === "strat-ema-cross") || PRESET_STRATEGIES[0];
   }
+
+  // Register / update this simulation in the shared registry (upsert)
+  const reg = readRegistry();
+  const existingEntry = reg.find(r => r.id === simId);
+  upsertRegistry(simId, {
+    label: options.simulationLabel || existingEntry?.label || simId,
+    strategyId: strategy.id,
+    strategyName: strategy.name,
+    market: (options.market || options.marketRegion || existingEntry?.market || "IN").toUpperCase(),
+    initialCash: options.forcedCapital || existingEntry?.initialCash || store.initialCash,
+    lastRunAt: nowIsoStart,
+    totalRuns: (existingEntry?.totalRuns ?? 0) + 1,
+    totalTradeRuns: existingEntry?.totalTradeRuns ?? 0 // updated after we know if trades happened
+  });
 
   // 2. Resolve tracked assets for Simulation based on selected market
   const trackedSymbols: Array<{ symbol: string; market: string }> = [];
@@ -468,16 +591,19 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     const lastReplayDate = validReplayDates[validReplayDates.length - 1];
     store.lastRunDate = lastReplayDate;
     store.lastUpdated = new Date().toISOString();
-    saveSimulatorStore(store);
+    saveSimulatorStore(store, simId);
 
     const endingCapital = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
     const netTotalPnL = endingCapital - startingCapital;
     const netTotalPnLPct = startingCapital > 0 ? (netTotalPnL / startingCapital) * 100 : 0;
+    const replayTradesCount = closedTradesAll.length + openedTradesAll.length;
+    const hadTrades = replayTradesCount > 0;
 
-    const digest = `Historical Replay completed from ${validReplayDates[0]} to ${lastReplayDate} (${validReplayDates.length} trading days). Positions Closed: ${closedTradesAll.length}, New Positions Initiated: ${openedTradesAll.length}, Active Holding: ${store.positions.length}. Total Return: ${netTotalPnL >= 0 ? '+' : ''}${netTotalPnL.toFixed(2)} (${netTotalPnLPct.toFixed(2)}%). Ending Equity: ${endingCapital.toFixed(2)}.`;
+    const digest = `Historical Replay (${simId}) completed from ${validReplayDates[0]} to ${lastReplayDate} (${validReplayDates.length} trading days). Positions Closed: ${closedTradesAll.length}, New Positions Initiated: ${openedTradesAll.length}, Active Holding: ${store.positions.length}. Total Return: ${netTotalPnL >= 0 ? '+' : ''}${netTotalPnL.toFixed(2)} (${netTotalPnLPct.toFixed(2)}%). Ending Equity: ${endingCapital.toFixed(2)}.`;
 
     const report: EODSimulationReport = {
       id: `eod-replay-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+      simulationId: simId,
       simulatedDate: lastReplayDate,
       executionTimestamp: new Date().toISOString(),
       strategyId: strategy.id,
@@ -487,17 +613,30 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
       netDailyPnL: parseFloat(netTotalPnL.toFixed(2)),
       netDailyPnLPct: parseFloat(netTotalPnLPct.toFixed(2)),
       totalOpenPositions: store.positions.length,
-      totalTradesExecuted: closedTradesAll.length + openedTradesAll.length,
+      totalTradesExecuted: replayTradesCount,
       closedPositions: closedTradesAll,
       openedPositions: openedTradesAll,
       updatedTrailingStops: updatedTrailingStopsAll,
       activePositions: store.positions,
       digest,
       replayMode: "HISTORICAL_REPLAY",
-      replayedDaysCount: validReplayDates.length
+      replayedDaysCount: validReplayDates.length,
+      hadTrades
     };
 
-    appendHistoryReport(report);
+    if (hadTrades) {
+      appendHistoryReport(report, simId);
+      const reg = readRegistry();
+      const cur = reg.find(r => r.id === simId);
+      if (cur) {
+        upsertRegistry(simId, {
+          totalTradeRuns: (cur.totalTradeRuns ?? 0) + 1,
+          lastTradeAt: new Date().toISOString()
+        });
+      }
+    } else {
+      updateHistoryPortfolioSnapshot(report, simId);
+    }
     return report;
   }
 
@@ -722,16 +861,19 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   // 5. Finalize EOD Metrics & Ledger
   store.lastRunDate = simDate;
   store.lastUpdated = nowIso;
-  saveSimulatorStore(store);
+  saveSimulatorStore(store, simId);
 
   const endingCapital = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
   const netDailyPnL = endingCapital - startingCapital;
   const netDailyPnLPct = startingCapital > 0 ? (netDailyPnL / startingCapital) * 100 : 0;
+  const tradesCount = closedTrades.length + openedTrades.length;
+  const hadTrades = tradesCount > 0;
 
-  const digest = `EOD Batch Simulation completed for ${simDate}. Positions closed: ${closedTrades.length}, New positions: ${openedTrades.length}, Trailing stops raised: ${updatedTrailingStops.length}. Daily PnL: ${netDailyPnL >= 0 ? '+' : ''}${netDailyPnL.toFixed(2)} (${netDailyPnLPct.toFixed(2)}%). Total Equity: ${endingCapital.toFixed(2)}.`;
+  const digest = `EOD Batch Simulation (${simId}) completed for ${simDate}. Positions closed: ${closedTrades.length}, New positions: ${openedTrades.length}, Trailing stops raised: ${updatedTrailingStops.length}. Daily PnL: ${netDailyPnL >= 0 ? '+' : ''}${netDailyPnL.toFixed(2)} (${netDailyPnLPct.toFixed(2)}%). Total Equity: ${endingCapital.toFixed(2)}.`;
 
   const report: EODSimulationReport = {
     id: `eod-run-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
+    simulationId: simId,
     simulatedDate: simDate,
     executionTimestamp: nowIso,
     strategyId: strategy.id,
@@ -741,23 +883,44 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     netDailyPnL: parseFloat(netDailyPnL.toFixed(2)),
     netDailyPnLPct: parseFloat(netDailyPnLPct.toFixed(2)),
     totalOpenPositions: store.positions.length,
-    totalTradesExecuted: closedTrades.length + openedTrades.length,
+    totalTradesExecuted: tradesCount,
     closedPositions: closedTrades,
     openedPositions: openedTrades,
     updatedTrailingStops,
     activePositions: store.positions,
     digest,
-    replayMode: "SINGLE_STEP"
+    replayMode: "SINGLE_STEP",
+    hadTrades
   };
 
-  appendHistoryReport(report);
+  // Only append a new log entry when trades were actually executed!
+  // If no trades occurred, only update the existing latest equity snapshot to prevent log bloat on 1-minute crons.
+  if (hadTrades) {
+    appendHistoryReport(report, simId);
+    const reg = readRegistry();
+    const cur = reg.find(r => r.id === simId);
+    if (cur) {
+      upsertRegistry(simId, {
+        totalTradeRuns: (cur.totalTradeRuns ?? 0) + 1,
+        lastTradeAt: nowIso
+      });
+    }
+  } else {
+    updateHistoryPortfolioSnapshot(report, simId);
+  }
+
   return report;
 }
 
 /**
- * Resets the Trade Simulator virtual portfolio state and clears history.
+ * Resets the Trade Simulator virtual portfolio state and clears history for a given simulationId.
  */
-export function resetSimulator(initialCash: number = 100000, marketRegion: string = "IN"): PersistedEODState {
+export function resetSimulator(
+  initialCash: number = 100000,
+  marketRegion: string = "IN",
+  simId: string = "default"
+): PersistedEODState {
+  const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
   const freshState: PersistedEODState = {
     cash: initialCash,
     initialCash: initialCash,
@@ -770,19 +933,25 @@ export function resetSimulator(initialCash: number = 100000, marketRegion: strin
     lossCount: 0,
     lastUpdated: new Date().toISOString()
   };
-  saveSimulatorStore(freshState);
-  writeJsonData("eod_simulation_history.json", []);
+  saveSimulatorStore(freshState, safeSimId);
+  writeJsonData(historyKey(safeSimId), []);
+
+  // Update registry metrics on reset
+  upsertRegistry(safeSimId, {
+    initialCash,
+    totalRuns: 0,
+    totalTradeRuns: 0
+  });
 
   // Also clear local development data directory files if writable
   try {
-    const localDataDir = path.join(process.cwd(), "data");
-    const localHistoryPath = path.join(localDataDir, "eod_simulation_history.json");
-    const localPortfolioPath = path.join(localDataDir, "eod_portfolio.json");
-    if (fs.existsSync(localHistoryPath)) {
-      fs.writeFileSync(localHistoryPath, "[]\n", "utf8");
+    const histPath = localHistoryPath(safeSimId);
+    const portPath = localPortfolioPath(safeSimId);
+    if (fs.existsSync(histPath)) {
+      fs.writeFileSync(histPath, "[]\n", "utf8");
     }
-    if (fs.existsSync(localPortfolioPath)) {
-      fs.writeFileSync(localPortfolioPath, JSON.stringify(freshState, null, 2), "utf8");
+    if (fs.existsSync(portPath)) {
+      fs.writeFileSync(portPath, JSON.stringify(freshState, null, 2), "utf8");
     }
   } catch {}
 

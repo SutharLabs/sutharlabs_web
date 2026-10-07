@@ -30,7 +30,11 @@ import {
   BarChart3,
   PieChart,
   Check,
-  FastForward
+  FastForward,
+  Copy,
+  Plus,
+  Trash2,
+  CheckCheck
 } from 'lucide-react';
 import { IStrategy } from '../plugins/StockTracker/strategies/types';
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
@@ -39,7 +43,8 @@ import {
   EODSimulationReport,
   EODSimulationOptions,
   EODPortfolioStore,
-  EODTradeExecution
+  EODTradeExecution,
+  SimulationRegistryEntry
 } from '../plugins/StockTracker/simulator/types';
 
 export interface StockSimulatorPanelProps {
@@ -172,6 +177,25 @@ export default function StockSimulatorPanel({
     loadFullStrategies();
   }, [strategies]);
 
+  // ── Multi-Simulation Instances & Active Selection State ──────────────
+  const [simulationsList, setSimulationsList] = useState<SimulationRegistryEntry[]>([]);
+  const [selectedSimulationId, setSelectedSimulationId] = useState<string>(() => {
+    try {
+      return localStorage.getItem('sutharlabs_active_simulation_id') || 'default';
+    } catch {
+      return 'default';
+    }
+  });
+  const [showNewSimModal, setShowNewSimModal] = useState<boolean>(false);
+  const [newSimId, setNewSimId] = useState<string>('');
+  const [newSimLabel, setNewSimLabel] = useState<string>('');
+  const [newSimStrategyId, setNewSimStrategyId] = useState<string>('strat-ema-cross');
+  const [newSimMarket, setNewSimMarket] = useState<string>('IN');
+  const [newSimInitialCash, setNewSimInitialCash] = useState<number>(100000);
+  const [newSimAllocation, setNewSimAllocation] = useState<number>(0.20);
+  const [isCreatingSim, setIsCreatingSim] = useState<boolean>(false);
+  const [copiedCronUrl, setCopiedCronUrl] = useState<boolean>(false);
+
   // Live Portfolio & History State
   const [portfolio, setPortfolio] = useState<EODPortfolioStore | null>(null);
   const [historyRuns, setHistoryRuns] = useState<EODSimulationReport[]>([]);
@@ -184,14 +208,45 @@ export default function StockSimulatorPanel({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
 
-  // Fetch Current Portfolio & Simulation History from server
-  const fetchPortfolioAndHistory = useCallback(async () => {
+  // Fetch all registered simulations from the backend
+  const fetchSimulationsList = useCallback(async () => {
+    try {
+      const res = await fetch(`${STOCK_API}/simulator/simulations`);
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          const list = [...data];
+          if (!list.some(s => s.id === 'default')) {
+            list.unshift({
+              id: 'default',
+              label: 'Default Paper Portfolio',
+              market: 'IN',
+              createdAt: new Date().toISOString(),
+              totalRuns: 0,
+              totalTradeRuns: 0
+            });
+          }
+          setSimulationsList(list);
+        }
+      }
+    } catch (err) {
+      console.warn('[Simulator] Error fetching simulations list:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSimulationsList();
+  }, [fetchSimulationsList]);
+
+  // Fetch Current Portfolio & Simulation History from server for selectedSimulationId
+  const fetchPortfolioAndHistory = useCallback(async (targetSimId?: string) => {
+    const simIdToFetch = targetSimId || selectedSimulationId || 'default';
     setIsLoadingPortfolio(true);
     try {
-      const emailQuery = userEmail ? `?email=${encodeURIComponent(userEmail)}` : '';
+      const emailQuery = userEmail ? `&email=${encodeURIComponent(userEmail)}` : '';
       const [portRes, histRes] = await Promise.all([
-        fetch(`${STOCK_API}/simulator/portfolio${emailQuery}`).catch(() => null),
-        fetch(`${STOCK_API}/simulator/history${emailQuery}`).catch(() => null)
+        fetch(`${STOCK_API}/simulator/portfolio?simulationId=${encodeURIComponent(simIdToFetch)}${emailQuery}`).catch(() => null),
+        fetch(`${STOCK_API}/simulator/history?simulationId=${encodeURIComponent(simIdToFetch)}${emailQuery}`).catch(() => null)
       ]);
 
       if (portRes && portRes.ok) {
@@ -223,11 +278,19 @@ export default function StockSimulatorPanel({
     } finally {
       setIsLoadingPortfolio(false);
     }
-  }, [userEmail]);
+  }, [userEmail, selectedSimulationId]);
 
   useEffect(() => {
-    fetchPortfolioAndHistory();
-  }, [fetchPortfolioAndHistory]);
+    fetchPortfolioAndHistory(selectedSimulationId);
+  }, [fetchPortfolioAndHistory, selectedSimulationId]);
+
+  const handleSelectSimulation = (simId: string) => {
+    setSelectedSimulationId(simId);
+    try {
+      localStorage.setItem('sutharlabs_active_simulation_id', simId);
+    } catch {}
+    fetchPortfolioAndHistory(simId);
+  };
 
   // Execute Trade Simulation Run (Single Step or Historical Replay)
   const handleRunSimulation = async () => {
@@ -235,7 +298,10 @@ export default function StockSimulatorPanel({
     setErrorMessage(null);
 
     try {
+      const activeEntry = simulationsList.find(s => s.id === selectedSimulationId);
       const payload: any = {
+        simulationId: selectedSimulationId,
+        simulationLabel: activeEntry?.label || selectedSimulationId,
         strategyId: selectedStrategyId,
         capitalAllocationPct: allocationPct,
         trailingStopPct: enableTrailingStop ? trailingStopPct : undefined,
@@ -262,7 +328,7 @@ export default function StockSimulatorPanel({
       const report: EODSimulationReport = await res.json();
       setLatestReport(report);
       setExpandedRunId(report.id);
-      await fetchPortfolioAndHistory();
+      await Promise.all([fetchSimulationsList(), fetchPortfolioAndHistory(selectedSimulationId)]);
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to execute trade simulation.');
     } finally {
@@ -279,7 +345,7 @@ export default function StockSimulatorPanel({
       const res = await fetch(`${STOCK_API}/simulator/close-position`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ positionId })
+        body: JSON.stringify({ positionId, simulationId: selectedSimulationId })
       });
 
       if (!res.ok) {
@@ -291,7 +357,7 @@ export default function StockSimulatorPanel({
       if (result.portfolio) {
         setPortfolio(result.portfolio);
       } else {
-        await fetchPortfolioAndHistory();
+        await fetchPortfolioAndHistory(selectedSimulationId);
       }
     } catch (err: any) {
       setErrorMessage(err.message || 'Error closing open position.');
@@ -321,7 +387,8 @@ export default function StockSimulatorPanel({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             initialCapital: 100000,
-            marketRegion: effectiveMarket
+            marketRegion: effectiveMarket,
+            simulationId: selectedSimulationId
           })
         });
         if (res.ok) {
@@ -338,7 +405,7 @@ export default function StockSimulatorPanel({
     if (!resetSucceeded) {
       for (const url of endpoints) {
         try {
-          const res = await fetch(`${url}?initialCapital=100000&marketRegion=${encodeURIComponent(effectiveMarket)}`, {
+          const res = await fetch(`${url}?initialCapital=100000&marketRegion=${encodeURIComponent(effectiveMarket)}&simulationId=${encodeURIComponent(selectedSimulationId)}`, {
             method: 'GET'
           });
           if (res.ok) {
@@ -371,6 +438,76 @@ export default function StockSimulatorPanel({
     setHistoryRuns([]);
     setShowResetConfirm(false);
     setIsResettingSim(false);
+    fetchSimulationsList();
+  };
+
+  // Create a brand new independent simulation instance
+  const handleCreateSimulation = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newSimId.trim()) return;
+    const cleanId = newSimId.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+    setIsCreatingSim(true);
+    setErrorMessage(null);
+    try {
+      const payload = {
+        simulationId: cleanId,
+        simulationLabel: newSimLabel.trim() || cleanId,
+        strategyId: newSimStrategyId,
+        market: newSimMarket,
+        forcedCapital: newSimInitialCash || 100000,
+        capitalAllocationPct: newSimAllocation || 0.20,
+        userEmail
+      };
+      const res = await fetch(`${STOCK_API}/simulator/run-eod`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        throw new Error(d.error || 'Failed to initialize simulation instance');
+      }
+      setSelectedSimulationId(cleanId);
+      try {
+        localStorage.setItem('sutharlabs_active_simulation_id', cleanId);
+      } catch {}
+      setShowNewSimModal(false);
+      setNewSimId('');
+      setNewSimLabel('');
+      await fetchSimulationsList();
+      await fetchPortfolioAndHistory(cleanId);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to create simulation.');
+    } finally {
+      setIsCreatingSim(false);
+    }
+  };
+
+  // Delete custom simulation
+  const handleDeleteSimulation = async (simId: string) => {
+    if (simId === 'default') return;
+    if (!window.confirm(`Delete simulation instance "${simId}"? This will remove its registry entry.`)) return;
+    try {
+      const res = await fetch(`${STOCK_API}/simulator/simulations/${simId}`, { method: 'DELETE' });
+      if (res.ok) {
+        handleSelectSimulation('default');
+        await fetchSimulationsList();
+      }
+    } catch (err) {
+      console.warn('Failed to delete simulation:', err);
+    }
+  };
+
+  // Copy full Cron-Job.org URL
+  const handleCopyCronUrl = (simId: string) => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sutharlabs.com';
+    const cronUrl = `${origin}${STOCK_API}/simulator/run-eod?simulationId=${encodeURIComponent(simId)}`;
+    if (navigator?.clipboard?.writeText) {
+      navigator.clipboard.writeText(cronUrl).then(() => {
+        setCopiedCronUrl(true);
+        setTimeout(() => setCopiedCronUrl(false), 2500);
+      });
+    }
   };
 
   // Compute Live Portfolio Financial Metrics
@@ -490,6 +627,154 @@ export default function StockSimulatorPanel({
             </button>
           </div>
         </div>
+
+        {/* ── Active Simulation Instance Switcher & Manager Bar ── */}
+        <div className="p-3.5 rounded-xl bg-surface-container border border-outline/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-[#00e476]" />
+              Simulation Instance:
+            </span>
+            <select
+              value={selectedSimulationId}
+              onChange={(e) => handleSelectSimulation(e.target.value)}
+              disabled={isRunningSim || isLoadingPortfolio}
+              className="bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs font-bold font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
+            >
+              {simulationsList.map((sim) => (
+                <option key={sim.id} value={sim.id}>
+                  {sim.label} [{sim.id}] • {sim.market || 'IN'} ({sim.totalRuns ?? 0} runs)
+                </option>
+              ))}
+            </select>
+
+            <button
+              type="button"
+              onClick={() => setShowNewSimModal(true)}
+              className="px-2.5 py-1.5 rounded-lg bg-[#00e476]/15 hover:bg-[#00e476]/25 text-[#00e476] border border-[#00e476]/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
+              title="Create a new simultaneous simulation instance with independent inputs and portfolio"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Simulation</span>
+            </button>
+
+            {selectedSimulationId !== 'default' && (
+              <button
+                type="button"
+                onClick={() => handleDeleteSimulation(selectedSimulationId)}
+                className="px-2 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
+                title="Delete this simulation from tracking"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Delete</span>
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleCopyCronUrl(selectedSimulationId)}
+              className="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs font-mono text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1.5 transition-all"
+              title="Copy the exact URL to paste into Cron-Job.org to ping this specific simulation every minute"
+            >
+              {copiedCronUrl ? <CheckCheck className="w-3.5 h-3.5 text-[#00e476]" /> : <Copy className="w-3.5 h-3.5 text-[#00dbe7]" />}
+              <span>{copiedCronUrl ? 'Cron URL Copied!' : 'Copy Cron-Job URL'}</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ── Inline Creation Panel for New Simulation ── */}
+        {showNewSimModal && (
+          <form
+            onSubmit={handleCreateSimulation}
+            className="p-4 rounded-xl bg-surface-container-high border border-[#00e476]/30 flex flex-col gap-3 shadow-md"
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-xs text-[#00e476] flex items-center gap-1.5">
+                <Plus className="w-3.5 h-3.5" />
+                Create New Simultaneous Simulation Instance
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowNewSimModal(false)}
+                className="text-on-surface-variant hover:text-on-surface cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+              <div>
+                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">
+                  Simulation ID (alphanumeric slug)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. breakout_us_fast"
+                  required
+                  value={newSimId}
+                  onChange={(e) => setNewSimId(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 font-mono text-on-surface focus:outline-none focus:border-[#00e476]"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">
+                  Display Label
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. US Tech Breakout"
+                  value={newSimLabel}
+                  onChange={(e) => setNewSimLabel(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 text-on-surface focus:outline-none focus:border-[#00e476]"
+                />
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">
+                  Market Universe
+                </label>
+                <select
+                  value={newSimMarket}
+                  onChange={(e) => setNewSimMarket(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
+                >
+                  <option value="IN">Indian Equities (NSE ₹)</option>
+                  <option value="US">US Equities ($)</option>
+                  <option value="EU">European Equities (€)</option>
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">
+                  Initial Cash
+                </label>
+                <input
+                  type="number"
+                  min="5000"
+                  step="5000"
+                  value={newSimInitialCash}
+                  onChange={(e) => setNewSimInitialCash(parseFloat(e.target.value) || 100000)}
+                  className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 font-mono text-on-surface focus:outline-none focus:border-[#00e476]"
+                />
+              </div>
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-outline/10">
+              <button
+                type="button"
+                onClick={() => setShowNewSimModal(false)}
+                className="px-3 py-1 rounded-lg bg-surface-container border border-outline/20 text-on-surface-variant hover:text-on-surface cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={isCreatingSim || !newSimId.trim()}
+                className="px-4 py-1.5 rounded-lg bg-[#00e476] text-[#002022] font-bold hover:brightness-110 cursor-pointer text-xs flex items-center gap-1.5 disabled:opacity-50"
+              >
+                {isCreatingSim ? 'Initializing...' : 'Create & Activate'}
+              </button>
+            </div>
+          </form>
+        )}
 
         {/* Reset Confirmation Banner */}
         {showResetConfirm && (
@@ -1192,6 +1477,20 @@ export default function StockSimulatorPanel({
                               <span className="text-[10px] px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-bold">
                                 {run.strategyName}
                               </span>
+                              {run.hadTrades ? (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#00e476]/15 text-[#00e476] font-bold">
+                                  Trade Executed ({run.totalTradesExecuted})
+                                </span>
+                              ) : (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-medium">
+                                  Equity Snapshot
+                                </span>
+                              )}
+                              {run.simulationId && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-mono">
+                                  sim: {run.simulationId}
+                                </span>
+                              )}
                               {run.replayMode === 'HISTORICAL_REPLAY' && (
                                 <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#00dbe7]/15 text-[#00dbe7] font-bold">
                                   {run.replayedDaysCount ? `${run.replayedDaysCount} Days Replayed` : 'Historical Replay'}
