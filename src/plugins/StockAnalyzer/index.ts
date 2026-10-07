@@ -526,23 +526,54 @@ export async function getQuote(symbol: string, defaultRegion: string = 'IN') {
   }
 }
 
-export async function getHistory(symbol: string, period: string = '5d', interval: any = '15m', defaultRegion: string = 'IN') {
+export async function getHistory(
+  symbol: string,
+  period: string = '5d',
+  interval: any = '15m',
+  defaultRegion: string = 'IN'
+) {
   const normalizedSymbol = normalizeTicker(symbol, defaultRegion);
   try {
-    const pMap: any = {
-      '1D':  { period1: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000), interval: '5m' },
-      '1W':  { period1: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), interval: '15m' },
-      '1M':  { period1: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000), interval: '1h' },
-      '1Y':  { period1: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000), interval: '1d' },
-      '5Y':  { period1: new Date(Date.now() - 5 * 365 * 24 * 60 * 60 * 1000), interval: '1wk' },
-      'ALL': { period1: new Date(Date.now() - 25 * 365 * 24 * 60 * 60 * 1000), interval: '1mo' },
-      'MAX': { period1: new Date(Date.now() - 25 * 365 * 24 * 60 * 60 * 1000), interval: '1mo' },
+    const rawInterval = (interval || '').toString().toLowerCase();
+    const is4h = rawInterval === '4h';
+    // For 4h, request 1h candles from Yahoo and aggregate them
+    const yahooInterval = is4h ? '1h' : (rawInterval || '15m');
+
+    // Yahoo Finance timeframe limits:
+    // 1m: max 7 days
+    // 5m, 15m, 30m: max 60 days
+    // 1h (60m): max 730 days
+    // 1d, 1wk, 1mo: multi-year
+    let period1: Date;
+    if (yahooInterval === '1m') {
+      period1 = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
+    } else if (['2m', '5m', '15m', '30m', '90m'].includes(yahooInterval)) {
+      period1 = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+    } else if (['1h', '60m'].includes(yahooInterval)) {
+      period1 = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+    } else {
+      const pMap: Record<string, number> = {
+        '1D': 1,
+        '1W': 7,
+        '1M': 30,
+        '3M': 90,
+        '6M': 180,
+        '1Y': 365,
+        '5Y': 5 * 365,
+        'ALL': 25 * 365,
+        'MAX': 25 * 365
+      };
+      const days = pMap[period] || (yahooInterval === '1d' ? 365 : 7);
+      period1 = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    }
+
+    const queryOpts: any = {
+      period1,
+      interval: yahooInterval
     };
-    
-    const queryOpts = pMap[period] || pMap['1W'];
-    
+
     const result: any = await yahooFinance.chart(normalizedSymbol, queryOpts);
-    const rawCandles = (result.quotes || [])
+    let rawCandles = (result.quotes || [])
       .filter((q: any) => q.close != null && q.open != null && q.high != null && q.low != null)
       .map((q: any) => {
         const timeSec = Math.floor(new Date(q.date).getTime() / 1000);
@@ -557,7 +588,48 @@ export async function getHistory(symbol: string, period: string = '5d', interval
         };
       })
       .sort((a: any, b: any) => a.time - b.time);
-    
+
+    // If 4h interval requested, aggregate 1h candles into 4-hour OHLCV buckets
+    if (is4h && rawCandles.length > 0) {
+      const aggregated4h: any[] = [];
+      const bucketSec = 4 * 3600; // 4 hours in seconds
+      let currentBucketStart = Math.floor(rawCandles[0].time / bucketSec) * bucketSec;
+      let bucketGroup: any[] = [];
+
+      for (const c of rawCandles) {
+        const bucketStart = Math.floor(c.time / bucketSec) * bucketSec;
+        if (bucketStart === currentBucketStart) {
+          bucketGroup.push(c);
+        } else {
+          if (bucketGroup.length > 0) {
+            aggregated4h.push({
+              time: currentBucketStart,
+              isoTime: new Date(currentBucketStart * 1000).toISOString(),
+              open: bucketGroup[0].open,
+              high: Math.max(...bucketGroup.map((b: any) => b.high)),
+              low: Math.min(...bucketGroup.map((b: any) => b.low)),
+              close: bucketGroup[bucketGroup.length - 1].close,
+              volume: bucketGroup.reduce((acc: number, b: any) => acc + (b.volume || 0), 0)
+            });
+          }
+          currentBucketStart = bucketStart;
+          bucketGroup = [c];
+        }
+      }
+      if (bucketGroup.length > 0) {
+        aggregated4h.push({
+          time: currentBucketStart,
+          isoTime: new Date(currentBucketStart * 1000).toISOString(),
+          open: bucketGroup[0].open,
+          high: Math.max(...bucketGroup.map((b: any) => b.high)),
+          low: Math.min(...bucketGroup.map((b: any) => b.low)),
+          close: bucketGroup[bucketGroup.length - 1].close,
+          volume: bucketGroup.reduce((acc: number, b: any) => acc + (b.volume || 0), 0)
+        });
+      }
+      rawCandles = aggregated4h;
+    }
+
     // Deduplicate timestamps to guarantee strictly increasing chronological series for Lightweight Charts
     const candles: any[] = [];
     const seenTimes = new Set<number>();
@@ -567,9 +639,9 @@ export async function getHistory(symbol: string, period: string = '5d', interval
         candles.push(c);
       }
     }
-    
+
     const formatted = formatTickerDisplay(normalizedSymbol);
-    return { symbol: normalizedSymbol, display_symbol: formatted.displaySymbol, period, candles };
+    return { symbol: normalizedSymbol, display_symbol: formatted.displaySymbol, period, interval: rawInterval || '15m', candles };
   } catch (e) {
     throw new Error(`Failed to fetch history for ${normalizedSymbol}: ${e}`);
   }

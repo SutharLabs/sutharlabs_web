@@ -88,6 +88,8 @@ export interface EODSimulationOptions {
   trailingStopPct?: number; // default 3.0%
   forcedCapital?: number;
   mode?: 'SINGLE_STEP' | 'HISTORICAL_REPLAY';
+  timeframe?: '1m' | '5m' | '15m' | '1h' | '1d'; // candle interval
+  interval?: '1m' | '5m' | '15m' | '1h' | '1d';  // alias
   startDate?: string; // 'YYYY-MM-DD'
   endDate?: string; // 'YYYY-MM-DD'
   replayDays?: number; // e.g. 30, 60, 90, 180

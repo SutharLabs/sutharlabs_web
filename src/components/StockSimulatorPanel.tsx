@@ -105,6 +105,8 @@ export default function StockSimulatorPanel({
   const [allocationPct, setAllocationPct] = useState<number>(0.20);
   const [trailingStopPct, setTrailingStopPct] = useState<number>(3.0);
   const [enableTrailingStop, setEnableTrailingStop] = useState<boolean>(true);
+  const [selectedTimeframe, setSelectedTimeframe] = useState<'1m' | '5m' | '15m' | '1h' | '4h' | '1d'>('1d');
+  const [tradeLedgerFilter, setTradeLedgerFilter] = useState<'ALL' | 'EXITS' | 'ENTRIES'>('ALL');
 
   // Simulation Replay Controls (Point 5: Historical Replay from an old date)
   const [simulationMode, setSimulationMode] = useState<'SINGLE_STEP' | 'HISTORICAL_REPLAY'>('SINGLE_STEP');
@@ -316,6 +318,8 @@ export default function StockSimulatorPanel({
         trailingStopPct: enableTrailingStop ? trailingStopPct : undefined,
         market: effectiveMarket,
         marketRegion: effectiveMarket,
+        timeframe: selectedTimeframe,
+        interval: selectedTimeframe,
         mode: simulationMode,
         startDate: simulationMode === 'HISTORICAL_REPLAY' ? customStartDate : undefined,
         endDate: simulationMode === 'HISTORICAL_REPLAY' ? customEndDate : undefined,
@@ -589,6 +593,86 @@ export default function StockSimulatorPanel({
     }
   };
 
+  const formatTimeWithSeconds = (isoString?: string) => {
+    if (!isoString) return '—';
+    try {
+      const d = new Date(isoString);
+      return d.toLocaleTimeString(undefined, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch {
+      return isoString;
+    }
+  };
+
+  // Unified Executed & Completed Trades Ledger
+  const allLedgerTrades = useMemo(() => {
+    const map = new Map<string, any>();
+
+    // 1. All explicitly closed trades in portfolio
+    (portfolio?.closedTrades || []).forEach(t => {
+      if (t?.id) map.set(t.id, t);
+    });
+
+    // 2. Closed trades reported in historical/cron simulation runs
+    (historyRuns || []).forEach(run => {
+      (run.closedPositions || []).forEach(t => {
+        if (t?.id && !map.has(t.id)) map.set(t.id, t);
+      });
+      // Also include opened positions from history runs
+      (run.openedPositions || []).forEach(t => {
+        if (t?.id && !map.has(t.id)) map.set(t.id, t);
+      });
+    });
+
+    // 3. For any current live open positions in portfolio that haven't closed yet,
+    // include their entry fill record so live executions immediately appear in the ledger!
+    (portfolio?.positions || []).forEach(pos => {
+      const entryId = `entry-${pos.id}`;
+      if (!map.has(entryId)) {
+        map.set(entryId, {
+          id: entryId,
+          type: 'BUY_ENTRY',
+          symbol: pos.symbol,
+          companyName: pos.name,
+          shares: pos.shares,
+          price: pos.entryPrice,
+          entryPrice: pos.entryPrice,
+          entryDate: pos.entryDate,
+          entryTimestamp: pos.entryTimestamp,
+          currency: pos.currency,
+          currencySymbol: pos.currencySymbol,
+          realizedPnL: 0,
+          realizedPnLPct: 0,
+          friction: 0,
+          reason: 'Live Position Entry Fill',
+          executedAt: pos.entryTimestamp || pos.entryDate,
+          isOpen: true
+        });
+      }
+    });
+
+    const list = Array.from(map.values()).sort((a, b) => {
+      const timeA = new Date(a.exitTimestamp || a.executedAt || a.entryTimestamp || 0).getTime();
+      const timeB = new Date(b.exitTimestamp || b.executedAt || b.entryTimestamp || 0).getTime();
+      return timeB - timeA;
+    });
+
+    return list;
+  }, [portfolio?.closedTrades, portfolio?.positions, historyRuns]);
+
+  const filteredLedgerTrades = useMemo(() => {
+    if (tradeLedgerFilter === 'EXITS') {
+      return allLedgerTrades.filter(t => t.type !== 'BUY_ENTRY');
+    }
+    if (tradeLedgerFilter === 'ENTRIES') {
+      return allLedgerTrades.filter(t => t.type === 'BUY_ENTRY');
+    }
+    return allLedgerTrades;
+  }, [allLedgerTrades, tradeLedgerFilter]);
+
   return (
     <div className="flex flex-col gap-6 text-xs font-mono">
       {/* ── Top Control & Setup Card ── */}
@@ -847,7 +931,7 @@ export default function StockSimulatorPanel({
         )}
 
         {/* Configuration Options Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-outline/10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-outline/10">
           {/* Target Market Universe Selector */}
           <div>
             <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
@@ -886,14 +970,35 @@ export default function StockSimulatorPanel({
             </select>
           </div>
 
+          {/* Candle Timeframe Selector (1m, 5m, 15m, 1h, 4h, 1d) */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
+              <Clock className="w-3 h-3 text-[#00e476]" />
+              Candle Timeframe
+            </label>
+            <select
+              value={selectedTimeframe}
+              onChange={e => setSelectedTimeframe(e.target.value as any)}
+              disabled={isRunningSim}
+              className="w-full bg-surface-container-lowest border border-outline/30 rounded-xl px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
+            >
+              <option value="1d">1 Day (EOD Daily • Default)</option>
+              <option value="4h">4 Hours (Intraday Swing)</option>
+              <option value="1h">1 Hour (Intraday Trend)</option>
+              <option value="15m">15 Minutes (Momentum)</option>
+              <option value="5m">5 Minutes (Intraday Scalp)</option>
+              <option value="1m">1 Minute (Ultra Fast Live)</option>
+            </select>
+          </div>
+
           {/* Position Sizing / Allocation Slider */}
           <div>
             <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center justify-between">
               <span className="flex items-center gap-1">
                 <Scale className="w-3 h-3 text-[#00e476]" />
-                Max Capital Per Trade
+                Capital / Trade
               </span>
-              <span className="text-[#00e476] font-bold">{(allocationPct * 100).toFixed(0)}% of Cash</span>
+              <span className="text-[#00e476] font-bold">{(allocationPct * 100).toFixed(0)}%</span>
             </label>
             <input
               type="range"
@@ -912,7 +1017,7 @@ export default function StockSimulatorPanel({
             <div className="flex items-center justify-between mb-1">
               <label className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1">
                 <Shield className="w-3 h-3 text-[#00dbe7]" />
-                Trailing Stop Protection
+                Trailing Stop
               </label>
               <input
                 type="checkbox"
@@ -932,8 +1037,8 @@ export default function StockSimulatorPanel({
                 onChange={e => setTrailingStopPct(parseFloat(e.target.value) || 3.0)}
                 className="w-20 bg-surface-container-lowest border border-outline/30 rounded-xl px-2.5 py-1 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00e476] disabled:opacity-50"
               />
-              <span className="text-[11px] text-on-surface-variant font-sans">
-                % ratchet below peak
+              <span className="text-[10px] text-on-surface-variant font-sans">
+                % below peak
               </span>
             </div>
           </div>
@@ -1177,9 +1282,9 @@ export default function StockSimulatorPanel({
             }`}
           >
             <History className="w-3.5 h-3.5" />
-            <span>Completed Trades Ledger</span>
+            <span>Completed & Executed Trades Ledger</span>
             <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[#00dbe7]/15 text-[#00dbe7]">
-              {portfolio?.closedTrades?.length || 0}
+              {allLedgerTrades.length}
             </span>
           </button>
 
@@ -1274,7 +1379,7 @@ export default function StockSimulatorPanel({
                             <div className="text-[10px] text-on-surface-variant flex items-center gap-1">
                               <span>{pos.daysHeld ?? 0}d held</span>
                               {pos.entryTimestamp && (
-                                <span>• {new Date(pos.entryTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                                <span>• {formatTimeWithSeconds(pos.entryTimestamp)}</span>
                               )}
                             </div>
                           </td>
@@ -1360,15 +1465,58 @@ export default function StockSimulatorPanel({
           </div>
         )}
 
-        {/* ── TAB 2: COMPLETED TRADES LEDGER ── */}
+        {/* ── TAB 2: COMPLETED & EXECUTED TRADES LEDGER ── */}
         {simulatorTab === 'CLOSED_TRADES' && (
           <div>
-            {(!portfolio?.closedTrades || portfolio.closedTrades.length === 0) ? (
+            {/* Filter Toolbar */}
+            <div className="p-3 bg-surface-container-lowest border-b border-outline/10 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-1.5 bg-surface-container p-1 rounded-lg border border-outline/15 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setTradeLedgerFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                    tradeLedgerFilter === 'ALL'
+                      ? 'bg-[#00dbe7] text-[#002022] shadow'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  All Activity ({allLedgerTrades.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTradeLedgerFilter('EXITS')}
+                  className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                    tradeLedgerFilter === 'EXITS'
+                      ? 'bg-[#00e476] text-[#002022] shadow'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  Closed Exits ({allLedgerTrades.filter(t => t.type !== 'BUY_ENTRY').length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTradeLedgerFilter('ENTRIES')}
+                  className={`px-2.5 py-1 rounded-md font-bold transition-all cursor-pointer ${
+                    tradeLedgerFilter === 'ENTRIES'
+                      ? 'bg-purple-400 text-[#002022] shadow'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  Buy Fills ({allLedgerTrades.filter(t => t.type === 'BUY_ENTRY').length})
+                </button>
+              </div>
+
+              <span className="text-[11px] text-on-surface-variant">
+                Showing {filteredLedgerTrades.length} of {allLedgerTrades.length} trade records
+              </span>
+            </div>
+
+            {filteredLedgerTrades.length === 0 ? (
               <div className="p-10 text-center text-on-surface-variant flex flex-col items-center justify-center gap-2">
                 <History className="w-8 h-8 opacity-40 text-[#00dbe7]" />
-                <p className="font-sans font-bold text-sm">No completed trades recorded yet.</p>
+                <p className="font-sans font-bold text-sm">No trades matching this filter.</p>
                 <p className="text-xs text-on-surface-variant max-w-md">
-                  Trades will appear here as soon as positions reach their Take-Profit targets, Stop-Loss triggers, or are manually closed.
+                  Trades will appear here as soon as positions are purchased, hit Take-Profit targets, hit Stop-Loss triggers, or are closed manually.
                 </p>
               </div>
             ) : (
@@ -1377,18 +1525,20 @@ export default function StockSimulatorPanel({
                   <thead>
                     <tr className="bg-surface-container-lowest/80 text-[10px] text-on-surface-variant uppercase tracking-wider border-b border-outline/10">
                       <th className="py-3 px-4 font-bold">Trade & Asset</th>
+                      <th className="py-3 px-3 font-bold">Type / Order</th>
                       <th className="py-3 px-3 font-bold">Entry Date & Time</th>
                       <th className="py-3 px-3 font-bold">Exit Date & Time</th>
                       <th className="py-3 px-3 font-bold text-center">Holding Period</th>
                       <th className="py-3 px-3 font-bold text-right">Shares</th>
                       <th className="py-3 px-3 font-bold text-right">Entry Price</th>
-                      <th className="py-3 px-3 font-bold text-right">Exit Price</th>
+                      <th className="py-3 px-3 font-bold text-right">Exit / LTP Price</th>
                       <th className="py-3 px-3 font-bold text-right">Realized PnL</th>
-                      <th className="py-3 px-4 font-bold text-center">Exit Reason</th>
+                      <th className="py-3 px-4 font-bold text-center">Strategy / Reason</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-outline/10 text-xs font-mono">
-                    {portfolio.closedTrades.map(trade => {
+                    {filteredLedgerTrades.map(trade => {
+                      const isBuy = trade.type === 'BUY_ENTRY';
                       const isProfit = trade.realizedPnL >= 0;
                       const tradeSign = getAssetCurrencySymbol(trade.symbol, undefined, (trade as any).currencySymbol);
 
@@ -1397,27 +1547,61 @@ export default function StockSimulatorPanel({
                           <td className="py-3 px-4">
                             <span className="font-bold text-on-surface">{trade.symbol}</span>
                             <div className="text-[10px] text-on-surface-variant truncate max-w-[130px]">
-                              {trade.companyName}
+                              {trade.companyName || trade.symbol}
                             </div>
                           </td>
 
                           <td className="py-3 px-3">
-                            <div className="font-bold text-on-surface">{trade.entryDate || formatDateTime(trade.entryTimestamp)}</div>
-                            <div className="text-[10px] text-on-surface-variant">
-                              {trade.entryTimestamp ? new Date(trade.entryTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '09:30'}
+                            <span
+                              className={`px-2 py-0.5 rounded text-[10px] font-bold inline-block max-w-[150px] truncate ${
+                                trade.type === 'BUY_ENTRY'
+                                  ? 'bg-[#00dbe7]/15 text-[#00dbe7]'
+                                  : trade.type === 'TAKE_PROFIT'
+                                  ? 'bg-[#00e476]/15 text-[#00e476]'
+                                  : trade.type === 'STOP_LOSS'
+                                  ? 'bg-rose-500/15 text-rose-400'
+                                  : trade.type === 'TRAILING_STOP_EXIT'
+                                  ? 'bg-amber-400/15 text-amber-300'
+                                  : 'bg-purple-500/15 text-purple-400'
+                              }`}
+                              title={trade.reason}
+                            >
+                              {trade.type === 'BUY_ENTRY' ? 'BUY ORDER FILL' : trade.type.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <div className="font-bold text-on-surface">
+                              {trade.entryDate || formatDateTime(trade.entryTimestamp || trade.executedAt)}
+                            </div>
+                            <div className="text-[10px] text-on-surface-variant flex items-center gap-1">
+                              <Clock className="w-3 h-3 opacity-60" />
+                              <span>{formatTimeWithSeconds(trade.entryTimestamp || trade.executedAt)}</span>
                             </div>
                           </td>
 
                           <td className="py-3 px-3">
-                            <div className="font-bold text-on-surface">{trade.exitDate || formatDateTime(trade.exitTimestamp || trade.executedAt)}</div>
-                            <div className="text-[10px] text-on-surface-variant">
-                              {trade.exitTimestamp ? new Date(trade.exitTimestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '15:30'}
-                            </div>
+                            {isBuy ? (
+                              <span className="text-[11px] text-[#00e476] font-sans font-bold flex items-center gap-1">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#00e476] animate-pulse" />
+                                Active in Portfolio
+                              </span>
+                            ) : (
+                              <>
+                                <div className="font-bold text-on-surface">
+                                  {trade.exitDate || formatDateTime(trade.exitTimestamp || trade.executedAt)}
+                                </div>
+                                <div className="text-[10px] text-on-surface-variant flex items-center gap-1">
+                                  <Clock className="w-3 h-3 opacity-60" />
+                                  <span>{formatTimeWithSeconds(trade.exitTimestamp || trade.executedAt)}</span>
+                                </div>
+                              </>
+                            )}
                           </td>
 
                           <td className="py-3 px-3 text-center">
                             <span className="px-2 py-0.5 rounded bg-surface-container-high text-on-surface font-bold text-[10px]">
-                              {trade.holdingDays ? `${trade.holdingDays}d` : '1d'}
+                              {isBuy ? 'Holding' : (trade.holdingDays ? `${trade.holdingDays}d` : '1d')}
                             </span>
                           </td>
 
@@ -1426,40 +1610,39 @@ export default function StockSimulatorPanel({
                           </td>
 
                           <td className="py-3 px-3 text-right text-on-surface">
-                            {tradeSign}{trade.entryPrice ? trade.entryPrice.toFixed(2) : '—'}
+                            {tradeSign}{trade.entryPrice ? trade.entryPrice.toFixed(2) : (trade.price ? trade.price.toFixed(2) : '—')}
                           </td>
 
                           <td className="py-3 px-3 text-right font-bold text-on-surface">
-                            {tradeSign}{trade.price.toFixed(2)}
+                            {isBuy ? '—' : `${tradeSign}${(trade.exitPrice || trade.price || 0).toFixed(2)}`}
                           </td>
 
                           <td className="py-3 px-3 text-right">
-                            <div className={`font-bold ${isProfit ? 'text-[#00e476]' : 'text-rose-400'}`}>
-                              {isProfit ? '+' : ''}{tradeSign}{trade.realizedPnL.toFixed(2)}
-                            </div>
-                            <div className={`text-[10px] ${isProfit ? 'text-[#00e476]' : 'text-rose-400'}`}>
-                              {isProfit ? '+' : ''}{trade.realizedPnLPct.toFixed(2)}%
-                            </div>
+                            {isBuy ? (
+                              <span className="text-[11px] text-on-surface-variant italic font-sans">
+                                Floating / Open
+                              </span>
+                            ) : (
+                              <>
+                                <div className={`font-bold ${isProfit ? 'text-[#00e476]' : 'text-rose-400'}`}>
+                                  {isProfit ? '+' : ''}{tradeSign}{trade.realizedPnL.toFixed(2)}
+                                </div>
+                                <div className={`text-[10px] ${isProfit ? 'text-[#00e476]' : 'text-rose-400'}`}>
+                                  {isProfit ? '+' : ''}{trade.realizedPnLPct.toFixed(2)}%
+                                </div>
+                              </>
+                            )}
                           </td>
 
                           <td className="py-3 px-4 text-center">
-                            <span
-                              className={`px-2 py-0.5 rounded text-[10px] font-bold inline-block max-w-[180px] truncate ${
-                                trade.type === 'TAKE_PROFIT'
-                                  ? 'bg-[#00e476]/15 text-[#00e476]'
-                                  : trade.type === 'STOP_LOSS'
-                                  ? 'bg-rose-500/15 text-rose-400'
-                                  : trade.type === 'TRAILING_STOP_EXIT'
-                                  ? 'bg-[#00dbe7]/15 text-[#00dbe7]'
-                                  : 'bg-purple-500/15 text-purple-400'
-                              }`}
-                              title={trade.reason}
-                            >
-                              {trade.type.replace('_', ' ')}
-                            </span>
-                            <div className="text-[9px] text-on-surface-variant truncate max-w-[180px] mt-0.5">
-                              {trade.reason}
+                            <div className="text-[10px] text-on-surface max-w-[200px] truncate mx-auto" title={trade.reason}>
+                              {trade.reason || 'Trade Execution'}
                             </div>
+                            {trade.friction > 0 && (
+                              <div className="text-[9px] text-on-surface-variant mt-0.5">
+                                Friction/STT: {tradeSign}{trade.friction.toFixed(2)}
+                              </div>
+                            )}
                           </td>
                         </tr>
                       );

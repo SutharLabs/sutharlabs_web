@@ -44,8 +44,40 @@ function localHistoryPath(simId: string): string {
 
 // ── Simulation Registry ───────────────────────────────────────────────────────
 function readRegistry(): SimulationRegistryEntry[] {
-  const reg = readJsonData<SimulationRegistryEntry[]>(SIM_REGISTRY_KEY, []);
-  return Array.isArray(reg) ? reg : [];
+  let reg = readJsonData<SimulationRegistryEntry[]>(SIM_REGISTRY_KEY, []);
+  if (!Array.isArray(reg)) reg = [];
+
+  const nowIso = new Date().toISOString();
+  let modified = false;
+
+  if (!reg.some(r => r.id === "default")) {
+    reg.unshift({
+      id: "default",
+      label: "Default Interactive Simulation",
+      createdAt: nowIso,
+      lastRunAt: nowIso,
+      totalRuns: 0,
+      totalTradeRuns: 0
+    });
+    modified = true;
+  }
+
+  if (!reg.some(r => r.id === "cron_live")) {
+    reg.push({
+      id: "cron_live",
+      label: "Cloud Cron Live Trading (1m)",
+      createdAt: nowIso,
+      lastRunAt: nowIso,
+      totalRuns: 0,
+      totalTradeRuns: 0
+    });
+    modified = true;
+  }
+
+  if (modified) {
+    writeJsonData(SIM_REGISTRY_KEY, reg);
+  }
+  return reg;
 }
 
 function upsertRegistry(
@@ -76,7 +108,9 @@ export function listSimulations(): SimulationRegistryEntry[] {
 }
 
 export function deleteSimulation(simId: string): void {
-  if (simId === "default") throw new Error("Cannot delete the default simulation.");
+  if (simId === "default" || simId === "cron_live") {
+    throw new Error(`Cannot delete protected simulation "${simId}".`);
+  }
   const reg = readRegistry().filter(r => r.id !== simId);
   writeJsonData(SIM_REGISTRY_KEY, reg);
   // Note: blob entries for the portfolio/history keys become orphaned but are harmless.
@@ -332,7 +366,11 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     }
   }
 
-  // Pre-fetch 1Y Daily Candles for all tracked symbols
+  // Resolve timeframe interval ('1m' | '5m' | '15m' | '1h' | '4h' | '1d')
+  const targetInterval = (options.timeframe || options.interval || "1d").toLowerCase();
+  const candlePeriod = (targetInterval === '1m') ? '5d' : (targetInterval === '5m' || targetInterval === '15m') ? '1M' : '1Y';
+
+  // Pre-fetch candles for all tracked symbols using the selected timeframe
   const candlesMap = new Map<string, any[]>();
   const quotesMap = new Map<string, any>();
 
@@ -342,7 +380,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
         const normSym = normalizeTicker(item.symbol, item.market);
         const [q, historyRes] = await Promise.all([
           getQuote(normSym, item.market).catch(() => null),
-          getHistory(normSym, "1Y", "1d", item.market).catch(() => null)
+          getHistory(normSym, candlePeriod, targetInterval, item.market).catch(() => null)
         ]);
         const candles = (historyRes as any)?.candles || [];
         if (candles.length > 0) {
@@ -679,7 +717,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
       let candles = candlesMap.get(pos.symbol) || [];
       if (!candles || candles.length === 0) {
         const region = detectMarketRegion(pos.symbol);
-        const historyRes = await getHistory(pos.symbol, "1Y", "1d", region).catch(() => null);
+        const historyRes = await getHistory(pos.symbol, candlePeriod, targetInterval, region).catch(() => null);
         candles = (historyRes as any)?.candles || [];
       }
 
@@ -690,24 +728,36 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
       const lastCandle = candles[candles.length - 1];
       const { high, low, close } = lastCandle;
-      pos.currentPrice = close;
-      pos.currentValue = pos.shares * close;
+
+      // Determine latest live market price: check live quote first (LTP / post-market price), fallback to candle close
+      let livePrice = close;
+      try {
+        const quote = quotesMap.get(pos.symbol) || await getQuote(pos.symbol, detectMarketRegion(pos.symbol)).catch(() => null);
+        if (quote && typeof quote.price === "number" && quote.price > 0) {
+          livePrice = quote.price;
+        }
+      } catch {}
+
+      pos.currentPrice = parseFloat(livePrice.toFixed(2));
+      pos.currentValue = parseFloat((pos.shares * pos.currentPrice).toFixed(2));
       pos.daysHeld = Math.max(1, Math.round((Date.now() - new Date(pos.entryTimestamp || pos.entryDate).getTime()) / (1000 * 3600 * 24)));
+      pos.unrealizedPnL = parseFloat(((pos.currentPrice - pos.entryPrice) * pos.shares).toFixed(2));
+      pos.unrealizedPnLPct = pos.entryPrice > 0 ? parseFloat((((pos.currentPrice - pos.entryPrice) / pos.entryPrice) * 100).toFixed(2)) : 0;
 
       let closed = false;
-      let exitPrice = close;
+      let exitPrice = pos.currentPrice;
       let exitReason = "";
       let exitType: EODTradeExecution["type"] = "TAKE_PROFIT";
 
-      // Check Take Profit Hit
-      if (high >= pos.takeProfit) {
+      // Check Take Profit Hit against candle high or current live price
+      if (high >= pos.takeProfit || pos.currentPrice >= pos.takeProfit) {
         closed = true;
         exitPrice = pos.takeProfit;
-        exitReason = `Take-Profit limit target reached at ${exitPrice.toFixed(2)} (High: ${high.toFixed(2)})`;
+        exitReason = `Take-Profit limit target reached at ${exitPrice.toFixed(2)} (High: ${high.toFixed(2)}, Current: ${pos.currentPrice.toFixed(2)})`;
         exitType = "TAKE_PROFIT";
       }
-      // Check Stop Loss / Trailing Stop Hit
-      else if (low <= pos.stopLoss) {
+      // Check Stop Loss / Trailing Stop Hit against candle low or current live price
+      else if (low <= pos.stopLoss || pos.currentPrice <= pos.stopLoss) {
         closed = true;
         exitPrice = pos.stopLoss;
         if (pos.stopLoss > pos.entryPrice) {
@@ -715,7 +765,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
           exitReason = `Trailing Stop profit protection triggered at ${exitPrice.toFixed(2)} (Locked in gain above entry ${pos.entryPrice.toFixed(2)})`;
         } else {
           exitType = "STOP_LOSS";
-          exitReason = `Stop-Loss triggered at ${exitPrice.toFixed(2)} (Low: ${low.toFixed(2)})`;
+          exitReason = `Stop-Loss triggered at ${exitPrice.toFixed(2)} (Low: ${low.toFixed(2)}, Current: ${pos.currentPrice.toFixed(2)})`;
         }
       }
 
@@ -770,18 +820,19 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
         closedTrades.push(tradeExecution);
         store.closedTrades.unshift(tradeExecution);
       } else {
-        // Trailing Stop Check
-        if (close > pos.highestPriceSinceEntry) {
+        // Trailing Stop Check: evaluate against highest of candle close and current price
+        const highestRecent = Math.max(close, pos.currentPrice);
+        if (highestRecent > pos.highestPriceSinceEntry) {
           const oldStop = pos.stopLoss;
-          const newStop = Math.max(oldStop, parseFloat((close * (1 - trailingStopPct / 100)).toFixed(2)));
+          const newStop = Math.max(oldStop, parseFloat((highestRecent * (1 - trailingStopPct / 100)).toFixed(2)));
           if (newStop > oldStop) {
             pos.stopLoss = newStop;
-            pos.highestPriceSinceEntry = close;
+            pos.highestPriceSinceEntry = highestRecent;
             updatedTrailingStops.push({
               symbol: pos.symbol,
               oldStop,
               newStop,
-              highPrice: close
+              highPrice: highestRecent
             });
           }
         }
@@ -811,7 +862,11 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
       const signal = evaluateStrategy(strategy, candles, quote, {});
       if (signal.action === "BUY" && signal.confidence >= 0.55) {
         const lastCandle = candles[candles.length - 1];
-        const entryPrice = lastCandle.close;
+        // Prefer live market quote LTP for real-time entry; fallback to candle close
+        const liveEntry = (quote && typeof quote.price === "number" && quote.price > 0)
+          ? quote.price
+          : lastCandle.close;
+        const entryPrice = parseFloat(liveEntry.toFixed(2));
 
         const maxCapitalForTrade = store.cash * allocationPct;
         const shares = Math.floor(maxCapitalForTrade / entryPrice);
