@@ -2,5 +2,9 @@
   "cash": 100000,
   "initialCash": 100000,
   "positions": [],
-  "totalRealizedPnL": 0
+  "closedTrades": [],
+  "totalRealizedPnL": 0,
+  "totalFrictionPaid": 0,
+  "winCount": 0,
+  "lossCount": 0
 }

@@ -36,7 +36,7 @@ import {
   getRegionCurrencyInfo
 } from "./backtest/index.js";
 import { runMarketScan, dispatchWebhookAlert } from "./scanner/index.js";
-import { runEODSimulation, getEODHistory, getEODPortfolio, resetSimulator } from "./simulator/index.js";
+import { runEODSimulation, getEODHistory, getEODPortfolio, resetSimulator, closeEODPosition } from "./simulator/index.js";
 import { readJsonData, writeJsonData } from "./storageUtils.js";
 
 export interface WatchlistItem {
@@ -935,6 +935,23 @@ export function registerRoutes(router: Router) {
       res.json(portfolio);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  router.post("/simulator/close-position", async (req: any, res: any) => {
+    try {
+      const { positionId } = req.body || {};
+      if (!positionId) {
+        return res.status(400).json({ error: "positionId is required" });
+      }
+      const result = await closeEODPosition(positionId);
+      if (!result.success) {
+        return res.status(404).json({ error: "Position not found in portfolio" });
+      }
+      res.json(result);
+    } catch (e: any) {
+      console.error("[Simulator] Close position error:", e);
+      res.status(500).json({ error: e.message || "Failed to close position." });
     }
   });
 
