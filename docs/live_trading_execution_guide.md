@@ -51,9 +51,12 @@ In this simulator, "live" does **not** mean connecting to a broker and submittin
 The key endpoint that performs all of this is:
 
 ```
-POST https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod
-GET  https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod
+POST https://www.sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod
+GET  https://www.sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod
 ```
+
+> [!IMPORTANT]
+> **Always use `www.sutharlabs.com`:** Vercel automatically issues an HTTP `308 Permanent Redirect` from `sutharlabs.com` to `www.sutharlabs.com`. Cron-Job.org does not follow redirects by default, so calling `sutharlabs.com` directly will fail with `308 Permanent Redirect`.
 
 > Both `GET` and `POST` are accepted. External cron services typically send `GET` requests, while the dashboard UI sends `POST` with a JSON body.
 
@@ -130,19 +133,23 @@ This is the **recommended approach for live execution on the free Vercel Hobby p
 
 ### Exact URLs to Configure
 
+> [!WARNING]
+> **Must include `www.` in the URL!**
+> Vercel redirects apex `sutharlabs.com` to canonical `www.sutharlabs.com` with an HTTP `308 Permanent Redirect`. If you omit `www.`, Cron-Job.org will log a `308` error and will NOT trigger the simulation.
+
 #### 1. Default Portfolio
 ```
-https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod
+https://www.sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod
 ```
 
 #### 2. Specific Named Simulation Instance (e.g. `nifty_momentum`)
 ```
-https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=nifty_momentum
+https://www.sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=nifty_momentum
 ```
 
 #### 3. Fully Customized Simulation (Custom Strategy, Market & Sizing)
 ```
-https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=us_tech_breakout&strategyId=strat-donchian-breakout&market=US&capitalAllocationPct=0.20
+https://www.sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=us_tech_breakout&strategyId=strat-donchian-breakout&market=US&capitalAllocationPct=0.20
 ```
 
 ### Setup Steps for Cron-Job.org
@@ -154,7 +161,7 @@ https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulation
 | Field | Value |
 |---|---|
 | **Title** | SutharLabs — Live Simulation (`nifty_momentum`) |
-| **URL** | `https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=nifty_momentum` |
+| **URL** | `https://www.sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=nifty_momentum` |
 | **HTTP Method** | `GET` |
 | **Schedule** | Every 1 minute (`* * * * *`) or Every 5 minutes (`*/5 * * * *`) |
 | **Notifications** | Enable email on failure |
@@ -195,15 +202,15 @@ You can set up 3 separate cron jobs on Cron-Job.org to compare performance acros
 
 1. **Job 1 (Indian EMA Trend Following)**:
    ```
-   https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=in_ema_trend&strategyId=strat-ema-cross&market=IN
+   https://www.sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=in_ema_trend&strategyId=strat-ema-cross&market=IN
    ```
 2. **Job 2 (US RSI Dip Buyer)**:
    ```
-   https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=us_rsi_dip&strategyId=strat-rsi-oversold&market=US
+   https://www.sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=us_rsi_dip&strategyId=strat-rsi-oversold&market=US
    ```
 3. **Job 3 (Breakout Model with 25% Allocation)**:
    ```
-   https://sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=breakout_heavy&strategyId=strat-donchian-breakout&market=IN&capitalAllocationPct=0.25
+   https://www.sutharlabs.com/api/workspace/stock-analyzer/simulator/run-eod?simulationId=breakout_heavy&strategyId=strat-donchian-breakout&market=IN&capitalAllocationPct=0.25
    ```
 
 ### Managing Simulations via API & UI

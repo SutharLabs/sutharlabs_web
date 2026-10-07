@@ -500,7 +500,10 @@ export default function StockSimulatorPanel({
 
   // Copy full Cron-Job.org URL
   const handleCopyCronUrl = (simId: string) => {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://sutharlabs.com';
+    let origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.sutharlabs.com';
+    if (origin.includes('sutharlabs.com') && !origin.includes('www.')) {
+      origin = origin.replace('sutharlabs.com', 'www.sutharlabs.com');
+    }
     const cronUrl = `${origin}${STOCK_API}/simulator/run-eod?simulationId=${encodeURIComponent(simId)}`;
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(cronUrl).then(() => {
