@@ -239,9 +239,9 @@ export default function StockSimulatorPanel({
   }, [fetchSimulationsList]);
 
   // Fetch Current Portfolio & Simulation History from server for selectedSimulationId
-  const fetchPortfolioAndHistory = useCallback(async (targetSimId?: string) => {
+  const fetchPortfolioAndHistory = useCallback(async (targetSimId?: string, silent: boolean = false) => {
     const simIdToFetch = targetSimId || selectedSimulationId || 'default';
-    setIsLoadingPortfolio(true);
+    if (!silent) setIsLoadingPortfolio(true);
     try {
       const emailQuery = userEmail ? `&email=${encodeURIComponent(userEmail)}` : '';
       const [portRes, histRes] = await Promise.all([
@@ -276,12 +276,21 @@ export default function StockSimulatorPanel({
     } catch (err: any) {
       console.warn('[Trade Simulator] Error loading portfolio/history:', err);
     } finally {
-      setIsLoadingPortfolio(false);
+      if (!silent) setIsLoadingPortfolio(false);
     }
   }, [userEmail, selectedSimulationId]);
 
   useEffect(() => {
     fetchPortfolioAndHistory(selectedSimulationId);
+  }, [fetchPortfolioAndHistory, selectedSimulationId]);
+
+  // Periodic Auto-Sync: Automatically polls in the background every 30 seconds
+  // so external Cron-Job.org trade executions reflect on the screen without needing manual clicks!
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchPortfolioAndHistory(selectedSimulationId, true);
+    }, 30000);
+    return () => clearInterval(interval);
   }, [fetchPortfolioAndHistory, selectedSimulationId]);
 
   const handleSelectSimulation = (simId: string) => {
@@ -586,16 +595,37 @@ export default function StockSimulatorPanel({
       <div className="p-5 rounded-2xl bg-surface-container-low border border-outline/20 flex flex-col gap-4 shadow-sm">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
-              <Zap className="w-5 h-5 text-[#00e476]" />
-              Trade Simulator & Portfolio Engine
-            </h2>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
+                <Zap className="w-5 h-5 text-[#00e476]" />
+                Trade Simulator & Portfolio Engine
+              </h2>
+              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#00e476]/10 text-[#00e476] text-[10px] font-bold border border-[#00e476]/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00e476] animate-pulse"></span>
+                Live Auto-Sync (30s)
+              </span>
+            </div>
             <p className="text-xs text-on-surface-variant font-sans mt-0.5">
               Simulate algorithmic trade execution with realistic slippage, STT/SEC friction, trailing stops, and multi-day historical bar replay.
             </p>
           </div>
 
           <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                fetchPortfolioAndHistory(selectedSimulationId, false);
+              }}
+              disabled={isLoadingPortfolio}
+              className="px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline/30 rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all text-xs"
+              title="Refresh simulator data now"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPortfolio ? 'animate-spin text-[#00e476]' : 'text-on-surface-variant'}`} />
+              <span>{isLoadingPortfolio ? 'Syncing...' : 'Sync Now'}</span>
+            </button>
+
             <button
               type="button"
               onClick={(e) => {
