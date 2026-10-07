@@ -87,10 +87,13 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
         const normSym = normalizeTicker(meta.symbol, targetMarket);
         const fmt = formatTickerDisplay(normSym, meta.exchange);
 
-        // Fetch quote and candles
+        const scanInterval = ((options as any).interval || (options as any).timeframe || "1d").toLowerCase();
+        const candlePeriod = scanInterval === "1m" ? "5d" : (scanInterval === "5m" || scanInterval === "15m") ? "1M" : "1Y";
+
+        // Fetch quote and candles using selected timeframe
         const [quote, historyRes] = await Promise.all([
           getQuote(normSym, targetMarket).catch(() => null),
-          getHistory(normSym, "1Y", "1d", targetMarket).catch(() => null)
+          getHistory(normSym, candlePeriod, scanInterval, targetMarket).catch(() => null)
         ]);
         const candles = (historyRes as any)?.candles || [];
 

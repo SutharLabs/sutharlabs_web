@@ -153,6 +153,24 @@ function ensureSimulatorStore(simId: string): PersistedEODState {
   if (typeof store.totalFrictionPaid !== "number") store.totalFrictionPaid = 0;
   if (typeof store.winCount !== "number") store.winCount = 0;
   if (typeof store.lossCount !== "number") store.lossCount = 0;
+
+  // Deduplicate open positions by normalized symbol so 1-minute crons keep only 1 instance
+  if (store.positions.length > 1) {
+    const seen = new Set<string>();
+    const uniquePositions: EODPosition[] = [];
+    for (const pos of store.positions) {
+      const norm = normalizeTicker(pos.symbol, pos.market);
+      if (!seen.has(norm)) {
+        seen.add(norm);
+        uniquePositions.push(pos);
+      }
+    }
+    if (uniquePositions.length !== store.positions.length) {
+      store.positions = uniquePositions;
+      saveSimulatorStore(store, simId);
+    }
+  }
+
   return store;
 }
 
@@ -397,7 +415,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     })
   );
 
-  const isReplayMode = options.mode === "HISTORICAL_REPLAY" || Boolean(options.startDate);
+  const isReplayMode = options.mode === "HISTORICAL_REPLAY";
 
   // If in Historical Replay Mode, determine the date range to replay
   if (isReplayMode) {
@@ -850,10 +868,15 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
   // 4. Step B: Scan Tracked Watchlist Assets for New EOD Entries
   for (const item of trackedSymbols) {
-    if (store.positions.some(p => p.symbol === item.symbol)) continue;
+    const normSym = normalizeTicker(item.symbol, item.market);
+    // Strictly prevent duplicate positions for the same stock asset:
+    const alreadyOpen = store.positions.some(p => {
+      const pNorm = normalizeTicker(p.symbol, p.market || item.market);
+      return pNorm === normSym || p.symbol === normSym || p.symbol === item.symbol;
+    });
+    if (alreadyOpen) continue;
 
     try {
-      const normSym = normalizeTicker(item.symbol, item.market);
       const candles = candlesMap.get(normSym) || candlesMap.get(item.symbol) || [];
       const quote = quotesMap.get(normSym) || quotesMap.get(item.symbol) || null;
 

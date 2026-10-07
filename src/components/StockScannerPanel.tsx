@@ -22,7 +22,8 @@ import {
   ChevronRight,
   ExternalLink,
   Flame,
-  Search
+  Search,
+  Clock
 } from 'lucide-react';
 import { IStrategy } from '../plugins/StockTracker/strategies/types';
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
@@ -60,6 +61,7 @@ export default function StockScannerPanel({
   // Scanner Criteria State
   const [selectedUniverse, setSelectedUniverse] = useState<string>(activeUniverseKey || 'IN');
   const [selectedStrategy, setSelectedStrategy] = useState<string>(activeStrategyId || 'strat-ema-cross');
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string>('1d');
   const [minConfidence, setMinConfidence] = useState<number>(0.60);
   const [minVolumeSpike, setMinVolumeSpike] = useState<number>(1.0);
   const [signalFilter, setSignalFilter] = useState<'ALL' | 'BUY' | 'SELL' | 'HIGH_CONVICTION'>('ALL');
@@ -157,6 +159,8 @@ export default function StockScannerPanel({
     try {
       const payload: any = {
         strategyId: selectedStrategy,
+        timeframe: selectedTimeframe,
+        interval: selectedTimeframe,
         minConfidence,
         minVolumeSpike,
         signalFilter
@@ -303,7 +307,7 @@ export default function StockScannerPanel({
         </div>
 
         {/* Filters and Inputs Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-3 border-t border-outline/10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-outline/10">
           {/* 1. Market Universe Selector */}
           <div>
             <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
@@ -341,6 +345,27 @@ export default function StockScannerPanel({
                   {s.name} ({s.market || 'GLOBAL'})
                 </option>
               ))}
+            </select>
+          </div>
+
+          {/* 3. Scan Candle Timeframe */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
+              <Clock className="w-3 h-3 text-[#00e476]" />
+              Scan Timeframe
+            </label>
+            <select
+              value={selectedTimeframe}
+              onChange={e => setSelectedTimeframe(e.target.value)}
+              disabled={isScanning}
+              className="w-full bg-surface-container-lowest border border-outline/30 rounded-xl px-3 py-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7]"
+            >
+              <option value="1d">1 Day (EOD Daily • Default)</option>
+              <option value="4h">4 Hours (Intraday Swing)</option>
+              <option value="1h">1 Hour (Intraday Trend)</option>
+              <option value="15m">15 Minutes (Momentum)</option>
+              <option value="5m">5 Minutes (Intraday Scalp)</option>
+              <option value="1m">1 Minute (Ultra Fast)</option>
             </select>
           </div>
 

@@ -607,33 +607,35 @@ export default function StockSimulatorPanel({
     }
   };
 
-  // Unified Executed & Completed Trades Ledger
+  // Unified Executed & Completed Trades Ledger with strict single-instance deduplication
   const allLedgerTrades = useMemo(() => {
-    const map = new Map<string, any>();
+    const closedMap = new Map<string, any>();
+    const buyEntriesMap = new Map<string, any>();
 
     // 1. All explicitly closed trades in portfolio
     (portfolio?.closedTrades || []).forEach(t => {
-      if (t?.id) map.set(t.id, t);
+      if (t?.id) closedMap.set(t.id, t);
     });
 
     // 2. Closed trades reported in historical/cron simulation runs
     (historyRuns || []).forEach(run => {
       (run.closedPositions || []).forEach(t => {
-        if (t?.id && !map.has(t.id)) map.set(t.id, t);
+        if (t?.id && !closedMap.has(t.id)) closedMap.set(t.id, t);
       });
-      // Also include opened positions from history runs
+      // Buy entries from runs - deduplicate by symbol so 1-minute crons keep only 1 instance
       (run.openedPositions || []).forEach(t => {
-        if (t?.id && !map.has(t.id)) map.set(t.id, t);
+        if (t?.symbol && !buyEntriesMap.has(t.symbol)) {
+          buyEntriesMap.set(t.symbol, t);
+        }
       });
     });
 
-    // 3. For any current live open positions in portfolio that haven't closed yet,
-    // include their entry fill record so live executions immediately appear in the ledger!
+    // 3. For any current live open positions in portfolio,
+    // ensure their entry fill record is recorded (single instance per symbol)
     (portfolio?.positions || []).forEach(pos => {
-      const entryId = `entry-${pos.id}`;
-      if (!map.has(entryId)) {
-        map.set(entryId, {
-          id: entryId,
+      if (!buyEntriesMap.has(pos.symbol)) {
+        buyEntriesMap.set(pos.symbol, {
+          id: `entry-${pos.id}`,
           type: 'BUY_ENTRY',
           symbol: pos.symbol,
           companyName: pos.name,
@@ -654,7 +656,10 @@ export default function StockSimulatorPanel({
       }
     });
 
-    const list = Array.from(map.values()).sort((a, b) => {
+    // Combine unique closed trades and unique buy entries
+    const combined = [...Array.from(closedMap.values()), ...Array.from(buyEntriesMap.values())];
+
+    const list = combined.sort((a, b) => {
       const timeA = new Date(a.exitTimestamp || a.executedAt || a.entryTimestamp || 0).getTime();
       const timeB = new Date(b.exitTimestamp || b.executedAt || b.entryTimestamp || 0).getTime();
       return timeB - timeA;

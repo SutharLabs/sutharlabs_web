@@ -155,6 +155,7 @@ interface MarketUniverse {
 }
 
 type TimeframePeriod = '1D' | '1W' | '1M' | '1Y' | '5Y' | 'ALL';
+type CandleInterval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
 
 const DEFAULT_UNIVERSES: Record<string, MarketUniverse> = {
   IN: {
@@ -580,6 +581,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
   const [loading, setLoading] = useState(true);
   const [activePeriod, setActivePeriod] = useState<TimeframePeriod>('1W');
+  const [activeInterval, setActiveInterval] = useState<CandleInterval>('15m');
 
   // Chart Overlay & Fullscreen View Controls
   const [showEma20, setShowEma20] = useState<boolean>(true);
@@ -1592,7 +1594,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   }, [geminiApiKey, recordAiUsage]);
 
   // ── 3. Core Data Fetch Pipeline with Real Exchange Formatting ──────────────────
-  const fetchAll = useCallback(async (sym: string, period: string) => {
+  const fetchAll = useCallback(async (sym: string, period: string, intervalVal?: string) => {
     setLoading(true);
     try {
       const normalizedSym = normalizeTicker(sym, activeMarketKey);
@@ -1614,7 +1616,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       }
 
       // 2. History for Candlestick Chart
-      const hRes = await fetch(`${STOCK_API}/history?symbol=${encodeURIComponent(normalizedSym)}&period=${period}&region=${activeMarketKey}`);
+      const targetInterval = intervalVal || activeInterval;
+      const hRes = await fetch(`${STOCK_API}/history?symbol=${encodeURIComponent(normalizedSym)}&period=${period}&region=${activeMarketKey}&interval=${targetInterval}`);
       if (hRes.ok) {
         const h = await hRes.json();
         setCandles(h.candles || []);
@@ -1681,7 +1684,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     } finally {
       setLoading(false);
     }
-  }, [activeMarketKey, selectedStrategyId, rsiPeriod, bbPeriod, bbStdDev, ema20Period, ema50Period, macdFast, macdSlow, macdSignal, geminiApiKey, fetchNewsAndSentiment]);
+  }, [activeMarketKey, selectedStrategyId, rsiPeriod, bbPeriod, bbStdDev, ema20Period, ema50Period, macdFast, macdSlow, macdSignal, geminiApiKey, fetchNewsAndSentiment, activeInterval]);
 
   // Re-evaluate strategy signal immediately whenever user switches active strategy in the dropdown
   useEffect(() => {
@@ -1783,10 +1786,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     return () => clearTimeout(timer);
   }, [symbolInput, activeMarketKey, universes]);
 
-  // Initial fetch and on symbol/period/parameter change
+  // Initial fetch and on symbol/period/interval/parameter change
   useEffect(() => {
-    fetchAll(symbol, activePeriod);
-  }, [symbol, activePeriod, fetchAll]);
+    fetchAll(symbol, activePeriod, activeInterval);
+  }, [symbol, activePeriod, activeInterval, fetchAll]);
 
   // Auto-refresh quote based on configured poll interval
   useEffect(() => {
@@ -1868,7 +1871,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       },
       timeScale: {
         borderColor: borderColor,
-        timeVisible: activePeriod === '1D' || activePeriod === '1W',
+        timeVisible: activeInterval !== '1d' || activePeriod === '1D' || activePeriod === '1W',
         secondsVisible: false,
       },
       handleScroll: { mouseWheel: true, pressedMouseMove: true, horzTouchDrag: true, vertTouchDrag: false },
@@ -1990,7 +1993,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       chart.remove();
       chartInstanceRef.current = null;
     };
-  }, [candles, showVolume, showEma20, showEma50, continuousEma20, continuousEma50, activePeriod, isDark, candleLookup, isChartExpanded]);
+  }, [candles, showVolume, showEma20, showEma50, continuousEma20, continuousEma50, activePeriod, activeInterval, isDark, candleLookup, isChartExpanded]);
 
   // ── 5. Terminal Internal Auto-Scroll ──────────────────────────────────────
   useEffect(() => {
@@ -2829,21 +2832,43 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             {/* Chart Toolbar: Timeframe Selector + Indicator Overlays + Expand Button */}
             <div className="flex flex-wrap justify-between items-center gap-2 p-2.5 border-b border-outline/10 bg-surface-container-low/60">
               
-              {/* Extended Timeframes: 1D, 1W, 1M, 1Y, 5Y, ALL */}
-              <div className="flex gap-1 items-center">
-                {(['1D', '1W', '1M', '1Y', '5Y', 'ALL'] as const).map(p => (
-                  <button
-                    key={p}
-                    onClick={() => setActivePeriod(p)}
-                    className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all cursor-pointer ${
-                      activePeriod === p
-                        ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.2)]'
-                        : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
-                    }`}
-                  >
-                    {p}
-                  </button>
-                ))}
+              {/* Range & Interval Selectors */}
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Intraday & Swing Candle Interval: 1m, 5m, 15m, 1h, 4h, 1d */}
+                <div className="flex items-center gap-1 bg-surface-container-lowest/80 p-0.5 rounded-lg border border-outline/20 shadow-inner">
+                  <span className="text-[10px] uppercase font-mono text-on-surface-variant px-1 font-semibold">Bar:</span>
+                  {(['1m', '5m', '15m', '1h', '4h', '1d'] as const).map(interval => (
+                    <button
+                      key={interval}
+                      onClick={() => setActiveInterval(interval)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-mono transition-all cursor-pointer ${
+                        activeInterval === interval
+                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold shadow-[0_0_8px_rgba(16,185,129,0.25)]'
+                          : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                      }`}
+                      title={`${interval} candle timeframe`}
+                    >
+                      {interval}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Extended Timeframes: 1D, 1W, 1M, 1Y, 5Y, ALL */}
+                <div className="flex gap-1 items-center">
+                  {(['1D', '1W', '1M', '1Y', '5Y', 'ALL'] as const).map(p => (
+                    <button
+                      key={p}
+                      onClick={() => setActivePeriod(p)}
+                      className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all cursor-pointer ${
+                        activePeriod === p
+                          ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.2)]'
+                          : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Indicator Overlay Toggles & Fullscreen Toggle */}
@@ -4028,7 +4053,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 <div>&gt; Active Market: {activeUniverse?.name || activeMarketKey} ({activeUniverse?.currencyCode || 'INR'})</div>
                 <div>&gt; Data Feed Source: {selectedDataSource} (Multi-Market Feed Router)</div>
                 <div>&gt; Indicators: RSI({rsiPeriod}), MACD({macdFast},{macdSlow},{macdSignal}), BB({bbPeriod}, {bbStdDev}), EMA({ema20Period}/{ema50Period})</div>
-                <div>&gt; Active Period: {activePeriod} (Extended History Enabled)</div>
+                <div>&gt; Active Period: {activePeriod} | Bar Interval: {activeInterval} (Extended History Enabled)</div>
                 <div className="text-[#00e476]">&gt; Status: Real-time tick engine running normally</div>
               </div>
             )}
@@ -4812,7 +4837,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
                 <button
                   onClick={() => {
-                    fetchAll(symbol, activePeriod);
+                    fetchAll(symbol, activePeriod, activeInterval);
                     setNotification('Parameters recalculated!');
                     setTimeout(() => setNotification(''), 3000);
                   }}
