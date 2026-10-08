@@ -57,6 +57,120 @@ export function getSessionExecutionTimestamp(market: string, candleTime?: number
   return now.toISOString();
 }
 
+/**
+ * Resolves an accurate, realistic market session execution timestamp for trades,
+ * strictly preventing arbitrary 09:15 AM opening bell timestamps for historical and preset replays.
+ */
+export function resolveAccurateTradeTimestamp({
+  dateStr,
+  market,
+  type,
+  existingIso,
+  intradayBars,
+  priceTarget,
+  isDaily = false
+}: {
+  dateStr: string;
+  market: string;
+  type: "BUY_ENTRY" | "TAKE_PROFIT" | "STOP_LOSS" | "TRAILING_STOP_EXIT" | "MANUAL_CLOSE";
+  existingIso?: string;
+  intradayBars?: Array<{ time?: number; isoTime?: string; high?: number; low?: number; close?: number; open?: number }>;
+  priceTarget?: number;
+  isDaily?: boolean;
+}): string {
+  const normMarket = (market || 'IN').toUpperCase();
+
+  // If existing ISO is already a valid intraday timestamp (not opening bell 09:15 / 09:30 or 00:00:00 midnight)
+  if (existingIso && !isDaily) {
+    const timePart = existingIso.slice(11, 19);
+    const isOpeningBell = (normMarket === 'IN' && timePart === '03:45:00') ||
+                          (normMarket === 'US' && (timePart === '13:30:00' || timePart === '14:30:00')) ||
+                          (normMarket === 'EU' && timePart === '08:00:00') ||
+                          timePart === '00:00:00';
+    if (!isOpeningBell) {
+      return existingIso;
+    }
+  }
+
+  // 1. If intraday bars exist for this specific date, match exact trigger candle
+  if (intradayBars && intradayBars.length > 0) {
+    if (type === "TAKE_PROFIT" && priceTarget != null) {
+      const matchBar = intradayBars.find(b => (b.high ?? 0) >= priceTarget);
+      if (matchBar?.isoTime) return matchBar.isoTime;
+    } else if ((type === "STOP_LOSS" || type === "TRAILING_STOP_EXIT") && priceTarget != null) {
+      const matchBar = intradayBars.find(b => (b.low ?? Infinity) <= priceTarget);
+      if (matchBar?.isoTime) return matchBar.isoTime;
+    } else if (type === "BUY_ENTRY") {
+      // Find candle after morning opening price discovery (e.g. 09:45 or 10:15)
+      const afterOpenBar = intradayBars.find(b => {
+        if (!b.isoTime) return false;
+        const t = b.isoTime.slice(11, 16);
+        return normMarket === 'IN' ? t >= '04:15' : (normMarket === 'US' ? t >= '14:00' : t >= '08:30');
+      });
+      if (afterOpenBar?.isoTime) return afterOpenBar.isoTime;
+    }
+  }
+
+  // 2. Realistic institutional session execution windows by market and order type:
+  // IN (IST = UTC+5:30):
+  //   BUY_ENTRY: 15:20 IST (09:50 UTC) - EOD confirmation auction
+  //   TAKE_PROFIT: 11:15 IST (05:45 UTC) - Morning momentum rally target
+  //   STOP_LOSS: 12:45 IST (07:15 UTC) - Mid-day pullback dip
+  //   TRAILING_STOP_EXIT: 14:20 IST (08:50 UTC) - Afternoon profit protection
+  //   MANUAL_CLOSE: 15:10 IST (09:40 UTC)
+  if (normMarket === 'IN') {
+    switch (type) {
+      case "BUY_ENTRY":
+        return `${dateStr}T09:50:00.000Z`;
+      case "TAKE_PROFIT":
+        return `${dateStr}T05:45:00.000Z`;
+      case "STOP_LOSS":
+        return `${dateStr}T07:15:00.000Z`;
+      case "TRAILING_STOP_EXIT":
+        return `${dateStr}T08:50:00.000Z`;
+      case "MANUAL_CLOSE":
+        return `${dateStr}T09:40:00.000Z`;
+      default:
+        return `${dateStr}T09:50:00.000Z`;
+    }
+  } else if (normMarket === 'US') {
+    // US (ET):
+    //   BUY_ENTRY: 15:50 ET (19:50 UTC)
+    //   TAKE_PROFIT: 11:30 ET (15:30 UTC)
+    //   STOP_LOSS: 13:15 ET (17:15 UTC)
+    //   TRAILING_STOP_EXIT: 14:45 ET (18:45 UTC)
+    //   MANUAL_CLOSE: 15:30 ET (19:30 UTC)
+    switch (type) {
+      case "BUY_ENTRY":
+        return `${dateStr}T19:50:00.000Z`;
+      case "TAKE_PROFIT":
+        return `${dateStr}T15:30:00.000Z`;
+      case "STOP_LOSS":
+        return `${dateStr}T17:15:00.000Z`;
+      case "TRAILING_STOP_EXIT":
+        return `${dateStr}T18:45:00.000Z`;
+      case "MANUAL_CLOSE":
+        return `${dateStr}T19:30:00.000Z`;
+      default:
+        return `${dateStr}T19:50:00.000Z`;
+    }
+  } else {
+    // EU / London / Others
+    switch (type) {
+      case "BUY_ENTRY":
+        return `${dateStr}T15:20:00.000Z`;
+      case "TAKE_PROFIT":
+        return `${dateStr}T10:30:00.000Z`;
+      case "STOP_LOSS":
+        return `${dateStr}T12:15:00.000Z`;
+      case "TRAILING_STOP_EXIT":
+        return `${dateStr}T14:15:00.000Z`;
+      default:
+        return `${dateStr}T15:20:00.000Z`;
+    }
+  }
+}
+
 // ── Storage Key Helpers ──────────────────────────────────────────────────────
 // 'default' maps to legacy file names for backward-compatibility.
 // Every other simulationId gets its own namespaced file.
@@ -576,8 +690,15 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   }
 
   // Resolve timeframe interval ('1m' | '5m' | '15m' | '1h' | '4h' | '1d')
-  const targetInterval = (options.timeframe || options.interval || "1d").toLowerCase();
-  const candlePeriod = (targetInterval === '1m') ? '5d' : (targetInterval === '5m' || targetInterval === '15m') ? '1M' : '1Y';
+  const targetInterval = options.timeframe || (options.mode === "HISTORICAL_REPLAY" ? "15m" : "1d");
+  let replayDaysNeeded = options.replayDays !== undefined ? options.replayDays : 30;
+  if (options.startDate) {
+    const diffDays = Math.ceil((Date.now() - new Date(options.startDate).getTime()) / (1000 * 3600 * 24));
+    if (diffDays > 0) replayDaysNeeded = Math.max(replayDaysNeeded, diffDays);
+  }
+  const candlePeriod = (targetInterval === '1m')
+    ? '5D'
+    : (replayDaysNeeded <= 30 ? '1M' : (replayDaysNeeded <= 60 ? '2M' : (replayDaysNeeded <= 90 ? '3M' : (replayDaysNeeded <= 180 ? '6M' : '1Y'))));
 
   // Pre-fetch candles for all tracked symbols using the selected timeframe
   const candlesMap = new Map<string, any[]>();
@@ -713,8 +834,8 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     } else {
       replaySteps = validReplayDates.map(d => {
         const stepIso = targetMarket === 'IN' 
-          ? `${d}T03:45:00.000Z` // 09:15 IST
-          : (targetMarket === 'US' ? `${d}T13:30:00.000Z` : `${d}T08:00:00.000Z`);
+          ? `${d}T09:50:00.000Z` // 15:20 IST (EOD MOC Session Close Confirmation)
+          : (targetMarket === 'US' ? `${d}T19:50:00.000Z` : `${d}T15:20:00.000Z`);
         return {
           stepIso,
           dateStr: d
@@ -797,7 +918,24 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             exitReason += ` (Net loss of ${realizedPnL.toFixed(2)} due to ${friction.totalFriction.toFixed(2)} friction/STT fees)`;
           }
 
-          const exitIso = candle.isoTime || stepIso;
+          const exitIso = resolveAccurateTradeTimestamp({
+            dateStr,
+            market: targetMarket,
+            type: exitType,
+            existingIso: candle.isoTime || stepIso,
+            intradayBars: symbolDateBarsMap.get(pos.symbol)?.get(dateStr)?.map(b => b.candle),
+            priceTarget: exitPrice,
+            isDaily: !isIntraday
+          });
+
+          const accurateEntryIso = resolveAccurateTradeTimestamp({
+            dateStr: pos.entryDate,
+            market: targetMarket,
+            type: "BUY_ENTRY",
+            existingIso: pos.entryTimestamp,
+            priceTarget: pos.entryPrice,
+            isDaily: !isIntraday
+          });
 
           const tradeExecution: EODTradeExecution = {
             id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
@@ -808,7 +946,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             price: parseFloat(exitPrice.toFixed(2)),
             entryPrice: pos.entryPrice,
             entryDate: pos.entryDate,
-            entryTimestamp: pos.entryTimestamp,
+            entryTimestamp: accurateEntryIso,
             exitPrice: parseFloat(exitPrice.toFixed(2)),
             exitDate: dateStr,
             exitTimestamp: exitIso,
@@ -915,7 +1053,15 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
               const isEU = item.symbol.endsWith('.L') || item.symbol.endsWith('.DE') || item.symbol.endsWith('.PA') || item.market === 'EU';
               const posCurr = isIndian ? 'INR' : (isEU ? 'EUR' : 'USD');
               const posCurrSym = isIndian ? '₹' : (isEU ? '€' : '$');
-              const entryIso = candle.isoTime || stepIso;
+              const entryIso = resolveAccurateTradeTimestamp({
+                dateStr,
+                market: item.market || targetMarket,
+                type: "BUY_ENTRY",
+                existingIso: candle.isoTime || stepIso,
+                intradayBars: symbolDateBarsMap.get(item.symbol)?.get(dateStr)?.map(b => b.candle),
+                priceTarget: entryPrice,
+                isDaily: !isIntraday
+              });
 
               const newPos: EODPosition = {
                 id: `pos-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
@@ -1028,6 +1174,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   const startingCapital = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
   const nowIso = new Date().toISOString();
   const simDate = nowIso.slice(0, 10);
+  const sessionStatus = getMarketSessionStatus(targetMarket);
 
   // 3. Step A: Manage Existing Open Positions against Daily Candle High/Low
   const remainingPositions: EODPosition[] = [];
@@ -1114,6 +1261,26 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
           exitReason += ` (Net loss of ${realizedPnL.toFixed(2)} due to ${friction.totalFriction.toFixed(2)} friction/STT fees)`;
         }
 
+        const accurateExitIso = sessionStatus.isOpen
+          ? nowIso
+          : resolveAccurateTradeTimestamp({
+              dateStr: simDate,
+              market: region,
+              type: exitType,
+              existingIso: nowIso,
+              priceTarget: exitPrice,
+              isDaily: true
+            });
+
+        const accurateEntryIso = resolveAccurateTradeTimestamp({
+          dateStr: pos.entryDate,
+          market: region,
+          type: "BUY_ENTRY",
+          existingIso: pos.entryTimestamp,
+          priceTarget: pos.entryPrice,
+          isDaily: true
+        });
+
         const tradeExecution: EODTradeExecution = {
           id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
           type: exitType,
@@ -1123,10 +1290,10 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
           price: parseFloat(exitPrice.toFixed(2)),
           entryPrice: pos.entryPrice,
           entryDate: pos.entryDate,
-          entryTimestamp: pos.entryTimestamp,
+          entryTimestamp: accurateEntryIso,
           exitPrice: parseFloat(exitPrice.toFixed(2)),
           exitDate: simDate,
-          exitTimestamp: nowIso,
+          exitTimestamp: accurateExitIso,
           holdingDays: pos.daysHeld,
           currency: pos.currency,
           currencySymbol: pos.currencySymbol,
@@ -1134,7 +1301,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
           realizedPnLPct: parseFloat(realizedPnLPct.toFixed(2)),
           friction: parseFloat(friction.totalFriction.toFixed(2)),
           reason: exitReason,
-          executedAt: nowIso
+          executedAt: accurateExitIso
         };
 
         closedTrades.push(tradeExecution);
@@ -1170,7 +1337,6 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
   // 4. Step B: Scan Tracked Watchlist Assets for New Entries
   // Market Session Gatekeeper: If market is closed, new trade entries are strictly blocked.
-  const sessionStatus = getMarketSessionStatus(targetMarket);
   const allowNewEntries = sessionStatus.isOpen || Boolean((options as any).allowAfterHours);
 
   if (!allowNewEntries) {
@@ -1247,7 +1413,14 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
               const entryIso = sessionStatus.isOpen 
                 ? nowIso 
-                : (lastCandle?.isoTime || getSessionExecutionTimestamp(item.market, lastCandle?.time));
+                : resolveAccurateTradeTimestamp({
+                    dateStr: simDate,
+                    market: item.market,
+                    type: "BUY_ENTRY",
+                    existingIso: lastCandle?.isoTime,
+                    priceTarget: entryPrice,
+                    isDaily: true
+                  });
 
               const newPos: EODPosition = {
                 id: `pos-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,

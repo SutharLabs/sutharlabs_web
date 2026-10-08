@@ -544,27 +544,33 @@ export async function getHistory(
     // 5m, 15m, 30m: max 60 days
     // 1h (60m): max 730 days
     // 1d, 1wk, 1mo: multi-year
+    const pMap: Record<string, number> = {
+      '1D': 1,
+      '5D': 5,
+      '1W': 7,
+      '1M': 30,
+      '2M': 60,
+      '3M': 90,
+      '6M': 180,
+      '1Y': 365,
+      '2Y': 730,
+      '5Y': 5 * 365,
+      'ALL': 25 * 365,
+      'MAX': 25 * 365
+    };
+    const reqDays = pMap[(period || '').toUpperCase()] || (yahooInterval === '1d' ? 365 : 30);
+
     let period1: Date;
     if (yahooInterval === '1m') {
-      period1 = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
+      period1 = new Date(Date.now() - Math.min(6, reqDays) * 24 * 60 * 60 * 1000);
     } else if (['2m', '5m', '15m', '30m', '90m'].includes(yahooInterval)) {
-      period1 = new Date(Date.now() - 45 * 24 * 60 * 60 * 1000);
+      // Yahoo finance supports up to 59 days for intraday minute bars
+      period1 = new Date(Date.now() - Math.min(59, Math.max(7, reqDays)) * 24 * 60 * 60 * 1000);
     } else if (['1h', '60m'].includes(yahooInterval)) {
-      period1 = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+      // Yahoo finance supports up to 729 days (2 years) for 1h bars
+      period1 = new Date(Date.now() - Math.min(729, Math.max(30, reqDays)) * 24 * 60 * 60 * 1000);
     } else {
-      const pMap: Record<string, number> = {
-        '1D': 1,
-        '1W': 7,
-        '1M': 30,
-        '3M': 90,
-        '6M': 180,
-        '1Y': 365,
-        '5Y': 5 * 365,
-        'ALL': 25 * 365,
-        'MAX': 25 * 365
-      };
-      const days = pMap[period] || (yahooInterval === '1d' ? 365 : 7);
-      period1 = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      period1 = new Date(Date.now() - reqDays * 24 * 60 * 60 * 1000);
     }
 
     const queryOpts: any = {

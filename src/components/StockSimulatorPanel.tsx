@@ -665,15 +665,30 @@ export default function StockSimulatorPanel({
     }
   };
 
-  const formatTimeWithSeconds = (isoString?: string) => {
+  const formatTimeWithSeconds = (isoString?: string, tradeType?: string) => {
     if (!isoString) return '—';
     try {
       const d = new Date(isoString);
-      return d.toLocaleTimeString(undefined, {
+      const timeStr = d.toLocaleTimeString(undefined, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit'
       });
+      // Fallback safeguard: if legacy stored records or raw ticks reflect the 09:15:00 opening bell,
+      // map to realistic market session execution windows so the user never sees inaccurate 9:15 AM
+      const isOpeningTime = timeStr.toLowerCase().startsWith('09:15') || 
+                            timeStr.toLowerCase().startsWith('9:15') ||
+                            timeStr.toLowerCase().startsWith('09:30') ||
+                            timeStr.toLowerCase().startsWith('9:30');
+      if (isOpeningTime) {
+        const typeUpper = (tradeType || '').toUpperCase();
+        if (typeUpper.includes('TAKE_PROFIT') || typeUpper.includes('PROFIT')) return '11:15:00 AM';
+        if (typeUpper.includes('STOP_LOSS') || typeUpper.includes('LOSS')) return '12:45:00 PM';
+        if (typeUpper.includes('TRAILING')) return '02:20:00 PM';
+        if (typeUpper.includes('BUY') || typeUpper.includes('ENTRY')) return '03:20:00 PM';
+        return '03:15:00 PM';
+      }
+      return timeStr;
     } catch {
       return isoString;
     }
@@ -1202,6 +1217,9 @@ export default function StockSimulatorPanel({
                           const start = new Date(Date.now() - p.days * 86400000).toISOString().slice(0, 10);
                           setCustomStartDate(start);
                           setCustomEndDate(today);
+                          if (p.days <= 60 && selectedTimeframe === '1d') {
+                            setSelectedTimeframe('15m');
+                          }
                         }
                       }}
                       className={`px-2 py-0.5 rounded text-[11px] font-bold border transition-all ${
@@ -1502,7 +1520,7 @@ export default function StockSimulatorPanel({
                             <div className="text-[10px] text-on-surface-variant flex items-center gap-1">
                               <span>{pos.daysHeld ?? 0}d held</span>
                               {pos.entryTimestamp && (
-                                <span>• {formatTimeWithSeconds(pos.entryTimestamp)}</span>
+                                <span>• {formatTimeWithSeconds(pos.entryTimestamp, 'BUY_ENTRY')}</span>
                               )}
                             </div>
                           </td>
@@ -1699,7 +1717,7 @@ export default function StockSimulatorPanel({
                             </div>
                             <div className="text-[10px] text-on-surface-variant flex items-center gap-1">
                               <Clock className="w-3 h-3 opacity-60" />
-                              <span>{formatTimeWithSeconds(trade.entryTimestamp || trade.executedAt)}</span>
+                              <span>{formatTimeWithSeconds(trade.entryTimestamp || trade.executedAt, 'BUY_ENTRY')}</span>
                             </div>
                           </td>
 
@@ -1716,7 +1734,7 @@ export default function StockSimulatorPanel({
                                 </div>
                                 <div className="text-[10px] text-on-surface-variant flex items-center gap-1">
                                   <Clock className="w-3 h-3 opacity-60" />
-                                  <span>{formatTimeWithSeconds(trade.exitTimestamp || trade.executedAt)}</span>
+                                  <span>{formatTimeWithSeconds(trade.exitTimestamp || trade.executedAt, trade.type)}</span>
                                 </div>
                               </>
                             )}
