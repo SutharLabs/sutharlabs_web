@@ -157,6 +157,31 @@ interface MarketUniverse {
 type TimeframePeriod = '1D' | '1W' | '1M' | '1Y' | '5Y' | 'ALL';
 type CandleInterval = '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
 
+const DEFAULT_CANDLE_FOR_SCALE: Record<TimeframePeriod, CandleInterval> = {
+  '1D': '5m',
+  '1W': '15m',
+  '1M': '1h',
+  '1Y': '1d',
+  '5Y': '1d',
+  'ALL': '1d'
+};
+
+interface IntervalOption {
+  value: CandleInterval;
+  label: string;
+  category: 'Minutes' | 'Hours' | 'Days';
+  description: string;
+}
+
+const CANDLE_INTERVAL_OPTIONS: IntervalOption[] = [
+  { value: '1m', label: '1m', category: 'Minutes', description: '1 Minute (Scalp)' },
+  { value: '5m', label: '5m', category: 'Minutes', description: '5 Minutes (Intraday)' },
+  { value: '15m', label: '15m', category: 'Minutes', description: '15 Minutes (Short Swing)' },
+  { value: '1h', label: '1h', category: 'Hours', description: '1 Hour (Trend)' },
+  { value: '4h', label: '4h', category: 'Hours', description: '4 Hours (Multi-Day)' },
+  { value: '1d', label: '1d', category: 'Days', description: '1 Day (Daily / Macro)' },
+];
+
 const DEFAULT_UNIVERSES: Record<string, MarketUniverse> = {
   IN: {
     id: 'IN',
@@ -582,6 +607,29 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [loading, setLoading] = useState(true);
   const [activePeriod, setActivePeriod] = useState<TimeframePeriod>('1W');
   const [activeInterval, setActiveInterval] = useState<CandleInterval>('15m');
+  const [showIntervalMenu, setShowIntervalMenu] = useState<boolean>(false);
+  const intervalMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close interval menu on outside click
+  useEffect(() => {
+    if (!showIntervalMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (intervalMenuRef.current && !intervalMenuRef.current.contains(e.target as Node)) {
+        setShowIntervalMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showIntervalMenu]);
+
+  // Intelligent Scale change handler: sets scale AND smart default candle size
+  const handleScaleChange = useCallback((period: TimeframePeriod) => {
+    setActivePeriod(period);
+    const defaultCandle = DEFAULT_CANDLE_FOR_SCALE[period];
+    if (defaultCandle) {
+      setActiveInterval(defaultCandle);
+    }
+  }, []);
 
   // Chart Overlay & Fullscreen View Controls
   const [showEma20, setShowEma20] = useState<boolean>(true);
@@ -2834,40 +2882,90 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               
               {/* Range & Interval Selectors */}
               <div className="flex flex-wrap items-center gap-2">
-                {/* Intraday & Swing Candle Interval: 1m, 5m, 15m, 1h, 4h, 1d */}
-                <div className="flex items-center gap-1 bg-surface-container-lowest/80 p-0.5 rounded-lg border border-outline/20 shadow-inner">
-                  <span className="text-[10px] uppercase font-mono text-on-surface-variant px-1 font-semibold">Bar:</span>
-                  {(['1m', '5m', '15m', '1h', '4h', '1d'] as const).map(interval => (
-                    <button
-                      key={interval}
-                      onClick={() => setActiveInterval(interval)}
-                      className={`px-2 py-0.5 rounded text-[11px] font-mono transition-all cursor-pointer ${
-                        activeInterval === interval
-                          ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 font-bold shadow-[0_0_8px_rgba(16,185,129,0.25)]'
-                          : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
-                      }`}
-                      title={`${interval} candle timeframe`}
-                    >
-                      {interval}
-                    </button>
-                  ))}
+                {/* Professional Candle Size Dropdown (TradingView / Kite standard) */}
+                <div className="relative" ref={intervalMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowIntervalMenu(!showIntervalMenu)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer border ${
+                      showIntervalMenu 
+                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.25)]' 
+                        : 'bg-surface-container-lowest/90 text-on-surface hover:bg-surface-container border-outline/20'
+                    }`}
+                    title="Select Candlestick Interval"
+                  >
+                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-[11px] text-on-surface-variant uppercase font-medium">Bar:</span>
+                    <span className="text-emerald-400 font-bold uppercase">{activeInterval}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-on-surface-variant transition-transform duration-200 ${showIntervalMenu ? 'rotate-180 text-emerald-400' : ''}`} />
+                  </button>
+
+                  {/* Dropdown Menu */}
+                  {showIntervalMenu && (
+                    <div className="absolute left-0 top-full mt-1.5 w-60 rounded-xl bg-surface-container-lowest/95 backdrop-blur-xl border border-outline/25 shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-on-surface-variant/70 border-b border-outline/10 flex items-center justify-between">
+                        <span>Candle Resolution</span>
+                        <span className="text-emerald-400/80 font-mono text-[9px]">Live OHLCV</span>
+                      </div>
+                      <div className="py-1">
+                        {CANDLE_INTERVAL_OPTIONS.map((opt) => {
+                          const isSelected = activeInterval === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => {
+                                setActiveInterval(opt.value);
+                                setShowIntervalMenu(false);
+                              }}
+                              className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors cursor-pointer text-xs ${
+                                isSelected
+                                  ? 'bg-emerald-500/15 text-emerald-400 font-bold'
+                                  : 'text-on-surface hover:bg-surface-container/70'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 font-mono">
+                                <span className={`w-7 text-center font-bold px-1 py-0.5 rounded text-[11px] ${
+                                  isSelected ? 'bg-emerald-500/25 text-emerald-300' : 'bg-surface-container text-on-surface-variant'
+                                }`}>
+                                  {opt.label}
+                                </span>
+                                <span className="text-[11px] font-sans text-on-surface-variant font-normal">
+                                  {opt.description}
+                                </span>
+                              </div>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400 ml-1.5 shrink-0" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="px-3 pt-1.5 pb-0.5 border-t border-outline/10 text-[10px] text-on-surface-variant/60 font-sans">
+                        Tip: Scale selection sets optimal candle size automatically.
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                {/* Extended Timeframes: 1D, 1W, 1M, 1Y, 5Y, ALL */}
-                <div className="flex gap-1 items-center">
-                  {(['1D', '1W', '1M', '1Y', '5Y', 'ALL'] as const).map(p => (
-                    <button
-                      key={p}
-                      onClick={() => setActivePeriod(p)}
-                      className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all cursor-pointer ${
-                        activePeriod === p
-                          ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.2)]'
-                          : 'bg-surface-container text-on-surface-variant hover:text-on-surface'
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
+                {/* Graph Scale / Range Selector with Intelligent Default Candle Size */}
+                <div className="flex items-center bg-surface-container-lowest/80 p-0.5 rounded-lg border border-outline/20 shadow-inner">
+                  {(['1D', '1W', '1M', '1Y', '5Y', 'ALL'] as const).map(p => {
+                    const isPeriodActive = activePeriod === p;
+                    const defaultCandle = DEFAULT_CANDLE_FOR_SCALE[p];
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => handleScaleChange(p)}
+                        className={`px-2.5 py-1 rounded-md text-xs font-mono transition-all cursor-pointer ${
+                          isPeriodActive
+                            ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.25)]'
+                            : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                        }`}
+                        title={`Scale ${p} (Auto-selects ${defaultCandle} candles)`}
+                      >
+                        {p}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
