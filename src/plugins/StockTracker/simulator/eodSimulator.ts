@@ -23,159 +23,18 @@ import {
   SimulationRegistryEntry
 } from "./types.js";
 
-// ── Market Session Trading Hours Validator ──────────────────────────────────
-export interface MarketSessionStatus {
-  isOpen: boolean;
-  market: string;
-  reason: string;
-  localTimeStr: string;
-  sessionOpenStr: string;
-  sessionCloseStr: string;
-}
-
-export function getMarketSessionStatus(market: string = 'IN'): MarketSessionStatus {
-  const normMarket = market.toUpperCase();
-  const now = new Date();
-
-  if (normMarket === 'IN') {
-    // IST is UTC + 5:30 (Asia/Kolkata)
-    const istOffsetMs = 5.5 * 60 * 60 * 1000;
-    const istDate = new Date(now.getTime() + istOffsetMs);
-    const dayOfWeek = istDate.getUTCDay(); // 0 = Sun, 6 = Sat
-    const hours = istDate.getUTCHours();
-    const minutes = istDate.getUTCMinutes();
-    const totalMinutes = hours * 60 + minutes;
-
-    const openMinutes = 9 * 60 + 15;   // 09:15 IST
-    const closeMinutes = 15 * 60 + 30;  // 15:30 IST
-
-    const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} IST`;
-
-    if (dayOfWeek === 0 || dayOfWeek === 6) {
-      return {
-        isOpen: false,
-        market: 'IN',
-        reason: `Weekend closure (NSE/BSE). Markets reopen Monday at 09:15 IST (Current: ${timeStr})`,
-        localTimeStr: timeStr,
-        sessionOpenStr: '09:15 IST',
-        sessionCloseStr: '15:30 IST'
-      };
-    }
-
-    if (totalMinutes < openMinutes) {
-      return {
-        isOpen: false,
-        market: 'IN',
-        reason: `Pre-market period. NSE/BSE opens at 09:15 IST (Current: ${timeStr})`,
-        localTimeStr: timeStr,
-        sessionOpenStr: '09:15 IST',
-        sessionCloseStr: '15:30 IST'
-      };
-    }
-
-    if (totalMinutes >= closeMinutes) {
-      return {
-        isOpen: false,
-        market: 'IN',
-        reason: `Market closed for today. Regular NSE/BSE session ended at 15:30 IST (Current: ${timeStr})`,
-        localTimeStr: timeStr,
-        sessionOpenStr: '09:15 IST',
-        sessionCloseStr: '15:30 IST'
-      };
-    }
-
-    return {
-      isOpen: true,
-      market: 'IN',
-      reason: `Live market session active (09:15 - 15:30 IST, Current: ${timeStr})`,
-      localTimeStr: timeStr,
-      sessionOpenStr: '09:15 IST',
-      sessionCloseStr: '15:30 IST'
-    };
-  }
-
-  if (normMarket === 'US') {
-    const formatter = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/New_York',
-      hour: 'numeric',
-      minute: 'numeric',
-      hour12: false,
-      weekday: 'short'
-    });
-    const parts = formatter.formatToParts(now);
-    const weekday = parts.find(p => p.type === 'weekday')?.value;
-    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
-    const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
-    const totalMinutes = hour * 60 + minute;
-    const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} ET`;
-
-    if (weekday === 'Sat' || weekday === 'Sun') {
-      return {
-        isOpen: false,
-        market: 'US',
-        reason: `Weekend closure (NYSE/NASDAQ). Reopens Monday at 09:30 ET (Current: ${timeStr})`,
-        localTimeStr: timeStr,
-        sessionOpenStr: '09:30 ET',
-        sessionCloseStr: '16:00 ET'
-      };
-    }
-
-    if (totalMinutes < 9 * 60 + 30 || totalMinutes >= 16 * 60) {
-      return {
-        isOpen: false,
-        market: 'US',
-        reason: `Market closed. Regular trading hours: 09:30 - 16:00 ET (Current: ${timeStr})`,
-        localTimeStr: timeStr,
-        sessionOpenStr: '09:30 ET',
-        sessionCloseStr: '16:00 ET'
-      };
-    }
-
-    return {
-      isOpen: true,
-      market: 'US',
-      reason: `Live market session active (09:30 - 16:00 ET, Current: ${timeStr})`,
-      localTimeStr: timeStr,
-      sessionOpenStr: '09:30 ET',
-      sessionCloseStr: '16:00 ET'
-    };
-  }
-
-  // EU Market
-  const euFormatter = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Europe/London',
-    hour: 'numeric',
-    minute: 'numeric',
-    hour12: false,
-    weekday: 'short'
-  });
-  const euParts = euFormatter.formatToParts(now);
-  const euWeekday = euParts.find(p => p.type === 'weekday')?.value;
-  const euHour = parseInt(euParts.find(p => p.type === 'hour')?.value || '0', 10);
-  const euMinute = parseInt(euParts.find(p => p.type === 'minute')?.value || '0', 10);
-  const euTotal = euHour * 60 + euMinute;
-  const euTimeStr = `${String(euHour).padStart(2, '0')}:${String(euMinute).padStart(2, '0')} GMT`;
-
-  if (euWeekday === 'Sat' || euWeekday === 'Sun' || euTotal < 8 * 60 || euTotal >= 16 * 60 + 30) {
-    return {
-      isOpen: false,
-      market: 'EU',
-      reason: `Market closed. Regular session: 08:00 - 16:30 GMT (Current: ${euTimeStr})`,
-      localTimeStr: euTimeStr,
-      sessionOpenStr: '08:00 GMT',
-      sessionCloseStr: '16:30 GMT'
-    };
-  }
-
-  return {
-    isOpen: true,
-    market: 'EU',
-    reason: `Live market session active (08:00 - 16:30 GMT, Current: ${euTimeStr})`,
-    localTimeStr: euTimeStr,
-    sessionOpenStr: '08:00 GMT',
-    sessionCloseStr: '16:30 GMT'
-  };
-}
+// ── Institutional Market Session & Holiday Provider ──────────────────────────
+export {
+  getMarketSessionStatus,
+  getExchangeHolidayName,
+  isExchangeTradingDay,
+  normalizeMarketKey,
+  type MarketSessionStatus
+} from "../calendar/exchangeCalendar.js";
+import {
+  getMarketSessionStatus,
+  isExchangeTradingDay
+} from "../calendar/exchangeCalendar.js";
 
 export function getSessionExecutionTimestamp(market: string, candleTime?: number): string {
   if (candleTime && candleTime > 0) {
@@ -772,8 +631,8 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
       startDate = sortedDates.find(d => d >= targetIso) || sortedDates[0];
     }
 
-    const replayDates = sortedDates.filter(d => d >= startDate! && d <= endDate!);
-    const validReplayDates = replayDates.length > 0 ? replayDates : sortedDates.slice(-30);
+    const replayDates = sortedDates.filter(d => d >= startDate! && d <= endDate! && isExchangeTradingDay(targetMarket, d));
+    const validReplayDates = replayDates.length > 0 ? replayDates : sortedDates.filter(d => isExchangeTradingDay(targetMarket, d)).slice(-30);
 
     const startingCapital = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
     const closedTradesAll: EODTradeExecution[] = [];
@@ -915,10 +774,33 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
         const signal = evaluateStrategy(strategy, candlesUpToDate, quote as any, {});
 
         if (signal.action === "BUY" && signal.confidence >= 0.55) {
-          const maxCapitalForTrade = store.cash * allocationPct;
-          const shares = Math.floor(maxCapitalForTrade / entryPrice);
+          if (store.positions.length >= (options.maxConcurrentPositions || 10)) {
+            continue;
+          }
 
-          if (shares > 0 && maxCapitalForTrade >= entryPrice) {
+          // Strictly ensure Take Profit > Entry Price and Stop Loss < Entry Price
+          const rawTP = signal.targetPrice || (signal as any).takeProfit;
+          const takeProfit = (rawTP && rawTP > entryPrice * 1.01)
+            ? parseFloat(rawTP.toFixed(2))
+            : parseFloat((entryPrice * 1.10).toFixed(2));
+
+          const rawSL = signal.stopLoss;
+          const stopLoss = (rawSL && rawSL < entryPrice * 0.99)
+            ? parseFloat(rawSL.toFixed(2))
+            : parseFloat((entryPrice * 0.95).toFixed(2));
+
+          let shares = Math.floor((store.cash * allocationPct) / entryPrice);
+          if (options.positionSizingModel === 'RISK_BASED') {
+            const totalEquity = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
+            const riskPct = options.riskPerTradePct || 1.5;
+            const dollarRisk = totalEquity * (riskPct / 100);
+            const perShareRisk = Math.max(0.01, entryPrice - stopLoss);
+            const riskShares = Math.floor(dollarRisk / perShareRisk);
+            const maxCashShares = Math.floor((store.cash * (allocationPct || 0.20)) / entryPrice);
+            shares = Math.min(riskShares, maxCashShares);
+          }
+
+          if (shares > 0 && store.cash >= entryPrice) {
             const region = detectMarketRegion(item.symbol);
             const friction = calculateRegionalFriction({
               region,
@@ -931,17 +813,6 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             if (store.cash >= totalCost) {
               store.cash -= totalCost;
               store.totalFrictionPaid += friction.totalFriction;
-
-              // Strictly ensure Take Profit > Entry Price and Stop Loss < Entry Price
-              const rawTP = signal.targetPrice || (signal as any).takeProfit;
-              const takeProfit = (rawTP && rawTP > entryPrice * 1.01)
-                ? parseFloat(rawTP.toFixed(2))
-                : parseFloat((entryPrice * 1.10).toFixed(2));
-
-              const rawSL = signal.stopLoss;
-              const stopLoss = (rawSL && rawSL < entryPrice * 0.99)
-                ? parseFloat(rawSL.toFixed(2))
-                : parseFloat((entryPrice * 0.95).toFixed(2));
 
               const isIndian = item.symbol.endsWith('.NS') || item.symbol.endsWith('.BO') || item.market === 'IN';
               const isEU = item.symbol.endsWith('.L') || item.symbol.endsWith('.DE') || item.symbol.endsWith('.PA') || item.market === 'EU';
@@ -1207,6 +1078,10 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     console.log(`[Simulator] Market is closed for ${targetMarket} (${sessionStatus.reason}). New trade entries are paused.`);
   } else {
     for (const item of trackedSymbols) {
+      if (store.positions.length >= (options.maxConcurrentPositions || 10)) {
+        break;
+      }
+
       const normSym = normalizeTicker(item.symbol, item.market);
       // Strictly prevent duplicate positions for the same stock asset:
       const alreadyOpen = store.positions.some(p => {
@@ -1230,10 +1105,29 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             : lastCandle.close;
           const entryPrice = parseFloat(liveEntry.toFixed(2));
 
-          const maxCapitalForTrade = store.cash * allocationPct;
-          const shares = Math.floor(maxCapitalForTrade / entryPrice);
+          // Strictly ensure Take Profit > Entry Price and Stop Loss < Entry Price
+          const rawTP = signal.targetPrice || (signal as any).takeProfit;
+          const takeProfit = (rawTP && rawTP > entryPrice * 1.01)
+            ? parseFloat(rawTP.toFixed(2))
+            : parseFloat((entryPrice * 1.10).toFixed(2));
 
-          if (shares > 0 && maxCapitalForTrade >= entryPrice) {
+          const rawSL = signal.stopLoss;
+          const stopLoss = (rawSL && rawSL < entryPrice * 0.99)
+            ? parseFloat(rawSL.toFixed(2))
+            : parseFloat((entryPrice * 0.95).toFixed(2));
+
+          let shares = Math.floor((store.cash * allocationPct) / entryPrice);
+          if (options.positionSizingModel === 'RISK_BASED') {
+            const totalEquity = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
+            const riskPct = options.riskPerTradePct || 1.5;
+            const dollarRisk = totalEquity * (riskPct / 100);
+            const perShareRisk = Math.max(0.01, entryPrice - stopLoss);
+            const riskShares = Math.floor(dollarRisk / perShareRisk);
+            const maxCashShares = Math.floor((store.cash * (allocationPct || 0.20)) / entryPrice);
+            shares = Math.min(riskShares, maxCashShares);
+          }
+
+          if (shares > 0 && store.cash >= entryPrice) {
             const region = detectMarketRegion(normSym);
             const friction = calculateRegionalFriction({
               region,
@@ -1246,17 +1140,6 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             if (store.cash >= totalCost) {
               store.cash -= totalCost;
               store.totalFrictionPaid += friction.totalFriction;
-
-              // Strictly ensure Take Profit > Entry Price and Stop Loss < Entry Price
-              const rawTP = signal.targetPrice || (signal as any).takeProfit;
-              const takeProfit = (rawTP && rawTP > entryPrice * 1.01)
-                ? parseFloat(rawTP.toFixed(2))
-                : parseFloat((entryPrice * 1.10).toFixed(2));
-
-              const rawSL = signal.stopLoss;
-              const stopLoss = (rawSL && rawSL < entryPrice * 0.99)
-                ? parseFloat(rawSL.toFixed(2))
-                : parseFloat((entryPrice * 0.95).toFixed(2));
 
               const isIndian = normSym.endsWith('.NS') || normSym.endsWith('.BO') || item.market === 'IN';
               const isEU = normSym.endsWith('.L') || normSym.endsWith('.DE') || normSym.endsWith('.PA') || item.market === 'EU';
@@ -1354,7 +1237,10 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     activePositions: store.positions,
     digest,
     replayMode: "SINGLE_STEP",
-    hadTrades
+    hadTrades,
+    isHoliday: sessionStatus.isHoliday,
+    holidayName: sessionStatus.holidayName,
+    marketSessionType: sessionStatus.sessionType
   };
 
   // Only append a new log entry when trades were actually executed!

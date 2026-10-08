@@ -12,6 +12,7 @@ import { evaluateStrategy } from "../strategies/engine.js";
 import { IStrategy } from "../strategies/types.js";
 import { ScannerCandidate, ScannerFilterOptions, ScannerReport, WebhookAlertPayload } from "./types.js";
 import { readJsonData } from "../storageUtils.js";
+import { getMarketSessionStatus } from "../calendar/exchangeCalendar.js";
 
 /**
  * Executes a concurrent technical scan across a selected market universe or watchlist.
@@ -130,6 +131,25 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
           if (risk > 0) rrr = parseFloat((reward / risk).toFixed(2));
         }
 
+        // Calculate 14-period Average True Range (ATR) & ATR %
+        let atr: number | undefined;
+        let atrPercent: number | undefined;
+        if (candles.length >= 15) {
+          let trSum = 0;
+          for (let k = candles.length - 14; k < candles.length; k++) {
+            const h = candles[k].high;
+            const l = candles[k].low;
+            const prevC = candles[k - 1].close;
+            const tr = Math.max(h - l, Math.abs(h - prevC), Math.abs(l - prevC));
+            trSum += tr;
+          }
+          const rawAtr = trSum / 14;
+          atr = parseFloat(rawAtr.toFixed(2));
+          if (currentPrice > 0) {
+            atrPercent = parseFloat(((rawAtr / currentPrice) * 100).toFixed(2));
+          }
+        }
+
         const candidate: ScannerCandidate = {
           symbol: normSym,
           name: quote?.name || meta.name || fmt.cleanSymbol,
@@ -152,6 +172,8 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
           takeProfit: tpVal ? parseFloat(Number(tpVal).toFixed(2)) : undefined,
           riskRewardRatio: rrr,
           emaTrend,
+          atr,
+          atrPercent,
           scannedAt: new Date().toISOString()
         };
 
@@ -200,6 +222,8 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
   const highConvictionCount = candidates.filter(c => c.signal === 'BUY' && c.confidence >= 0.70).length;
   const topPick = filtered.find(c => c.signal === 'BUY') || filtered[0];
 
+  const sessionStatus = getMarketSessionStatus(universeKey);
+
   const report: ScannerReport = {
     id: `scan-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
     strategyId: strategy.id,
@@ -207,6 +231,13 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
     universe: options.watchlistId ? `Watchlist (${options.watchlistId})` : `${universeKey} Universe`,
     scannedAt: new Date().toISOString(),
     executionTimeMs: Date.now() - startTime,
+    marketSession: {
+      isOpen: sessionStatus.isOpen,
+      isHoliday: sessionStatus.isHoliday,
+      holidayName: sessionStatus.holidayName,
+      reason: sessionStatus.reason,
+      localTimeStr: sessionStatus.localTimeStr
+    },
     summary: {
       totalScanned: candidates.length,
       buyCount,

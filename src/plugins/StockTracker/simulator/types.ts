@@ -18,6 +18,8 @@ export interface EODPosition {
   totalCost?: number;
   currentValue?: number;
   daysHeld?: number;
+  atr?: number;
+  potentialSplitDetected?: boolean;
   status: 'OPEN' | 'CLOSED';
 }
 
@@ -72,6 +74,12 @@ export interface EODSimulationReport {
   replayMode?: 'SINGLE_STEP' | 'HISTORICAL_REPLAY';
   replayedDaysCount?: number;
   hadTrades: boolean;             // true = trades occurred; false = no-trade portfolio update
+  isHoliday?: boolean;
+  holidayName?: string;
+  marketSessionType?: string;
+  calmarRatio?: number;
+  winRatePct?: number;
+  profitFactor?: number;
 }
 
 export interface EODSimulationOptions {
@@ -85,6 +93,9 @@ export interface EODSimulationOptions {
   watchlistSymbols?: string[];
   allocationPct?: number; // e.g. 0.15 (15%)
   capitalAllocationPct?: number; // alias
+  positionSizingModel?: 'CASH_PERCENT' | 'EQUITY_PERCENT' | 'RISK_BASED';
+  riskPerTradePct?: number; // e.g. 1.0% or 1.5%
+  maxConcurrentPositions?: number; // e.g. 5 or 10
   trailingStopPct?: number; // default 3.0%
   forcedCapital?: number;
   mode?: 'SINGLE_STEP' | 'HISTORICAL_REPLAY';
@@ -93,6 +104,7 @@ export interface EODSimulationOptions {
   startDate?: string; // 'YYYY-MM-DD'
   endDate?: string; // 'YYYY-MM-DD'
   replayDays?: number; // e.g. 30, 60, 90, 180
+  allowAfterHours?: boolean;
 }
 
 /** Registry entry tracking every active simulation instance. */

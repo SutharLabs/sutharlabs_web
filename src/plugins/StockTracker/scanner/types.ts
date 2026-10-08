@@ -24,6 +24,8 @@ export interface ScannerCandidate {
   stopLoss?: number;
   takeProfit?: number;
   riskRewardRatio?: number;
+  atr?: number;
+  atrPercent?: number;
   scannedAt: string;
 }
 
@@ -46,6 +48,13 @@ export interface ScannerReport {
   universe: string;
   scannedAt: string;
   executionTimeMs: number;
+  marketSession?: {
+    isOpen: boolean;
+    isHoliday: boolean;
+    holidayName?: string;
+    reason: string;
+    localTimeStr: string;
+  };
   summary: {
     totalScanned: number;
     buyCount: number;

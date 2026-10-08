@@ -559,6 +559,17 @@ export default function StockSimulatorPanel({
     const grossLoss = Math.abs(losingTrades.reduce((acc, t) => acc + t.realizedPnL, 0));
     const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 99.9 : 1.0;
 
+    const avgWin = winningTrades.length > 0 ? grossProfit / winningTrades.length : 0;
+    const avgLoss = losingTrades.length > 0 ? grossLoss / losingTrades.length : 0;
+    const winLossRatio = avgLoss > 0 ? avgWin / avgLoss : avgWin > 0 ? avgWin : 1.0;
+
+    let kellyPct = 0;
+    if (totalClosedTradesCount >= 3 && winLossRatio > 0) {
+      const w = winRatePct / 100;
+      const k = w - ((1 - w) / winLossRatio);
+      kellyPct = Math.max(0, k * 100);
+    }
+
     return {
       cash,
       initialCash,
@@ -572,7 +583,11 @@ export default function StockSimulatorPanel({
       openPositionsCount: positions.length,
       closedTradesCount: totalClosedTradesCount,
       winRatePct,
-      profitFactor
+      profitFactor,
+      winLossRatio,
+      kellyPct,
+      avgWin,
+      avgLoss
     };
   }, [portfolio]);
 
@@ -1917,44 +1932,64 @@ export default function StockSimulatorPanel({
         {/* ── TAB 4: PERFORMANCE & RISK ANALYTICS ── */}
         {simulatorTab === 'ANALYTICS' && (
           <div className="p-6 flex flex-col gap-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline/20">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+              <div className="p-3.5 rounded-xl bg-surface-container-lowest border border-outline/20">
                 <span className="text-[10px] uppercase text-on-surface-variant font-bold">Win Rate</span>
-                <div className="text-2xl font-bold font-mono text-[#00e476] mt-1">
+                <div className="text-xl font-bold font-mono text-[#00e476] mt-1">
                   {portfolioMetrics.winRatePct.toFixed(1)}%
                 </div>
                 <span className="text-[10px] text-on-surface-variant">
-                  Across {portfolioMetrics.closedTradesCount} completed trades
+                  {portfolioMetrics.closedTradesCount} closed trades
                 </span>
               </div>
 
-              <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline/20">
+              <div className="p-3.5 rounded-xl bg-surface-container-lowest border border-outline/20">
                 <span className="text-[10px] uppercase text-on-surface-variant font-bold">Profit Factor</span>
-                <div className="text-2xl font-bold font-mono text-[#00dbe7] mt-1">
+                <div className="text-xl font-bold font-mono text-[#00dbe7] mt-1">
                   {portfolioMetrics.profitFactor.toFixed(2)}
                 </div>
                 <span className="text-[10px] text-on-surface-variant">
-                  Gross Profit / Gross Loss Ratio
+                  Gross Profit / Loss
                 </span>
               </div>
 
-              <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline/20">
-                <span className="text-[10px] uppercase text-on-surface-variant font-bold">Total Friction & Taxes Paid</span>
-                <div className="text-2xl font-bold font-mono text-on-surface mt-1">
+              <div className="p-3.5 rounded-xl bg-surface-container-lowest border border-outline/20">
+                <span className="text-[10px] uppercase text-on-surface-variant font-bold">Win / Loss Ratio</span>
+                <div className="text-xl font-bold font-mono text-purple-400 mt-1">
+                  {portfolioMetrics.winLossRatio.toFixed(2)}x
+                </div>
+                <span className="text-[10px] text-on-surface-variant">
+                  Avg Win vs Avg Loss
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-surface-container-lowest border border-outline/20">
+                <span className="text-[10px] uppercase text-on-surface-variant font-bold">Kelly Optimal Risk</span>
+                <div className="text-xl font-bold font-mono text-amber-400 mt-1">
+                  {portfolioMetrics.kellyPct.toFixed(1)}%
+                </div>
+                <span className="text-[10px] text-on-surface-variant">
+                  Kelly leverage fraction
+                </span>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-surface-container-lowest border border-outline/20">
+                <span className="text-[10px] uppercase text-on-surface-variant font-bold">Taxes & Frictions</span>
+                <div className="text-xl font-bold font-mono text-on-surface mt-1">
                   {currencySign}{(portfolio?.totalFrictionPaid || 0).toFixed(2)}
                 </div>
                 <span className="text-[10px] text-on-surface-variant">
-                  STT, Exchange turnover fee, Stamp duty
+                  STT, GST, Exchange fees
                 </span>
               </div>
 
-              <div className="p-4 rounded-xl bg-surface-container-lowest border border-outline/20">
-                <span className="text-[10px] uppercase text-on-surface-variant font-bold">Active Margin In Play</span>
-                <div className="text-2xl font-bold font-mono text-amber-400 mt-1">
+              <div className="p-3.5 rounded-xl bg-surface-container-lowest border border-outline/20">
+                <span className="text-[10px] uppercase text-on-surface-variant font-bold">Capital In Play</span>
+                <div className="text-xl font-bold font-mono text-[#00e476] mt-1">
                   {((portfolioMetrics.positionsValue / (portfolioMetrics.totalEquity || 1)) * 100).toFixed(1)}%
                 </div>
                 <span className="text-[10px] text-on-surface-variant">
-                  {currencySign}{portfolioMetrics.positionsValue.toFixed(2)} allocated
+                  {currencySign}{portfolioMetrics.positionsValue.toFixed(0)} invested
                 </span>
               </div>
             </div>

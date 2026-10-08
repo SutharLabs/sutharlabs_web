@@ -93,6 +93,9 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
   const includeFriction = req.includeFriction !== false;
   const slippagePct = req.slippagePct !== undefined ? req.slippagePct : 0.05;
   const positionSizingPct = req.positionSizingPct ? Math.min(100, Math.max(10, req.positionSizingPct)) : 95;
+  const positionSizingModel = req.positionSizingModel || 'CASH_PERCENT';
+  const riskPerTradePct = req.riskPerTradePct !== undefined ? req.riskPerTradePct : 1.5;
+  const executionFillModel = req.executionFillModel || 'NEXT_BAR_OPEN';
   const riskFreeRatePct = req.riskFreeRatePct !== undefined
     ? req.riskFreeRatePct
     : (region === 'IN' ? 6.5 : (region === 'US' ? 4.5 : 3.5));
@@ -155,6 +158,15 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
     takeProfit: number;
   } | null = null;
 
+  // Pending order queued at bar close for execution at next bar open (QuantConnect LEAN style)
+  let pendingBuyOrder: {
+    signalBarIndex: number;
+    signalDate: string;
+    calculatedSL: number;
+    calculatedTP: number;
+    reason: string;
+  } | null = null;
+
   const trades: TradeLog[] = [];
   const equityCurve: BacktestEquityPoint[] = [];
 
@@ -180,6 +192,79 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
     // Current bar closing price & benchmark
     const benchmarkEquity = Number(((initialCapital / benchmarkStartPrice) * bar.close).toFixed(2));
 
+    // 0. EXECUTE PENDING NEXT-BAR OPEN ORDER (If queued from previous bar's signal)
+    if (pendingBuyOrder && !inPosition) {
+      const fillPrice = bar.open * (1 + (slippagePct / 100)); // Buy fill at Open + Slippage
+
+      // Calculate quantity according to selected sizing model
+      let targetCash = cash * (positionSizingPct / 100);
+      let calculatedQuantity = Math.floor(targetCash / fillPrice);
+
+      if (positionSizingModel === 'RISK_BASED') {
+        const totalEquityNow = cash;
+        const dollarRiskAllowed = totalEquityNow * (riskPerTradePct / 100);
+        const perShareRisk = Math.max(0.01, fillPrice - pendingBuyOrder.calculatedSL);
+        const riskQty = Math.floor(dollarRiskAllowed / perShareRisk);
+        const maxCashQty = Math.floor(cash / fillPrice);
+        calculatedQuantity = Math.min(riskQty, maxCashQty);
+      } else if (positionSizingModel === 'EQUITY_PERCENT') {
+        const allocatedEquity = cash * (positionSizingPct / 100);
+        calculatedQuantity = Math.floor(allocatedEquity / fillPrice);
+      }
+
+      // Board Lot Rounding for HK / Japan
+      let quantity = calculatedQuantity;
+      if (region === 'HK' || region === 'JP') {
+        quantity = Math.floor(calculatedQuantity / 100) * 100;
+      }
+
+      if (quantity > 0) {
+        const entryFrictionBreakdown = includeFriction
+          ? calculateRegionalFriction({
+              region,
+              side: 'BUY',
+              price: fillPrice,
+              quantity,
+              slippagePct
+            })
+          : {
+              brokerage: 0,
+              sttOrStampDuty: 0,
+              exchangeTurnover: 0,
+              sebiOrSecFee: 0,
+              gstOrVat: 0,
+              slippage: 0,
+              totalFriction: 0
+            };
+
+        const entryFriction = entryFrictionBreakdown.totalFriction;
+        const grossCost = fillPrice * quantity;
+        const totalOutflow = grossCost + entryFriction;
+
+        if (cash >= totalOutflow) {
+          cash -= totalOutflow;
+          totalFrictionPaid += entryFriction;
+          totalBrokeragePaid += (entryFrictionBreakdown.brokerage || 0);
+          totalTaxesPaid += ((entryFrictionBreakdown.sttOrStampDuty || 0) + (entryFrictionBreakdown.gstOrVat || 0) + (entryFrictionBreakdown.sebiOrSecFee || 0));
+          totalSlippagePaid += (entryFrictionBreakdown.slippage || 0);
+
+          currentPosition = {
+            entryBarIndex: i,
+            entryDate: barDateStr,
+            entryTime: bar.time,
+            entryPrice: Number(fillPrice.toFixed(2)),
+            entryReason: pendingBuyOrder.reason,
+            quantity,
+            entryFriction,
+            stopLoss: Number(pendingBuyOrder.calculatedSL.toFixed(2)),
+            takeProfit: Number(pendingBuyOrder.calculatedTP.toFixed(2))
+          };
+          inPosition = true;
+        }
+      }
+      pendingBuyOrder = null;
+    }
+
     // 1. POSITION MANAGEMENT & EXIT EVALUATION
     if (inPosition && currentPosition) {
       exposureBars++;
@@ -190,17 +275,28 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
       // China T+1 Rule Check
       const isChinaTPlus1Locked = region === 'CN' && i === currentPosition.entryBarIndex;
 
-      // A. Stop Loss Check (Intra-bar low breached stop loss)
-      if (bar.low <= currentPosition.stopLoss && !isChinaTPlus1Locked) {
+      // Realistic Gap & Collision Handling:
+      const hitStop = bar.low <= currentPosition.stopLoss;
+      const hitTarget = bar.high >= currentPosition.takeProfit;
+
+      // When both Stop Loss and Take Profit are breached in the same bar:
+      // Conservative institutional standard: assume Stop Loss was hit first
+      if (hitStop && hitTarget && !isChinaTPlus1Locked) {
         shouldExit = true;
-        // Fill at stop loss, or open if gapped down below stop
         exitPrice = bar.open < currentPosition.stopLoss ? bar.open : currentPosition.stopLoss;
         exitReason = 'STOP_LOSS';
       }
-      // B. Take Profit Check (Intra-bar high hit take profit target)
-      else if (bar.high >= currentPosition.takeProfit && !isChinaTPlus1Locked) {
+      // A. Stop Loss Hit
+      else if (hitStop && !isChinaTPlus1Locked) {
         shouldExit = true;
-        // Fill at take profit, or open if gapped up above target
+        // If opened with a gap down below stop loss, fill at open (realistic slippage)
+        exitPrice = bar.open < currentPosition.stopLoss ? bar.open : currentPosition.stopLoss;
+        exitReason = 'STOP_LOSS';
+      }
+      // B. Take Profit Hit
+      else if (hitTarget && !isChinaTPlus1Locked) {
+        shouldExit = true;
+        // If opened with a gap up above target, fill at open
         exitPrice = bar.open > currentPosition.takeProfit ? bar.open : currentPosition.takeProfit;
         exitReason = 'TAKE_PROFIT';
       }
@@ -222,12 +318,13 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
       }
 
       if (shouldExit) {
-        // Calculate exit friction
+        // Calculate exit friction with directional slippage
+        const effectiveExitPrice = exitPrice * (1 - (slippagePct / 100));
         const exitFrictionBreakdown = includeFriction
           ? calculateRegionalFriction({
               region,
               side: 'SELL',
-              price: exitPrice,
+              price: effectiveExitPrice,
               quantity: currentPosition.quantity,
               slippagePct
             })
@@ -242,7 +339,7 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
             };
 
         const exitFriction = exitFrictionBreakdown.totalFriction;
-        const grossProceeds = exitPrice * currentPosition.quantity;
+        const grossProceeds = effectiveExitPrice * currentPosition.quantity;
         const netProceeds = grossProceeds - exitFriction;
 
         cash += netProceeds;
@@ -274,7 +371,7 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
           entryReason: currentPosition.entryReason,
           exitDate: barDateStr,
           exitTime: bar.time,
-          exitPrice: Number(exitPrice.toFixed(2)),
+          exitPrice: Number(effectiveExitPrice.toFixed(2)),
           exitReason,
           quantity: currentPosition.quantity,
           holdingDays,
@@ -295,73 +392,86 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
     }
 
     // 2. ENTRY EVALUATION (Only if not already in position and past warm-up period)
-    if (!inPosition && i >= 20 && i < candles.length - 1) {
+    if (!inPosition && !pendingBuyOrder && i >= 20 && i < candles.length - 1) {
       const slice = candles.slice(0, i + 1);
       const signal = evaluateStrategy(strategy, slice, { symbol, current_price: bar.close }, paramOverrides);
 
       if (signal.action === 'BUY' && signal.confidence >= 0.60) {
-        // Position Sizing: Allocate percentage of available cash
-        const allocatedCash = cash * (positionSizingPct / 100);
-        const fillPrice = bar.close * (1 + (slippagePct / 100)); // Apply entry slippage
-        const rawQuantity = Math.floor(allocatedCash / fillPrice);
+        const slMultiplier = req.stopLossPct ? (req.stopLossPct / 100) : 0.05;
+        const tpMultiplier = req.takeProfitPct ? (req.takeProfitPct / 100) : 0.12;
+        const calculatedSL = signal.stopLoss || (bar.close * (1 - slMultiplier));
+        const calculatedTP = signal.targetPrice || (bar.close * (1 + tpMultiplier));
+        const reason = signal.reasoning[0] || `${strategy.name} entry signal`;
 
-        // Adjust for Board Lot size (HK / Japan: 100 shares lot)
-        let quantity = rawQuantity;
-        if (region === 'HK' || region === 'JP') {
-          quantity = Math.floor(rawQuantity / 100) * 100;
-        }
+        if (executionFillModel === 'NEXT_BAR_OPEN') {
+          // Queue order for next bar open (eliminates same-bar close lookahead bias)
+          pendingBuyOrder = {
+            signalBarIndex: i,
+            signalDate: barDateStr,
+            calculatedSL,
+            calculatedTP,
+            reason
+          };
+        } else {
+          // SAME_BAR_CLOSE mode
+          const fillPrice = bar.close * (1 + (slippagePct / 100));
+          let targetCash = cash * (positionSizingPct / 100);
+          let calculatedQuantity = Math.floor(targetCash / fillPrice);
 
-        if (quantity > 0) {
-          const entryFrictionBreakdown = includeFriction
-            ? calculateRegionalFriction({
-                region,
-                side: 'BUY',
-                price: fillPrice,
+          if (positionSizingModel === 'RISK_BASED') {
+            const dollarRisk = cash * (riskPerTradePct / 100);
+            const perShareRisk = Math.max(0.01, fillPrice - calculatedSL);
+            calculatedQuantity = Math.min(Math.floor(dollarRisk / perShareRisk), Math.floor(cash / fillPrice));
+          }
+
+          let quantity = calculatedQuantity;
+          if (region === 'HK' || region === 'JP') {
+            quantity = Math.floor(calculatedQuantity / 100) * 100;
+          }
+
+          if (quantity > 0) {
+            const entryFrictionBreakdown = includeFriction
+              ? calculateRegionalFriction({
+                  region,
+                  side: 'BUY',
+                  price: fillPrice,
+                  quantity,
+                  slippagePct
+                })
+              : {
+                  brokerage: 0,
+                  sttOrStampDuty: 0,
+                  exchangeTurnover: 0,
+                  sebiOrSecFee: 0,
+                  gstOrVat: 0,
+                  slippage: 0,
+                  totalFriction: 0
+                };
+
+            const entryFriction = entryFrictionBreakdown.totalFriction;
+            const grossBuyCost = fillPrice * quantity;
+            const totalOutflow = grossBuyCost + entryFriction;
+
+            if (cash >= totalOutflow) {
+              cash -= totalOutflow;
+              totalFrictionPaid += entryFriction;
+              totalBrokeragePaid += (entryFrictionBreakdown.brokerage || 0);
+              totalTaxesPaid += ((entryFrictionBreakdown.sttOrStampDuty || 0) + (entryFrictionBreakdown.gstOrVat || 0) + (entryFrictionBreakdown.sebiOrSecFee || 0));
+              totalSlippagePaid += (entryFrictionBreakdown.slippage || 0);
+
+              currentPosition = {
+                entryBarIndex: i,
+                entryDate: barDateStr,
+                entryTime: bar.time,
+                entryPrice: Number(fillPrice.toFixed(2)),
+                entryReason: reason,
                 quantity,
-                slippagePct
-              })
-            : {
-                brokerage: 0,
-                sttOrStampDuty: 0,
-                exchangeTurnover: 0,
-                sebiOrSecFee: 0,
-                gstOrVat: 0,
-                slippage: 0,
-                totalFriction: 0
+                entryFriction,
+                stopLoss: Number(calculatedSL.toFixed(2)),
+                takeProfit: Number(calculatedTP.toFixed(2))
               };
-
-          const entryFriction = entryFrictionBreakdown.totalFriction;
-          const grossBuyCost = fillPrice * quantity;
-          const totalOutflow = grossBuyCost + entryFriction;
-
-          if (cash >= totalOutflow) {
-            cash -= totalOutflow;
-
-            totalFrictionPaid += entryFriction;
-            totalBrokeragePaid += (entryFrictionBreakdown.brokerage || 0);
-            totalTaxesPaid += ((entryFrictionBreakdown.sttOrStampDuty || 0) + (entryFrictionBreakdown.gstOrVat || 0) + (entryFrictionBreakdown.sebiOrSecFee || 0));
-            totalSlippagePaid += (entryFrictionBreakdown.slippage || 0);
-
-            // Compute dynamic or override Stop Loss / Take Profit
-            const slMultiplier = req.stopLossPct ? (req.stopLossPct / 100) : 0.05;
-            const tpMultiplier = req.takeProfitPct ? (req.takeProfitPct / 100) : 0.12;
-
-            const calculatedSL = signal.stopLoss || (fillPrice * (1 - slMultiplier));
-            const calculatedTP = signal.targetPrice || (fillPrice * (1 + tpMultiplier));
-
-            currentPosition = {
-              entryBarIndex: i,
-              entryDate: barDateStr,
-              entryTime: bar.time,
-              entryPrice: Number(fillPrice.toFixed(2)),
-              entryReason: signal.reasoning[0] || `${strategy.name} entry signal`,
-              quantity,
-              entryFriction,
-              stopLoss: Number(calculatedSL.toFixed(2)),
-              takeProfit: Number(calculatedTP.toFixed(2))
-            };
-
-            inPosition = true;
+              inPosition = true;
+            }
           }
         }
       }
@@ -450,7 +560,7 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
       sharpeRatio = ((meanReturn - dailyRf) / stdDev) * Math.sqrt(252);
     }
 
-    // Downside Deviation (only negative returns)
+    // Downside Deviation (only negative returns below risk-free)
     const downsideDiffs = dailyReturns.filter(r => r < dailyRf).map(r => Math.pow(r - dailyRf, 2));
     const downsideVariance = downsideDiffs.length > 0
       ? downsideDiffs.reduce((sum, d) => sum + d, 0) / dailyReturns.length
@@ -499,6 +609,44 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
 
   const exposureTimePct = candles.length > 0 ? (exposureBars / candles.length) * 100 : 0;
 
+  // Institutional Quantitative Metrics
+  // Calmar Ratio: CAGR / Max Drawdown
+  const calmarRatio = maxDrawdownPct > 0
+    ? Number((Math.max(0, cagrPct) / maxDrawdownPct).toFixed(2))
+    : (cagrPct > 0 ? 99.9 : 0);
+
+  // Win/Loss Ratio
+  const winLossRatio = avgLossPnLPct > 0
+    ? Number((avgWinPnLPct / avgLossPnLPct).toFixed(2))
+    : (avgWinPnLPct > 0 ? Number(avgWinPnLPct.toFixed(2)) : 1.0);
+
+  // Kelly Criterion Optimal Leverage: K = W - (1 - W) / R
+  let kellyCriterionPct = 0;
+  if (totalTrades >= 5 && winLossRatio > 0) {
+    const w = winRatePct / 100;
+    const r = winLossRatio;
+    const k = w - ((1 - w) / r);
+    kellyCriterionPct = Number((Math.max(0, k) * 100).toFixed(2));
+  }
+
+  // Value at Risk (VaR 95%) and Conditional VaR (Expected Shortfall)
+  let var95Pct = 0;
+  let cvar95Pct = 0;
+  if (dailyReturns.length >= 10) {
+    const sortedReturns = [...dailyReturns].sort((a, b) => a - b);
+    const idx5 = Math.floor(sortedReturns.length * 0.05);
+    const worst5Pct = sortedReturns.slice(0, idx5 + 1);
+    var95Pct = Number((Math.abs(sortedReturns[idx5]) * 100).toFixed(2));
+    const cvarMean = worst5Pct.reduce((acc, v) => acc + v, 0) / Math.max(1, worst5Pct.length);
+    cvar95Pct = Number((Math.abs(cvarMean) * 100).toFixed(2));
+  }
+
+  // Recovery Factor: Net Profit / Max Drawdown in Currency
+  const maxDollarDrawdown = peakEquity * (maxDrawdownPct / 100);
+  const recoveryFactor = maxDollarDrawdown > 0
+    ? Number((netProfit / maxDollarDrawdown).toFixed(2))
+    : (netProfit > 0 ? 99.9 : 0);
+
   const metrics: BacktestMetrics = {
     initialCapital: Number(initialCapital.toFixed(2)),
     finalCapital: Number(finalCapital.toFixed(2)),
@@ -509,6 +657,12 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
     cagrPct: Number(cagrPct.toFixed(2)),
     sharpeRatio: Number(sharpeRatio.toFixed(2)),
     sortinoRatio: Number(sortinoRatio.toFixed(2)),
+    calmarRatio,
+    kellyCriterionPct,
+    var95Pct,
+    cvar95Pct,
+    winLossRatio,
+    recoveryFactor,
     maxDrawdownPct: Number(maxDrawdownPct.toFixed(2)),
     maxDrawdownDurationDays: maxDrawdownDurationBars,
     totalTrades,
@@ -552,7 +706,8 @@ export async function runBacktest(req: BacktestRequest): Promise<BacktestReport>
       region,
       includeFriction,
       slippagePct,
-      tPlus1RuleApplied: region === 'CN'
+      tPlus1RuleApplied: region === 'CN',
+      executionFillModel
     },
     generatedAt: new Date().toISOString()
   };

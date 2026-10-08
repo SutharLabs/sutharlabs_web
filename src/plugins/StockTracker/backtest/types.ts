@@ -21,6 +21,9 @@ export interface FrictionBreakdown {
   notes: string[];
 }
 
+export type ExecutionFillModel = 'NEXT_BAR_OPEN' | 'SAME_BAR_CLOSE';
+export type PositionSizingModel = 'CASH_PERCENT' | 'EQUITY_PERCENT' | 'RISK_BASED' | 'VOLATILITY_ADJUSTED';
+
 export interface BacktestRequest {
   strategyId: string;
   customStrategy?: Partial<IStrategy>;
@@ -39,6 +42,9 @@ export interface BacktestRequest {
   includeFriction?: boolean;
   slippagePct?: number;
   positionSizingPct?: number; // e.g. 95% of equity per position
+  positionSizingModel?: PositionSizingModel; // 'CASH_PERCENT' | 'EQUITY_PERCENT' | 'RISK_BASED'
+  riskPerTradePct?: number;    // e.g. 1.0% of portfolio equity risked at stop loss
+  executionFillModel?: ExecutionFillModel; // 'NEXT_BAR_OPEN' (Standard) | 'SAME_BAR_CLOSE'
   stopLossPct?: number;       // e.g. 5% override
   takeProfitPct?: number;     // e.g. 15% override
   riskFreeRatePct?: number;   // e.g. 6.5% for IN, 4.5% for US
@@ -91,6 +97,12 @@ export interface BacktestMetrics {
   cagrPct: number;
   sharpeRatio: number;
   sortinoRatio: number;
+  calmarRatio: number;
+  kellyCriterionPct: number;
+  var95Pct: number;
+  cvar95Pct: number;
+  winLossRatio: number;
+  recoveryFactor: number;
   maxDrawdownPct: number;
   maxDrawdownDurationDays: number;
   totalTrades: number;
@@ -133,6 +145,7 @@ export interface BacktestReport {
     includeFriction: boolean;
     slippagePct: number;
     tPlus1RuleApplied: boolean;
+    executionFillModel: ExecutionFillModel;
   };
   generatedAt: string;
 }
