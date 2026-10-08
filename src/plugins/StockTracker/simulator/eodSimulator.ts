@@ -610,13 +610,34 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
   // If in Historical Replay Mode, determine the date range to replay
   if (isReplayMode) {
-    // Collect all chronological dates across candle datasets
+    const isIntraday = targetInterval !== '1d';
+
+    // Collect all unique dates and bar timestamps across candle datasets
     const allDatesSet = new Set<string>();
-    candlesMap.forEach(candles => {
-      candles.forEach(c => {
-        const d = (c.isoTime || "").slice(0, 10);
-        if (d) allDatesSet.add(d);
+    const allBarTimesSet = new Set<string>();
+
+    // Build O(1) fast lookup index maps per symbol
+    const symbolBarMap = new Map<string, Map<string, { candle: any; index: number }>>();
+    const symbolDateBarsMap = new Map<string, Map<string, { candle: any; index: number }[]>>();
+
+    candlesMap.forEach((candles, sym) => {
+      const barMap = new Map<string, { candle: any; index: number }>();
+      const dateMap = new Map<string, { candle: any; index: number }[]>();
+
+      candles.forEach((c, idx) => {
+        if (c.isoTime) {
+          barMap.set(c.isoTime, { candle: c, index: idx });
+          allBarTimesSet.add(c.isoTime);
+
+          const d = c.isoTime.slice(0, 10);
+          allDatesSet.add(d);
+          if (!dateMap.has(d)) dateMap.set(d, []);
+          dateMap.get(d)!.push({ candle: c, index: idx });
+        }
       });
+
+      symbolBarMap.set(sym, barMap);
+      symbolDateBarsMap.set(sym, dateMap);
     });
 
     const sortedDates = Array.from(allDatesSet).sort();
@@ -634,29 +655,60 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     const replayDates = sortedDates.filter(d => d >= startDate! && d <= endDate! && isExchangeTradingDay(targetMarket, d));
     const validReplayDates = replayDates.length > 0 ? replayDates : sortedDates.filter(d => isExchangeTradingDay(targetMarket, d)).slice(-30);
 
+    // Build chronological sequence of replay steps:
+    // If Intraday (15m, 5m, 1m, 1h, 4h), step bar-by-bar across every intraday candle
+    // If Daily ('1d'), step day-by-day
+    let replaySteps: { stepIso: string; dateStr: string }[] = [];
+
+    if (isIntraday) {
+      const sortedBarTimes = Array.from(allBarTimesSet).sort();
+      const validBars = sortedBarTimes.filter(bt => {
+        const d = bt.slice(0, 10);
+        return d >= startDate! && d <= endDate! && isExchangeTradingDay(targetMarket, d);
+      });
+      replaySteps = validBars.map(bt => ({
+        stepIso: bt,
+        dateStr: bt.slice(0, 10)
+      }));
+    } else {
+      replaySteps = validReplayDates.map(d => {
+        const stepIso = targetMarket === 'IN' 
+          ? `${d}T03:45:00.000Z` // 09:15 IST
+          : (targetMarket === 'US' ? `${d}T13:30:00.000Z` : `${d}T08:00:00.000Z`);
+        return {
+          stepIso,
+          dateStr: d
+        };
+      });
+    }
+
     const startingCapital = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
     const closedTradesAll: EODTradeExecution[] = [];
     const openedTradesAll: EODTradeExecution[] = [];
     const updatedTrailingStopsAll: EODTrailingStopUpdate[] = [];
 
-    // Chronologically step through each trading day
-    for (const simDate of validReplayDates) {
+    // Chronologically step through each bar / trading session
+    for (const step of replaySteps) {
+      const { stepIso, dateStr } = step;
+      const simDate = dateStr;
       // Step A: Evaluate Open Positions against this day's candle
       const remainingPositions: EODPosition[] = [];
 
       for (const pos of store.positions) {
-        const candles = candlesMap.get(pos.symbol) || [];
-        const candleIndex = candles.findIndex(c => (c.isoTime || "").slice(0, 10) === simDate);
-        if (candleIndex === -1) {
+        const barEntry = isIntraday
+          ? symbolBarMap.get(pos.symbol)?.get(stepIso)
+          : (symbolBarMap.get(pos.symbol)?.get(stepIso) || symbolDateBarsMap.get(pos.symbol)?.get(dateStr)?.[0]);
+
+        if (!barEntry) {
           remainingPositions.push(pos);
           continue;
         }
 
-        const candle = candles[candleIndex];
+        const candle = barEntry.candle;
         const { high, low, close } = candle;
         pos.currentPrice = close;
         pos.currentValue = pos.shares * close;
-        pos.daysHeld = Math.max(1, Math.round((new Date(simDate).getTime() - new Date(pos.entryDate).getTime()) / (1000 * 3600 * 24)));
+        pos.daysHeld = Math.max(1, Math.round((new Date(dateStr).getTime() - new Date(pos.entryDate).getTime()) / (1000 * 3600 * 24)));
 
         let closed = false;
         let exitPrice = close;
@@ -705,6 +757,8 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             exitReason += ` (Net loss of ${realizedPnL.toFixed(2)} due to ${friction.totalFriction.toFixed(2)} friction/STT fees)`;
           }
 
+          const exitIso = candle.isoTime || stepIso;
+
           const tradeExecution: EODTradeExecution = {
             id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
             type: exitType,
@@ -716,8 +770,8 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             entryDate: pos.entryDate,
             entryTimestamp: pos.entryTimestamp,
             exitPrice: parseFloat(exitPrice.toFixed(2)),
-            exitDate: simDate,
-            exitTimestamp: candle.isoTime || `${simDate}T15:30:00.000Z`,
+            exitDate: dateStr,
+            exitTimestamp: exitIso,
             holdingDays: pos.daysHeld,
             currency: pos.currency,
             currencySymbol: pos.currencySymbol,
@@ -725,7 +779,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             realizedPnLPct: parseFloat(realizedPnLPct.toFixed(2)),
             friction: parseFloat(friction.totalFriction.toFixed(2)),
             reason: exitReason,
-            executedAt: candle.isoTime || `${simDate}T15:30:00.000Z`
+            executedAt: exitIso
           };
 
           closedTradesAll.push(tradeExecution);
@@ -753,16 +807,19 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
       }
       store.positions = remainingPositions;
 
-      // Step B: Scan Universe for New Entries on this day's candle
+      // Step B: Scan Universe for New Entries on this bar
       for (const item of trackedSymbols) {
         if (store.positions.some(p => p.symbol === item.symbol)) continue;
 
-        const candles = candlesMap.get(item.symbol) || [];
-        const candleIndex = candles.findIndex(c => (c.isoTime || "").slice(0, 10) === simDate);
-        if (candleIndex < 20) continue; // Need at least 20 historical bars for indicators
+        const barEntry = isIntraday
+          ? symbolBarMap.get(item.symbol)?.get(stepIso)
+          : (symbolBarMap.get(item.symbol)?.get(stepIso) || symbolDateBarsMap.get(item.symbol)?.get(dateStr)?.[0]);
 
-        const candlesUpToDate = candles.slice(0, candleIndex + 1);
-        const candle = candles[candleIndex];
+        if (!barEntry || barEntry.index < 20) continue; // Need at least 20 historical bars for indicators
+
+        const candles = candlesMap.get(item.symbol) || [];
+        const candlesUpToDate = candles.slice(0, barEntry.index + 1);
+        const candle = barEntry.candle;
         const entryPrice = candle.close;
 
         const quote = {
@@ -818,7 +875,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
               const isEU = item.symbol.endsWith('.L') || item.symbol.endsWith('.DE') || item.symbol.endsWith('.PA') || item.market === 'EU';
               const posCurr = isIndian ? 'INR' : (isEU ? 'EUR' : 'USD');
               const posCurrSym = isIndian ? '₹' : (isEU ? '€' : '$');
-              const entryIso = candle.isoTime || `${simDate}T09:30:00.000Z`;
+              const entryIso = candle.isoTime || stepIso;
 
               const newPos: EODPosition = {
                 id: `pos-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
@@ -835,7 +892,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
                 highestPriceSinceEntry: entryPrice,
                 unrealizedPnL: 0,
                 unrealizedPnLPct: 0,
-                entryDate: simDate,
+                entryDate: dateStr,
                 entryTimestamp: entryIso,
                 totalCost: parseFloat(totalCost.toFixed(2)),
                 currentValue: parseFloat((shares * entryPrice).toFixed(2)),
@@ -853,7 +910,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
                 shares,
                 price: parseFloat(entryPrice.toFixed(2)),
                 entryPrice: parseFloat(entryPrice.toFixed(2)),
-                entryDate: simDate,
+                entryDate: dateStr,
                 entryTimestamp: entryIso,
                 currency: posCurr,
                 currencySymbol: posCurrSym,
@@ -1146,7 +1203,9 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
               const posCurr = isIndian ? 'INR' : (isEU ? 'EUR' : 'USD');
               const posCurrSym = isIndian ? '₹' : (isEU ? '€' : '$');
 
-              const entryIso = sessionStatus.isOpen ? nowIso : getSessionExecutionTimestamp(item.market, lastCandle?.time);
+              const entryIso = sessionStatus.isOpen 
+                ? nowIso 
+                : (lastCandle?.isoTime || getSessionExecutionTimestamp(item.market, lastCandle?.time));
 
               const newPos: EODPosition = {
                 id: `pos-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
