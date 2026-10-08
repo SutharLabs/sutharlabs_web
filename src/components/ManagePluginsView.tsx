@@ -91,6 +91,14 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
         const uploadData = await uploadRes.json();
         checksumSha256 = uploadData.checksumSha256;
         packageUrl = uploadData.packageUrl;
+
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'INFO',
+          message: uploadData.isEncrypted
+            ? `🔒 Verified Encrypted SutharLabs Package (AES-256-GCM protected source).`
+            : `📁 Accepted Unencoded Raw ZIP package (${(selectedPluginFile.size / 1024).toFixed(1)} KB).`
+        });
       }
 
       // 2. Publish to WorkspacePlugin catalog with version & changelog
@@ -242,7 +250,7 @@ export default function ManagePluginsView({ logs, onAddLog, userToken }: ManageP
               <span className="text-[10px] font-mono text-on-surface-variant block mt-0.5">
                 {selectedPluginFile 
                   ? `${(selectedPluginFile.size / 1024).toFixed(1)} KB — Ready to deploy` 
-                  : 'Packages must contain manifest.json and root entry point'}
+                  : 'Supports both Encrypted SutharLabs Packages (AES-256-GCM) & Unencoded Raw ZIP files'}
               </span>
             </div>
             <input 

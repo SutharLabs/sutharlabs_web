@@ -3,6 +3,7 @@ import path from 'path';
 import crypto from 'crypto';
 import { execSync } from 'child_process';
 import 'dotenv/config';
+import { encryptPluginPackage } from '../src/plugins/security/pluginCrypto.ts';
 
 interface PluginConfig {
   dirName: string;
@@ -21,7 +22,7 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'StockTracker',
     id: 'wp_stock_analyzer',
     name: 'Stock Tracker',
-    version: '1.1.0',
+    version: '1.1.1',
     category: 'Finance',
     type: 'Native',
     description: 'Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.',
@@ -114,12 +115,18 @@ async function packageAllPlugins() {
       // Create zip archive using PowerShell Compress-Archive
       const psCommand = `powershell -NoProfile -Command "Compress-Archive -Path '${pluginDir}\\*' -DestinationPath '${archiveFilePath}' -Force"`;
       execSync(psCommand, { stdio: 'pipe' });
+
+      // Encrypt the raw zip archive using AES-256-GCM to prevent exposing source code
+      const rawZipBuffer = fs.readFileSync(archiveFilePath);
+      const encryptedPackageBuffer = encryptPluginPackage(rawZipBuffer);
+      fs.writeFileSync(archiveFilePath, encryptedPackageBuffer);
+      console.log(`  [security] Encrypted archive package with AES-256-GCM (Source protected)`);
     } catch (err: any) {
-      console.error(`❌ Failed to compress ${plugin.id}:`, err.message);
+      console.error(`❌ Failed to compress and encrypt ${plugin.id}:`, err.message);
       continue;
     }
 
-    // 3. Compute cryptographic SHA-256 hash
+    // 3. Compute cryptographic SHA-256 hash of the secured package
     const fileBuffer = fs.readFileSync(archiveFilePath);
     const checksumSha256 = crypto.createHash('sha256').update(fileBuffer).digest('hex');
     const fileStats = fs.statSync(archiveFilePath);

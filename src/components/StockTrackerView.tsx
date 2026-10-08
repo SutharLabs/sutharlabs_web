@@ -2400,15 +2400,15 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             <ChevronDown className="w-3 h-3 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors" />
           </button>
 
-          {/* Market Session Active/Closed Pill (Formatted Cleanly, No Raw Strings like POSTPOST) */}
+          {/* Market Session Active/Closed Pill (Compact CLSD Status) */}
           {quote?.market_state && (
             <span 
-              className="h-8 px-2 sm:px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant border border-outline/20 font-mono text-[11px] flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-sm"
+              className="h-8 px-2 rounded-lg bg-surface-container-low text-on-surface-variant border border-outline/20 font-mono text-[10px] sm:text-[11px] flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-sm"
               title={`Market State: ${quote.market_state} • Session: ${quote.market_open ? 'Open' : 'Closed'}`}
             >
-              <span className={`w-2 h-2 rounded-full shrink-0 ${quote.market_open ? 'bg-[#00e476] animate-pulse' : 'bg-slate-400'}`} />
-              <span className="font-semibold">
-                {quote.market_open ? 'OPEN' : (quote.market_state === 'POSTPOST' || quote.market_state === 'CLOSED' ? 'CLOSED' : quote.market_state === 'PRE' ? 'PRE-MKT' : quote.market_state === 'POST' ? 'POST-MKT' : quote.market_state)}
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${quote.market_open ? 'bg-[#00e476] animate-pulse' : 'bg-slate-400'}`} />
+              <span className="font-bold tracking-wider">
+                {quote.market_open ? 'OPEN' : 'CLSD'}
               </span>
             </span>
           )}
@@ -2589,17 +2589,17 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             }}
             className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth py-0.5 px-6 whitespace-nowrap"
           >
-            {/* 1. Version Badge (PROD removed as requested) */}
+            {/* 1. Version Badge (v1.1.1 Bug Fix Release) */}
             <button
               onClick={() => {
                 setSettingsActiveTab('SCANNER');
                 setShowSettingsDrawer(true);
               }}
               className="h-8 px-2.5 rounded-lg bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 font-mono text-xs font-bold cursor-pointer hover:bg-[#00e476]/20 transition-all shadow-sm flex items-center gap-1.5 shrink-0"
-              title="SutharLabs Stock Tracker v1.1.0"
+              title="SutharLabs Stock Tracker v1.1.1"
             >
               <Cpu className="w-3.5 h-3.5 text-[#00e476]" />
-              <span>v1.1.0</span>
+              <span>v1.1.1</span>
             </button>
 
             {/* 2. Sliding Settings Overlay Trigger (Placed JUST after Version as requested) */}

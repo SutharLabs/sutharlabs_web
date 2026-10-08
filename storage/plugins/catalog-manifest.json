@@ -2,18 +2,18 @@
   {
     "id": "wp_stock_analyzer",
     "name": "Stock Tracker",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "category": "Finance",
     "type": "Native",
     "description": "Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.",
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-07T19:27:51.120Z",
-    "archiveFileName": "wp_stock_analyzer-v1.1.0.zip",
-    "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.0.zip",
-    "sizeBytes": 65456,
-    "checksumSha256": "d653426de2d47b2ec5fa9f6f27e4977d2b1eef5efbe7261eedffb8360403151d"
+    "packagedAt": "2026-10-08T14:31:35.891Z",
+    "archiveFileName": "wp_stock_analyzer-v1.1.1.zip",
+    "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.1.zip",
+    "sizeBytes": 74234,
+    "checksumSha256": "d2e802d5ba610abb9a9d346a8be1238457b9903c5ad407ca5eaf7f248631c5de"
   },
   {
     "id": "wp_flow_designer",
@@ -25,11 +25,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-07T19:27:54.276Z",
+    "packagedAt": "2026-10-08T14:31:37.552Z",
     "archiveFileName": "wp_flow_designer-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.1.0.zip",
-    "sizeBytes": 1837,
-    "checksumSha256": "4ae7da69376996cb663f63f07f05bd251e37a4d06ec505ddffb24b7f18bcb94b"
+    "sizeBytes": 1870,
+    "checksumSha256": "33f90b56ab8725c9c1873b166c8f3e1cec62c9fc7fa37942da4a31232fc564e2"
   },
   {
     "id": "wp_doc_nexus",
@@ -41,11 +41,11 @@
     "iconSymbol": "description",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-07T19:27:56.302Z",
+    "packagedAt": "2026-10-08T14:31:38.256Z",
     "archiveFileName": "wp_doc_nexus-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.1.0.zip",
-    "sizeBytes": 2290,
-    "checksumSha256": "71c850708f6410fcca8f1e2250ec555ddaa7fa1472ec28563901c71a39cacf1a"
+    "sizeBytes": 2323,
+    "checksumSha256": "0a64017eab817498be41f73a0c1653ffbe2149ff1d2b5a529fd5210f79fece2f"
   },
   {
     "id": "wp_accounting",
@@ -57,10 +57,10 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-07T19:27:57.638Z",
+    "packagedAt": "2026-10-08T14:31:38.936Z",
     "archiveFileName": "wp_accounting-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.1.0.zip",
-    "sizeBytes": 1786,
-    "checksumSha256": "11356ab8d5c314634ede71118c6ce6b15da5915ff161d53181871f6da70006de"
+    "sizeBytes": 1818,
+    "checksumSha256": "7359d2f5eb5fbaf8a5b70da95cc5df9ef23e7d03829c603e11358f2914d6796d"
   }
 ]

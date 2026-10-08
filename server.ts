@@ -8,6 +8,7 @@ import { getPrismaClient, hashPassword, generateToken, verifyToken } from "./api
 import { PluginEngine } from "./src/plugins/PluginEngine.js";
 import { registerAllPluginRoutes } from "./src/plugins/serverRegistry.js";
 import { resetSimulator } from "./src/plugins/StockTracker/simulator/index.js";
+import { isEncryptedPluginPackage, resolvePluginArchiveBuffer, encryptPluginPackage } from "./src/plugins/security/pluginCrypto.js";
 import { getSystemTelemetry } from "./src/services/telemetryService.js";
 import { notifyAdminNewInquiry } from "./src/services/emailService.js";
 import {
@@ -132,7 +133,7 @@ async function seedDatabase() {
           type: "Native",
           description: "Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.",
           iconSymbol: "monitoring",
-          version: "1.1.0"
+          version: "1.1.1"
         }
       });
 
@@ -1200,19 +1201,25 @@ app.get("/api/workspace-plugins/installed", authenticateToken, async (req: any, 
   }
 });
 
-// Admin: Upload plugin archive package (.zip or .vsix)
+// Admin: Upload plugin archive package (.zip or .vsix) - Supports both Encrypted (SLPK) and Unencoded Raw ZIPs
 app.post("/api/plugins/upload", authenticateToken, requireAdmin, upload.single("pluginFile"), async (req: any, res: any) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: "No archive package file provided." });
     }
 
-    const checksumSha256 = crypto.createHash("sha256").update(req.file.buffer).digest("hex");
+    // Inspect & validate package format (Encrypted SLPK or Unencoded Raw ZIP)
+    let packageBuffer = req.file.buffer;
+    const resolved = resolvePluginArchiveBuffer(packageBuffer);
+
+    console.log(`[Plugin Upload Engine] Received package: ${req.file.originalname} (${req.file.size} bytes). Format: ${resolved.format}, Encrypted: ${resolved.isEncrypted}`);
+
+    const checksumSha256 = crypto.createHash("sha256").update(packageBuffer).digest("hex");
     const filename = req.file.originalname || "plugin-package.zip";
     let packageUrl = "";
 
     if (isBlobConfigured()) {
-      const blob = await uploadToBlob(`plugins/${Date.now()}_${filename}`, req.file.buffer, {
+      const blob = await uploadToBlob(`plugins/${Date.now()}_${filename}`, packageBuffer, {
         contentType: req.file.mimetype || "application/octet-stream"
       });
       packageUrl = blob.url;
@@ -1223,7 +1230,7 @@ app.post("/api/plugins/upload", authenticateToken, requireAdmin, upload.single("
       }
 
       const savedPath = path.join(storageDir, `${Date.now()}_${filename}`);
-      fs.writeFileSync(savedPath, req.file.buffer);
+      fs.writeFileSync(savedPath, packageBuffer);
       packageUrl = `/storage/plugins/${path.basename(savedPath)}`;
     }
 
@@ -1233,11 +1240,52 @@ app.post("/api/plugins/upload", authenticateToken, requireAdmin, upload.single("
       size: req.file.size,
       checksumSha256,
       packageUrl,
+      isEncrypted: resolved.isEncrypted,
+      format: resolved.format,
+      message: resolved.isEncrypted 
+        ? "Verified encrypted SutharLabs package (AES-256-GCM authenticated)." 
+        : "Loaded unencoded raw ZIP package.",
       storageType: isBlobConfigured() ? "vercel_blob" : "local_disk"
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Failed to upload plugin package:", error);
-    res.status(500).json({ error: "Failed to process plugin package archive." });
+    res.status(500).json({ error: error.message || "Failed to process plugin package archive." });
+  }
+});
+
+// Secure Plugin Download Endpoint: Always returns encrypted zip package to prevent raw source exposure
+app.get("/api/plugins/download/:id", authenticateToken, async (req: any, res: any) => {
+  try {
+    const pluginId = req.params.id;
+    const storageDir = path.join(process.cwd(), "storage", "plugins");
+    
+    // Look for matching archive in storage/plugins/
+    let targetFile: string | null = null;
+    if (fs.existsSync(storageDir)) {
+      const files = fs.readdirSync(storageDir);
+      const match = files.find(f => f.startsWith(pluginId) && f.endsWith('.zip'));
+      if (match) {
+        targetFile = path.join(storageDir, match);
+      }
+    }
+
+    if (!targetFile || !fs.existsSync(targetFile)) {
+      return res.status(404).json({ error: "Plugin archive package not found." });
+    }
+
+    let fileBuffer = fs.readFileSync(targetFile);
+
+    // If package is not yet encrypted, encrypt it on-the-fly before serving
+    if (!isEncryptedPluginPackage(fileBuffer)) {
+      fileBuffer = encryptPluginPackage(fileBuffer);
+    }
+
+    res.setHeader("Content-Type", "application/zip");
+    res.setHeader("Content-Disposition", `attachment; filename="${path.basename(targetFile)}"`);
+    res.send(fileBuffer);
+  } catch (error: any) {
+    console.error("Plugin download error:", error);
+    res.status(500).json({ error: "Failed to download plugin package." });
   }
 });
 
