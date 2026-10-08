@@ -13,6 +13,7 @@ import { PRESET_STRATEGIES } from "../strategies/presets.js";
 import { evaluateStrategy } from "../strategies/engine.js";
 import { calculateRegionalFriction, detectMarketRegion } from "../backtest/friction.js";
 import { readJsonData, writeJsonData } from "../storageUtils.js";
+import { getPrismaClient } from "../../../../api/_utils.js";
 import {
   EODPosition,
   EODTradeExecution,
@@ -21,6 +22,181 @@ import {
   EODSimulationOptions,
   SimulationRegistryEntry
 } from "./types.js";
+
+// ── Market Session Trading Hours Validator ──────────────────────────────────
+export interface MarketSessionStatus {
+  isOpen: boolean;
+  market: string;
+  reason: string;
+  localTimeStr: string;
+  sessionOpenStr: string;
+  sessionCloseStr: string;
+}
+
+export function getMarketSessionStatus(market: string = 'IN'): MarketSessionStatus {
+  const normMarket = market.toUpperCase();
+  const now = new Date();
+
+  if (normMarket === 'IN') {
+    // IST is UTC + 5:30 (Asia/Kolkata)
+    const istOffsetMs = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(now.getTime() + istOffsetMs);
+    const dayOfWeek = istDate.getUTCDay(); // 0 = Sun, 6 = Sat
+    const hours = istDate.getUTCHours();
+    const minutes = istDate.getUTCMinutes();
+    const totalMinutes = hours * 60 + minutes;
+
+    const openMinutes = 9 * 60 + 15;   // 09:15 IST
+    const closeMinutes = 15 * 60 + 30;  // 15:30 IST
+
+    const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} IST`;
+
+    if (dayOfWeek === 0 || dayOfWeek === 6) {
+      return {
+        isOpen: false,
+        market: 'IN',
+        reason: `Weekend closure (NSE/BSE). Markets reopen Monday at 09:15 IST (Current: ${timeStr})`,
+        localTimeStr: timeStr,
+        sessionOpenStr: '09:15 IST',
+        sessionCloseStr: '15:30 IST'
+      };
+    }
+
+    if (totalMinutes < openMinutes) {
+      return {
+        isOpen: false,
+        market: 'IN',
+        reason: `Pre-market period. NSE/BSE opens at 09:15 IST (Current: ${timeStr})`,
+        localTimeStr: timeStr,
+        sessionOpenStr: '09:15 IST',
+        sessionCloseStr: '15:30 IST'
+      };
+    }
+
+    if (totalMinutes >= closeMinutes) {
+      return {
+        isOpen: false,
+        market: 'IN',
+        reason: `Market closed for today. Regular NSE/BSE session ended at 15:30 IST (Current: ${timeStr})`,
+        localTimeStr: timeStr,
+        sessionOpenStr: '09:15 IST',
+        sessionCloseStr: '15:30 IST'
+      };
+    }
+
+    return {
+      isOpen: true,
+      market: 'IN',
+      reason: `Live market session active (09:15 - 15:30 IST, Current: ${timeStr})`,
+      localTimeStr: timeStr,
+      sessionOpenStr: '09:15 IST',
+      sessionCloseStr: '15:30 IST'
+    };
+  }
+
+  if (normMarket === 'US') {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/New_York',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false,
+      weekday: 'short'
+    });
+    const parts = formatter.formatToParts(now);
+    const weekday = parts.find(p => p.type === 'weekday')?.value;
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+    const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+    const totalMinutes = hour * 60 + minute;
+    const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} ET`;
+
+    if (weekday === 'Sat' || weekday === 'Sun') {
+      return {
+        isOpen: false,
+        market: 'US',
+        reason: `Weekend closure (NYSE/NASDAQ). Reopens Monday at 09:30 ET (Current: ${timeStr})`,
+        localTimeStr: timeStr,
+        sessionOpenStr: '09:30 ET',
+        sessionCloseStr: '16:00 ET'
+      };
+    }
+
+    if (totalMinutes < 9 * 60 + 30 || totalMinutes >= 16 * 60) {
+      return {
+        isOpen: false,
+        market: 'US',
+        reason: `Market closed. Regular trading hours: 09:30 - 16:00 ET (Current: ${timeStr})`,
+        localTimeStr: timeStr,
+        sessionOpenStr: '09:30 ET',
+        sessionCloseStr: '16:00 ET'
+      };
+    }
+
+    return {
+      isOpen: true,
+      market: 'US',
+      reason: `Live market session active (09:30 - 16:00 ET, Current: ${timeStr})`,
+      localTimeStr: timeStr,
+      sessionOpenStr: '09:30 ET',
+      sessionCloseStr: '16:00 ET'
+    };
+  }
+
+  // EU Market
+  const euFormatter = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/London',
+    hour: 'numeric',
+    minute: 'numeric',
+    hour12: false,
+    weekday: 'short'
+  });
+  const euParts = euFormatter.formatToParts(now);
+  const euWeekday = euParts.find(p => p.type === 'weekday')?.value;
+  const euHour = parseInt(euParts.find(p => p.type === 'hour')?.value || '0', 10);
+  const euMinute = parseInt(euParts.find(p => p.type === 'minute')?.value || '0', 10);
+  const euTotal = euHour * 60 + euMinute;
+  const euTimeStr = `${String(euHour).padStart(2, '0')}:${String(euMinute).padStart(2, '0')} GMT`;
+
+  if (euWeekday === 'Sat' || euWeekday === 'Sun' || euTotal < 8 * 60 || euTotal >= 16 * 60 + 30) {
+    return {
+      isOpen: false,
+      market: 'EU',
+      reason: `Market closed. Regular session: 08:00 - 16:30 GMT (Current: ${euTimeStr})`,
+      localTimeStr: euTimeStr,
+      sessionOpenStr: '08:00 GMT',
+      sessionCloseStr: '16:30 GMT'
+    };
+  }
+
+  return {
+    isOpen: true,
+    market: 'EU',
+    reason: `Live market session active (08:00 - 16:30 GMT, Current: ${euTimeStr})`,
+    localTimeStr: euTimeStr,
+    sessionOpenStr: '08:00 GMT',
+    sessionCloseStr: '16:30 GMT'
+  };
+}
+
+export function getSessionExecutionTimestamp(market: string, candleTime?: number): string {
+  if (candleTime && candleTime > 0) {
+    const ms = candleTime > 1e11 ? candleTime : candleTime * 1000;
+    return new Date(ms).toISOString();
+  }
+  const now = new Date();
+  const session = getMarketSessionStatus(market);
+  if (session.isOpen) {
+    return now.toISOString();
+  }
+
+  const normMarket = market.toUpperCase();
+  const dateStr = now.toISOString().slice(0, 10);
+  if (normMarket === 'IN') {
+    return new Date(`${dateStr}T10:00:00.000Z`).toISOString(); // 15:30 IST = 10:00 UTC
+  } else if (normMarket === 'US') {
+    return new Date(`${dateStr}T20:00:00.000Z`).toISOString(); // 16:00 ET = 20:00 UTC
+  }
+  return now.toISOString();
+}
 
 // ── Storage Key Helpers ──────────────────────────────────────────────────────
 // 'default' maps to legacy file names for backward-compatibility.
@@ -142,19 +318,70 @@ const DEFAULT_INITIAL_STATE: PersistedEODState = {
   lastUpdated: undefined
 };
 
-function ensureSimulatorStore(simId: string): PersistedEODState {
-  const store = readJsonData<PersistedEODState>(portfolioKey(simId), DEFAULT_INITIAL_STATE);
+export async function ensureSimulatorStore(simId: string): Promise<PersistedEODState> {
+  const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
+
+  // 1. Query Neon PostgreSQL database
+  try {
+    const prisma = getPrismaClient();
+    const row = await prisma.simulationStore.findUnique({
+      where: { simId: safeSimId }
+    });
+
+    if (row) {
+      let positions: EODPosition[] = [];
+      let closedTrades: EODTradeExecution[] = [];
+      try { positions = JSON.parse(row.positions || '[]'); } catch {}
+      try { closedTrades = JSON.parse(row.closedTrades || '[]'); } catch {}
+
+      const store: PersistedEODState = {
+        initialCash: row.initialCash ?? 100000,
+        cash: row.cash ?? 100000,
+        positions: Array.isArray(positions) ? positions : [],
+        closedTrades: Array.isArray(closedTrades) ? closedTrades : [],
+        lastRunDate: row.lastRunDate || undefined,
+        totalRealizedPnL: row.totalRealizedPnL ?? 0,
+        totalFrictionPaid: row.totalFrictionPaid ?? 0,
+        winCount: row.winCount ?? 0,
+        lossCount: row.lossCount ?? 0,
+        lastUpdated: row.lastUpdated || undefined
+      };
+
+      // Deduplicate open positions by normalized symbol so 1-minute crons keep only 1 instance
+      if (store.positions.length > 1) {
+        const seen = new Set<string>();
+        const uniquePositions: EODPosition[] = [];
+        for (const pos of store.positions) {
+          const norm = normalizeTicker(pos.symbol, pos.market);
+          if (!seen.has(norm)) {
+            seen.add(norm);
+            uniquePositions.push(pos);
+          }
+        }
+        if (uniquePositions.length !== store.positions.length) {
+          store.positions = uniquePositions;
+          await saveSimulatorStore(store, safeSimId);
+        }
+      }
+
+      writeJsonData(portfolioKey(safeSimId), store);
+      return store;
+    }
+  } catch (err) {
+    console.warn(`[Simulator DB] Error loading store for ${safeSimId} from DB:`, err);
+  }
+
+  // 2. Fallback to local disk / memory cache / default initial
+  const store = readJsonData<PersistedEODState>(portfolioKey(safeSimId), DEFAULT_INITIAL_STATE);
   if (!store || typeof store.cash !== "number") {
-    return { ...DEFAULT_INITIAL_STATE };
+    const fresh = { ...DEFAULT_INITIAL_STATE };
+    await saveSimulatorStore(fresh, safeSimId);
+    return fresh;
   }
   if (!Array.isArray(store.positions)) store.positions = [];
   if (!Array.isArray(store.closedTrades)) store.closedTrades = [];
-  if (typeof store.totalRealizedPnL !== "number") store.totalRealizedPnL = 0;
-  if (typeof store.totalFrictionPaid !== "number") store.totalFrictionPaid = 0;
-  if (typeof store.winCount !== "number") store.winCount = 0;
-  if (typeof store.lossCount !== "number") store.lossCount = 0;
 
-  // Deduplicate open positions by normalized symbol so 1-minute crons keep only 1 instance
+  // Deduplicate open positions
   if (store.positions.length > 1) {
     const seen = new Set<string>();
     const uniquePositions: EODPosition[] = [];
@@ -165,54 +392,140 @@ function ensureSimulatorStore(simId: string): PersistedEODState {
         uniquePositions.push(pos);
       }
     }
-    if (uniquePositions.length !== store.positions.length) {
-      store.positions = uniquePositions;
-      saveSimulatorStore(store, simId);
-    }
+    store.positions = uniquePositions;
   }
 
+  // Sync back to DB
+  await saveSimulatorStore(store, safeSimId);
   return store;
 }
 
-function saveSimulatorStore(state: PersistedEODState, simId: string) {
-  writeJsonData(portfolioKey(simId), state);
+export async function saveSimulatorStore(state: PersistedEODState, simId: string): Promise<void> {
+  const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
+
+  // 1. Write memory cache and local JSON file
+  writeJsonData(portfolioKey(safeSimId), state);
   try {
-    const localPath = localPortfolioPath(simId);
+    const localPath = localPortfolioPath(safeSimId);
     const dir = path.dirname(localPath);
     if (fs.existsSync(dir)) {
       fs.writeFileSync(localPath, JSON.stringify(state, null, 2), "utf8");
     }
   } catch {}
+
+  // 2. Persist to Neon PostgreSQL database
+  try {
+    const prisma = getPrismaClient();
+    await prisma.simulationStore.upsert({
+      where: { simId: safeSimId },
+      update: {
+        initialCash: state.initialCash,
+        cash: state.cash,
+        positions: JSON.stringify(state.positions || []),
+        closedTrades: JSON.stringify(state.closedTrades || []),
+        lastRunDate: state.lastRunDate || null,
+        totalRealizedPnL: state.totalRealizedPnL ?? 0,
+        totalFrictionPaid: state.totalFrictionPaid ?? 0,
+        winCount: state.winCount ?? 0,
+        lossCount: state.lossCount ?? 0,
+        lastUpdated: state.lastUpdated || new Date().toISOString()
+      },
+      create: {
+        simId: safeSimId,
+        initialCash: state.initialCash,
+        cash: state.cash,
+        positions: JSON.stringify(state.positions || []),
+        closedTrades: JSON.stringify(state.closedTrades || []),
+        history: '[]',
+        lastRunDate: state.lastRunDate || null,
+        totalRealizedPnL: state.totalRealizedPnL ?? 0,
+        totalFrictionPaid: state.totalFrictionPaid ?? 0,
+        winCount: state.winCount ?? 0,
+        lossCount: state.lossCount ?? 0,
+        lastUpdated: state.lastUpdated || new Date().toISOString()
+      }
+    });
+  } catch (dbErr) {
+    console.error(`[Simulator DB] Error saving simulation store ${safeSimId} to DB:`, dbErr);
+  }
 }
 
 /**
  * Append a full report to history — called ONLY when trades occurred.
  */
-function appendHistoryReport(report: EODSimulationReport, simId: string) {
-  let history = readJsonData<EODSimulationReport[]>(historyKey(simId), []);
+async function appendHistoryReport(report: EODSimulationReport, simId: string): Promise<void> {
+  const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
+  let history: EODSimulationReport[] = [];
+
+  // Try DB first
+  try {
+    const prisma = getPrismaClient();
+    const row = await prisma.simulationStore.findUnique({ where: { simId: safeSimId } });
+    if (row && row.history) {
+      try { history = JSON.parse(row.history); } catch {}
+    }
+  } catch {}
+
+  if (!Array.isArray(history) || history.length === 0) {
+    history = readJsonData<EODSimulationReport[]>(historyKey(safeSimId), []);
+  }
   if (!Array.isArray(history)) history = [];
+
   history.unshift(report);
   if (history.length > 100) history = history.slice(0, 100); // Keep last 100 runs
-  writeJsonData(historyKey(simId), history);
+
+  writeJsonData(historyKey(safeSimId), history);
 
   try {
-    const localPath = localHistoryPath(simId);
+    const localPath = localHistoryPath(safeSimId);
     const dir = path.dirname(localPath);
     if (fs.existsSync(dir)) {
       fs.writeFileSync(localPath, JSON.stringify(history, null, 2), "utf8");
     }
   } catch {}
+
+  // Persist history to DB
+  try {
+    const prisma = getPrismaClient();
+    await prisma.simulationStore.upsert({
+      where: { simId: safeSimId },
+      update: { history: JSON.stringify(history) },
+      create: {
+        simId: safeSimId,
+        initialCash: report.startingCapital || 100000,
+        cash: report.endingCapital || 100000,
+        positions: JSON.stringify(report.activePositions || []),
+        closedTrades: JSON.stringify(report.closedPositions || []),
+        history: JSON.stringify(history)
+      }
+    });
+  } catch (err) {
+    console.warn(`[Simulator DB] Failed to save history for ${safeSimId}:`, err);
+  }
 }
 
 /**
  * For no-trade runs: silently update the latest history entry's portfolio snapshot
  * (endingCapital, activePositions, netDailyPnL) instead of adding a new row.
  */
-function updateHistoryPortfolioSnapshot(
+async function updateHistoryPortfolioSnapshot(
   report: EODSimulationReport,
   simId: string
-) {
-  let history = readJsonData<EODSimulationReport[]>(historyKey(simId), []);
+): Promise<void> {
+  const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
+  let history: EODSimulationReport[] = [];
+
+  try {
+    const prisma = getPrismaClient();
+    const row = await prisma.simulationStore.findUnique({ where: { simId: safeSimId } });
+    if (row && row.history) {
+      try { history = JSON.parse(row.history); } catch {}
+    }
+  } catch {}
+
+  if (!Array.isArray(history) || history.length === 0) {
+    history = readJsonData<EODSimulationReport[]>(historyKey(safeSimId), []);
+  }
   if (!Array.isArray(history)) history = [];
 
   if (history.length > 0) {
@@ -228,26 +541,44 @@ function updateHistoryPortfolioSnapshot(
       executionTimestamp: report.executionTimestamp,
       digest: report.digest
     };
-    writeJsonData(historyKey(simId), history);
+    writeJsonData(historyKey(safeSimId), history);
     try {
-      const localPath = localHistoryPath(simId);
+      const localPath = localHistoryPath(safeSimId);
       const dir = path.dirname(localPath);
       if (fs.existsSync(dir)) {
         fs.writeFileSync(localPath, JSON.stringify(history, null, 2), "utf8");
       }
     } catch {}
+
+    try {
+      const prisma = getPrismaClient();
+      await prisma.simulationStore.update({
+        where: { simId: safeSimId },
+        data: { history: JSON.stringify(history) }
+      });
+    } catch {}
   } else {
     // No existing entries at all — write the first one even without trades
-    appendHistoryReport(report, simId);
+    await appendHistoryReport(report, safeSimId);
   }
 }
 
-export function getEODHistory(simId: string = "default"): EODSimulationReport[] {
-  const history = readJsonData<EODSimulationReport[]>(historyKey(simId), []);
+export async function getEODHistory(simId: string = "default"): Promise<EODSimulationReport[]> {
+  const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
+  try {
+    const prisma = getPrismaClient();
+    const row = await prisma.simulationStore.findUnique({ where: { simId: safeSimId } });
+    if (row && row.history) {
+      const parsed = JSON.parse(row.history);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch {}
+
+  const history = readJsonData<EODSimulationReport[]>(historyKey(safeSimId), []);
   return Array.isArray(history) ? history : [];
 }
 
-export function getEODPortfolio(simId: string = "default"): PersistedEODState {
+export async function getEODPortfolio(simId: string = "default"): Promise<PersistedEODState> {
   return ensureSimulatorStore(simId);
 }
 
@@ -258,7 +589,8 @@ export async function closeEODPosition(
   positionId: string,
   simId: string = "default"
 ): Promise<{ success: boolean; closedTrade?: EODTradeExecution; portfolio: PersistedEODState }> {
-  const store = ensureSimulatorStore(simId);
+  const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const store = await ensureSimulatorStore(safeSimId);
   const posIdx = store.positions.findIndex(p => p.id === positionId);
   if (posIdx === -1) {
     return { success: false, portfolio: store };
@@ -324,7 +656,7 @@ export async function closeEODPosition(
   store.positions.splice(posIdx, 1);
   store.closedTrades.unshift(closedTrade);
   store.lastUpdated = nowIso;
-  saveSimulatorStore(store, simId);
+  await saveSimulatorStore(store, safeSimId);
 
   return { success: true, closedTrade, portfolio: store };
 }
@@ -339,7 +671,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   const simId = (options.simulationId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
   const nowIsoStart = new Date().toISOString();
 
-  const store = ensureSimulatorStore(simId);
+  const store = await ensureSimulatorStore(simId);
   if (options.forcedCapital && options.forcedCapital > 0) {
     store.cash = options.forcedCapital;
     store.initialCash = options.forcedCapital;
@@ -669,7 +1001,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     const lastReplayDate = validReplayDates[validReplayDates.length - 1];
     store.lastRunDate = lastReplayDate;
     store.lastUpdated = new Date().toISOString();
-    saveSimulatorStore(store, simId);
+    await saveSimulatorStore(store, simId);
 
     const endingCapital = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
     const netTotalPnL = endingCapital - startingCapital;
@@ -703,7 +1035,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     };
 
     if (hadTrades) {
-      appendHistoryReport(report, simId);
+      await appendHistoryReport(report, simId);
       const reg = readRegistry();
       const cur = reg.find(r => r.id === simId);
       if (cur) {
@@ -713,7 +1045,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
         });
       }
     } else {
-      updateHistoryPortfolioSnapshot(report, simId);
+      await updateHistoryPortfolioSnapshot(report, simId);
     }
     return report;
   }
@@ -866,119 +1198,129 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
   store.positions = remainingPositions;
 
-  // 4. Step B: Scan Tracked Watchlist Assets for New EOD Entries
-  for (const item of trackedSymbols) {
-    const normSym = normalizeTicker(item.symbol, item.market);
-    // Strictly prevent duplicate positions for the same stock asset:
-    const alreadyOpen = store.positions.some(p => {
-      const pNorm = normalizeTicker(p.symbol, p.market || item.market);
-      return pNorm === normSym || p.symbol === normSym || p.symbol === item.symbol;
-    });
-    if (alreadyOpen) continue;
+  // 4. Step B: Scan Tracked Watchlist Assets for New Entries
+  // Market Session Gatekeeper: If market is closed, new trade entries are strictly blocked.
+  const sessionStatus = getMarketSessionStatus(targetMarket);
+  const allowNewEntries = sessionStatus.isOpen || Boolean((options as any).allowAfterHours);
 
-    try {
-      const candles = candlesMap.get(normSym) || candlesMap.get(item.symbol) || [];
-      const quote = quotesMap.get(normSym) || quotesMap.get(item.symbol) || null;
+  if (!allowNewEntries) {
+    console.log(`[Simulator] Market is closed for ${targetMarket} (${sessionStatus.reason}). New trade entries are paused.`);
+  } else {
+    for (const item of trackedSymbols) {
+      const normSym = normalizeTicker(item.symbol, item.market);
+      // Strictly prevent duplicate positions for the same stock asset:
+      const alreadyOpen = store.positions.some(p => {
+        const pNorm = normalizeTicker(p.symbol, p.market || item.market);
+        return pNorm === normSym || p.symbol === normSym || p.symbol === item.symbol;
+      });
+      if (alreadyOpen) continue;
 
-      if (!candles || candles.length < 20) continue;
+      try {
+        const candles = candlesMap.get(normSym) || candlesMap.get(item.symbol) || [];
+        const quote = quotesMap.get(normSym) || quotesMap.get(item.symbol) || null;
 
-      const signal = evaluateStrategy(strategy, candles, quote, {});
-      if (signal.action === "BUY" && signal.confidence >= 0.55) {
-        const lastCandle = candles[candles.length - 1];
-        // Prefer live market quote LTP for real-time entry; fallback to candle close
-        const liveEntry = (quote && typeof quote.price === "number" && quote.price > 0)
-          ? quote.price
-          : lastCandle.close;
-        const entryPrice = parseFloat(liveEntry.toFixed(2));
+        if (!candles || candles.length < 20) continue;
 
-        const maxCapitalForTrade = store.cash * allocationPct;
-        const shares = Math.floor(maxCapitalForTrade / entryPrice);
+        const signal = evaluateStrategy(strategy, candles, quote, {});
+        if (signal.action === "BUY" && signal.confidence >= 0.55) {
+          const lastCandle = candles[candles.length - 1];
+          // Prefer live market quote LTP for real-time entry; fallback to candle close
+          const liveEntry = (quote && typeof quote.price === "number" && quote.price > 0)
+            ? quote.price
+            : lastCandle.close;
+          const entryPrice = parseFloat(liveEntry.toFixed(2));
 
-        if (shares > 0 && maxCapitalForTrade >= entryPrice) {
-          const region = detectMarketRegion(normSym);
-          const friction = calculateRegionalFriction({
-            region,
-            side: "BUY",
-            price: entryPrice,
-            quantity: shares
-          });
+          const maxCapitalForTrade = store.cash * allocationPct;
+          const shares = Math.floor(maxCapitalForTrade / entryPrice);
 
-          const totalCost = (shares * entryPrice) + friction.totalFriction;
-          if (store.cash >= totalCost) {
-            store.cash -= totalCost;
-            store.totalFrictionPaid += friction.totalFriction;
-
-            // Strictly ensure Take Profit > Entry Price and Stop Loss < Entry Price
-            const rawTP = signal.targetPrice || (signal as any).takeProfit;
-            const takeProfit = (rawTP && rawTP > entryPrice * 1.01)
-              ? parseFloat(rawTP.toFixed(2))
-              : parseFloat((entryPrice * 1.10).toFixed(2));
-
-            const rawSL = signal.stopLoss;
-            const stopLoss = (rawSL && rawSL < entryPrice * 0.99)
-              ? parseFloat(rawSL.toFixed(2))
-              : parseFloat((entryPrice * 0.95).toFixed(2));
-
-            const isIndian = normSym.endsWith('.NS') || normSym.endsWith('.BO') || item.market === 'IN';
-            const isEU = normSym.endsWith('.L') || normSym.endsWith('.DE') || normSym.endsWith('.PA') || item.market === 'EU';
-            const posCurr = isIndian ? 'INR' : (isEU ? 'EUR' : 'USD');
-            const posCurrSym = isIndian ? '₹' : (isEU ? '€' : '$');
-
-            const newPos: EODPosition = {
-              id: `pos-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
-              symbol: normSym,
-              name: quote?.name || formatTickerDisplay(normSym).cleanSymbol,
-              market: item.market,
-              currency: posCurr,
-              currencySymbol: posCurrSym,
-              shares,
-              entryPrice: parseFloat(entryPrice.toFixed(2)),
-              currentPrice: parseFloat(entryPrice.toFixed(2)),
-              stopLoss,
-              takeProfit,
-              highestPriceSinceEntry: entryPrice,
-              unrealizedPnL: 0,
-              unrealizedPnLPct: 0,
-              entryDate: simDate,
-              entryTimestamp: nowIso,
-              totalCost: parseFloat(totalCost.toFixed(2)),
-              currentValue: parseFloat((shares * entryPrice).toFixed(2)),
-              daysHeld: 0,
-              status: "OPEN"
-            };
-
-            store.positions.push(newPos);
-
-            openedTrades.push({
-              id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
-              type: "BUY_ENTRY",
-              symbol: normSym,
-              companyName: newPos.name,
-              shares,
-              price: parseFloat(entryPrice.toFixed(2)),
-              entryPrice: parseFloat(entryPrice.toFixed(2)),
-              entryDate: simDate,
-              entryTimestamp: nowIso,
-              currency: posCurr,
-              currencySymbol: posCurrSym,
-              realizedPnL: 0,
-              realizedPnLPct: 0,
-              friction: parseFloat(friction.totalFriction.toFixed(2)),
-              reason: (signal.reasoning && signal.reasoning.length > 0) ? signal.reasoning.join("; ") : `Automated EOD Entry based on ${strategy.name}`,
-              executedAt: nowIso
+          if (shares > 0 && maxCapitalForTrade >= entryPrice) {
+            const region = detectMarketRegion(normSym);
+            const friction = calculateRegionalFriction({
+              region,
+              side: "BUY",
+              price: entryPrice,
+              quantity: shares
             });
+
+            const totalCost = (shares * entryPrice) + friction.totalFriction;
+            if (store.cash >= totalCost) {
+              store.cash -= totalCost;
+              store.totalFrictionPaid += friction.totalFriction;
+
+              // Strictly ensure Take Profit > Entry Price and Stop Loss < Entry Price
+              const rawTP = signal.targetPrice || (signal as any).takeProfit;
+              const takeProfit = (rawTP && rawTP > entryPrice * 1.01)
+                ? parseFloat(rawTP.toFixed(2))
+                : parseFloat((entryPrice * 1.10).toFixed(2));
+
+              const rawSL = signal.stopLoss;
+              const stopLoss = (rawSL && rawSL < entryPrice * 0.99)
+                ? parseFloat(rawSL.toFixed(2))
+                : parseFloat((entryPrice * 0.95).toFixed(2));
+
+              const isIndian = normSym.endsWith('.NS') || normSym.endsWith('.BO') || item.market === 'IN';
+              const isEU = normSym.endsWith('.L') || normSym.endsWith('.DE') || normSym.endsWith('.PA') || item.market === 'EU';
+              const posCurr = isIndian ? 'INR' : (isEU ? 'EUR' : 'USD');
+              const posCurrSym = isIndian ? '₹' : (isEU ? '€' : '$');
+
+              const entryIso = sessionStatus.isOpen ? nowIso : getSessionExecutionTimestamp(item.market, lastCandle?.time);
+
+              const newPos: EODPosition = {
+                id: `pos-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
+                symbol: normSym,
+                name: quote?.name || formatTickerDisplay(normSym).cleanSymbol,
+                market: item.market,
+                currency: posCurr,
+                currencySymbol: posCurrSym,
+                shares,
+                entryPrice: parseFloat(entryPrice.toFixed(2)),
+                currentPrice: parseFloat(entryPrice.toFixed(2)),
+                stopLoss,
+                takeProfit,
+                highestPriceSinceEntry: entryPrice,
+                unrealizedPnL: 0,
+                unrealizedPnLPct: 0,
+                entryDate: simDate,
+                entryTimestamp: entryIso,
+                totalCost: parseFloat(totalCost.toFixed(2)),
+                currentValue: parseFloat((shares * entryPrice).toFixed(2)),
+                daysHeld: 0,
+                status: "OPEN"
+              };
+
+              store.positions.push(newPos);
+
+              openedTrades.push({
+                id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
+                type: "BUY_ENTRY",
+                symbol: normSym,
+                companyName: newPos.name,
+                shares,
+                price: parseFloat(entryPrice.toFixed(2)),
+                entryPrice: parseFloat(entryPrice.toFixed(2)),
+                entryDate: simDate,
+                entryTimestamp: entryIso,
+                currency: posCurr,
+                currencySymbol: posCurrSym,
+                realizedPnL: 0,
+                realizedPnLPct: 0,
+                friction: parseFloat(friction.totalFriction.toFixed(2)),
+                reason: (signal.reasoning && signal.reasoning.length > 0) ? signal.reasoning.join("; ") : `Automated Entry based on ${strategy.name}`,
+                executedAt: entryIso
+              });
+            }
           }
         }
+      } catch (err) {
+        console.warn(`[EOD Simulator] Error evaluating entry on ${item.symbol}:`, err);
       }
-    } catch (err) {
-      console.warn(`[EOD Simulator] Error evaluating entry on ${item.symbol}:`, err);
     }
   }
 
   // 5. Finalize EOD Metrics & Ledger
   store.lastRunDate = simDate;
   store.lastUpdated = nowIso;
-  saveSimulatorStore(store, simId);
+  await saveSimulatorStore(store, simId);
 
   const endingCapital = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
   const netDailyPnL = endingCapital - startingCapital;
@@ -986,7 +1328,12 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   const tradesCount = closedTrades.length + openedTrades.length;
   const hadTrades = tradesCount > 0;
 
-  const digest = `EOD Batch Simulation (${simId}) completed for ${simDate}. Positions closed: ${closedTrades.length}, New positions: ${openedTrades.length}, Trailing stops raised: ${updatedTrailingStops.length}. Daily PnL: ${netDailyPnL >= 0 ? '+' : ''}${netDailyPnL.toFixed(2)} (${netDailyPnLPct.toFixed(2)}%). Total Equity: ${endingCapital.toFixed(2)}.`;
+  let sessionNote = '';
+  if (!sessionStatus.isOpen) {
+    sessionNote = ` [Market Session: ${sessionStatus.reason} • New entries paused]`;
+  }
+
+  const digest = `EOD Batch Simulation (${simId}) completed for ${simDate}.${sessionNote} Positions closed: ${closedTrades.length}, New positions: ${openedTrades.length}, Trailing stops raised: ${updatedTrailingStops.length}. Daily PnL: ${netDailyPnL >= 0 ? '+' : ''}${netDailyPnL.toFixed(2)} (${netDailyPnLPct.toFixed(2)}%). Total Equity: ${endingCapital.toFixed(2)}.`;
 
   const report: EODSimulationReport = {
     id: `eod-run-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
@@ -1013,7 +1360,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   // Only append a new log entry when trades were actually executed!
   // If no trades occurred, only update the existing latest equity snapshot to prevent log bloat on 1-minute crons.
   if (hadTrades) {
-    appendHistoryReport(report, simId);
+    await appendHistoryReport(report, simId);
     const reg = readRegistry();
     const cur = reg.find(r => r.id === simId);
     if (cur) {
@@ -1023,7 +1370,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
       });
     }
   } else {
-    updateHistoryPortfolioSnapshot(report, simId);
+    await updateHistoryPortfolioSnapshot(report, simId);
   }
 
   return report;
@@ -1032,11 +1379,11 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 /**
  * Resets the Trade Simulator virtual portfolio state and clears history for a given simulationId.
  */
-export function resetSimulator(
+export async function resetSimulator(
   initialCash: number = 100000,
   marketRegion: string = "IN",
   simId: string = "default"
-): PersistedEODState {
+): Promise<PersistedEODState> {
   const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
   const freshState: PersistedEODState = {
     cash: initialCash,
@@ -1050,8 +1397,36 @@ export function resetSimulator(
     lossCount: 0,
     lastUpdated: new Date().toISOString()
   };
-  saveSimulatorStore(freshState, safeSimId);
+
+  await saveSimulatorStore(freshState, safeSimId);
   writeJsonData(historyKey(safeSimId), []);
+
+  try {
+    const prisma = getPrismaClient();
+    await prisma.simulationStore.upsert({
+      where: { simId: safeSimId },
+      update: {
+        initialCash,
+        cash: initialCash,
+        positions: "[]",
+        closedTrades: "[]",
+        history: "[]",
+        totalRealizedPnL: 0,
+        totalFrictionPaid: 0,
+        winCount: 0,
+        lossCount: 0,
+        lastUpdated: new Date().toISOString()
+      },
+      create: {
+        simId: safeSimId,
+        initialCash,
+        cash: initialCash,
+        positions: "[]",
+        closedTrades: "[]",
+        history: "[]"
+      }
+    });
+  } catch {}
 
   // Update registry metrics on reset
   upsertRegistry(safeSimId, {

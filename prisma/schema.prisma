@@ -181,3 +181,22 @@ model ContactInquiry {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
+
+// 10. Automated Paper Trading & Quantitative Trade Simulations
+model SimulationStore {
+  simId              String   @id @map("sim_id")
+  initialCash        Float    @default(100000.0) @map("initial_cash")
+  cash               Float    @default(100000.0)
+  positions          String   @default("[]")
+  closedTrades       String   @default("[]") @map("closed_trades")
+  history            String   @default("[]")
+  lastRunDate        String?  @map("last_run_date")
+  totalRealizedPnL   Float    @default(0.0) @map("total_realized_pnl")
+  totalFrictionPaid  Float    @default(0.0) @map("total_friction_paid")
+  winCount           Int      @default(0) @map("win_count")
+  lossCount          Int      @default(0) @map("loss_count")
+  lastUpdated        String?  @map("last_updated")
+  updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@map("simulation_stores")
+}

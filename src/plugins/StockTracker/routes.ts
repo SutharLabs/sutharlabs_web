@@ -950,20 +950,20 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  router.get("/simulator/history", (req: any, res: any) => {
+  router.get("/simulator/history", async (req: any, res: any) => {
     try {
       const simId = (req.query.simulationId || req.query.simId || "default") as string;
-      const history = getEODHistory(simId);
+      const history = await getEODHistory(simId);
       res.json(history);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  router.get("/simulator/portfolio", (req: any, res: any) => {
+  router.get("/simulator/portfolio", async (req: any, res: any) => {
     try {
       const simId = (req.query.simulationId || req.query.simId || "default") as string;
-      const portfolio = getEODPortfolio(simId);
+      const portfolio = await getEODPortfolio(simId);
       res.json(portfolio);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -988,11 +988,11 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  router.all(["/simulator/reset", "/simulator/reset/"], (req: any, res: any) => {
+  router.all(["/simulator/reset", "/simulator/reset/"], async (req: any, res: any) => {
     try {
       const { initialCapital, marketRegion, simId, simulationId } = req.body || req.query || {};
       const targetSimId = simulationId || simId || "default";
-      const resetState = resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN", targetSimId);
+      const resetState = await resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN", targetSimId);
       res.json({ success: true, message: `Trade Simulator (${targetSimId}) reset successfully.`, portfolio: resetState });
     } catch (e: any) {
       console.error("[Trade Simulator] Reset error:", e);

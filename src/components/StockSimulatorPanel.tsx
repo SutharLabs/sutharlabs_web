@@ -576,6 +576,63 @@ export default function StockSimulatorPanel({
     };
   }, [portfolio]);
 
+  // Market Session State (Checking live trading hours for NSE/BSE, US, EU)
+  const marketSession = useMemo(() => {
+    const norm = (effectiveMarket || 'IN').toUpperCase();
+    const now = new Date();
+    if (norm === 'IN') {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Kolkata',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false,
+        weekday: 'short'
+      });
+      const parts = formatter.formatToParts(now);
+      const weekday = parts.find(p => p.type === 'weekday')?.value;
+      const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+      const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+      const totalMinutes = hour * 60 + minute;
+      const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} IST`;
+      if (weekday === 'Sat' || weekday === 'Sun') {
+        return { isOpen: false, name: 'NSE/BSE (India)', status: 'Weekend Closed', hours: '09:15 - 15:30 IST', timeStr };
+      }
+      if (totalMinutes < 9 * 60 + 15) {
+        return { isOpen: false, name: 'NSE/BSE (India)', status: 'Pre-Market (Opens 09:15)', hours: '09:15 - 15:30 IST', timeStr };
+      }
+      if (totalMinutes >= 15 * 60 + 30) {
+        return { isOpen: false, name: 'NSE/BSE (India)', status: 'Market Closed (Closed at 15:30)', hours: '09:15 - 15:30 IST', timeStr };
+      }
+      return { isOpen: true, name: 'NSE/BSE (India)', status: 'Live Session Open', hours: '09:15 - 15:30 IST', timeStr };
+    }
+    if (norm === 'US') {
+      const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        hour: 'numeric',
+        minute: 'numeric',
+        hour12: false,
+        weekday: 'short'
+      });
+      const parts = formatter.formatToParts(now);
+      const weekday = parts.find(p => p.type === 'weekday')?.value;
+      const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+      const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+      const totalMinutes = hour * 60 + minute;
+      const timeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} ET`;
+      if (weekday === 'Sat' || weekday === 'Sun') {
+        return { isOpen: false, name: 'NYSE/NASDAQ (US)', status: 'Weekend Closed', hours: '09:30 - 16:00 ET', timeStr };
+      }
+      if (totalMinutes < 9 * 60 + 30) {
+        return { isOpen: false, name: 'NYSE/NASDAQ (US)', status: 'Pre-Market (Opens 09:30)', hours: '09:30 - 16:00 ET', timeStr };
+      }
+      if (totalMinutes >= 16 * 60) {
+        return { isOpen: false, name: 'NYSE/NASDAQ (US)', status: 'Market Closed (Closed at 16:00)', hours: '09:30 - 16:00 ET', timeStr };
+      }
+      return { isOpen: true, name: 'NYSE/NASDAQ (US)', status: 'Live Session Open', hours: '09:30 - 16:00 ET', timeStr };
+    }
+    return { isOpen: true, name: 'Global Market', status: 'Session Active', hours: '24/7', timeStr: '' };
+  }, [effectiveMarket]);
+
   // Format timestamp helper
   const formatDateTime = (isoString?: string) => {
     if (!isoString) return '—';
@@ -693,6 +750,14 @@ export default function StockSimulatorPanel({
                 <span className="w-1.5 h-1.5 rounded-full bg-[#00e476] animate-pulse"></span>
                 Live Auto-Sync (30s)
               </span>
+              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
+                marketSession.isOpen
+                  ? 'bg-[#00e476]/10 text-[#00e476] border-[#00e476]/30'
+                  : 'bg-amber-400/10 text-amber-400 border-amber-400/30'
+              }`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${marketSession.isOpen ? 'bg-[#00e476] animate-pulse' : 'bg-amber-400'}`}></span>
+                {marketSession.name}: {marketSession.status}
+              </span>
             </div>
             <p className="text-xs text-on-surface-variant font-sans mt-0.5">
               Simulate algorithmic trade execution with realistic slippage, STT/SEC friction, trailing stops, and multi-day historical bar replay.
@@ -751,59 +816,70 @@ export default function StockSimulatorPanel({
         </div>
 
         {/* ── Active Simulation Instance Switcher & Manager Bar ── */}
-        <div className="p-3.5 rounded-xl bg-surface-container border border-outline/20 flex flex-col md:flex-row items-start md:items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1.5">
-              <Layers className="w-3.5 h-3.5 text-[#00e476]" />
-              Simulation Instance:
-            </span>
-            <select
-              value={selectedSimulationId}
-              onChange={(e) => handleSelectSimulation(e.target.value)}
-              disabled={isRunningSim || isLoadingPortfolio}
-              className="bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs font-bold font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
-            >
-              {simulationsList.map((sim) => (
-                <option key={sim.id} value={sim.id}>
-                  {sim.label} [{sim.id}] • {sim.market || 'IN'} ({sim.totalRuns ?? 0} runs)
-                </option>
-              ))}
-            </select>
+        <div className="p-3.5 rounded-xl bg-surface-container border border-outline/20 flex flex-col gap-2.5">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 flex-wrap">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1.5">
+                <Layers className="w-3.5 h-3.5 text-[#00e476]" />
+                Simulation Instance:
+              </span>
+              <select
+                value={selectedSimulationId}
+                onChange={(e) => handleSelectSimulation(e.target.value)}
+                disabled={isRunningSim || isLoadingPortfolio}
+                className="bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs font-bold font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
+              >
+                {simulationsList.map((sim) => (
+                  <option key={sim.id} value={sim.id}>
+                    {sim.label} [{sim.id}] • {sim.market || 'IN'} ({sim.totalRuns ?? 0} runs)
+                  </option>
+                ))}
+              </select>
 
-            <button
-              type="button"
-              onClick={() => setShowNewSimModal(true)}
-              className="px-2.5 py-1.5 rounded-lg bg-[#00e476]/15 hover:bg-[#00e476]/25 text-[#00e476] border border-[#00e476]/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
-              title="Create a new simultaneous simulation instance with independent inputs and portfolio"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              <span>New Simulation</span>
-            </button>
-
-            {selectedSimulationId !== 'default' && (
               <button
                 type="button"
-                onClick={() => handleDeleteSimulation(selectedSimulationId)}
-                className="px-2 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
-                title="Delete this simulation from tracking"
+                onClick={() => setShowNewSimModal(true)}
+                className="px-2.5 py-1.5 rounded-lg bg-[#00e476]/15 hover:bg-[#00e476]/25 text-[#00e476] border border-[#00e476]/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
+                title="Create a new simultaneous simulation instance with independent inputs and portfolio"
               >
-                <Trash2 className="w-3 h-3" />
-                <span>Delete</span>
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Simulation</span>
               </button>
-            )}
+
+              {selectedSimulationId !== 'default' && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteSimulation(selectedSimulationId)}
+                  className="px-2 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
+                  title="Delete this simulation from tracking"
+                >
+                  <Trash2 className="w-3 h-3" />
+                  <span>Delete</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleCopyCronUrl(selectedSimulationId)}
+                className="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs font-mono text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1.5 transition-all"
+                title="Copy the exact URL to paste into Cron-Job.org to ping this specific simulation every minute"
+              >
+                {copiedCronUrl ? <CheckCheck className="w-3.5 h-3.5 text-[#00e476]" /> : <Copy className="w-3.5 h-3.5 text-[#00dbe7]" />}
+                <span>{copiedCronUrl ? 'Cron URL Copied!' : 'Copy Cron-Job URL'}</span>
+              </button>
+            </div>
           </div>
 
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => handleCopyCronUrl(selectedSimulationId)}
-              className="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs font-mono text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1.5 transition-all"
-              title="Copy the exact URL to paste into Cron-Job.org to ping this specific simulation every minute"
-            >
-              {copiedCronUrl ? <CheckCheck className="w-3.5 h-3.5 text-[#00e476]" /> : <Copy className="w-3.5 h-3.5 text-[#00dbe7]" />}
-              <span>{copiedCronUrl ? 'Cron URL Copied!' : 'Copy Cron-Job URL'}</span>
-            </button>
-          </div>
+          {!marketSession.isOpen && simulationMode === 'SINGLE_STEP' && (
+            <div className="mt-1 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-400 text-[11px] flex items-center gap-2 font-sans">
+              <Clock className="w-3.5 h-3.5 flex-shrink-0 text-amber-400" />
+              <span>
+                <strong>Market Closed ({marketSession.timeStr || marketSession.hours}):</strong> Live positions and trailing stops are actively tracked & retained in database. Algorithmic entries are strictly paused until market open ({marketSession.hours}).
+              </span>
+            </div>
+          )}
         </div>
 
         {/* ── Inline Creation Panel for New Simulation ── */}
