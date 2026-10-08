@@ -101,8 +101,8 @@ src/plugins/StockTracker/
 │   ├── scannerEngine.ts         # Multi-symbol parallel scanner & webhook dispatcher
 │   └── types.ts                 # Scan candidates, reports & filter types
 ├── simulator/
-│   ├── index.ts                 # EOD simulator entrypoint
-│   ├── eodSimulator.ts          # EOD daily closing batch execution engine
+│   ├── index.ts                 # Simulator entrypoint
+│   ├── tradeSimulator.ts        # Quantitative trade simulator & replay execution engine
 │   └── types.ts                 # Portfolio, positions & trade execution types
 └── strategies/
     ├── index.ts                 # Strategy registry entrypoint

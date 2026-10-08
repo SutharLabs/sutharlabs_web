@@ -1,2 +1,2 @@
 export * from "./types.js";
-export * from "./eodSimulator.js";
+export * from "./tradeSimulator.js";

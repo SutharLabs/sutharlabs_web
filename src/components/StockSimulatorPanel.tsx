@@ -1175,49 +1175,76 @@ export default function StockSimulatorPanel({
           </div>
 
           {simulationMode === 'HISTORICAL_REPLAY' && (
-            <div className="flex items-center gap-2 flex-wrap text-xs">
-              <span className="text-[10px] uppercase text-on-surface-variant font-bold">Replay Range:</span>
-              <div className="flex items-center gap-1">
-                {[30, 60, 90, 180].map(days => (
-                  <button
-                    key={days}
-                    type="button"
-                    onClick={() => {
-                      setReplayPresetDays(days);
-                      const start = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
-                      setCustomStartDate(start);
+            <div className="flex flex-col gap-1.5 text-xs">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase text-on-surface-variant font-bold">Replay Range:</span>
+                <div className="flex items-center gap-1 flex-wrap">
+                  {[
+                    { label: '⚡ Today (Intraday)', days: 0 },
+                    { label: '1D', days: 1 },
+                    { label: '7D', days: 7 },
+                    { label: '30D', days: 30 },
+                    { label: '60D', days: 60 },
+                    { label: '90D', days: 90 },
+                    { label: '180D', days: 180 }
+                  ].map(p => (
+                    <button
+                      key={p.days}
+                      type="button"
+                      onClick={() => {
+                        setReplayPresetDays(p.days);
+                        const today = new Date().toISOString().slice(0, 10);
+                        if (p.days === 0) {
+                          setCustomStartDate(today);
+                          setCustomEndDate(today);
+                          if (selectedTimeframe === '1d') setSelectedTimeframe('15m');
+                        } else {
+                          const start = new Date(Date.now() - p.days * 86400000).toISOString().slice(0, 10);
+                          setCustomStartDate(start);
+                          setCustomEndDate(today);
+                        }
+                      }}
+                      className={`px-2 py-0.5 rounded text-[11px] font-bold border transition-all ${
+                        replayPresetDays === p.days
+                          ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#00dbe7]'
+                          : 'bg-surface-container-lowest border-outline/20 text-on-surface-variant hover:text-on-surface'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-1.5 ml-1">
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={e => {
+                      setCustomStartDate(e.target.value);
+                      setReplayPresetDays(-1);
                     }}
-                    className={`px-2 py-0.5 rounded text-[11px] font-bold border transition-all ${
-                      replayPresetDays === days
-                        ? 'bg-[#00dbe7]/20 border-[#00dbe7] text-[#00dbe7]'
-                        : 'bg-surface-container-lowest border-outline/20 text-on-surface-variant hover:text-on-surface'
-                    }`}
-                  >
-                    {days}D
-                  </button>
-                ))}
+                    className="bg-surface-container-lowest border border-outline/30 rounded px-2 py-0.5 text-xs text-on-surface font-mono"
+                    title="Historical Replay Start Date"
+                  />
+                  <span className="text-on-surface-variant">to</span>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={e => setCustomEndDate(e.target.value)}
+                    className="bg-surface-container-lowest border border-outline/30 rounded px-2 py-0.5 text-xs text-on-surface font-mono"
+                    title="Historical Replay End Date"
+                  />
+                </div>
               </div>
 
-              <div className="flex items-center gap-1.5 ml-1">
-                <input
-                  type="date"
-                  value={customStartDate}
-                  onChange={e => {
-                    setCustomStartDate(e.target.value);
-                    setReplayPresetDays(0);
-                  }}
-                  className="bg-surface-container-lowest border border-outline/30 rounded px-2 py-0.5 text-xs text-on-surface font-mono"
-                  title="Historical Replay Start Date"
-                />
-                <span className="text-on-surface-variant">to</span>
-                <input
-                  type="date"
-                  value={customEndDate}
-                  onChange={e => setCustomEndDate(e.target.value)}
-                  className="bg-surface-container-lowest border border-outline/30 rounded px-2 py-0.5 text-xs text-on-surface font-mono"
-                  title="Historical Replay End Date"
-                />
-              </div>
+              {(replayPresetDays === 0 || customStartDate === customEndDate) && (
+                <div className="text-[11px] text-[#00dbe7] font-sans flex items-center gap-1.5 bg-[#00dbe7]/10 px-2.5 py-1 rounded-lg border border-[#00dbe7]/20 w-fit">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00dbe7] animate-pulse" />
+                  <span>
+                    Intraday Replay Active: Simulates {customStartDate || 'today'} bar-by-bar from market opening (09:15 IST) up to current execution time (or session close if executed after-hours).
+                  </span>
+                </div>
+              )}
             </div>
           )}
         </div>

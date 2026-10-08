@@ -646,14 +646,25 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     let endDate = options.endDate || sortedDates[sortedDates.length - 1];
 
     if (!startDate) {
-      const daysBack = options.replayDays || 30;
-      const targetTime = Date.now() - (daysBack * 86400000);
-      const targetIso = new Date(targetTime).toISOString().slice(0, 10);
-      startDate = sortedDates.find(d => d >= targetIso) || sortedDates[0];
+      const daysBack = options.replayDays !== undefined ? options.replayDays : 30;
+      if (daysBack === 0) {
+        // Intraday Today mode
+        startDate = sortedDates[sortedDates.length - 1];
+        endDate = startDate;
+      } else {
+        const targetTime = Date.now() - (daysBack * 86400000);
+        const targetIso = new Date(targetTime).toISOString().slice(0, 10);
+        startDate = sortedDates.find(d => d >= targetIso) || sortedDates[0];
+      }
     }
 
+    const isSingleDayOrToday = options.replayDays === 0 || (startDate && endDate && startDate === endDate);
     const replayDates = sortedDates.filter(d => d >= startDate! && d <= endDate! && isExchangeTradingDay(targetMarket, d));
-    const validReplayDates = replayDates.length > 0 ? replayDates : sortedDates.filter(d => isExchangeTradingDay(targetMarket, d)).slice(-30);
+    let validReplayDates = replayDates.length > 0 
+      ? replayDates 
+      : (isSingleDayOrToday 
+          ? sortedDates.filter(d => isExchangeTradingDay(targetMarket, d)).slice(-1)
+          : sortedDates.filter(d => isExchangeTradingDay(targetMarket, d)).slice(-30));
 
     // Build chronological sequence of replay steps:
     // If Intraday (15m, 5m, 1m, 1h, 4h), step bar-by-bar across every intraday candle
@@ -662,14 +673,43 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
     if (isIntraday) {
       const sortedBarTimes = Array.from(allBarTimesSet).sort();
+      const nowIso = new Date().toISOString();
+      const todayStr = nowIso.slice(0, 10);
+      const sessionStatus = getMarketSessionStatus(targetMarket);
+
       const validBars = sortedBarTimes.filter(bt => {
         const d = bt.slice(0, 10);
-        return d >= startDate! && d <= endDate! && isExchangeTradingDay(targetMarket, d);
+        if (d < startDate! || d > endDate!) return false;
+        if (!isExchangeTradingDay(targetMarket, d)) return false;
+
+        // If simulating today's live session and market is currently active/open:
+        // Replay up to the current time of execution (nowIso)!
+        // If executed later on (after market close): replay all bars through the end of the stock trading session.
+        if (d === todayStr && sessionStatus.isOpen && bt > nowIso) {
+          return false;
+        }
+
+        return true;
       });
-      replaySteps = validBars.map(bt => ({
+
+      // Fallback: if user picked today but today's session has 0 bars yet (e.g. weekend or pre-market),
+      // fallback to the most recent completed trading session's intraday bars
+      const effectiveBars = (validBars.length === 0 && sortedBarTimes.length > 0)
+        ? sortedBarTimes.filter(bt => bt.slice(0, 10) === sortedDates[sortedDates.length - 1])
+        : validBars;
+
+      replaySteps = effectiveBars.map(bt => ({
         stepIso: bt,
         dateStr: bt.slice(0, 10)
       }));
+
+      // Reflect the actual dates processed in validReplayDates
+      if (replaySteps.length > 0) {
+        const steppedDates = Array.from(new Set(replaySteps.map(s => s.dateStr))).sort();
+        if (steppedDates.length > 0) {
+          validReplayDates = steppedDates;
+        }
+      }
     } else {
       replaySteps = validReplayDates.map(d => {
         const stepIso = targetMarket === 'IN' 
@@ -937,7 +977,9 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     const replayTradesCount = closedTradesAll.length + openedTradesAll.length;
     const hadTrades = replayTradesCount > 0;
 
-    const digest = `Historical Replay (${simId}) completed from ${validReplayDates[0]} to ${lastReplayDate} (${validReplayDates.length} trading days). Positions Closed: ${closedTradesAll.length}, New Positions Initiated: ${openedTradesAll.length}, Active Holding: ${store.positions.length}. Total Return: ${netTotalPnL >= 0 ? '+' : ''}${netTotalPnL.toFixed(2)} (${netTotalPnLPct.toFixed(2)}%). Ending Equity: ${endingCapital.toFixed(2)}.`;
+    const digest = isIntraday
+      ? `Historical Intraday Replay (${simId}) completed for ${validReplayDates[0]}${validReplayDates.length > 1 ? ` to ${lastReplayDate}` : ''} (${replaySteps.length} intraday bars from market open). Positions Closed: ${closedTradesAll.length}, New Positions Initiated: ${openedTradesAll.length}, Active Holding: ${store.positions.length}. Total Return: ${netTotalPnL >= 0 ? '+' : ''}${netTotalPnL.toFixed(2)} (${netTotalPnLPct.toFixed(2)}%). Ending Equity: ${endingCapital.toFixed(2)}.`
+      : `Historical Replay (${simId}) completed from ${validReplayDates[0]} to ${lastReplayDate} (${validReplayDates.length} trading days). Positions Closed: ${closedTradesAll.length}, New Positions Initiated: ${openedTradesAll.length}, Active Holding: ${store.positions.length}. Total Return: ${netTotalPnL >= 0 ? '+' : ''}${netTotalPnL.toFixed(2)} (${netTotalPnLPct.toFixed(2)}%). Ending Equity: ${endingCapital.toFixed(2)}.`;
 
     const report: EODSimulationReport = {
       id: `eod-replay-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,

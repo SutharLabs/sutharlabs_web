@@ -475,6 +475,6 @@ TRIGGER SOURCES
 *Relevant files:*
 - `vercel.json` — Cron job configuration
 - `src/plugins/StockTracker/routes.ts` — run-eod endpoint
-- `src/plugins/StockTracker/simulator/eodSimulator.ts` — simulation engine
+- `src/plugins/StockTracker/simulator/tradeSimulator.ts` — simulation engine
 - `src/services/blobStorage.ts` — Vercel Blob persistence
 - `.env` — BLOB_STORE_ID, BLOB_READ_WRITE_TOKEN, BLOB_WEBHOOK_PUBLIC_KEY

@@ -711,7 +711,7 @@ export interface IMarketAdapter {
    - Rich embedded markdown formatting includes asset ticker, company name, signal action (`BUY`/`SELL`), entry price, Take Profit, Stop Loss, conviction percentage, and algorithmic reasoning trace.
    - Remembers webhook endpoints locally in workspace storage for rapid operational alerts.
 
-4. **Automated End-of-Day (EOD) Batch Trade Simulator (`eodSimulator.ts`, `StockSimulatorPanel.tsx`)**:
+4. **Automated Batch Trade Simulator (`tradeSimulator.ts`, `StockSimulatorPanel.tsx`)**:
    - Point-in-time sequential daily batch execution engine simulating automated EOD trade triggers based on daily closing candle data.
    - **Order Lifecycle Management**: Automatically tracks open positions against daily high/low candles to execute profit targets (`TAKE_PROFIT`), stop loss triggers (`STOP_LOSS`), and dynamic trailing stops.
    - **Capital Sizing & Allocation Control**: Dynamic cash allocation slider (5% to 40% of available capital per trade) with statutory transaction fee deductions (brokerage, STT/SEC turnover, and bid-ask slippage).
