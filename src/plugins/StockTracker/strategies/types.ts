@@ -11,9 +11,28 @@ export interface StrategyParameter {
   description: string;
 }
 
+export type StrategyIndicatorType =
+  | 'rsi'
+  | 'rsi_2'
+  | 'macd'
+  | 'macd_signal'
+  | 'macd_hist'
+  | 'ema_fast'
+  | 'ema_slow'
+  | 'ema_200'
+  | 'price'
+  | 'bb_upper'
+  | 'bb_middle'
+  | 'bb_lower'
+  | 'supertrend'
+  | 'volume'
+  | 'volume_ma'
+  | 'volume_ratio'
+  | (string & {});
+
 export interface StrategyRuleCondition {
   id?: string;
-  indicator: 'rsi' | 'macd' | 'macd_signal' | 'ema_fast' | 'ema_slow' | 'price' | 'bb_upper' | 'bb_lower' | 'supertrend' | 'volume';
+  indicator: StrategyIndicatorType;
   operator: '>' | '<' | '>=' | '<=' | 'crosses_above' | 'crosses_below' | '==' | 'between';
   value: number | string;
   secondaryValue?: number;
