@@ -1882,7 +1882,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     const crosshairColor = isDark ? '#00dbe7' : '#0284c7';
     const crosshairLabelBg = isDark ? '#002022' : '#0369a1';
 
-    const targetHeight = isChartExpanded ? 640 : 440;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+    const targetHeight = isChartExpanded ? (isMobile ? 500 : 640) : (isMobile ? 360 : 440);
 
     const chart = createChart(container, {
       width: container.clientWidth || 800,
@@ -2378,37 +2379,42 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         </div>
       )}
 
-      {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (CLEAN, ONLY ACTIVE MARKET) ── */}
       {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (CLEAN, UNIFORM HEIGHT & DESIGN) ── */}
-      <div className="relative z-50 glass-panel rounded-xl p-2.5 border border-outline/20 flex items-center justify-between gap-3 bg-surface-container-lowest/80 shadow-sm">
+      <div className="relative z-50 glass-panel rounded-xl p-2 sm:p-2.5 border border-outline/20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 bg-surface-container-lowest/80 shadow-sm">
         
         {/* Left Group: Continuous Active Market Selector, Session Pill, Search Box & Stock Price */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
           {/* Active Market Badge (Click to open Market Settings in Drawer) */}
           <button
             onClick={() => {
               setSettingsActiveTab('MARKET');
               setShowSettingsDrawer(true);
             }}
-            className="h-8 px-2.5 sm:px-3 rounded-lg bg-surface-container-low text-on-surface border border-outline/25 hover:border-[#00dbe7] transition-all cursor-pointer font-mono text-xs shadow-sm flex items-center gap-1.5 sm:gap-2 shrink-0 group"
-            title="Click to change Market Universe in Settings"
+            className="h-8 px-2 sm:px-2.5 rounded-lg bg-surface-container-low text-on-surface border border-outline/25 hover:border-[#00dbe7] transition-all cursor-pointer font-mono text-xs shadow-sm flex items-center gap-1.5 shrink-0 group"
+            title={`Active Market: ${activeUniverse?.name || 'India'} (${activeUniverse?.exchange || 'NSE'}). Click to switch market.`}
           >
-            <span className="text-base leading-none">{activeUniverse?.flag || '🇮🇳'}</span>
-            <span className="font-bold text-[#00dbe7] group-hover:underline">{activeUniverse?.name || 'Active Market'}</span>
-            <span className="text-[10px] text-on-surface-variant font-mono">({activeUniverse?.exchange || 'NSE'})</span>
-            <ChevronDown className="w-3.5 h-3.5 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors ml-0.5" />
+            <span className="text-sm leading-none">{activeUniverse?.flag || '🇮🇳'}</span>
+            <span className="font-bold text-[#00dbe7] group-hover:underline">
+              {activeUniverse?.exchange || activeUniverse?.id || 'NSE'}
+            </span>
+            <ChevronDown className="w-3 h-3 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors" />
           </button>
 
-          {/* Market Session Active/Closed Pill */}
+          {/* Market Session Active/Closed Pill (Formatted Cleanly, No Raw Strings like POSTPOST) */}
           {quote?.market_state && (
-            <span className="h-8 px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant border border-outline/20 font-mono text-[11px] hidden md:flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-sm">
-              <span className={`w-2 h-2 rounded-full ${quote.market_open ? 'bg-[#00e476] animate-pulse' : 'bg-slate-400'}`} />
-              <span>{quote.market_open ? 'SESSION ACTIVE' : `CLOSED (${quote.market_state})`}</span>
+            <span 
+              className="h-8 px-2 sm:px-2.5 rounded-lg bg-surface-container-low text-on-surface-variant border border-outline/20 font-mono text-[11px] flex items-center gap-1.5 shrink-0 whitespace-nowrap shadow-sm"
+              title={`Market State: ${quote.market_state} • Session: ${quote.market_open ? 'Open' : 'Closed'}`}
+            >
+              <span className={`w-2 h-2 rounded-full shrink-0 ${quote.market_open ? 'bg-[#00e476] animate-pulse' : 'bg-slate-400'}`} />
+              <span className="font-semibold">
+                {quote.market_open ? 'OPEN' : (quote.market_state === 'POSTPOST' || quote.market_state === 'CLOSED' ? 'CLOSED' : quote.market_state === 'PRE' ? 'PRE-MKT' : quote.market_state === 'POST' ? 'POST-MKT' : quote.market_state)}
+              </span>
             </span>
           )}
 
-          {/* Continuous Search & Ticker Input with Real-Time Suggestions (Spacious Width) */}
-          <div className="relative w-56 sm:w-72 md:w-80 shrink-0 h-8 z-50">
+          {/* Continuous Search & Ticker Input with Real-Time Suggestions (Fluid Width) */}
+          <div className="relative flex-1 min-w-[130px] max-w-sm sm:max-w-md h-8 z-50">
             <div className="relative flex items-center h-full">
               <input
                 value={symbolInput}
@@ -2433,7 +2439,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     }
                   }
                 }}
-                placeholder="Search symbol or company..."
+                placeholder="Search ticker or name..."
                 className="h-8 w-full bg-surface-container-lowest border border-outline/30 rounded-lg pl-2.5 pr-14 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] tracking-wider"
               />
               {isSearching && (
@@ -2534,7 +2540,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </div>
 
           {/* Continuous Live Stock Price Pill (In Same Group) */}
-          <div className="h-8 px-2.5 rounded-lg bg-surface-container-low border border-outline/25 font-mono text-xs flex items-center gap-1.5 sm:gap-2 shrink-0 shadow-sm">
+          <div className="h-8 px-2 sm:px-2.5 rounded-lg bg-surface-container-low border border-outline/25 font-mono text-xs flex items-center gap-1.5 sm:gap-2 shrink-0 shadow-sm">
             <span className="font-bold text-on-surface text-xs leading-none">
               {curSymbol}{quote?.current_price?.toFixed(2) ?? '—'}
             </span>
@@ -2548,7 +2554,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         </div>
 
         {/* Right Group: Action Tools with Horizontal Scroll Carousel Navigation */}
-        <div className="group/toptools relative flex-1 flex items-center min-w-0 justify-end overflow-hidden ml-2">
+        <div className="group/toptools relative flex items-center min-w-0 justify-end overflow-hidden shrink-0">
           {/* Left Scroll Button (appears when scrollable) */}
           {canScrollTopToolsLeft && (
             <button
@@ -2581,25 +2587,32 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 topToolsScrollRef.current.scrollLeft += e.deltaY;
               }
             }}
-            className="flex items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth py-0.5 px-6 whitespace-nowrap"
+            className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth py-0.5 px-6 whitespace-nowrap"
           >
-            {/* 1. Version & Stage Badge (Stage 6 v1.0.0 Production Milestone) */}
+            {/* 1. Version Badge (PROD removed as requested) */}
             <button
               onClick={() => {
                 setSettingsActiveTab('SCANNER');
                 setShowSettingsDrawer(true);
               }}
               className="h-8 px-2.5 rounded-lg bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 font-mono text-xs font-bold cursor-pointer hover:bg-[#00e476]/20 transition-all shadow-sm flex items-center gap-1.5 shrink-0"
-              title="SutharLabs Stock Tracker v1.1.0 (Stage 6: Multi-Market Screener, Autonomous Trade Simulator & Webhook Alerts - Production)"
+              title="SutharLabs Stock Tracker v1.1.0"
             >
               <Cpu className="w-3.5 h-3.5 text-[#00e476]" />
               <span>v1.1.0</span>
-              <span className="px-1.5 py-0.2 rounded bg-[#00e476]/20 text-[#00e476] border border-[#00e476]/40 text-[9px] uppercase tracking-wider font-semibold">
-                PROD
-              </span>
             </button>
 
-            {/* 2. Quick Algo Marketplace Button */}
+            {/* 2. Sliding Settings Overlay Trigger (Placed JUST after Version as requested) */}
+            <button
+              onClick={() => setShowSettingsDrawer(true)}
+              className="h-8 px-2.5 sm:px-3 rounded-lg bg-surface-container-low border border-outline/25 text-on-surface hover:text-[#00dbe7] hover:border-[#00dbe7]/50 font-mono text-xs transition-colors cursor-pointer shadow-sm flex items-center gap-1.5 shrink-0"
+              title="Open Settings & Workspace Preferences"
+            >
+              <Sliders className="w-3.5 h-3.5 text-[#00dbe7]" />
+              <span>Settings</span>
+            </button>
+
+            {/* 3. Quick Algo Marketplace Button */}
             <button
               onClick={() => {
                 setSettingsActiveTab('STRATEGIES');
@@ -2613,17 +2626,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               <span>Algo Marketplace</span>
             </button>
 
-            {/* 3. Sliding Settings Overlay Trigger */}
-            <button
-              onClick={() => setShowSettingsDrawer(true)}
-              className="h-8 px-2.5 sm:px-3 rounded-lg bg-surface-container-low border border-outline/25 text-on-surface hover:text-[#00dbe7] hover:border-[#00dbe7]/50 font-mono text-xs transition-colors cursor-pointer shadow-sm flex items-center gap-1.5 shrink-0"
-              title="Open Settings & Workspace Preferences"
-            >
-              <Sliders className="w-3.5 h-3.5 text-[#00dbe7]" />
-              <span>Settings</span>
-            </button>
-
-            {/* 4. Quick Screener Button (Moved to End as requested) */}
+            {/* 4. Quick Screener Button */}
             <button
               onClick={() => {
                 setSettingsActiveTab('SCANNER');
@@ -2636,7 +2639,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               <span>Screener</span>
             </button>
 
-            {/* 5. Quick Simulator Button (Moved to End as requested) */}
+            {/* 5. Quick Simulator Button */}
             <button
               onClick={() => {
                 setSettingsActiveTab('SIMULATOR');
@@ -2855,7 +2858,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             title={isInActiveWatchlist ? `In "${activeWatchlist.name}" (Click to remove)` : `Add ${symbol} to "${activeWatchlist.name}"`}
           >
             <Star className={`w-3.5 h-3.5 ${isInActiveWatchlist ? 'fill-[#00e476]' : ''}`} />
-            <span>{isInActiveWatchlist ? 'In Watchlist' : '+ Add to List'}</span>
+            <span className="hidden sm:inline">{isInActiveWatchlist ? 'In Watchlist' : '+ Add to List'}</span>
+            <span className="sm:hidden">{isInActiveWatchlist ? 'Saved' : '+ Add'}</span>
           </button>
         </div>
       </div>
@@ -3079,13 +3083,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             </div>
 
             {/* Chart Canvas: Expands to 640px height in Full View */}
-            <div className={`relative flex-1 ${isChartExpanded ? 'min-h-[640px] h-[calc(100vh-210px)]' : 'min-h-[440px]'} p-2 bg-surface-container-lowest transition-all duration-300`}>
+            <div className={`relative flex-1 ${isChartExpanded ? 'min-h-[500px] sm:min-h-[640px] h-[calc(100vh-210px)]' : 'min-h-[360px] sm:min-h-[440px]'} p-1.5 sm:p-2 bg-surface-container-lowest transition-all duration-300`}>
               {loading && candles.length === 0 && (
                 <div className="absolute inset-0 flex items-center justify-center bg-surface-container-lowest/80 z-20 font-mono text-xs text-[#00dbe7] animate-pulse">
                   Initializing TradingView Candlestick Engine...
                 </div>
               )}
-              <div ref={chartContainerRef} className="w-full h-full min-h-[440px] [&_a[href*='tradingview']]:!hidden [&_a[title*='TradingView']]:!hidden" />
+              <div ref={chartContainerRef} className="w-full h-full min-h-[360px] sm:min-h-[440px] [&_a[href*='tradingview']]:!hidden [&_a[title*='TradingView']]:!hidden" />
             </div>
 
           </div>
