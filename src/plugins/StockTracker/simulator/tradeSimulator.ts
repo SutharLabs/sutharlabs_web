@@ -215,6 +215,7 @@ function readRegistry(): SimulationRegistryEntry[] {
     reg.push({
       id: "cron_live",
       label: "Cloud Cron Live Trading (1m)",
+      market: "IN",
       createdAt: nowIso,
       lastRunAt: nowIso,
       totalRuns: 0,
@@ -675,7 +676,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
   // 2. Resolve tracked assets for Simulation based on selected market
   const trackedSymbols: Array<{ symbol: string; market: string }> = [];
-  const targetMarket = ((options as any).market || (options as any).marketRegion || "IN").toUpperCase();
+  const targetMarket = ((options as any).market || (options as any).marketRegion || existingEntry?.market || "IN").toUpperCase();
 
   if (options.watchlistSymbols && options.watchlistSymbols.length > 0) {
     options.watchlistSymbols.forEach(s => trackedSymbols.push({ symbol: s, market: detectMarketRegion(s) }));
@@ -1560,6 +1561,10 @@ export async function resetSimulator(
 
   await saveSimulatorStore(freshState, safeSimId);
   writeJsonData(historyKey(safeSimId), []);
+
+  try {
+    upsertRegistry(safeSimId, { market: (marketRegion || "IN").toUpperCase() });
+  } catch {}
 
   try {
     const prisma = getPrismaClient();

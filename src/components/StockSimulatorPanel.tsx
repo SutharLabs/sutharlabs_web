@@ -517,7 +517,7 @@ export default function StockSimulatorPanel({
     if (origin.includes('sutharlabs.com') && !origin.includes('www.')) {
       origin = origin.replace('sutharlabs.com', 'www.sutharlabs.com');
     }
-    const cronUrl = `${origin}${STOCK_API}/simulator/run-eod?simulationId=${encodeURIComponent(simId)}`;
+    const cronUrl = `${origin}${STOCK_API}/simulator/run-eod?simulationId=${encodeURIComponent(simId)}&market=${encodeURIComponent(effectiveMarket)}`;
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(cronUrl).then(() => {
         setCopiedCronUrl(true);
