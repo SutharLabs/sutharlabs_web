@@ -12,7 +12,7 @@ import { getStrategyById } from "../strategies/store.js";
 import { PRESET_STRATEGIES } from "../strategies/presets.js";
 import { evaluateStrategy } from "../strategies/engine.js";
 import { calculateRegionalFriction, detectMarketRegion } from "../backtest/friction.js";
-import { readJsonData, writeJsonData } from "../storageUtils.js";
+import { readJsonData, writeJsonData, deleteJsonData } from "../storageUtils.js";
 import { getPrismaClient } from "../../../../api/_utils.js";
 import {
   EODPosition,
@@ -257,13 +257,33 @@ export function listSimulations(): SimulationRegistryEntry[] {
   return readRegistry();
 }
 
-export function deleteSimulation(simId: string): void {
+export async function deleteSimulation(simId: string): Promise<void> {
   if (simId === "default" || simId === "cron_live") {
     throw new Error(`Cannot delete protected simulation "${simId}".`);
   }
+  const safeSimId = simId.replace(/[^a-zA-Z0-9_-]/g, "_");
   const reg = readRegistry().filter(r => r.id !== simId);
   writeJsonData(SIM_REGISTRY_KEY, reg);
-  // Note: blob entries for the portfolio/history keys become orphaned but are harmless.
+
+  // Evict from memoryCache and disk
+  deleteJsonData(portfolioKey(safeSimId));
+  deleteJsonData(historyKey(safeSimId));
+  try {
+    const pPath = localPortfolioPath(safeSimId);
+    if (fs.existsSync(pPath)) fs.unlinkSync(pPath);
+  } catch {}
+  try {
+    const hPath = localHistoryPath(safeSimId);
+    if (fs.existsSync(hPath)) fs.unlinkSync(hPath);
+  } catch {}
+
+  // Delete from Neon PostgreSQL database
+  try {
+    const prisma = getPrismaClient();
+    await prisma.simulationStore.delete({
+      where: { simId: safeSimId }
+    });
+  } catch {}
 }
 
 export interface PersistedEODState {
@@ -279,18 +299,20 @@ export interface PersistedEODState {
   lastUpdated?: string;
 }
 
-const DEFAULT_INITIAL_STATE: PersistedEODState = {
-  cash: 100000,
-  initialCash: 100000,
-  positions: [],
-  closedTrades: [],
-  lastRunDate: undefined,
-  totalRealizedPnL: 0,
-  totalFrictionPaid: 0,
-  winCount: 0,
-  lossCount: 0,
-  lastUpdated: undefined
-};
+export function createInitialSimulatorState(initialCash: number = 100000): PersistedEODState {
+  return {
+    cash: initialCash,
+    initialCash,
+    positions: [],
+    closedTrades: [],
+    lastRunDate: undefined,
+    totalRealizedPnL: 0,
+    totalFrictionPaid: 0,
+    winCount: 0,
+    lossCount: 0,
+    lastUpdated: undefined
+  };
+}
 
 export async function ensureSimulatorStore(simId: string): Promise<PersistedEODState> {
   const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -308,11 +330,28 @@ export async function ensureSimulatorStore(simId: string): Promise<PersistedEODS
       try { positions = JSON.parse(row.positions || '[]'); } catch {}
       try { closedTrades = JSON.parse(row.closedTrades || '[]'); } catch {}
 
+      // Strict instance segregation: sanitize positions and trades so foreign entries never bleed
+      const cleanPositions: EODPosition[] = (Array.isArray(positions) ? positions : []).filter(p => {
+        if (!p.simulationId) {
+          p.simulationId = safeSimId;
+          return true;
+        }
+        return p.simulationId === safeSimId;
+      });
+
+      const cleanClosedTrades: EODTradeExecution[] = (Array.isArray(closedTrades) ? closedTrades : []).filter(t => {
+        if (!t.simulationId) {
+          t.simulationId = safeSimId;
+          return true;
+        }
+        return t.simulationId === safeSimId;
+      });
+
       const store: PersistedEODState = {
         initialCash: row.initialCash ?? 100000,
         cash: row.cash ?? 100000,
-        positions: Array.isArray(positions) ? positions : [],
-        closedTrades: Array.isArray(closedTrades) ? closedTrades : [],
+        positions: cleanPositions,
+        closedTrades: cleanClosedTrades,
         lastRunDate: row.lastRunDate || undefined,
         totalRealizedPnL: row.totalRealizedPnL ?? 0,
         totalFrictionPaid: row.totalFrictionPaid ?? 0,
@@ -345,15 +384,31 @@ export async function ensureSimulatorStore(simId: string): Promise<PersistedEODS
     console.warn(`[Simulator DB] Error loading store for ${safeSimId} from DB:`, err);
   }
 
-  // 2. Fallback to local disk / memory cache / default initial
-  const store = readJsonData<PersistedEODState>(portfolioKey(safeSimId), DEFAULT_INITIAL_STATE);
+  // 2. Fallback to local disk / memory cache / default initial (always fresh isolated state object)
+  const store = readJsonData<PersistedEODState>(portfolioKey(safeSimId), createInitialSimulatorState());
   if (!store || typeof store.cash !== "number") {
-    const fresh = { ...DEFAULT_INITIAL_STATE };
+    const fresh = createInitialSimulatorState();
     await saveSimulatorStore(fresh, safeSimId);
     return fresh;
   }
   if (!Array.isArray(store.positions)) store.positions = [];
   if (!Array.isArray(store.closedTrades)) store.closedTrades = [];
+
+  // Strict instance segregation: sanitize positions and trades
+  store.positions = store.positions.filter(p => {
+    if (!p.simulationId) {
+      p.simulationId = safeSimId;
+      return true;
+    }
+    return p.simulationId === safeSimId;
+  });
+  store.closedTrades = store.closedTrades.filter(t => {
+    if (!t.simulationId) {
+      t.simulationId = safeSimId;
+      return true;
+    }
+    return t.simulationId === safeSimId;
+  });
 
   // Deduplicate open positions
   if (store.positions.length > 1) {
@@ -606,6 +661,7 @@ export async function closeEODPosition(
 
   const closedTrade: EODTradeExecution = {
     id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
+    simulationId: safeSimId,
     type: "MANUAL_CLOSE",
     symbol: pos.symbol,
     companyName: pos.name,
@@ -642,7 +698,7 @@ export async function closeEODPosition(
  */
 export async function runEODSimulation(options: EODSimulationOptions = {}): Promise<EODSimulationReport> {
   // ── Resolve simulation instance ─────────────────────────────────────────────
-  const simId = (options.simulationId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const simId = (options.simulationId || (options as any).simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
   const nowIsoStart = new Date().toISOString();
 
   const store = await ensureSimulatorStore(simId);
@@ -940,6 +996,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
           const tradeExecution: EODTradeExecution = {
             id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
+            simulationId: simId,
             type: exitType,
             symbol: pos.symbol,
             companyName: pos.name,
@@ -1066,6 +1123,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
               const newPos: EODPosition = {
                 id: `pos-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
+                simulationId: simId,
                 symbol: item.symbol,
                 name: quote?.name || formatTickerDisplay(item.symbol).cleanSymbol,
                 market: item.market,
@@ -1091,6 +1149,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
               openedTradesAll.push({
                 id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
+                simulationId: simId,
                 type: "BUY_ENTRY",
                 symbol: item.symbol,
                 companyName: newPos.name,
@@ -1284,6 +1343,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
         const tradeExecution: EODTradeExecution = {
           id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
+          simulationId: simId,
           type: exitType,
           symbol: pos.symbol,
           companyName: pos.name,
@@ -1425,6 +1485,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
               const newPos: EODPosition = {
                 id: `pos-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
+                simulationId: simId,
                 symbol: normSym,
                 name: quote?.name || formatTickerDisplay(normSym).cleanSymbol,
                 market: item.market,
@@ -1450,6 +1511,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
               openedTrades.push({
                 id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
+                simulationId: simId,
                 type: "BUY_ENTRY",
                 symbol: normSym,
                 companyName: newPos.name,

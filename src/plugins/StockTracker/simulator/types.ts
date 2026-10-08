@@ -1,5 +1,6 @@
 export interface EODPosition {
   id: string;
+  simulationId?: string;         // instance identifier that owns this open position
   symbol: string;
   name: string;
   market: string;
@@ -25,6 +26,7 @@ export interface EODPosition {
 
 export interface EODTradeExecution {
   id: string;
+  simulationId?: string;         // instance identifier that produced this trade execution
   type: 'BUY_ENTRY' | 'TAKE_PROFIT' | 'STOP_LOSS' | 'TRAILING_STOP_EXIT' | 'MANUAL_CLOSE';
   symbol: string;
   companyName: string;

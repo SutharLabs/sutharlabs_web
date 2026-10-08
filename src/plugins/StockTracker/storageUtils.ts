@@ -176,3 +176,18 @@ export async function syncFromBlob<T>(fileName: string): Promise<T | null> {
   }
   return null;
 }
+
+/**
+ * Safely removes a JSON file from writable directory and memory cache.
+ */
+export function deleteJsonData(fileName: string): void {
+  memoryCache.delete(fileName);
+  try {
+    const targetPath = resolveDataFilePath(fileName);
+    if (fs.existsSync(targetPath)) {
+      fs.unlinkSync(targetPath);
+    }
+  } catch (err) {
+    console.warn(`[Storage] Failed deleting ${fileName}:`, err);
+  }
+}
