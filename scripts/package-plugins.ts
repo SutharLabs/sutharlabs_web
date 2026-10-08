@@ -22,7 +22,7 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'StockTracker',
     id: 'wp_stock_analyzer',
     name: 'Stock Tracker',
-    version: '1.1.1',
+    version: '1.1.2',
     category: 'Finance',
     type: 'Native',
     description: 'Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.',

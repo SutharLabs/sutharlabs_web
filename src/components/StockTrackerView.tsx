@@ -2589,17 +2589,17 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             }}
             className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth py-0.5 px-6 whitespace-nowrap"
           >
-            {/* 1. Version Badge (v1.1.1 Bug Fix Release) */}
+            {/* 1. Version Badge (v1.1.2 Bug Fix Release) */}
             <button
               onClick={() => {
                 setSettingsActiveTab('SCANNER');
                 setShowSettingsDrawer(true);
               }}
               className="h-8 px-2.5 rounded-lg bg-[#00e476]/10 text-[#00e476] border border-[#00e476]/25 font-mono text-xs font-bold cursor-pointer hover:bg-[#00e476]/20 transition-all shadow-sm flex items-center gap-1.5 shrink-0"
-              title="SutharLabs Stock Tracker v1.1.1"
+              title="SutharLabs Stock Tracker v1.1.2"
             >
               <Cpu className="w-3.5 h-3.5 text-[#00e476]" />
-              <span>v1.1.1</span>
+              <span>v1.1.2</span>
             </button>
 
             {/* 2. Sliding Settings Overlay Trigger (Placed JUST after Version as requested) */}
