@@ -1,12 +1,12 @@
 {
   "id": "wp_accounting",
-  "name": "Financial Ledger & Invoice Engine",
-  "version": "0.1.0",
-  "category": "Finance",
+  "name": "Accounting",
+  "version": "0.2.0",
+  "category": "Operations",
   "type": "Native",
-  "description": "Financial ledger, invoicing, daily transaction sequences, and balance auditing.",
+  "description": "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1/3B Returns, E-Invoicing (IRN), and Double-Entry General Ledger.",
   "iconSymbol": "currency_exchange",
   "main": "index.ts",
   "minEngineVersion": "0.1.0",
-  "packagedAt": "2026-10-08T16:59:31.591Z"
+  "packagedAt": "2026-10-09T08:30:00.000Z"
 }

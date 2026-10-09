@@ -1,58 +1,257 @@
-import { Router } from "express";
-import { getPrismaClient } from "../../../api/_utils.js";
-import { authenticateToken } from "../../middleware/auth.js";
-
-const prisma = getPrismaClient();
+import { Router } from 'express';
+import { authenticateToken } from '../../middleware/auth.js';
+import { AccountingStorage } from './storage.js';
+import { validateGSTIN, COMMON_HSN_SAC_CATALOG, INDIAN_GST_STATES } from './gstEngine.js';
 
 export function registerRoutes(router: Router) {
-  // GET /invoices or /api/invoices
-  router.get("/invoices", authenticateToken, async (_req, res) => {
+  // ==================== COMPANY PROFILE & GST SETTINGS ====================
+
+  router.get('/company', authenticateToken, async (_req, res) => {
     try {
-      const invoices = await prisma.invoice.findMany({
-        orderBy: { date: "desc" }
-      });
-      res.json(invoices);
+      const company = AccountingStorage.getCompany();
+      res.json(company);
     } catch (error) {
-      res.status(500).json({ error: "Failed to fetch invoices ledger." });
+      res.status(500).json({ error: 'Failed to retrieve company profile.' });
     }
   });
 
-  // POST /invoices or /api/invoices
-  router.post("/invoices", authenticateToken, async (req: any, res: any) => {
-    const { client, amount, status } = req.body;
-    if (!client || !amount) {
-      return res.status(400).json({ error: "Client name and billing amount are required fields." });
-    }
-
+  router.put('/company', authenticateToken, async (req: any, res: any) => {
     try {
-      const date = new Date();
-      const dateStr = `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`;
-      
-      const todayString = date.toISOString().split("T")[0];
-      const count = await prisma.invoice.count({
-        where: {
-          date: {
-            contains: todayString
-          }
-        }
-      });
-
-      const sequenceNo = count + 1;
-      const formattedInvoiceId = `INV-${dateStr}-${sequenceNo.toString().padStart(4, '0')}`;
-
-      const created = await prisma.invoice.create({
-        data: {
-          id: formattedInvoiceId,
-          date: todayString,
-          client,
-          amount: parseFloat(amount),
-          status: status || "Pending"
-        }
-      });
-      res.status(201).json(created);
+      const updated = AccountingStorage.updateCompany(req.body);
+      res.json(updated);
     } catch (error) {
-      console.error("Create invoice error:", error);
-      res.status(500).json({ error: "Failed to insert transaction invoice." });
+      res.status(500).json({ error: 'Failed to update company profile.' });
+    }
+  });
+
+  // ==================== REFERENCE DIRECTORIES ====================
+
+  router.get('/states', authenticateToken, async (_req, res) => {
+    res.json(INDIAN_GST_STATES);
+  });
+
+  router.get('/hsn-catalog', authenticateToken, async (_req, res) => {
+    res.json(COMMON_HSN_SAC_CATALOG);
+  });
+
+  router.get('/gstin/:gstin', authenticateToken, async (req: any, res: any) => {
+    const { gstin } = req.params;
+    const result = validateGSTIN(gstin);
+    res.json(result);
+  });
+
+  // ==================== PARTIES (CUSTOMERS & VENDORS) ====================
+
+  router.get('/customers', authenticateToken, async (_req, res) => {
+    try {
+      const parties = AccountingStorage.getParties();
+      res.json(parties);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to retrieve party masters.' });
+    }
+  });
+
+  router.post('/customers', authenticateToken, async (req: any, res: any) => {
+    try {
+      const { name, gstin, stateCode, billingAddress, email, phone, partyType } = req.body;
+      if (!name) {
+        return res.status(400).json({ error: 'Party customer name is required.' });
+      }
+
+      if (gstin) {
+        const val = validateGSTIN(gstin);
+        if (!val.isValid) {
+          return res.status(400).json({ error: val.error });
+        }
+      }
+
+      const party = AccountingStorage.addParty({
+        name,
+        gstin,
+        stateCode: stateCode || '24',
+        stateName: '',
+        billingAddress: billingAddress || '',
+        email: email || '',
+        phone: phone || '',
+        partyType: partyType || (gstin ? 'B2B' : 'B2C')
+      });
+      res.status(201).json(party);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to register customer party.' });
+    }
+  });
+
+  // ==================== ITEMS & HSN MASTER ====================
+
+  router.get('/items', authenticateToken, async (_req, res) => {
+    try {
+      const items = AccountingStorage.getItems();
+      res.json(items);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to retrieve items catalog.' });
+    }
+  });
+
+  router.post('/items', authenticateToken, async (req: any, res: any) => {
+    try {
+      const { code, name, type, hsnSacCode, unit, unitPrice, gstRate, description } = req.body;
+      if (!name || !unitPrice) {
+        return res.status(400).json({ error: 'Item name and unit price are required.' });
+      }
+
+      const item = AccountingStorage.addItem({
+        code: code || `SKU-${Date.now().toString().slice(-4)}`,
+        name,
+        type: type || 'Services',
+        hsnSacCode: hsnSacCode || '998313',
+        unit: unit || 'NOS',
+        unitPrice: parseFloat(unitPrice),
+        gstRate: Number(gstRate) || 18,
+        description
+      });
+      res.status(201).json(item);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to create item in catalog.' });
+    }
+  });
+
+  // ==================== INVOICES (FULL GST INVOICE LEDGER) ====================
+
+  // GET /invoices
+  router.get('/invoices', authenticateToken, async (_req, res) => {
+    try {
+      const invoices = AccountingStorage.getInvoices();
+      res.json(invoices);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch invoices ledger.' });
+    }
+  });
+
+  // GET /invoices/:id
+  router.get('/invoices/:id', authenticateToken, async (req: any, res: any) => {
+    try {
+      const invoice = AccountingStorage.getInvoiceById(req.params.id);
+      if (!invoice) {
+        return res.status(404).json({ error: 'Invoice not found.' });
+      }
+      res.json(invoice);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to fetch invoice details.' });
+    }
+  });
+
+  // POST /invoices
+  router.post('/invoices', authenticateToken, async (req: any, res: any) => {
+    try {
+      const {
+        client,
+        amount,
+        status,
+        buyerId,
+        buyerName,
+        buyerGstin,
+        buyerStateCode,
+        buyerAddress,
+        placeOfSupplyStateCode,
+        invoiceDate,
+        dueDate,
+        items,
+        notes
+      } = req.body;
+
+      // Handle legacy or quick submission:
+      let processedItems = items;
+      if (!processedItems || !Array.isArray(processedItems) || processedItems.length === 0) {
+        const clientName = client || buyerName || 'Enterprise Client';
+        const numAmount = parseFloat(amount) || 10000;
+        processedItems = [
+          {
+            itemDescription: 'Software Development & IT Professional Services',
+            hsnSacCode: '998313',
+            quantity: 1,
+            unit: 'NOS',
+            rate: numAmount,
+            discountPercent: 0,
+            gstRate: 18
+          }
+        ];
+      }
+
+      const created = await AccountingStorage.createInvoice({
+        buyerId,
+        buyerName: buyerName || client,
+        buyerGstin,
+        buyerStateCode,
+        buyerAddress,
+        placeOfSupplyStateCode,
+        invoiceDate,
+        dueDate,
+        items: processedItems,
+        status: status === 'Paid' ? 'Paid' : 'Issued',
+        notes
+      });
+
+      res.status(201).json(created);
+    } catch (error: any) {
+      console.error('Create invoice error:', error);
+      res.status(500).json({ error: error.message || 'Failed to generate GST Tax Invoice.' });
+    }
+  });
+
+  // PATCH /invoices/:id/status
+  router.patch('/invoices/:id/status', authenticateToken, async (req: any, res: any) => {
+    try {
+      const { status } = req.body;
+      const updated = await AccountingStorage.updateInvoiceStatus(req.params.id, status);
+      if (!updated) {
+        return res.status(404).json({ error: 'Invoice not found.' });
+      }
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to update invoice status.' });
+    }
+  });
+
+  // DELETE /invoices/:id
+  router.delete('/invoices/:id', authenticateToken, async (req: any, res: any) => {
+    try {
+      const success = await AccountingStorage.deleteInvoice(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: 'Invoice not found or could not be removed.' });
+      }
+      res.json({ success: true, deletedId: req.params.id });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete invoice.' });
+    }
+  });
+
+  // ==================== GST REPORTING & LEDGER ====================
+
+  router.get('/reports/gstr-1', authenticateToken, async (req: any, res: any) => {
+    try {
+      const period = (req.query.period as string) || 'Current Quarter';
+      const report = AccountingStorage.getGSTR1Report(period);
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate GSTR-1 summary.' });
+    }
+  });
+
+  router.get('/reports/gstr-3b', authenticateToken, async (_req, res) => {
+    try {
+      const report = AccountingStorage.getGSTR3BReport();
+      res.json(report);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate GSTR-3B summary.' });
+    }
+  });
+
+  router.get('/reports/ledger', authenticateToken, async (_req, res) => {
+    try {
+      const ledger = AccountingStorage.getGeneralLedger();
+      res.json(ledger);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate General Ledger.' });
     }
   });
 }

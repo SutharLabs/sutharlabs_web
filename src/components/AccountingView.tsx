@@ -1,6 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Invoice, TerminalLog } from '../types';
-import CollapsibleLogDrawer from './CollapsibleLogDrawer';
+import React, { useState, useEffect, useCallback } from 'react';
+import { GSTInvoice, CompanyProfile, PartyCustomer, ItemMaster } from '../plugins/Accounting/types.js';
+import { formatINR } from '../plugins/Accounting/gstEngine.js';
+import TaxInvoiceModal from '../plugins/Accounting/components/TaxInvoiceModal.js';
+import CreateInvoiceDrawer from '../plugins/Accounting/components/CreateInvoiceDrawer.js';
+import GstrReportsView from '../plugins/Accounting/components/GstrReportsView.js';
+import GeneralLedgerView from '../plugins/Accounting/components/GeneralLedgerView.js';
+import PartyMasterView from '../plugins/Accounting/components/PartyMasterView.js';
+import ItemCatalogView from '../plugins/Accounting/components/ItemCatalogView.js';
+import CompanySettingsModal from '../plugins/Accounting/components/CompanySettingsModal.js';
+import CollapsibleLogDrawer from './CollapsibleLogDrawer.js';
+import { TerminalLog } from '../types.js';
 
 interface AccountingViewProps {
   logs?: TerminalLog[];
@@ -8,343 +17,573 @@ interface AccountingViewProps {
   userToken: string;
 }
 
-const initialInvoices: Invoice[] = [
-  { id: 'ST-00241', date: '2026-05-18', client: 'AlphaCorp Int', amount: 8450.00, status: 'Paid' },
-  { id: 'ST-00242', date: '2026-05-20', client: 'Tesla Forge', amount: 12500.00, status: 'Pending' },
-  { id: 'ST-00243', date: '2026-05-22', client: 'Vertex Grid', amount: 9950.00, status: 'Pending' },
-  { id: 'ST-00244', date: '2026-05-23', client: 'Lambda Group', amount: 4800.00, status: 'Paid' }
-];
-
 export default function AccountingView({ logs = [], onAddLog, userToken }: AccountingViewProps) {
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  // Navigation sub-tabs within the Accounting ERP suite
+  const [activeTab, setActiveTab] = useState<'Invoices' | 'GSTR' | 'Ledger' | 'Parties' | 'Catalog'>('Invoices');
+
+  // Core Data States
+  const [invoices, setInvoices] = useState<GSTInvoice[]>([]);
+  const [company, setCompany] = useState<CompanyProfile | null>(null);
+  const [parties, setParties] = useState<PartyCustomer[]>([]);
+  const [itemsCatalog, setItemsCatalog] = useState<ItemMaster[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Filter & Search states
   const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'ALL' | 'Paid' | 'Issued' | 'Draft'>('ALL');
+  const [taxFilter, setTaxFilter] = useState<'ALL' | 'INTRA' | 'INTER'>('ALL');
 
-  // Fetch invoices on mount
-  useEffect(() => {
-    const fetchInvoices = async () => {
-      try {
-        const response = await fetch('/api/invoices', {
-          headers: { 'Authorization': `Bearer ${userToken}` }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setInvoices(data);
-        }
-      } catch (err) {
-        console.error('Failed to fetch invoices:', err);
-      }
-    };
-    fetchInvoices();
-  }, [userToken]);
-  
-  // New invoice form input states
-  const [client, setClient] = useState('');
-  const [amount, setAmount] = useState('');
-  const [status, setStatus] = useState<'Paid' | 'Pending'>('Pending');
-  const [isFormVisible, setIsFormVisible] = useState(false);
+  // Modals & Drawers
+  const [selectedInvoice, setSelectedInvoice] = useState<GSTInvoice | null>(null);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
-  // Derive all statistics dynamically to support live user form submissions
-  const totalAmount = invoices.reduce((sum, current) => sum + current.amount, 0);
-  
-  const outstandingAmount = invoices
-    .filter(i => i.status === 'Pending')
-    .reduce((sum, curr) => sum + curr.amount, 0);
-
-  const paidAmount = invoices
-    .filter(i => i.status === 'Paid')
-    .reduce((sum, curr) => sum + curr.amount, 0);
-
-  const handleCreateInvoice = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!client || !amount) return;
-    
-    // Parse numeric value
-    const parsedAmount = parseFloat(amount);
-    if (isNaN(parsedAmount) || parsedAmount <= 0) return;
-
-    const newInvoice = {
-      client: client,
-      amount: parsedAmount,
-      status: status
-    };
-
+  // Fetch initial accounting master datasets
+  const fetchAllData = useCallback(async () => {
     try {
-      const response = await fetch('/api/invoices', {
-        method: 'POST',
-        headers: { 
+      setIsLoading(true);
+      const headers = { Authorization: `Bearer ${userToken}` };
+
+      const [invRes, compRes, partRes, itemsRes] = await Promise.all([
+        fetch('/api/plugins/wp_accounting/invoices', { headers }),
+        fetch('/api/plugins/wp_accounting/company', { headers }),
+        fetch('/api/plugins/wp_accounting/customers', { headers }),
+        fetch('/api/plugins/wp_accounting/items', { headers })
+      ]);
+
+      if (invRes.ok) setInvoices(await invRes.json());
+      if (compRes.ok) setCompany(await compRes.json());
+      if (partRes.ok) setParties(await partRes.json());
+      if (itemsRes.ok) setItemsCatalog(await itemsRes.json());
+    } catch (err) {
+      console.error('Failed to load accounting data:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [userToken]);
+
+  useEffect(() => {
+    fetchAllData();
+  }, [fetchAllData]);
+
+  // Invoice Handlers
+  const handleMarkPaid = async (id: string) => {
+    try {
+      const res = await fetch(`/api/plugins/wp_accounting/invoices/${encodeURIComponent(id)}/status`, {
+        method: 'PATCH',
+        headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${userToken}`
+          Authorization: `Bearer ${userToken}`
         },
-        body: JSON.stringify(newInvoice)
+        body: JSON.stringify({ status: 'Paid' })
       });
 
-      if (response.ok) {
-        const created = await response.json();
-        setInvoices(prev => [created, ...prev]);
-
+      if (res.ok) {
+        const updated = await res.json();
+        setInvoices(prev => prev.map(i => i.id === id ? updated : i));
+        if (selectedInvoice && selectedInvoice.id === id) {
+          setSelectedInvoice(updated);
+        }
         onAddLog({
           timestamp: new Date().toLocaleTimeString(),
           type: 'SUCCESS',
-          message: `ACCOUNTING: Formed invoice ${created.id} representing client [${client}] for $${parsedAmount.toFixed(2)}.`
+          message: `ACCOUNTING: Invoice [${id}] marked as PAID. Reconciled ${formatINR(updated.grandTotal)} in receivables.`
         });
       }
     } catch (err) {
-      console.error('Failed to create backend invoice entry:', err);
+      console.error('Failed to update invoice status:', err);
     }
-
-    // Reset fields
-    setClient('');
-    setAmount('');
-    setStatus('Pending');
-    setIsFormVisible(false);
   };
 
-  // Filter invoices relative to query
-  const filteredInvoices = invoices.filter(item => 
-    item.client.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleDeleteInvoice = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm(`Are you sure you want to delete invoice ${id}?`)) return;
 
-  // SVG Chart rendering dimensions
-  const svgWidth = 500;
-  const svgHeight = 150;
+    try {
+      const res = await fetch(`/api/plugins/wp_accounting/invoices/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${userToken}` }
+      });
+
+      if (res.ok) {
+        setInvoices(prev => prev.filter(i => i.id !== id));
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'ALERT',
+          message: `ACCOUNTING: Invoice [${id}] has been removed from ledger.`
+        });
+      }
+    } catch (err) {
+      console.error('Failed to delete invoice:', err);
+    }
+  };
+
+  const handleInvoiceCreated = (newInv: GSTInvoice) => {
+    setInvoices(prev => [newInv, ...prev]);
+    onAddLog({
+      timestamp: new Date().toLocaleTimeString(),
+      type: 'SUCCESS',
+      message: `ACCOUNTING: Issued GST Tax Invoice ${newInv.invoiceNumber} to [${newInv.buyer.legalName}] for ${formatINR(newInv.grandTotal)}. IRN: ${newInv.eInvoice?.irn.slice(0, 12)}...`
+    });
+  };
+
+  // Aggregated KPI Metrics
+  const totalInvoiced = invoices.reduce((sum, i) => sum + i.grandTotal, 0);
+  const totalTaxable = invoices.reduce((sum, i) => sum + i.taxableAmount, 0);
+  const totalCGST = invoices.reduce((sum, i) => sum + i.cgstTotal, 0);
+  const totalSGST = invoices.reduce((sum, i) => sum + i.sgstTotal, 0);
+  const totalIGST = invoices.reduce((sum, i) => sum + i.igstTotal, 0);
+  const totalPaid = invoices.filter(i => i.status === 'Paid').reduce((sum, i) => sum + i.grandTotal, 0);
+  const totalOutstanding = invoices.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + i.grandTotal, 0);
+
+  // Filtered List
+  const filteredInvoices = invoices.filter(item => {
+    const matchesSearch =
+      item.buyer.legalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      item.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.buyer.gstin && item.buyer.gstin.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      item.placeOfSupplyStateName.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesStatus =
+      statusFilter === 'ALL' || item.status === statusFilter;
+
+    const matchesTax =
+      taxFilter === 'ALL' ||
+      (taxFilter === 'INTER' && item.isInterState) ||
+      (taxFilter === 'INTRA' && !item.isInterState);
+
+    return matchesSearch && matchesStatus && matchesTax;
+  });
 
   return (
     <div className="flex-grow flex flex-col gap-5">
-      
-      {/* Dynamic Summary Cards row */}
-      <div className="grid grid-cols-1 md:grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-        {/* Outstanding Card */}
-        <div className="glass-panel p-5 rounded-lg border-l-4 border-[#00dbe7] flex flex-col justify-center">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface-variant mb-1 block">Total Value</span>
-          <span className="text-xl font-bold text-on-surface font-sans block">${totalAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        </div>
-
-        {/* Pending / Overdue Card */}
-        <div className="glass-panel p-5 rounded-lg border-l-4 border-[#ce5dff] flex flex-col justify-center">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface-variant mb-1 block">Outstanding</span>
-          <span className="text-xl font-bold text-[#ebb2ff] font-sans block">${outstandingAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        </div>
-
-        {/* Paid / Realized Card */}
-        <div className="glass-panel p-5 rounded-lg border-l-4 border-[#00e476] flex flex-col justify-center">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface-variant mb-1 block">Paid Portfolio</span>
-          <span className="text-xl font-bold text-[#00e476] font-sans block">${paidAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-        </div>
-
-        {/* Gross margin placeholder calculation */}
-        <div className="glass-panel p-5 rounded-lg border-l-4 border-gray-600 flex flex-col justify-center">
-          <span className="font-mono text-[9px] uppercase tracking-widest text-on-surface-variant mb-1 block">Margin</span>
-          <span className="text-xl font-bold text-white font-mono block">84.2%</span>
-        </div>
-      </div>
-
-      {/* Main Bar Chart Matrix displaying invoices visual proportions */}
-      <div className="glass-panel rounded-lg p-5 flex flex-col gap-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 pb-2 border-b border-outline/10">
-          <h3 className="font-mono text-xs font-bold text-on-surface uppercase tracking-wider flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#00dbe7] text-base select-none">currency_exchange</span>
-            Payout Cycle Analysis (Active Invoices Proportional Graph)
-          </h3>
-          <span className="text-[10px] font-mono text-on-surface-variant">Dynamic scale relative to inputs</span>
-        </div>
-
-        {/* Custom SVG bars representing individual invoice weights */}
-        <div className="h-[140px] relative chart-grid rounded bg-surface-container-low/40 flex items-end p-4">
-          <svg className="absolute inset-0 w-full h-full" viewBox={`0 0 ${svgWidth} ${svgHeight}`} preserveAspectRatio="none">
-            {/* Draw flowing connections under values */}
-            {invoices.map((inv, idx) => {
-              const xUnit = svgWidth / (invoices.length || 1);
-              const xPos = idx * xUnit + (xUnit / 4);
-              const barWidth = xUnit / 2;
-              
-              // Max pricing capping scale
-              const maxVal = Math.max(...invoices.map(i => i.amount), 15000);
-              const barHeight = (inv.amount / maxVal) * (svgHeight - 40);
-              const yPos = svgHeight - barHeight - 15;
-
-              return (
-                <g key={inv.id}>
-                  {/* Subtle bar drop glow */}
-                  <rect 
-                    x={xPos} 
-                    y={yPos} 
-                    width={barWidth} 
-                    height={barHeight} 
-                    rx="3"
-                    fill={inv.status === 'Paid' ? '#00e476' : '#ce5dff'} 
-                    opacity="0.15"
-                    className="drop-shadow-[0_0_8px_rgba(206,93,255,0.4)]"
-                  />
-                  {/* Real visual bar */}
-                  <rect 
-                    x={xPos} 
-                    y={yPos} 
-                    width={barWidth} 
-                    height={barHeight} 
-                    rx="3"
-                    fill={inv.status === 'Paid' ? '#00e476' : '#ce5dff'} 
-                    opacity="0.7"
-                  />
-                  {/* Text value inside the bars */}
-                  <text 
-                    x={xPos + barWidth / 2} 
-                    y={yPos - 6} 
-                    fill="#e5e1e4" 
-                    fontSize="8" 
-                    textAnchor="middle" 
-                    fontFamily="monospace"
-                  >
-                    ${inv.amount >= 1000 ? `${(inv.amount/1000).toFixed(1)}k` : inv.amount}
-                  </text>
-                </g>
-              );
-            })}
-          </svg>
-
-          {/* Simple legends inside bottom panel */}
-          <div className="absolute bottom-1 left-0 right-0 flex justify-between px-6 font-mono text-[8px] text-on-surface-variant">
-            {invoices.map(i => <span key={i.id}>{i.id}</span>)}
+      {/* Top Banner & Control Deck */}
+      <div className="glass-panel p-5 rounded-xl border border-outline/15 bg-surface-container-low/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00dbe7]/20 via-[#ce5dff]/20 to-[#00e476]/20 border border-[#00dbe7]/40 flex items-center justify-center text-[#00dbe7] shadow-lg shadow-[#00dbe7]/10">
+            <span className="material-symbols-outlined text-2xl">account_balance</span>
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-bold font-sans text-white tracking-tight">
+                Indian GST Accounting & ERP Suite
+              </h2>
+              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30">
+                ERPNext & Frappe Parity
+              </span>
+            </div>
+            <p className="text-[11px] font-mono text-gray-400">
+              {company ? `${company.legalName} • GSTIN: ${company.gstin} (${company.stateName} - ${company.stateCode})` : 'Loading enterprise profile...'}
+            </p>
           </div>
         </div>
-      </div>
 
-      {/* Interactive Creation invoice overlay or inline form */}
-      <div className="glass-panel p-5 rounded-lg border border-outline/15">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 sm:gap-0 mb-4">
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-[#00e476] select-none text-md">receipt_long</span>
-            <h3 className="font-mono text-xs font-bold text-on-surface uppercase tracking-widest">Invoices Log Book</h3>
-          </div>
-          
-          <button 
-            onClick={() => setIsFormVisible(!isFormVisible)}
-            className="px-3 py-1 bg-[#201f21] border border-outline/40 rounded hover:border-[#00dbe7] text-xs font-mono text-[#74f5ff] transition-all cursor-pointer"
+        <div className="flex items-center gap-2.5 w-full md:w-auto">
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex-1 md:flex-none px-3.5 py-2 rounded-lg bg-[#18181c] hover:bg-[#201f21] border border-[#3a494b]/30 text-gray-300 hover:text-white font-mono text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
-            {isFormVisible ? 'Collapse Panel' : 'Form Invoice Entry'}
+            <span className="material-symbols-outlined text-sm">settings</span>
+            GST Settings
+          </button>
+
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="flex-1 md:flex-none px-4 py-2 rounded-lg bg-[#00e476] hover:brightness-110 text-[#00210c] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-[#00e476]/20 transition-all cursor-pointer"
+          >
+            <span className="material-symbols-outlined text-sm">add_circle</span>
+            Issue GST Invoice
           </button>
         </div>
+      </div>
 
-        {/* Input Form Elements */}
-        {isFormVisible && (
-          <form onSubmit={handleCreateInvoice} className="bg-[#0e0e10]/60 p-4 rounded-md border border-outline/20 mb-5 space-y-4 animate-fade-in">
-            <div className="grid grid-cols-1 md:grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <label className="block font-mono text-[9px] text-on-surface-variant uppercase">Client Name</label>
-                <input 
-                  type="text" 
-                  value={client}
-                  onChange={(e) => setClient(e.target.value)}
-                  placeholder="Tesla Motors"
-                  className="w-full bg-surface-container-low border border-outline/40 rounded p-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00e476]"
-                  required
+      {/* Module Navigation Tabs */}
+      <div className="flex overflow-x-auto gap-2 border-b border-[#3a494b]/20 pb-2 scrollbar-hide">
+        {[
+          { id: 'Invoices', label: 'Tax Invoices Ledger', icon: 'receipt_long' },
+          { id: 'GSTR', label: 'GST Returns (GSTR-1 / 3B)', icon: 'assignment' },
+          { id: 'Ledger', label: 'General Ledger Book', icon: 'balance' },
+          { id: 'Parties', label: 'Customers (B2B / B2C)', icon: 'domain' },
+          { id: 'Catalog', label: 'Items & HSN Catalog', icon: 'inventory_2' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+              activeTab === tab.id
+                ? 'bg-[#00dbe7]/15 border border-[#00dbe7]/50 text-[#74f5ff] shadow-sm'
+                : 'bg-[#131316] border border-[#3a494b]/20 text-gray-400 hover:text-white'
+            }`}
+          >
+            <span className="material-symbols-outlined text-sm">{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* ==================== TAB 1: INVOICES LEDGER ==================== */}
+      {activeTab === 'Invoices' && (
+        <div className="space-y-5 animate-fade-in">
+          {/* Dynamic Indian Rupee KPI Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {/* Total Invoiced */}
+            <div className="glass-panel p-4 rounded-xl border-l-4 border-[#00dbe7] flex flex-col justify-center">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-gray-400 mb-1 block">
+                Total Turnover (Gross)
+              </span>
+              <span className="text-xl font-bold text-white font-sans block">
+                {formatINR(totalInvoiced)}
+              </span>
+              <span className="text-[10px] font-mono text-gray-400 mt-1">
+                Taxable: {formatINR(totalTaxable)}
+              </span>
+            </div>
+
+            {/* Total Taxes Collected */}
+            <div className="glass-panel p-4 rounded-xl border-l-4 border-[#ce5dff] flex flex-col justify-center">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-gray-400 mb-1 block">
+                Output GST Liability
+              </span>
+              <span className="text-xl font-bold text-[#ebb2ff] font-sans block">
+                {formatINR(totalCGST + totalSGST + totalIGST)}
+              </span>
+              <span className="text-[10px] font-mono text-gray-400 mt-1 flex gap-2">
+                <span>CGST: {formatINR(totalCGST)}</span>
+                <span>SGST: {formatINR(totalSGST)}</span>
+              </span>
+            </div>
+
+            {/* Paid Inflow */}
+            <div className="glass-panel p-4 rounded-xl border-l-4 border-[#00e476] flex flex-col justify-center">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-gray-400 mb-1 block">
+                Realized Collections
+              </span>
+              <span className="text-xl font-bold text-[#00e476] font-sans block">
+                {formatINR(totalPaid)}
+              </span>
+              <span className="text-[10px] font-mono text-[#00e476]/80 mt-1">
+                Settled to Bank Account
+              </span>
+            </div>
+
+            {/* Outstanding Receivables */}
+            <div className="glass-panel p-4 rounded-xl border-l-4 border-[#eab308] flex flex-col justify-center">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-gray-400 mb-1 block">
+                Trade Receivables Due
+              </span>
+              <span className="text-xl font-bold text-[#fde047] font-sans block">
+                {formatINR(totalOutstanding)}
+              </span>
+              <span className="text-[10px] font-mono text-gray-400 mt-1">
+                Awaiting Buyer Payment
+              </span>
+            </div>
+          </div>
+
+          {/* Proportional GST Tax Weight Chart */}
+          <div className="glass-panel rounded-xl p-5 flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2 border-b border-[#3a494b]/20">
+              <h3 className="font-mono text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                <span className="material-symbols-outlined text-[#00dbe7] text-base">bar_chart</span>
+                Invoice Payout Distribution & Tax Slices
+              </h3>
+              <span className="text-[10px] font-mono text-gray-400">
+                Real-time proportional scale in Indian Rupees (₹)
+              </span>
+            </div>
+
+            <div className="h-[130px] relative chart-grid rounded-lg bg-surface-container-low/40 flex items-end p-4">
+              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 500 130" preserveAspectRatio="none">
+                {invoices.map((inv, idx) => {
+                  const xUnit = 500 / (invoices.length || 1);
+                  const xPos = idx * xUnit + (xUnit / 5);
+                  const barWidth = xUnit * 0.6;
+
+                  const maxVal = Math.max(...invoices.map(i => i.grandTotal), 400000);
+                  const barHeight = Math.max(15, (inv.grandTotal / maxVal) * 90);
+                  const yPos = 130 - barHeight - 15;
+
+                  const isPaid = inv.status === 'Paid';
+                  const barColor = isPaid ? '#00e476' : inv.isInterState ? '#ce5dff' : '#00dbe7';
+
+                  return (
+                    <g key={inv.id} className="cursor-pointer" onClick={() => setSelectedInvoice(inv)}>
+                      <rect
+                        x={xPos}
+                        y={yPos}
+                        width={barWidth}
+                        height={barHeight}
+                        rx="4"
+                        fill={barColor}
+                        opacity="0.25"
+                      />
+                      <rect
+                        x={xPos}
+                        y={yPos}
+                        width={barWidth}
+                        height={barHeight}
+                        rx="4"
+                        fill={barColor}
+                        opacity="0.85"
+                      />
+                      <text
+                        x={xPos + barWidth / 2}
+                        y={yPos - 4}
+                        fill="#ffffff"
+                        fontSize="8"
+                        textAnchor="middle"
+                        fontFamily="monospace"
+                        fontWeight="bold"
+                      >
+                        ₹{(inv.grandTotal / 1000).toFixed(0)}k
+                      </text>
+                    </g>
+                  );
+                })}
+              </svg>
+
+              <div className="absolute bottom-1 left-0 right-0 flex justify-between px-4 font-mono text-[8px] text-gray-400">
+                {invoices.map(i => (
+                  <span key={i.id} className="truncate max-w-[80px]">{i.invoiceNumber.split('/').pop()}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Ledger Table Container */}
+          <div className="glass-panel p-5 rounded-xl border border-outline/15 space-y-4">
+            {/* Filter toolbar */}
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
+              <div className="flex-1 bg-[#18181c] rounded-lg border border-[#3a494b]/30 flex items-center px-3 py-1.5 focus-within:border-[#00dbe7]">
+                <span className="material-symbols-outlined text-sm text-gray-400 mr-2">search</span>
+                <input
+                  type="text"
+                  placeholder="Search ledger by client, invoice number, state, or GSTIN..."
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  className="bg-transparent border-none text-xs font-mono text-white placeholder-gray-500 focus:outline-none w-full"
                 />
               </div>
 
-              <div className="space-y-1">
-                <label className="block font-mono text-[9px] text-on-surface-variant uppercase">Billing Amount ($USD)</label>
-                <input 
-                  type="number" 
-                  value={amount}
-                  onChange={(e) => setAmount(e.target.value)}
-                  placeholder="2500"
-                  className="w-full bg-surface-container-low border border-outline/40 rounded p-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00e476]"
-                  required
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block font-mono text-[9px] text-on-surface-variant uppercase">Inception Status</label>
-                <select 
-                  value={status}
-                  onChange={(e) => setStatus(e.target.value as any)}
-                  className="w-full bg-surface-container-low border border-outline/40 rounded p-2 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00e476] h-[34px]"
+              <div className="flex items-center gap-2">
+                {/* Status Filter */}
+                <select
+                  value={statusFilter}
+                  onChange={e => setStatusFilter(e.target.value as any)}
+                  className="bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-1.5 text-xs font-mono text-gray-300 focus:outline-none"
                 >
-                  <option value="Pending">Pending / Unpaid</option>
+                  <option value="ALL">All Status</option>
                   <option value="Paid">Cleared / Paid</option>
+                  <option value="Issued">Issued / Pending</option>
+                  <option value="Draft">Draft</option>
+                </select>
+
+                {/* Tax Supply Filter */}
+                <select
+                  value={taxFilter}
+                  onChange={e => setTaxFilter(e.target.value as any)}
+                  className="bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-1.5 text-xs font-mono text-gray-300 focus:outline-none"
+                >
+                  <option value="ALL">All Jurisdictions</option>
+                  <option value="INTRA">Intra-State (CGST+SGST)</option>
+                  <option value="INTER">Inter-State (IGST)</option>
                 </select>
               </div>
             </div>
 
-            <div className="flex justify-end pt-1">
-              <button 
-                type="submit"
-                className="px-4 py-2 bg-[#00e476] text-[#00210c] text-xs font-mono font-bold uppercase tracking-widest rounded hover:brightness-115 shadow-[0_0_8px_rgba(0,228,118,0.25)] cursor-pointer"
-              >
-                Incept Invoice
-              </button>
-            </div>
-          </form>
-        )}
+            {/* Invoices Data Grid */}
+            <div className="w-full overflow-x-auto rounded-lg border border-[#3a494b]/20">
+              <table className="w-full text-left font-mono text-xs border-collapse divide-y divide-[#3a494b]/15">
+                <thead className="bg-[#18181c] text-gray-400 text-[10px] uppercase">
+                  <tr>
+                    <th className="p-3">Invoice No</th>
+                    <th className="p-3">Date</th>
+                    <th className="p-3">Recipient Customer</th>
+                    <th className="p-3">Place of Supply (POS)</th>
+                    <th className="p-3 text-right">Taxable (₹)</th>
+                    <th className="p-3 text-right">Total GST (₹)</th>
+                    <th className="p-3 text-right">Invoice Total (₹)</th>
+                    <th className="p-3 text-center">Status</th>
+                    <th className="p-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#3a494b]/10 bg-surface-container-low/40">
+                  {filteredInvoices.map(inv => {
+                    const isPaid = inv.status === 'Paid';
 
-        {/* Filters control toolbar */}
-        <div className="flex gap-2 mb-4">
-          <div className="flex-grow bg-[#201f21] rounded border border-outline/30 flex items-center px-3 py-1.5 focus-within:border-[#00dbe7] transition-all">
-            <span className="material-symbols-outlined text-sm text-on-surface-variant select-none mr-2">search</span>
-            <input 
-              type="text" 
-              placeholder="Search ledger by client name or ID..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="bg-transparent border-none text-xs font-mono text-white placeholder-gray-500 focus:outline-none w-full p-0"
-            />
+                    return (
+                      <tr
+                        key={inv.id}
+                        onClick={() => setSelectedInvoice(inv)}
+                        className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                      >
+                        <td className="p-3">
+                          <span className="font-bold text-[#00dbe7] block">{inv.invoiceNumber}</span>
+                          {inv.eInvoice && (
+                            <span className="text-[9px] text-gray-500 font-mono flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[10px] text-[#00e476]">verified</span>
+                              IRN Gen
+                            </span>
+                          )}
+                        </td>
+                        <td className="p-3 text-gray-400">{inv.invoiceDate}</td>
+                        <td className="p-3">
+                          <span className="font-bold text-white font-sans block">{inv.buyer.legalName}</span>
+                          <span className="text-[10px] text-gray-400 font-mono">{inv.buyer.gstin || 'B2C Retail'}</span>
+                        </td>
+                        <td className="p-3">
+                          <span className="text-gray-300 block">{inv.placeOfSupplyStateName}</span>
+                          <span className={`text-[9px] font-bold ${inv.isInterState ? 'text-[#ce5dff]' : 'text-[#00dbe7]'}`}>
+                            {inv.isInterState ? 'IGST (Inter-State)' : 'CGST+SGST (Intra)'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right font-medium text-gray-300">
+                          {formatINR(inv.taxableAmount).replace('₹ ', '')}
+                        </td>
+                        <td className="p-3 text-right text-gray-400">
+                          {formatINR(inv.totalTax).replace('₹ ', '')}
+                        </td>
+                        <td className="p-3 text-right font-bold text-white text-sm">
+                          {formatINR(inv.grandTotal)}
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${
+                            isPaid
+                              ? 'bg-[#00e476]/15 text-[#00e476] border-[#00e476]/35'
+                              : 'bg-[#ce5dff]/15 text-[#ebb2ff] border-[#ce5dff]/35'
+                          }`}>
+                            {inv.status}
+                          </span>
+                        </td>
+                        <td className="p-3 text-right">
+                          <div className="flex items-center justify-end gap-1" onClick={e => e.stopPropagation()}>
+                            <button
+                              onClick={() => setSelectedInvoice(inv)}
+                              title="View & Print Rule 46 Tax Invoice"
+                              className="w-7 h-7 rounded hover:bg-[#00dbe7]/20 text-gray-400 hover:text-[#00dbe7] flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-sm">print</span>
+                            </button>
+
+                            {!isPaid && (
+                              <button
+                                onClick={() => handleMarkPaid(inv.id)}
+                                title="Mark Paid"
+                                className="w-7 h-7 rounded hover:bg-[#00e476]/20 text-gray-400 hover:text-[#00e476] flex items-center justify-center transition-colors cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-sm">check_circle</span>
+                              </button>
+                            )}
+
+                            <button
+                              onClick={e => handleDeleteInvoice(inv.id, e)}
+                              title="Delete Record"
+                              className="w-7 h-7 rounded hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-sm">delete</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+
+                  {filteredInvoices.length === 0 && (
+                    <tr>
+                      <td colSpan={9} className="p-12 text-center text-gray-500 font-light">
+                        No invoice ledger entries match filter criteria.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
+      )}
 
-        {/* Ledgers table representation */}
-        <div className="w-full overflow-x-auto rounded border border-outline/10">
-          <table className="w-full text-left font-mono text-xs border-collapse divide-y divide-[#3a494b]/15">
-            <thead className="bg-[#0e0e10]/60 text-on-surface-variant select-none text-[10px]">
-              <tr>
-                <th className="p-3">ID</th>
-                <th className="p-3">DATE</th>
-                <th className="p-3">CLIENT</th>
-                <th className="p-3 text-right">AMOUNT ($)</th>
-                <th className="p-3 text-right">STATUS</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#3a494b]/10 bg-surface-container-low/40">
-              {filteredInvoices.map((inv) => {
-                const isPaid = inv.status === 'Paid';
+      {/* ==================== TAB 2: GSTR COMPLIANCE ==================== */}
+      {activeTab === 'GSTR' && <GstrReportsView userToken={userToken} />}
 
-                return (
-                  <tr key={inv.id} className="hover:bg-white/[0.02] transition-colors">
-                    <td className="p-3 text-[#00dbe7] font-bold">{inv.id}</td>
-                    <td className="p-3 text-on-surface-variant">{inv.date}</td>
-                    <td className="p-3 text-on-surface font-semibold">{inv.client}</td>
-                    <td className="p-3 text-right text-white font-bold">
-                      ${inv.amount.toLocaleString('en-US', { minimumFractionDigits: 2 })}
-                    </td>
-                    <td className="p-3 text-right">
-                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${
-                        isPaid 
-                          ? 'bg-[#00fb83]/10 text-[#00e476] border-[#00e476]/35' 
-                          : 'bg-[#ce5dff]/10 text-[#ebb2ff] border-[#ce5dff]/35'
-                      }`}>
-                        {inv.status}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
+      {/* ==================== TAB 3: GENERAL LEDGER ==================== */}
+      {activeTab === 'Ledger' && <GeneralLedgerView userToken={userToken} />}
 
-              {filteredInvoices.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="p-6 sm:p-12 text-center text-on-surface-variant font-light">
-                    No records matches filter criteria.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      {/* ==================== TAB 4: PARTIES (CUSTOMERS) ==================== */}
+      {activeTab === 'Parties' && (
+        <PartyMasterView
+          parties={parties}
+          userToken={userToken}
+          onPartyAdded={newParty => {
+            setParties(prev => [newParty, ...prev]);
+            onAddLog({
+              timestamp: new Date().toLocaleTimeString(),
+              type: 'SUCCESS',
+              message: `ACCOUNTING: Registered party customer [${newParty.name}] (${newParty.stateName}).`
+            });
+          }}
+        />
+      )}
 
+      {/* ==================== TAB 5: ITEMS & HSN CATALOG ==================== */}
+      {activeTab === 'Catalog' && (
+        <ItemCatalogView
+          items={itemsCatalog}
+          userToken={userToken}
+          onItemAdded={newItem => {
+            setItemsCatalog(prev => [newItem, ...prev]);
+            onAddLog({
+              timestamp: new Date().toLocaleTimeString(),
+              type: 'SUCCESS',
+              message: `ACCOUNTING: Added catalog item [${newItem.name}] (HSN: ${newItem.hsnSacCode}).`
+            });
+          }}
+        />
+      )}
+
+      {/* Financial Audit Logs Drawer */}
       <CollapsibleLogDrawer
-        title="FINANCIAL AUDIT LOG"
+        title="FINANCIAL AUDIT & STATUTORY GST LEDGER LOGS"
         logs={logs}
         defaultExpanded={false}
       />
+
+      {/* Rule 46 Tax Invoice Modal */}
+      {selectedInvoice && (
+        <TaxInvoiceModal
+          invoice={selectedInvoice}
+          onClose={() => setSelectedInvoice(null)}
+          onMarkPaid={handleMarkPaid}
+        />
+      )}
+
+      {/* Invoice Studio Creator Drawer */}
+      {isCreateOpen && company && (
+        <CreateInvoiceDrawer
+          company={company}
+          parties={parties}
+          itemsCatalog={itemsCatalog}
+          userToken={userToken}
+          onClose={() => setIsCreateOpen(false)}
+          onInvoiceCreated={handleInvoiceCreated}
+        />
+      )}
+
+      {/* Company Settings Modal */}
+      {isSettingsOpen && company && (
+        <CompanySettingsModal
+          company={company}
+          userToken={userToken}
+          onClose={() => setIsSettingsOpen(false)}
+          onCompanyUpdated={updated => {
+            setCompany(updated);
+            onAddLog({
+              timestamp: new Date().toLocaleTimeString(),
+              type: 'INFO',
+              message: `ACCOUNTING: Company settings updated for [${updated.legalName}].`
+            });
+          }}
+        />
+      )}
     </div>
   );
 }

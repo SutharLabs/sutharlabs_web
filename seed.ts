@@ -128,9 +128,9 @@ async function seed() {
       name: "Accounting",
       category: "Operations",
       type: "Native",
-      description: "Financial ledger, invoicing, daily transaction sequences, and balance auditing.",
+      description: "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), and Double-Entry General Ledger.",
       iconSymbol: "currency_exchange",
-      version: "0.1.0"
+      version: "0.2.0"
     }
   ];
 
