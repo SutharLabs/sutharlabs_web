@@ -34,10 +34,12 @@ export default function GeneralLedgerView({ userToken }: GeneralLedgerViewProps)
   let grandDebit = 0;
   let grandCredit = 0;
 
-  for (const entry of entries) {
+  const safeEntries = Array.isArray(entries) ? entries : [];
+  for (const entry of safeEntries) {
+    if (!entry || !Array.isArray(entry.lines)) continue;
     for (const line of entry.lines) {
-      grandDebit += line.debit;
-      grandCredit += line.credit;
+      grandDebit += line.debit || 0;
+      grandCredit += line.credit || 0;
     }
   }
 
@@ -93,7 +95,7 @@ export default function GeneralLedgerView({ userToken }: GeneralLedgerViewProps)
 
       {/* Journal Entries List */}
       <div className="space-y-3">
-        {entries.map(entry => (
+        {safeEntries.map(entry => (
           <div key={entry.id} className="rounded-xl overflow-hidden border border-slate-200 dark:border-[#3a494b]/30 bg-white dark:bg-[#121215] shadow-xs">
             {/* Entry Header */}
             <div className="bg-slate-50 dark:bg-[#18181c] px-4 py-2.5 border-b border-slate-200 dark:border-[#3a494b]/20 flex flex-wrap justify-between items-center text-[11px] gap-2">

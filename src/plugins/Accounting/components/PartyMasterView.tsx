@@ -3,12 +3,12 @@ import { PartyCustomer } from '../types.js';
 import { INDIAN_GST_STATES, validateGSTIN } from '../gstEngine.js';
 
 interface PartyMasterViewProps {
-  parties: PartyCustomer[];
+  parties?: PartyCustomer[];
   userToken: string;
   onPartyAdded: (party: PartyCustomer) => void;
 }
 
-export default function PartyMasterView({ parties, userToken, onPartyAdded }: PartyMasterViewProps) {
+export default function PartyMasterView({ parties = [], userToken, onPartyAdded }: PartyMasterViewProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [name, setName] = useState('');
   const [tradeName, setTradeName] = useState('');
@@ -81,10 +81,11 @@ export default function PartyMasterView({ parties, userToken, onPartyAdded }: Pa
     }
   };
 
-  const filtered = parties.filter(p =>
-    p.name.toLowerCase().includes(search.toLowerCase()) ||
-    (p.gstin && p.gstin.toLowerCase().includes(search.toLowerCase())) ||
-    p.stateName.toLowerCase().includes(search.toLowerCase())
+  const safeParties = Array.isArray(parties) ? parties : [];
+  const filtered = safeParties.filter(p =>
+    (p?.name && p.name.toLowerCase().includes(search.toLowerCase())) ||
+    (p?.gstin && p.gstin.toLowerCase().includes(search.toLowerCase())) ||
+    (p?.stateName && p.stateName.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (

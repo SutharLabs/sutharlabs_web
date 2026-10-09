@@ -163,7 +163,7 @@ export default function GstrReportsView({ userToken }: GstrReportsViewProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-[#3a494b]/15 bg-white dark:bg-[#121215]">
-                  {gstr1.b2b.map((row, idx) => (
+                  {(gstr1.b2b || []).map((row, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                       <td className="p-3 font-bold text-cyan-700 dark:text-[#00dbe7]">{row.recipientGstin}</td>
                       <td className="p-3 text-slate-900 dark:text-white font-sans font-medium">{row.recipientName}</td>
@@ -174,7 +174,7 @@ export default function GstrReportsView({ userToken }: GstrReportsViewProps) {
                       <td className="p-3 text-right text-cyan-700 dark:text-[#74f5ff]">{formatINR(row.sgst).replace('₹ ', '')}</td>
                     </tr>
                   ))}
-                  {gstr1.b2b.length === 0 && (
+                  {(!gstr1.b2b || gstr1.b2b.length === 0) && (
                     <tr>
                       <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-gray-500 font-light">No B2B invoices recorded in this filing period.</td>
                     </tr>
@@ -197,7 +197,7 @@ export default function GstrReportsView({ userToken }: GstrReportsViewProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-[#3a494b]/15 bg-white dark:bg-[#121215]">
-                  {gstr1.b2cl.map((row, idx) => (
+                  {(gstr1.b2cl || []).map((row, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                       <td className="p-3 font-bold text-slate-900 dark:text-white">{row.stateCode} - {row.stateName}</td>
                       <td className="p-3 text-center">{row.invoiceCount}</td>
@@ -205,7 +205,7 @@ export default function GstrReportsView({ userToken }: GstrReportsViewProps) {
                       <td className="p-3 text-right text-purple-700 dark:text-[#ce5dff] font-bold">{formatINR(row.igst).replace('₹ ', '')}</td>
                     </tr>
                   ))}
-                  {gstr1.b2cl.length === 0 && (
+                  {(!gstr1.b2cl || gstr1.b2cl.length === 0) && (
                     <tr>
                       <td colSpan={4} className="p-8 text-center text-slate-400 dark:text-gray-500 font-light">No interstate B2C large invoices exceeding ₹2.5 Lakhs in this period.</td>
                     </tr>
@@ -231,7 +231,7 @@ export default function GstrReportsView({ userToken }: GstrReportsViewProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-[#3a494b]/15 bg-white dark:bg-[#121215]">
-                  {gstr1.b2cs.map((row, idx) => (
+                  {(gstr1.b2cs || []).map((row, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                       <td className="p-3 text-slate-600 dark:text-gray-300">{row.supplyType}</td>
                       <td className="p-3 text-slate-900 dark:text-white font-bold">{row.placeOfSupply}</td>
@@ -242,7 +242,7 @@ export default function GstrReportsView({ userToken }: GstrReportsViewProps) {
                       <td className="p-3 text-right text-cyan-700 dark:text-[#74f5ff]">{formatINR(row.sgst).replace('₹ ', '')}</td>
                     </tr>
                   ))}
-                  {gstr1.b2cs.length === 0 && (
+                  {(!gstr1.b2cs || gstr1.b2cs.length === 0) && (
                     <tr>
                       <td colSpan={7} className="p-8 text-center text-slate-400 dark:text-gray-500 font-light">No small B2C retail supplies reported.</td>
                     </tr>
@@ -270,7 +270,7 @@ export default function GstrReportsView({ userToken }: GstrReportsViewProps) {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-[#3a494b]/15 bg-white dark:bg-[#121215]">
-                  {gstr1.hsnSummary.map((row, idx) => (
+                  {(gstr1.hsnSummary || []).map((row, idx) => (
                     <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
                       <td className="p-3 font-bold text-emerald-700 dark:text-[#00e476]">{row.hsnCode}</td>
                       <td className="p-3 text-slate-900 dark:text-white font-sans max-w-xs truncate">{row.description}</td>
@@ -283,6 +283,11 @@ export default function GstrReportsView({ userToken }: GstrReportsViewProps) {
                       <td className="p-3 text-right text-cyan-700 dark:text-[#74f5ff]">{formatINR(row.stateTax).replace('₹ ', '')}</td>
                     </tr>
                   ))}
+                  {(!gstr1.hsnSummary || gstr1.hsnSummary.length === 0) && (
+                    <tr>
+                      <td colSpan={9} className="p-8 text-center text-slate-400 dark:text-gray-500 font-light">No HSN summary items reported.</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
             </div>

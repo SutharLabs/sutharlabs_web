@@ -444,7 +444,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-[#3a494b]/15 bg-white dark:bg-surface-container-low/40">
-                {tb.accounts.map((acc, idx) => (
+                {(tb.accounts || []).map((acc, idx) => (
                   <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-white/[0.02]">
                     <td className="p-3 font-bold text-primary dark:text-[#00dbe7]">{acc.accountCode}</td>
                     <td className="p-3 text-slate-800 dark:text-white font-sans">{acc.accountName}</td>
@@ -503,7 +503,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-[#3a494b]/15 bg-white dark:bg-surface-container-low/40">
-                {aging.receivablesAging.map(row => (
+                {(aging.receivablesAging || []).map(row => (
                   <tr key={row.partyId} className="hover:bg-slate-50 dark:hover:bg-white/[0.02]">
                     <td className="p-3 font-bold text-slate-900 dark:text-white font-sans">{row.partyName}</td>
                     <td className="p-3 text-primary dark:text-[#00dbe7]">{row.gstin || 'B2C'}</td>
@@ -558,7 +558,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-[#3a494b]/15 bg-white dark:bg-surface-container-low/40">
-                {brs.transactions.map(item => (
+                {(brs.transactions || []).map(item => (
                   <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02]">
                     <td className="p-3 text-slate-500 dark:text-gray-400">{item.date}</td>
                     <td className="p-3 font-bold text-primary dark:text-[#00dbe7]">{item.voucherNumber}</td>

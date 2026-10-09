@@ -3,12 +3,12 @@ import { ItemMaster } from '../types.js';
 import { COMMON_HSN_SAC_CATALOG, GSTRate, formatINR } from '../gstEngine.js';
 
 interface ItemCatalogViewProps {
-  items: ItemMaster[];
+  items?: ItemMaster[];
   userToken: string;
   onItemAdded: (item: ItemMaster) => void;
 }
 
-export default function ItemCatalogView({ items, userToken, onItemAdded }: ItemCatalogViewProps) {
+export default function ItemCatalogView({ items = [], userToken, onItemAdded }: ItemCatalogViewProps) {
   const [isAdding, setIsAdding] = useState(false);
   const [code, setCode] = useState('');
   const [name, setName] = useState('');
@@ -66,10 +66,11 @@ export default function ItemCatalogView({ items, userToken, onItemAdded }: ItemC
     }
   };
 
-  const filtered = items.filter(i =>
-    i.name.toLowerCase().includes(search.toLowerCase()) ||
-    i.hsnSacCode.includes(search) ||
-    i.code.toLowerCase().includes(search.toLowerCase())
+  const safeItems = Array.isArray(items) ? items : [];
+  const filtered = safeItems.filter(i =>
+    (i?.name && i.name.toLowerCase().includes(search.toLowerCase())) ||
+    (i?.hsnSacCode && i.hsnSacCode.includes(search)) ||
+    (i?.code && i.code.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { GSTInvoice, CompanyProfile, PartyCustomer, ItemMaster, VoucherType } from '../plugins/Accounting/types.js';
+import { GSTInvoice, CompanyProfile, PartyCustomer, ItemMaster, VoucherType, AccountingVoucher } from '../plugins/Accounting/types.js';
 import { formatINR } from '../plugins/Accounting/gstEngine.js';
 import TaxInvoiceModal from '../plugins/Accounting/components/TaxInvoiceModal.js';
 import CreateInvoiceDrawer from '../plugins/Accounting/components/CreateInvoiceDrawer.js';
@@ -29,6 +29,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
   const [company, setCompany] = useState<CompanyProfile | null>(null);
   const [parties, setParties] = useState<PartyCustomer[]>([]);
   const [itemsCatalog, setItemsCatalog] = useState<ItemMaster[]>([]);
+  const [vouchers, setVouchers] = useState<AccountingVoucher[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Filter & Search states
@@ -50,17 +51,36 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
       setIsLoading(true);
       const headers = { Authorization: `Bearer ${userToken}` };
 
-      const [invRes, compRes, partRes, itemsRes] = await Promise.all([
+      const [invRes, compRes, partRes, itemsRes, vouchersRes] = await Promise.all([
         fetch('/api/plugins/wp_accounting/invoices', { headers }),
         fetch('/api/plugins/wp_accounting/company', { headers }),
         fetch('/api/plugins/wp_accounting/customers', { headers }),
-        fetch('/api/plugins/wp_accounting/items', { headers })
+        fetch('/api/plugins/wp_accounting/items', { headers }),
+        fetch('/api/plugins/wp_accounting/vouchers', { headers })
       ]);
 
-      if (invRes.ok) setInvoices(await invRes.json());
-      if (compRes.ok) setCompany(await compRes.json());
-      if (partRes.ok) setParties(await partRes.json());
-      if (itemsRes.ok) setItemsCatalog(await itemsRes.json());
+      if (invRes.ok) {
+        const invData = await invRes.json();
+        setInvoices(Array.isArray(invData) ? invData : []);
+      }
+      if (compRes.ok) {
+        const compData = await compRes.json();
+        if (compData && typeof compData === 'object' && !compData.error) {
+          setCompany(compData);
+        }
+      }
+      if (partRes.ok) {
+        const partData = await partRes.json();
+        setParties(Array.isArray(partData) ? partData : []);
+      }
+      if (itemsRes.ok) {
+        const itemsData = await itemsRes.json();
+        setItemsCatalog(Array.isArray(itemsData) ? itemsData : []);
+      }
+      if (vouchersRes.ok) {
+        const vouchersData = await vouchersRes.json();
+        setVouchers(Array.isArray(vouchersData) ? vouchersData : []);
+      }
     } catch (err) {
       console.error('Failed to load accounting data:', err);
     } finally {
@@ -86,7 +106,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
 
       if (res.ok) {
         const updated = await res.json();
-        setInvoices(prev => prev.map(i => i.id === id ? updated : i));
+        setInvoices(prev => (Array.isArray(prev) ? prev.map(i => i.id === id ? updated : i) : [updated]));
         if (selectedInvoice && selectedInvoice.id === id) {
           setSelectedInvoice(updated);
         }
@@ -113,7 +133,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
       });
 
       if (res.ok) {
-        setInvoices(prev => prev.filter(i => i.id !== id));
+        setInvoices(prev => (Array.isArray(prev) ? prev.filter(i => i.id !== id) : []));
         setDataRefreshCounter(c => c + 1);
         onAddLog({
           timestamp: new Date().toLocaleTimeString(),
@@ -126,8 +146,29 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
     }
   };
 
+  const handleDeleteVoucher = async (id: string) => {
+    try {
+      const res = await fetch(`/api/plugins/wp_accounting/vouchers/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${userToken}` }
+      });
+
+      if (res.ok) {
+        setVouchers(prev => (Array.isArray(prev) ? prev.filter(v => v.id !== id) : []));
+        setDataRefreshCounter(c => c + 1);
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'ALERT',
+          message: `ACCOUNTING: Voucher [${id}] cancelled and removed.`
+        });
+      }
+    } catch (err) {
+      console.error('Failed to delete voucher:', err);
+    }
+  };
+
   const handleInvoiceCreated = (newInv: GSTInvoice) => {
-    setInvoices(prev => [newInv, ...prev]);
+    setInvoices(prev => (Array.isArray(prev) ? [newInv, ...prev] : [newInv]));
     setDataRefreshCounter(c => c + 1);
     onAddLog({
       timestamp: new Date().toLocaleTimeString(),
@@ -137,27 +178,31 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
   };
 
   // Launch voucher modal with specific type
-  const openVoucherEntry = (type: VoucherType) => {
+  const openVoucherEntry = (type: VoucherType = 'Payment') => {
     setVoucherInitialType(type);
     setIsVoucherModalOpen(true);
   };
 
+  // Safe invoice collections
+  const safeInvoices = Array.isArray(invoices) ? invoices : [];
+
   // Aggregated KPI Metrics
-  const totalInvoiced = invoices.reduce((sum, i) => sum + i.grandTotal, 0);
-  const totalTaxable = invoices.reduce((sum, i) => sum + i.taxableAmount, 0);
-  const totalCGST = invoices.reduce((sum, i) => sum + i.cgstTotal, 0);
-  const totalSGST = invoices.reduce((sum, i) => sum + i.sgstTotal, 0);
-  const totalIGST = invoices.reduce((sum, i) => sum + i.igstTotal, 0);
-  const totalPaid = invoices.filter(i => i.status === 'Paid').reduce((sum, i) => sum + i.grandTotal, 0);
-  const totalOutstanding = invoices.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + i.grandTotal, 0);
+  const totalInvoiced = safeInvoices.reduce((sum, i) => sum + (i.grandTotal || 0), 0);
+  const totalTaxable = safeInvoices.reduce((sum, i) => sum + (i.taxableAmount || 0), 0);
+  const totalCGST = safeInvoices.reduce((sum, i) => sum + (i.cgstTotal || 0), 0);
+  const totalSGST = safeInvoices.reduce((sum, i) => sum + (i.sgstTotal || 0), 0);
+  const totalIGST = safeInvoices.reduce((sum, i) => sum + (i.igstTotal || 0), 0);
+  const totalPaid = safeInvoices.filter(i => i.status === 'Paid').reduce((sum, i) => sum + (i.grandTotal || 0), 0);
+  const totalOutstanding = safeInvoices.filter(i => i.status !== 'Paid').reduce((sum, i) => sum + (i.grandTotal || 0), 0);
 
   // Filtered List
-  const filteredInvoices = invoices.filter(item => {
+  const filteredInvoices = safeInvoices.filter(item => {
+    if (!item) return false;
     const matchesSearch =
-      item.buyer.legalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (item.buyer.gstin && item.buyer.gstin.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      item.placeOfSupplyStateName.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.buyer?.legalName && item.buyer.legalName.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.invoiceNumber && item.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.buyer?.gstin && item.buyer.gstin.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (item.placeOfSupplyStateName && item.placeOfSupplyStateName.toLowerCase().includes(searchQuery.toLowerCase()));
 
     const matchesStatus =
       statusFilter === 'ALL' || item.status === statusFilter;
@@ -173,7 +218,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
   return (
     <div className="flex-grow flex flex-col gap-5 text-slate-900 dark:text-[#e5e1e4]">
       {/* Top Banner & Control Deck */}
-      <div className="bg-white dark:bg-[#121215] p-5 rounded-2xl border border-slate-200 dark:border-[#3a494b]/30 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="bg-white dark:bg-[#121215] p-5 rounded-2xl border border-slate-200 dark:border-[#3a494b]/30 shadow-xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div className="flex items-center gap-3.5">
           <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/15 via-purple-500/15 to-emerald-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-[#00dbe7] shadow-md shadow-cyan-500/5">
             <span className="material-symbols-outlined text-2xl">account_balance</span>
@@ -223,7 +268,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
         <div className="flex flex-wrap items-center gap-1.5">
           <button
             onClick={() => openVoucherEntry('Contra')}
-            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-cyan-50 dark:hover:bg-cyan-950/30 border border-cyan-400/30 text-cyan-700 dark:text-[#74f5ff] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-cyan-50 dark:hover:bg-cyan-950/30 border border-cyan-400/30 text-cyan-700 dark:text-[#74f5ff] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
             title="Contra Voucher (F4) - Bank to Cash / Bank to Bank transfers"
           >
             <span className="px-1 py-0.2 rounded bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-200 text-[9px]">F4</span>
@@ -231,7 +276,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           </button>
           <button
             onClick={() => openVoucherEntry('Payment')}
-            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-400/30 text-rose-700 dark:text-rose-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-400/30 text-rose-700 dark:text-rose-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
             title="Payment Voucher (F5) - Cash or Bank outflow"
           >
             <span className="px-1 py-0.2 rounded bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200 text-[9px]">F5</span>
@@ -239,7 +284,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           </button>
           <button
             onClick={() => openVoucherEntry('Receipt')}
-            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-emerald-400/30 text-emerald-700 dark:text-[#00e476] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-emerald-400/30 text-emerald-700 dark:text-[#00e476] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
             title="Receipt Voucher (F6) - Cash or Bank collections"
           >
             <span className="px-1 py-0.2 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 text-[9px]">F6</span>
@@ -247,7 +292,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           </button>
           <button
             onClick={() => openVoucherEntry('Journal')}
-            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-purple-50 dark:hover:bg-purple-950/30 border border-purple-400/30 text-purple-700 dark:text-[#ebb2ff] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-purple-50 dark:hover:bg-purple-950/30 border border-purple-400/30 text-purple-700 dark:text-[#ebb2ff] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
             title="Journal Voucher (F7) - Adjustments & depreciation"
           >
             <span className="px-1 py-0.2 rounded bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 text-[9px]">F7</span>
@@ -255,7 +300,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           </button>
           <button
             onClick={() => setIsCreateOpen(true)}
-            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-blue-400/30 text-blue-700 dark:text-blue-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-blue-400/30 text-blue-700 dark:text-blue-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
             title="Sales Voucher (F8) - Tax Invoices"
           >
             <span className="px-1 py-0.2 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 text-[9px]">F8</span>
@@ -263,7 +308,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           </button>
           <button
             onClick={() => openVoucherEntry('Purchase')}
-            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-400/30 text-amber-700 dark:text-amber-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-400/30 text-amber-700 dark:text-amber-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
             title="Purchase Voucher (F9) - Inward goods & expenses"
           >
             <span className="px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-[9px]">F9</span>
@@ -301,8 +346,10 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
       {/* ==================== TAB 1: DAY BOOK (VOUCHERS) ==================== */}
       {activeTab === 'DayBook' && (
         <DayBookView
+          vouchers={vouchers}
           userToken={userToken}
           onOpenVoucherModal={openVoucherEntry}
+          onDeleteVoucher={handleDeleteVoucher}
         />
       )}
 
@@ -386,12 +433,12 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
 
             <div className="h-[130px] relative rounded-lg bg-slate-50 dark:bg-[#18181c] flex items-end p-4 border border-slate-200/60 dark:border-transparent">
               <svg className="absolute inset-0 w-full h-full" viewBox="0 0 500 130" preserveAspectRatio="none">
-                {invoices.map((inv, idx) => {
-                  const xUnit = 500 / (invoices.length || 1);
+                {safeInvoices.map((inv, idx) => {
+                  const xUnit = 500 / (safeInvoices.length || 1);
                   const xPos = idx * xUnit + (xUnit / 5);
                   const barWidth = xUnit * 0.6;
 
-                  const maxVal = Math.max(...invoices.map(i => i.grandTotal), 400000);
+                  const maxVal = Math.max(...safeInvoices.map(i => i.grandTotal), 400000);
                   const barHeight = Math.max(15, (inv.grandTotal / maxVal) * 90);
                   const yPos = 130 - barHeight - 15;
 
@@ -436,7 +483,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
               </svg>
 
               <div className="absolute bottom-1 left-0 right-0 flex justify-between px-4 font-mono text-[8px] text-slate-500 dark:text-gray-400">
-                {invoices.map(i => (
+                {safeInvoices.map(i => (
                   <span key={i.id} className="truncate max-w-[80px]">{i.invoiceNumber.split('/').pop()}</span>
                 ))}
               </div>
@@ -607,7 +654,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           parties={parties}
           userToken={userToken}
           onPartyAdded={newParty => {
-            setParties(prev => [newParty, ...prev]);
+            setParties(prev => (Array.isArray(prev) ? [newParty, ...prev] : [newParty]));
             onAddLog({
               timestamp: new Date().toLocaleTimeString(),
               type: 'SUCCESS',
@@ -623,7 +670,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           items={itemsCatalog}
           userToken={userToken}
           onItemAdded={newItem => {
-            setItemsCatalog(prev => [newItem, ...prev]);
+            setItemsCatalog(prev => (Array.isArray(prev) ? [newItem, ...prev] : [newItem]));
             onAddLog({
               timestamp: new Date().toLocaleTimeString(),
               type: 'SUCCESS',
@@ -648,6 +695,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           parties={parties}
           onClose={() => setIsVoucherModalOpen(false)}
           onVoucherCreated={v => {
+            setVouchers(prev => (Array.isArray(prev) ? [v, ...prev] : [v]));
             setDataRefreshCounter(c => c + 1);
             onAddLog({
               timestamp: new Date().toLocaleTimeString(),
