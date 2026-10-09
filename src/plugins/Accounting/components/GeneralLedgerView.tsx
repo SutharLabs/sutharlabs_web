@@ -45,28 +45,28 @@ export default function GeneralLedgerView({ userToken }: GeneralLedgerViewProps)
 
   if (isLoading) {
     return (
-      <div className="p-8 text-center font-mono text-xs text-gray-400">
-        <span className="material-symbols-outlined text-2xl animate-spin text-[#00dbe7] block mb-2">sync</span>
+      <div className="p-12 text-center font-mono text-xs text-slate-500 dark:text-gray-400">
+        <span className="material-symbols-outlined text-2xl animate-spin text-cyan-600 dark:text-[#00dbe7] block mb-2">sync</span>
         Calculating Double-Entry Ledger Balances...
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 font-mono text-xs animate-fade-in">
+    <div className="space-y-4 font-mono text-xs animate-fade-in text-slate-900 dark:text-[#e5e1e4]">
       {/* Tally Balance Status Card */}
-      <div className="glass-panel p-4 rounded-xl border border-outline/15 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-surface-container-low/40">
+      <div className="p-4 rounded-2xl border border-slate-200 dark:border-[#3a494b]/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white dark:bg-[#121215] shadow-xs">
         <div className="flex items-center gap-3">
-          <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${
-            isTallyBalanced ? 'bg-[#00e476]/15 text-[#00e476]' : 'bg-rose-500/15 text-rose-400'
+          <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${
+            isTallyBalanced ? 'bg-emerald-500/15 text-emerald-600 dark:text-[#00e476]' : 'bg-rose-500/15 text-rose-500'
           }`}>
             <span className="material-symbols-outlined text-xl">balance</span>
           </div>
           <div>
-            <h3 className="font-bold text-sm text-white font-sans">
+            <h3 className="font-bold text-sm text-slate-900 dark:text-white font-sans">
               Indian Chart of Accounts • General Ledger Journal Book
             </h3>
-            <span className="text-[10px] text-gray-400">
+            <span className="text-[10px] text-slate-500 dark:text-gray-400">
               Automated Double-Entry postings reflecting Section 128 of Companies Act, 2013
             </span>
           </div>
@@ -74,17 +74,17 @@ export default function GeneralLedgerView({ userToken }: GeneralLedgerViewProps)
 
         <div className="flex items-center gap-4">
           <div>
-            <span className="text-[10px] text-gray-400 block">Total Debits</span>
-            <span className="font-bold text-[#00e476]">{formatINR(grandDebit)}</span>
+            <span className="text-[10px] text-slate-500 dark:text-gray-400 block">Total Debits</span>
+            <span className="font-bold text-emerald-700 dark:text-[#00e476]">{formatINR(grandDebit)}</span>
           </div>
           <div>
-            <span className="text-[10px] text-gray-400 block">Total Credits</span>
-            <span className="font-bold text-[#74f5ff]">{formatINR(grandCredit)}</span>
+            <span className="text-[10px] text-slate-500 dark:text-gray-400 block">Total Credits</span>
+            <span className="font-bold text-cyan-700 dark:text-[#74f5ff]">{formatINR(grandCredit)}</span>
           </div>
-          <span className={`px-2.5 py-1 rounded text-[10px] font-bold border uppercase ${
+          <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold border uppercase ${
             isTallyBalanced
-              ? 'bg-[#00e476]/15 text-[#00e476] border-[#00e476]/40'
-              : 'bg-rose-500/15 text-rose-400 border-rose-500/40'
+              ? 'bg-emerald-500/10 text-emerald-700 dark:text-[#00e476] border-emerald-500/30'
+              : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30'
           }`}>
             {isTallyBalanced ? 'Tally Balanced ✓' : 'Discrepancy ⚠'}
           </span>
@@ -94,23 +94,23 @@ export default function GeneralLedgerView({ userToken }: GeneralLedgerViewProps)
       {/* Journal Entries List */}
       <div className="space-y-3">
         {entries.map(entry => (
-          <div key={entry.id} className="glass-panel rounded-xl overflow-hidden border border-outline/15">
+          <div key={entry.id} className="rounded-xl overflow-hidden border border-slate-200 dark:border-[#3a494b]/30 bg-white dark:bg-[#121215] shadow-xs">
             {/* Entry Header */}
-            <div className="bg-[#18181c] px-4 py-2.5 border-b border-[#3a494b]/20 flex flex-wrap justify-between items-center text-[11px] gap-2">
+            <div className="bg-slate-50 dark:bg-[#18181c] px-4 py-2.5 border-b border-slate-200 dark:border-[#3a494b]/20 flex flex-wrap justify-between items-center text-[11px] gap-2">
               <div className="flex items-center gap-2">
-                <span className="font-bold text-[#00dbe7]">{entry.id}</span>
-                <span className="text-gray-500">•</span>
-                <span className="text-gray-400">Ref: {entry.referenceNo}</span>
-                <span className="text-gray-500">•</span>
-                <span className="text-white">{entry.date}</span>
+                <span className="font-bold text-cyan-700 dark:text-[#00dbe7]">{entry.id}</span>
+                <span className="text-slate-300 dark:text-gray-600">•</span>
+                <span className="text-slate-600 dark:text-gray-400">Ref: {entry.referenceNo}</span>
+                <span className="text-slate-300 dark:text-gray-600">•</span>
+                <span className="text-slate-800 dark:text-white font-medium">{entry.date}</span>
               </div>
-              <span className="text-[10px] text-gray-400 italic max-w-md truncate">{entry.description}</span>
+              <span className="text-[10px] text-slate-500 dark:text-gray-400 italic max-w-md truncate">{entry.description}</span>
             </div>
 
             {/* Entry Lines */}
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
-                <thead className="bg-[#121215] text-[10px] text-gray-400 uppercase">
+                <thead className="bg-slate-50/60 dark:bg-[#121215] text-[10px] text-slate-500 dark:text-gray-400 uppercase border-b border-slate-200 dark:border-[#3a494b]/20">
                   <tr>
                     <th className="p-2.5 pl-4">Account Code</th>
                     <th className="p-2.5">Account Particulars</th>
@@ -118,15 +118,15 @@ export default function GeneralLedgerView({ userToken }: GeneralLedgerViewProps)
                     <th className="p-2.5 text-right pr-4">Credit (₹)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#3a494b]/10 bg-surface-container-low/40">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#3a494b]/10 bg-white dark:bg-[#121215]">
                   {entry.lines.map((line, idx) => (
-                    <tr key={idx} className="hover:bg-white/[0.02]">
-                      <td className="p-2.5 pl-4 text-gray-400 font-bold">{line.accountCode}</td>
-                      <td className="p-2.5 text-white font-sans">{line.accountName}</td>
-                      <td className="p-2.5 text-right font-bold text-[#00e476]">
+                    <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                      <td className="p-2.5 pl-4 text-slate-500 dark:text-gray-400 font-bold">{line.accountCode}</td>
+                      <td className="p-2.5 text-slate-900 dark:text-white font-sans font-medium">{line.accountName}</td>
+                      <td className="p-2.5 text-right font-bold text-emerald-700 dark:text-[#00e476]">
                         {line.debit > 0 ? formatINR(line.debit).replace('₹ ', '') : '-'}
                       </td>
-                      <td className="p-2.5 text-right pr-4 font-bold text-[#74f5ff]">
+                      <td className="p-2.5 text-right pr-4 font-bold text-cyan-700 dark:text-[#74f5ff]">
                         {line.credit > 0 ? formatINR(line.credit).replace('₹ ', '') : '-'}
                       </td>
                     </tr>
@@ -138,8 +138,8 @@ export default function GeneralLedgerView({ userToken }: GeneralLedgerViewProps)
         ))}
 
         {entries.length === 0 && (
-          <div className="p-12 text-center text-gray-500 font-light glass-panel rounded-xl">
-            No journal entries recorded. Generate an invoice to see automated ledger postings.
+          <div className="p-12 text-center text-slate-400 dark:text-gray-500 font-light bg-white dark:bg-[#121215] rounded-xl border border-slate-200 dark:border-[#3a494b]/30">
+            No journal entries recorded. Generate an invoice or record a voucher to see automated ledger postings.
           </div>
         )}
       </div>

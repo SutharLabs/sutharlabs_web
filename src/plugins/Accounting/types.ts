@@ -32,13 +32,16 @@ export interface PartyCustomer {
   tradeName?: string;
   gstin?: string;
   pan?: string;
-  partyType: 'B2B' | 'B2C' | 'SEZ' | 'DEEMED_EXPORT';
+  partyType: 'B2B' | 'B2C' | 'SEZ' | 'DEEMED_EXPORT' | 'VENDOR';
   stateCode: string;
   stateName: string;
   billingAddress: string;
   shippingAddress?: string;
   email: string;
   phone: string;
+  openingBalance?: number;
+  currentBalance?: number;
+  creditDays?: number;
   createdAt: string;
 }
 
@@ -50,9 +53,11 @@ export interface ItemMaster {
   hsnSacCode: string;
   unit: string; // NOS, HRS, KGS, PCS, BOX, MTH
   unitPrice: number;
+  purchasePrice?: number;
   gstRate: GSTRate;
   cessRate?: number;
   description?: string;
+  stockQuantity?: number;
 }
 
 export interface GSTInvoiceItem {
@@ -108,7 +113,7 @@ export interface GSTInvoice {
     tradeName?: string;
     gstin?: string;
     pan?: string;
-    partyType: 'B2B' | 'B2C' | 'SEZ';
+    partyType: 'B2B' | 'B2C' | 'SEZ' | 'DEEMED_EXPORT' | 'VENDOR';
     stateCode: string;
     stateName: string;
     billingAddress: string;
@@ -166,6 +171,53 @@ export interface GSTInvoice {
   updatedAt: string;
 }
 
+// ==================== TALLY / SAP VOUCHER & LEDGER ENGINE ====================
+
+export type VoucherType = 
+  | 'Contra'     // F4: Bank to Cash, Cash to Bank, Bank to Bank
+  | 'Payment'    // F5: Expense / Vendor payment
+  | 'Receipt'    // F6: Customer payment receipt / Income
+  | 'Journal'    // F7: Non-cash adjustments, provisions, depreciation
+  | 'Sales'      // F8: Tax Invoice / Credit Sale
+  | 'Purchase'   // F9: Vendor Bill / Inward supply
+  | 'Credit Note'// Sales return / rebate
+  | 'Debit Note';// Purchase return / supplier debit
+
+export interface AccountingVoucher {
+  id: string; // VCH-2026-0001
+  voucherNumber: string; // e.g. PMT-2026-001, RCP-2026-001
+  voucherType: VoucherType;
+  date: string; // YYYY-MM-DD
+  referenceNo?: string; // Cheque No / UTR / Bill No
+  partyId?: string;
+  partyName?: string;
+  debitAccount: string; // Account Code / Name
+  creditAccount: string; // Account Code / Name
+  amount: number;
+  taxAmount?: number;
+  paymentMode: 'Bank Transfer' | 'UPI' | 'Cheque' | 'Cash' | 'Card' | 'Journal Adjustment';
+  narration: string; // Tally style Narration (Being payment made for...)
+  status: 'Posted' | 'Draft' | 'Reconciled';
+  createdAt: string;
+  lines: {
+    accountCode: string;
+    accountName: string;
+    debit: number;
+    credit: number;
+    note?: string;
+  }[];
+}
+
+export interface AccountHead {
+  code: string;
+  name: string;
+  group: 'Assets' | 'Liabilities' | 'Equity' | 'Revenue' | 'Direct Expenses' | 'Indirect Expenses';
+  subGroup: string; // Current Assets, Bank, Fixed Assets, Current Liabilities, etc.
+  openingBalance: number;
+  currentBalance: number;
+  balanceType: 'Debit' | 'Credit';
+}
+
 export interface JournalEntry {
   id: string;
   date: string;
@@ -178,6 +230,149 @@ export interface JournalEntry {
     credit: number;
   }[];
 }
+
+// ==================== SAP / TALLY FINANCIAL STATEMENTS ====================
+
+export interface BalanceSheetReport {
+  asOfDate: string;
+  financialYear: string;
+  equitiesAndLiabilities: {
+    shareholdersFunds: {
+      shareCapital: number;
+      reservesAndSurplus: number;
+      currentYearEarnings: number;
+      total: number;
+    };
+    nonCurrentLiabilities: {
+      longTermBorrowings: number;
+      deferredTaxLiabilities: number;
+      total: number;
+    };
+    currentLiabilities: {
+      tradePayables: number;
+      outputGstPayable: number;
+      shortTermProvisions: number;
+      otherCurrentLiabilities: number;
+      total: number;
+    };
+    totalLiabilitiesAndEquity: number;
+  };
+  assets: {
+    nonCurrentAssets: {
+      fixedAssetsPlantTech: number;
+      intangibleAssetsSoftware: number;
+      accumulatedDepreciation: number;
+      netFixedAssets: number;
+      total: number;
+    };
+    currentAssets: {
+      cashAndBankBalances: number;
+      tradeReceivablesDebtors: number;
+      inputTaxCreditGstAsset: number;
+      prepaidExpenses: number;
+      inventories: number;
+      total: number;
+    };
+    totalAssets: number;
+  };
+  isBalanced: boolean;
+  workingCapital: number;
+}
+
+export interface ProfitAndLossReport {
+  period: string;
+  financialYear: string;
+  income: {
+    grossSalesRevenue: number;
+    otherOperatingRevenue: number;
+    lessGstPaid: number;
+    netRevenue: number;
+  };
+  costOfGoodsSold: {
+    openingStock: number;
+    purchases: number;
+    directTechnicalExpenses: number;
+    lessClosingStock: number;
+    totalCOGS: number;
+  };
+  grossProfit: number;
+  grossMarginPercent: number;
+  operatingExpenses: {
+    salariesAndStaffCosts: number;
+    cloudInfrastructureAndServers: number;
+    rentAndUtilities: number;
+    marketingAndClientAcquisition: number;
+    legalAndAuditFees: number;
+    depreciationAndAmortization: number;
+    totalOperatingExpenses: number;
+  };
+  operatingProfitEBITDA: number;
+  taxProvision: number;
+  netProfitAfterTax: number;
+  netMarginPercent: number;
+}
+
+export interface TrialBalanceItem {
+  accountCode: string;
+  accountName: string;
+  group: string;
+  debit: number;
+  credit: number;
+}
+
+export interface TrialBalanceReport {
+  asOfDate: string;
+  financialYear: string;
+  accounts: TrialBalanceItem[];
+  totalDebit: number;
+  totalCredit: number;
+  isBalanced: boolean;
+}
+
+export interface AgingBucket {
+  partyId: string;
+  partyName: string;
+  gstin?: string;
+  totalOutstanding: number;
+  notDue: number;
+  days1To30: number;
+  days31To60: number;
+  days61To90: number;
+  daysOver90: number;
+}
+
+export interface AgingAnalysisReport {
+  asOfDate: string;
+  totalReceivables: number;
+  totalPayables: number;
+  receivablesAging: AgingBucket[];
+  payablesAging: AgingBucket[];
+}
+
+export interface BankReconciliationItem {
+  id: string;
+  date: string;
+  voucherNumber: string;
+  partyOrParticulars: string;
+  amount: number;
+  type: 'Deposit' | 'Withdrawal';
+  statementDate?: string;
+  status: 'Reconciled' | 'Pending';
+}
+
+export interface BankReconciliationReport {
+  bankName: string;
+  accountNumber: string;
+  bookBalance: number;
+  bankStatementBalance: number;
+  unreconciledDeposits: number;
+  unpresentedCheques: number;
+  adjustedBalance: number;
+  isReconciled: boolean;
+  transactions: BankReconciliationItem[];
+}
+
+// ==================== STATUTORY GST RETURNS ====================
 
 export interface GSTR1Summary {
   financialYear: string;

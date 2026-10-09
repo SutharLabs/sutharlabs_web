@@ -53,7 +53,7 @@ export function registerRoutes(router: Router) {
 
   router.post('/customers', authenticateToken, async (req: any, res: any) => {
     try {
-      const { name, gstin, stateCode, billingAddress, email, phone, partyType } = req.body;
+      const { name, tradeName, gstin, stateCode, billingAddress, email, phone, partyType, openingBalance, creditDays } = req.body;
       if (!name) {
         return res.status(400).json({ error: 'Party customer name is required.' });
       }
@@ -67,12 +67,16 @@ export function registerRoutes(router: Router) {
 
       const party = AccountingStorage.addParty({
         name,
+        tradeName,
         gstin,
         stateCode: stateCode || '24',
         stateName: '',
         billingAddress: billingAddress || '',
         email: email || '',
         phone: phone || '',
+        openingBalance: Number(openingBalance) || 0,
+        currentBalance: Number(openingBalance) || 0,
+        creditDays: Number(creditDays) || 30,
         partyType: partyType || (gstin ? 'B2B' : 'B2C')
       });
       res.status(201).json(party);
@@ -94,7 +98,7 @@ export function registerRoutes(router: Router) {
 
   router.post('/items', authenticateToken, async (req: any, res: any) => {
     try {
-      const { code, name, type, hsnSacCode, unit, unitPrice, gstRate, description } = req.body;
+      const { code, name, type, hsnSacCode, unit, unitPrice, purchasePrice, gstRate, description } = req.body;
       if (!name || !unitPrice) {
         return res.status(400).json({ error: 'Item name and unit price are required.' });
       }
@@ -106,6 +110,7 @@ export function registerRoutes(router: Router) {
         hsnSacCode: hsnSacCode || '998313',
         unit: unit || 'NOS',
         unitPrice: parseFloat(unitPrice),
+        purchasePrice: purchasePrice ? parseFloat(purchasePrice) : undefined,
         gstRate: Number(gstRate) || 18,
         description
       });
@@ -115,9 +120,8 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // ==================== INVOICES (FULL GST INVOICE LEDGER) ====================
+  // ==================== INVOICES (RULE 46 GST TAX INVOICES) ====================
 
-  // GET /invoices
   router.get('/invoices', authenticateToken, async (_req, res) => {
     try {
       const invoices = AccountingStorage.getInvoices();
@@ -127,7 +131,6 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // GET /invoices/:id
   router.get('/invoices/:id', authenticateToken, async (req: any, res: any) => {
     try {
       const invoice = AccountingStorage.getInvoiceById(req.params.id);
@@ -140,7 +143,6 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // POST /invoices
   router.post('/invoices', authenticateToken, async (req: any, res: any) => {
     try {
       const {
@@ -159,10 +161,8 @@ export function registerRoutes(router: Router) {
         notes
       } = req.body;
 
-      // Handle legacy or quick submission:
       let processedItems = items;
       if (!processedItems || !Array.isArray(processedItems) || processedItems.length === 0) {
-        const clientName = client || buyerName || 'Enterprise Client';
         const numAmount = parseFloat(amount) || 10000;
         processedItems = [
           {
@@ -198,7 +198,6 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // PATCH /invoices/:id/status
   router.patch('/invoices/:id/status', authenticateToken, async (req: any, res: any) => {
     try {
       const { status } = req.body;
@@ -212,7 +211,6 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // DELETE /invoices/:id
   router.delete('/invoices/:id', authenticateToken, async (req: any, res: any) => {
     try {
       const success = await AccountingStorage.deleteInvoice(req.params.id);
@@ -225,7 +223,134 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // ==================== GST REPORTING & LEDGER ====================
+  // ==================== TALLY / SAP VOUCHERS (F4 TO F9) ====================
+
+  router.get('/vouchers', authenticateToken, async (_req, res) => {
+    try {
+      const vouchers = AccountingStorage.getVouchers();
+      res.json(vouchers);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to retrieve vouchers register.' });
+    }
+  });
+
+  router.post('/vouchers', authenticateToken, async (req: any, res: any) => {
+    try {
+      const {
+        voucherNumber,
+        voucherType,
+        date,
+        referenceNo,
+        partyId,
+        partyName,
+        debitAccount,
+        creditAccount,
+        amount,
+        taxAmount,
+        paymentMode,
+        narration,
+        lines
+      } = req.body;
+
+      if (!voucherType || !amount || !debitAccount || !creditAccount) {
+        return res.status(400).json({ error: 'Voucher type, accounts, and amount are required.' });
+      }
+
+      const numAmount = parseFloat(amount);
+      const today = new Date().toISOString().split('T')[0];
+
+      // Auto construct lines if not provided
+      const finalLines = lines && lines.length > 0 ? lines : [
+        { accountCode: debitAccount, accountName: debitAccount, debit: numAmount, credit: 0 },
+        { accountCode: creditAccount, accountName: creditAccount, debit: 0, credit: numAmount }
+      ];
+
+      const prefix = voucherType.substring(0, 3).toUpperCase();
+      const num = voucherNumber || `${prefix}-${Date.now().toString().slice(-6)}`;
+
+      const created = AccountingStorage.addVoucher({
+        voucherNumber: num,
+        voucherType,
+        date: date || today,
+        referenceNo,
+        partyId,
+        partyName,
+        debitAccount,
+        creditAccount,
+        amount: numAmount,
+        taxAmount: taxAmount ? parseFloat(taxAmount) : 0,
+        paymentMode: paymentMode || 'Bank Transfer',
+        narration: narration || `Being ${voucherType.toLowerCase()} transaction posted.`,
+        status: 'Posted',
+        lines: finalLines
+      });
+
+      res.status(201).json(created);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to post voucher.' });
+    }
+  });
+
+  router.delete('/vouchers/:id', authenticateToken, async (req: any, res: any) => {
+    try {
+      const success = AccountingStorage.deleteVoucher(req.params.id);
+      if (!success) {
+        return res.status(404).json({ error: 'Voucher not found.' });
+      }
+      res.json({ success: true });
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to delete voucher.' });
+    }
+  });
+
+  // ==================== SAP / TALLY FINANCIAL STATEMENTS ====================
+
+  router.get('/reports/balance-sheet', authenticateToken, async (_req, res) => {
+    try {
+      const bs = AccountingStorage.getBalanceSheet();
+      res.json(bs);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate Balance Sheet.' });
+    }
+  });
+
+  router.get('/reports/profit-loss', authenticateToken, async (_req, res) => {
+    try {
+      const pl = AccountingStorage.getProfitAndLoss();
+      res.json(pl);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate Profit & Loss statement.' });
+    }
+  });
+
+  router.get('/reports/trial-balance', authenticateToken, async (_req, res) => {
+    try {
+      const tb = AccountingStorage.getTrialBalance();
+      res.json(tb);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate Trial Balance.' });
+    }
+  });
+
+  router.get('/reports/aging', authenticateToken, async (_req, res) => {
+    try {
+      const aging = AccountingStorage.getAgingAnalysis();
+      res.json(aging);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate Aging Analysis.' });
+    }
+  });
+
+  router.get('/reports/brs', authenticateToken, async (_req, res) => {
+    try {
+      const brs = AccountingStorage.getBankReconciliation();
+      res.json(brs);
+    } catch (error) {
+      res.status(500).json({ error: 'Failed to generate Bank Reconciliation.' });
+    }
+  });
+
+  // ==================== STATUTORY GST COMPLIANCE ====================
 
   router.get('/reports/gstr-1', authenticateToken, async (req: any, res: any) => {
     try {

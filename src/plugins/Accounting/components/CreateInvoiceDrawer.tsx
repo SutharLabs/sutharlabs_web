@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { CompanyProfile, PartyCustomer, ItemMaster, GSTInvoice } from '../types.js';
 import {
   INDIAN_GST_STATES,
-  COMMON_HSN_SAC_CATALOG,
   validateGSTIN,
   determineSupplyType,
   calculateItemTaxes,
@@ -127,17 +126,18 @@ export default function CreateInvoiceDrawer({
 
     return {
       ...item,
-      taxable,
+      rawAmount: raw,
+      discountAmount: disc,
+      taxableValue: taxable,
       taxes
     };
   });
 
-  const totalTax = Math.round((cgstTotal + sgstTotal + igstTotal) * 100) / 100;
-  const exactGrandTotal = taxableTotal + totalTax;
-  const grandTotal = Math.round(exactGrandTotal);
+  const totalTax = cgstTotal + sgstTotal + igstTotal;
+  const grandTotal = taxableTotal + totalTax;
   const words = amountInWordsIndian(grandTotal);
 
-  // Line item manipulation
+  // Line item modifiers
   const handleAddLine = () => {
     setLineItems(prev => [
       ...prev,
@@ -233,18 +233,18 @@ export default function CreateInvoiceDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-md overflow-y-auto animate-fade-in">
-      <div className="relative w-full max-w-5xl bg-[#111113] text-[#e5e1e4] border border-[#3a494b]/30 rounded-xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md overflow-y-auto animate-fade-in font-sans">
+      <div className="relative w-full max-w-5xl bg-white dark:bg-[#111113] text-slate-900 dark:text-[#e5e1e4] border border-slate-200 dark:border-[#3a494b]/30 rounded-2xl shadow-2xl overflow-hidden my-4 max-h-[92vh] flex flex-col">
         
         {/* Header */}
-        <div className="bg-[#18181c] border-b border-[#3a494b]/20 px-6 py-4 flex items-center justify-between shrink-0">
+        <div className="bg-slate-50 dark:bg-[#18181c] border-b border-slate-200 dark:border-[#3a494b]/20 px-6 py-4 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-[#00e476]/15 border border-[#00e476]/40 flex items-center justify-center text-[#00e476]">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-[#00e476]">
               <span className="material-symbols-outlined text-lg">add_circle</span>
             </div>
             <div>
-              <h2 className="text-base font-bold font-sans text-white">Issue GST Tax Invoice</h2>
-              <p className="text-[10px] font-mono text-gray-400">
+              <h2 className="text-base font-bold font-sans text-slate-900 dark:text-white">Issue GST Tax Invoice (Sales Entry)</h2>
+              <p className="text-[10px] font-mono text-slate-500 dark:text-gray-400">
                 Rule 46 & CBIC Compliant E-Invoicing Engine • Supplier: {company.legalName} ({company.stateName})
               </p>
             </div>
@@ -252,7 +252,7 @@ export default function CreateInvoiceDrawer({
 
           <button
             onClick={onClose}
-            className="w-8 h-8 rounded-lg bg-[#201f21] hover:bg-[#2e2d31] border border-[#3a494b]/30 flex items-center justify-center text-gray-300 hover:text-white transition-colors cursor-pointer"
+            className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-[#201f21] dark:hover:bg-[#2e2d31] border border-slate-200 dark:border-[#3a494b]/30 flex items-center justify-center text-slate-500 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer"
           >
             <span className="material-symbols-outlined text-sm">close</span>
           </button>
@@ -262,17 +262,17 @@ export default function CreateInvoiceDrawer({
         <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-6">
           
           {/* Party & Supply Parameters Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-[#0a0a0c]/60 border border-[#3a494b]/20">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 rounded-xl bg-slate-50 dark:bg-[#0a0a0c]/60 border border-slate-200 dark:border-[#3a494b]/20">
             {/* Left: Customer Selection */}
             <div className="space-y-3">
               <div className="flex items-center justify-between">
-                <label className="font-mono text-[10px] uppercase font-bold text-[#00dbe7] tracking-wider">
+                <label className="font-mono text-[10px] uppercase font-bold text-cyan-700 dark:text-[#00dbe7] tracking-wider">
                   Buyer (Bill To) Recipient
                 </label>
                 <button
                   type="button"
                   onClick={() => setIsNewParty(!isNewParty)}
-                  className="text-[10px] font-mono text-[#ce5dff] hover:underline"
+                  className="text-[10px] font-mono text-purple-600 dark:text-[#ce5dff] hover:underline cursor-pointer"
                 >
                   {isNewParty ? 'Select from Saved Parties' : '+ Add New Customer'}
                 </button>
@@ -283,7 +283,7 @@ export default function CreateInvoiceDrawer({
                   <select
                     value={selectedPartyId}
                     onChange={e => setSelectedPartyId(e.target.value)}
-                    className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-2.5 text-xs font-mono text-white focus:outline-none focus:border-[#00dbe7]"
+                    className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2.5 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
                   >
                     {parties.map(p => (
                       <option key={p.id} value={p.id}>
@@ -300,7 +300,7 @@ export default function CreateInvoiceDrawer({
                     value={newPartyName}
                     onChange={e => setNewPartyName(e.target.value)}
                     required
-                    className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-[#00dbe7]"
+                    className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
                   />
                   <div>
                     <input
@@ -309,10 +309,10 @@ export default function CreateInvoiceDrawer({
                       value={newPartyGstin}
                       onChange={e => handleGstinChange(e.target.value)}
                       maxLength={15}
-                      className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-2 text-xs font-mono text-white uppercase focus:outline-none focus:border-[#00dbe7]"
+                      className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs font-mono text-slate-900 dark:text-white uppercase focus:outline-none focus:border-cyan-500"
                     />
                     {gstinError && (
-                      <span className="text-[10px] font-mono text-rose-400 mt-1 block">{gstinError}</span>
+                      <span className="text-[10px] font-mono text-rose-500 mt-1 block">{gstinError}</span>
                     )}
                   </div>
                   <div className="grid grid-cols-2 gap-2">
@@ -322,7 +322,7 @@ export default function CreateInvoiceDrawer({
                         setNewPartyStateCode(e.target.value);
                         setPlaceOfSupply(e.target.value);
                       }}
-                      className="bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-[#00dbe7]"
+                      className="bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
                     >
                       {INDIAN_GST_STATES.map(s => (
                         <option key={s.code} value={s.code}>{s.code} - {s.name}</option>
@@ -333,7 +333,7 @@ export default function CreateInvoiceDrawer({
                       placeholder="Billing Address"
                       value={newPartyAddress}
                       onChange={e => setNewPartyAddress(e.target.value)}
-                      className="bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-2 text-xs font-mono text-white focus:outline-none focus:border-[#00dbe7]"
+                      className="bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
                     />
                   </div>
                 </div>
@@ -342,17 +342,17 @@ export default function CreateInvoiceDrawer({
 
             {/* Right: Place of Supply & Supply Classification */}
             <div className="space-y-3 font-mono text-xs">
-              <label className="font-mono text-[10px] uppercase font-bold text-[#ce5dff] tracking-wider block">
+              <label className="font-mono text-[10px] uppercase font-bold text-purple-700 dark:text-[#ce5dff] tracking-wider block">
                 Place of Supply (POS) & Dates
               </label>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-[10px] text-gray-400 block mb-1">Place of Supply State:</span>
+                  <span className="text-[10px] text-slate-500 dark:text-gray-400 block mb-1">Place of Supply State:</span>
                   <select
                     value={placeOfSupply}
                     onChange={e => setPlaceOfSupply(e.target.value)}
-                    className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-[#00dbe7]"
+                    className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
                   >
                     {INDIAN_GST_STATES.map(s => (
                       <option key={s.code} value={s.code}>{s.code} - {s.name}</option>
@@ -361,11 +361,11 @@ export default function CreateInvoiceDrawer({
                 </div>
 
                 <div>
-                  <span className="text-[10px] text-gray-400 block mb-1">Inception Status:</span>
+                  <span className="text-[10px] text-slate-500 dark:text-gray-400 block mb-1">Inception Status:</span>
                   <select
                     value={status}
                     onChange={e => setStatus(e.target.value as any)}
-                    className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-[#00dbe7]"
+                    className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
                   >
                     <option value="Issued">Issued / Pending</option>
                     <option value="Paid">Cleared / Paid</option>
@@ -376,21 +376,21 @@ export default function CreateInvoiceDrawer({
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <span className="text-[10px] text-gray-400 block mb-1">Invoice Date:</span>
+                  <span className="text-[10px] text-slate-500 dark:text-gray-400 block mb-1">Invoice Date:</span>
                   <input
                     type="date"
                     value={invoiceDate}
                     onChange={e => setInvoiceDate(e.target.value)}
-                    className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-2 text-xs text-white focus:outline-none"
+                    className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none"
                   />
                 </div>
                 <div>
-                  <span className="text-[10px] text-gray-400 block mb-1">Payment Due Date:</span>
+                  <span className="text-[10px] text-slate-500 dark:text-gray-400 block mb-1">Payment Due Date:</span>
                   <input
                     type="date"
                     value={dueDate}
                     onChange={e => setDueDate(e.target.value)}
-                    className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-2 text-xs text-white focus:outline-none"
+                    className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none"
                   />
                 </div>
               </div>
@@ -398,8 +398,8 @@ export default function CreateInvoiceDrawer({
               {/* Tax Type Badge */}
               <div className={`p-2.5 rounded-lg border font-mono text-[11px] flex items-center justify-between ${
                 isInterState
-                  ? 'bg-[#ce5dff]/10 border-[#ce5dff]/30 text-[#ebb2ff]'
-                  : 'bg-[#00dbe7]/10 border-[#00dbe7]/30 text-[#74f5ff]'
+                  ? 'bg-purple-500/10 border-purple-500/30 text-purple-700 dark:text-[#ebb2ff]'
+                  : 'bg-cyan-500/10 border-cyan-500/30 text-cyan-700 dark:text-[#74f5ff]'
               }`}>
                 <span>Tax Regimen:</span>
                 <span className="font-bold">
@@ -412,14 +412,14 @@ export default function CreateInvoiceDrawer({
           {/* Line Items Matrix */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h3 className="font-mono text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#00e476] text-sm">view_list</span>
+              <h3 className="font-mono text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <span className="material-symbols-outlined text-emerald-600 dark:text-[#00e476] text-sm">view_list</span>
                 Invoice Particulars (HSN/SAC Line Items)
               </h3>
               <button
                 type="button"
                 onClick={handleAddLine}
-                className="px-2.5 py-1 rounded bg-[#201f21] hover:bg-[#2e2d31] border border-[#3a494b]/40 text-[#00e476] font-mono text-[11px] flex items-center gap-1 cursor-pointer transition-colors"
+                className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-[#201f21] dark:hover:bg-[#2e2d31] border border-slate-200 dark:border-[#3a494b]/40 text-emerald-700 dark:text-[#00e476] font-mono text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-colors"
               >
                 <span className="material-symbols-outlined text-xs">add</span>
                 Add Item Row
@@ -432,15 +432,15 @@ export default function CreateInvoiceDrawer({
                 return (
                   <div
                     key={item.id}
-                    className="p-3 rounded-lg bg-[#0e0e10] border border-[#3a494b]/20 flex flex-col md:flex-row items-start md:items-center gap-2 text-xs font-mono"
+                    className="p-3 rounded-xl bg-slate-50 dark:bg-[#0e0e10] border border-slate-200 dark:border-[#3a494b]/20 flex flex-col md:flex-row items-start md:items-center gap-2 text-xs font-mono"
                   >
-                    <span className="text-gray-500 font-bold shrink-0">{idx + 1}.</span>
+                    <span className="text-slate-400 dark:text-gray-500 font-bold shrink-0">{idx + 1}.</span>
 
                     {/* Quick Catalog Preset */}
                     <div className="w-full md:w-44 shrink-0">
                       <select
                         onChange={e => handleSelectCatalogItem(item.id, e.target.value)}
-                        className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded p-1.5 text-[10px] text-gray-300 focus:outline-none"
+                        className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-[10px] text-slate-700 dark:text-gray-300 focus:outline-none"
                       >
                         <option value="">-- Choose from Catalog --</option>
                         {itemsCatalog.map(cat => (
@@ -457,7 +457,7 @@ export default function CreateInvoiceDrawer({
                         value={item.itemDescription}
                         onChange={e => handleUpdateLine(item.id, { itemDescription: e.target.value })}
                         required
-                        className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded p-1.5 text-xs text-white focus:outline-none focus:border-[#00e476]"
+                        className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
                       />
                     </div>
 
@@ -468,7 +468,7 @@ export default function CreateInvoiceDrawer({
                         placeholder="HSN/SAC"
                         value={item.hsnSacCode}
                         onChange={e => handleUpdateLine(item.id, { hsnSacCode: e.target.value })}
-                        className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded p-1.5 text-xs text-white focus:outline-none"
+                        className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none"
                       />
                     </div>
 
@@ -480,13 +480,13 @@ export default function CreateInvoiceDrawer({
                         placeholder="Qty"
                         value={item.quantity}
                         onChange={e => handleUpdateLine(item.id, { quantity: parseFloat(e.target.value) || 0 })}
-                        className="w-14 bg-[#18181c] border border-[#3a494b]/30 rounded p-1.5 text-xs text-white text-right focus:outline-none"
+                        className="w-14 bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs text-slate-900 dark:text-white text-right focus:outline-none"
                       />
                       <input
                         type="text"
                         value={item.unit}
                         onChange={e => handleUpdateLine(item.id, { unit: e.target.value.toUpperCase() })}
-                        className="w-10 bg-[#18181c] border border-[#3a494b]/30 rounded p-1.5 text-[10px] text-gray-300 text-center uppercase"
+                        className="w-10 bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-[10px] text-slate-700 dark:text-gray-300 text-center uppercase"
                       />
                     </div>
 
@@ -499,7 +499,7 @@ export default function CreateInvoiceDrawer({
                         placeholder="Rate ₹"
                         value={item.rate}
                         onChange={e => handleUpdateLine(item.id, { rate: parseFloat(e.target.value) || 0 })}
-                        className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded p-1.5 text-xs text-white text-right focus:outline-none focus:border-[#00e476]"
+                        className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs text-slate-900 dark:text-white text-right focus:outline-none focus:border-cyan-500"
                       />
                     </div>
 
@@ -508,7 +508,7 @@ export default function CreateInvoiceDrawer({
                       <select
                         value={item.gstRate}
                         onChange={e => handleUpdateLine(item.id, { gstRate: parseInt(e.target.value, 10) as GSTRate })}
-                        className="w-full bg-[#18181c] border border-[#3a494b]/30 rounded p-1.5 text-xs text-white focus:outline-none"
+                        className="w-full bg-white dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs text-slate-900 dark:text-white focus:outline-none"
                       >
                         <option value={0}>0%</option>
                         <option value={5}>5%</option>
@@ -520,8 +520,8 @@ export default function CreateInvoiceDrawer({
 
                     {/* Row Taxable & Total preview */}
                     <div className="w-28 text-right font-bold shrink-0">
-                      <div className="text-[#00e476]">{formatINR(calc?.taxes.totalAmount || 0)}</div>
-                      <div className="text-[9px] text-gray-400">Tax: {formatINR(calc?.taxes.totalTax || 0)}</div>
+                      <div className="text-emerald-700 dark:text-[#00e476]">{formatINR(calc?.taxes.totalAmount || 0)}</div>
+                      <div className="text-[9px] text-slate-500 dark:text-gray-400">Tax: {formatINR(calc?.taxes.totalTax || 0)}</div>
                     </div>
 
                     {/* Delete */}
@@ -529,7 +529,7 @@ export default function CreateInvoiceDrawer({
                       type="button"
                       onClick={() => handleRemoveLine(item.id)}
                       disabled={lineItems.length <= 1}
-                      className="w-7 h-7 rounded hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 flex items-center justify-center shrink-0 disabled:opacity-30 cursor-pointer"
+                      className="w-7 h-7 rounded hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-400 hover:text-rose-600 dark:text-gray-400 dark:hover:text-rose-400 flex items-center justify-center shrink-0 disabled:opacity-30 cursor-pointer"
                     >
                       <span className="material-symbols-outlined text-sm">delete</span>
                     </button>
@@ -540,76 +540,76 @@ export default function CreateInvoiceDrawer({
           </div>
 
           {/* Bottom Grid: Notes & Summary Totals */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-[#3a494b]/20">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-200 dark:border-[#3a494b]/20">
             {/* Notes */}
             <div className="space-y-2">
-              <label className="font-mono text-[10px] text-gray-400 uppercase">Invoice Remarks & Instructions</label>
+              <label className="font-mono text-[10px] text-slate-500 dark:text-gray-400 uppercase">Invoice Remarks & Instructions</label>
               <textarea
                 value={notes}
                 onChange={e => setNotes(e.target.value)}
                 rows={3}
-                className="w-full bg-[#0a0a0c] border border-[#3a494b]/30 rounded-lg p-2.5 text-xs font-mono text-white focus:outline-none"
+                className="w-full bg-slate-50 dark:bg-[#0a0a0c] border border-slate-200 dark:border-[#3a494b]/30 rounded-xl p-2.5 text-xs font-mono text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500"
               />
-              <div className="p-2.5 rounded bg-[#0a0a0c]/60 border border-[#3a494b]/20 font-mono text-[10px] text-gray-400">
-                <span className="font-bold text-white block mb-0.5">Automated E-Invoicing:</span>
+              <div className="p-3 rounded-xl bg-slate-50 dark:bg-[#0a0a0c]/60 border border-slate-200 dark:border-[#3a494b]/20 font-mono text-[10px] text-slate-600 dark:text-gray-400">
+                <span className="font-bold text-slate-900 dark:text-white block mb-0.5">Automated E-Invoicing:</span>
                 A 64-character SHA-256 Invoice Reference Number (IRN) and signed QR code payload will be automatically generated upon creation.
               </div>
             </div>
 
             {/* Calculations Breakdown */}
-            <div className="p-4 rounded-xl bg-[#0a0a0c] border border-[#3a494b]/30 space-y-2 font-mono text-xs">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#0a0a0c] border border-slate-200 dark:border-[#3a494b]/30 space-y-2 font-mono text-xs">
               <div className="flex justify-between">
-                <span className="text-gray-400">Taxable Value:</span>
-                <span className="text-white font-bold">{formatINR(taxableTotal)}</span>
+                <span className="text-slate-500 dark:text-gray-400">Taxable Value:</span>
+                <span className="text-slate-900 dark:text-white font-bold">{formatINR(taxableTotal)}</span>
               </div>
 
               {!isInterState ? (
                 <>
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-[#00dbe7]">Central Tax (CGST):</span>
-                    <span className="text-white">{formatINR(cgstTotal)}</span>
+                    <span className="text-cyan-700 dark:text-[#00dbe7]">Central Tax (CGST):</span>
+                    <span className="text-slate-900 dark:text-white">{formatINR(cgstTotal)}</span>
                   </div>
                   <div className="flex justify-between text-[11px]">
-                    <span className="text-[#00dbe7]">State Tax (SGST):</span>
-                    <span className="text-white">{formatINR(sgstTotal)}</span>
+                    <span className="text-cyan-700 dark:text-[#00dbe7]">State Tax (SGST):</span>
+                    <span className="text-slate-900 dark:text-white">{formatINR(sgstTotal)}</span>
                   </div>
                 </>
               ) : (
                 <div className="flex justify-between text-[11px]">
-                  <span className="text-[#ce5dff]">Integrated Tax (IGST):</span>
-                  <span className="text-white">{formatINR(igstTotal)}</span>
+                  <span className="text-purple-700 dark:text-[#ce5dff]">Integrated Tax (IGST):</span>
+                  <span className="text-slate-900 dark:text-white">{formatINR(igstTotal)}</span>
                 </div>
               )}
 
-              <div className="flex justify-between pt-1 border-t border-[#3a494b]/20">
-                <span className="text-gray-400">Total Tax:</span>
-                <span className="text-white font-bold">{formatINR(totalTax)}</span>
+              <div className="flex justify-between pt-1 border-t border-slate-200 dark:border-[#3a494b]/20">
+                <span className="text-slate-500 dark:text-gray-400">Total Tax:</span>
+                <span className="text-slate-900 dark:text-white font-bold">{formatINR(totalTax)}</span>
               </div>
 
-              <div className="flex justify-between pt-2 border-t-2 border-[#00dbe7]/40 text-sm">
-                <span className="font-bold text-white uppercase">Grand Total:</span>
-                <span className="font-black text-lg text-[#00e476]">{formatINR(grandTotal)}</span>
+              <div className="flex justify-between pt-2 border-t-2 border-cyan-500 dark:border-[#00dbe7]/40 text-sm">
+                <span className="font-bold text-slate-900 dark:text-white uppercase">Grand Total:</span>
+                <span className="font-black text-lg text-emerald-700 dark:text-[#00e476]">{formatINR(grandTotal)}</span>
               </div>
 
-              <div className="pt-1 text-[10px] text-gray-400 italic">
+              <div className="pt-1 text-[10px] text-slate-500 dark:text-gray-400 italic">
                 {words}
               </div>
             </div>
           </div>
 
           {/* Action Bar */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-[#3a494b]/20">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200 dark:border-[#3a494b]/20">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded bg-[#201f21] hover:bg-[#2e2d31] text-xs font-mono text-gray-300 cursor-pointer"
+              className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#201f21] dark:hover:bg-[#2e2d31] text-xs font-mono text-slate-700 dark:text-gray-300 cursor-pointer"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isSubmitting || taxableTotal <= 0}
-              className="px-6 py-2.5 rounded bg-[#00e476] hover:brightness-110 text-[#00210c] text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-[#00e476]/20 transition-all cursor-pointer disabled:opacity-50"
+              className="px-6 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 dark:bg-[#00e476] dark:hover:brightness-110 text-white dark:text-[#00210c] text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 shadow-md shadow-emerald-500/20 transition-all cursor-pointer disabled:opacity-50"
             >
               <span className="material-symbols-outlined text-sm">receipt</span>
               {isSubmitting ? 'Incepting GST Invoice...' : 'Generate Tax Invoice'}

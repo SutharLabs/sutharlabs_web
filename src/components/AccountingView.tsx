@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { GSTInvoice, CompanyProfile, PartyCustomer, ItemMaster } from '../plugins/Accounting/types.js';
+import { GSTInvoice, CompanyProfile, PartyCustomer, ItemMaster, VoucherType } from '../plugins/Accounting/types.js';
 import { formatINR } from '../plugins/Accounting/gstEngine.js';
 import TaxInvoiceModal from '../plugins/Accounting/components/TaxInvoiceModal.js';
 import CreateInvoiceDrawer from '../plugins/Accounting/components/CreateInvoiceDrawer.js';
+import VoucherEntryModal from '../plugins/Accounting/components/VoucherEntryModal.js';
+import DayBookView from '../plugins/Accounting/components/DayBookView.js';
+import FinancialStatementsView from '../plugins/Accounting/components/FinancialStatementsView.js';
 import GstrReportsView from '../plugins/Accounting/components/GstrReportsView.js';
 import GeneralLedgerView from '../plugins/Accounting/components/GeneralLedgerView.js';
 import PartyMasterView from '../plugins/Accounting/components/PartyMasterView.js';
@@ -18,8 +21,8 @@ interface AccountingViewProps {
 }
 
 export default function AccountingView({ logs = [], onAddLog, userToken }: AccountingViewProps) {
-  // Navigation sub-tabs within the Accounting ERP suite
-  const [activeTab, setActiveTab] = useState<'Invoices' | 'GSTR' | 'Ledger' | 'Parties' | 'Catalog'>('Invoices');
+  // Navigation tabs across the Tally / SAP Enterprise Suite
+  const [activeTab, setActiveTab] = useState<'DayBook' | 'Statements' | 'Invoices' | 'GSTR' | 'Ledger' | 'Parties' | 'Catalog'>('DayBook');
 
   // Core Data States
   const [invoices, setInvoices] = useState<GSTInvoice[]>([]);
@@ -37,6 +40,9 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
   const [selectedInvoice, setSelectedInvoice] = useState<GSTInvoice | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [voucherInitialType, setVoucherInitialType] = useState<VoucherType>('Payment');
+  const [dataRefreshCounter, setDataRefreshCounter] = useState(0);
 
   // Fetch initial accounting master datasets
   const fetchAllData = useCallback(async () => {
@@ -64,7 +70,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
 
   useEffect(() => {
     fetchAllData();
-  }, [fetchAllData]);
+  }, [fetchAllData, dataRefreshCounter]);
 
   // Invoice Handlers
   const handleMarkPaid = async (id: string) => {
@@ -84,6 +90,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
         if (selectedInvoice && selectedInvoice.id === id) {
           setSelectedInvoice(updated);
         }
+        setDataRefreshCounter(c => c + 1);
         onAddLog({
           timestamp: new Date().toLocaleTimeString(),
           type: 'SUCCESS',
@@ -107,6 +114,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
 
       if (res.ok) {
         setInvoices(prev => prev.filter(i => i.id !== id));
+        setDataRefreshCounter(c => c + 1);
         onAddLog({
           timestamp: new Date().toLocaleTimeString(),
           type: 'ALERT',
@@ -120,11 +128,18 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
 
   const handleInvoiceCreated = (newInv: GSTInvoice) => {
     setInvoices(prev => [newInv, ...prev]);
+    setDataRefreshCounter(c => c + 1);
     onAddLog({
       timestamp: new Date().toLocaleTimeString(),
       type: 'SUCCESS',
       message: `ACCOUNTING: Issued GST Tax Invoice ${newInv.invoiceNumber} to [${newInv.buyer.legalName}] for ${formatINR(newInv.grandTotal)}. IRN: ${newInv.eInvoice?.irn.slice(0, 12)}...`
     });
+  };
+
+  // Launch voucher modal with specific type
+  const openVoucherEntry = (type: VoucherType) => {
+    setVoucherInitialType(type);
+    setIsVoucherModalOpen(true);
   };
 
   // Aggregated KPI Metrics
@@ -156,23 +171,23 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
   });
 
   return (
-    <div className="flex-grow flex flex-col gap-5">
+    <div className="flex-grow flex flex-col gap-5 text-slate-900 dark:text-[#e5e1e4]">
       {/* Top Banner & Control Deck */}
-      <div className="glass-panel p-5 rounded-xl border border-outline/15 bg-surface-container-low/30 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#00dbe7]/20 via-[#ce5dff]/20 to-[#00e476]/20 border border-[#00dbe7]/40 flex items-center justify-center text-[#00dbe7] shadow-lg shadow-[#00dbe7]/10">
+      <div className="bg-white dark:bg-[#121215] p-5 rounded-2xl border border-slate-200 dark:border-[#3a494b]/30 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-3.5">
+          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-cyan-500/15 via-purple-500/15 to-emerald-500/15 border border-cyan-500/30 flex items-center justify-center text-cyan-600 dark:text-[#00dbe7] shadow-md shadow-cyan-500/5">
             <span className="material-symbols-outlined text-2xl">account_balance</span>
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-base sm:text-lg font-bold font-sans text-white tracking-tight">
-                Indian GST Accounting & ERP Suite
+              <h2 className="text-base sm:text-lg font-bold font-sans text-slate-900 dark:text-white tracking-tight">
+                Enterprise Accounting & ERP Suite
               </h2>
-              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30">
-                ERPNext & Frappe Parity
+              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-[#00e476] border border-emerald-500/20">
+                Tally Prime & SAP ERP Parity
               </span>
             </div>
-            <p className="text-[11px] font-mono text-gray-400">
+            <p className="text-[11px] font-mono text-slate-500 dark:text-gray-400">
               {company ? `${company.legalName} • GSTIN: ${company.gstin} (${company.stateName} - ${company.stateCode})` : 'Loading enterprise profile...'}
             </p>
           </div>
@@ -181,7 +196,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
         <div className="flex items-center gap-2.5 w-full md:w-auto">
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="flex-1 md:flex-none px-3.5 py-2 rounded-lg bg-[#18181c] hover:bg-[#201f21] border border-[#3a494b]/30 text-gray-300 hover:text-white font-mono text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            className="flex-1 md:flex-none px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#18181c] dark:hover:bg-[#201f21] border border-slate-200 dark:border-[#3a494b]/30 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white font-mono text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
             <span className="material-symbols-outlined text-sm">settings</span>
             GST Settings
@@ -189,7 +204,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
 
           <button
             onClick={() => setIsCreateOpen(true)}
-            className="flex-1 md:flex-none px-4 py-2 rounded-lg bg-[#00e476] hover:brightness-110 text-[#00210c] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-lg shadow-[#00e476]/20 transition-all cursor-pointer"
+            className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 dark:bg-[#00e476] dark:hover:brightness-110 text-white dark:text-[#00210c] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
           >
             <span className="material-symbols-outlined text-sm">add_circle</span>
             Issue GST Invoice
@@ -197,22 +212,84 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
         </div>
       </div>
 
+      {/* Tally Prime & SAP Voucher Action Hotbar */}
+      <div className="bg-slate-50 dark:bg-[#16161a] p-3 rounded-xl border border-slate-200 dark:border-[#3a494b]/20 flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="font-mono text-[10px] font-bold uppercase text-slate-500 dark:text-gray-400 tracking-wider flex items-center gap-1">
+            <span className="material-symbols-outlined text-sm text-cyan-600 dark:text-[#00dbe7]">keyboard</span>
+            Voucher Entry (Tally Hotkeys):
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => openVoucherEntry('Contra')}
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-cyan-50 dark:hover:bg-cyan-950/30 border border-cyan-400/30 text-cyan-700 dark:text-[#74f5ff] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            title="Contra Voucher (F4) - Bank to Cash / Bank to Bank transfers"
+          >
+            <span className="px-1 py-0.2 rounded bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-200 text-[9px]">F4</span>
+            Contra
+          </button>
+          <button
+            onClick={() => openVoucherEntry('Payment')}
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-400/30 text-rose-700 dark:text-rose-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            title="Payment Voucher (F5) - Cash or Bank outflow"
+          >
+            <span className="px-1 py-0.2 rounded bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200 text-[9px]">F5</span>
+            Payment
+          </button>
+          <button
+            onClick={() => openVoucherEntry('Receipt')}
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-emerald-400/30 text-emerald-700 dark:text-[#00e476] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            title="Receipt Voucher (F6) - Cash or Bank collections"
+          >
+            <span className="px-1 py-0.2 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 text-[9px]">F6</span>
+            Receipt
+          </button>
+          <button
+            onClick={() => openVoucherEntry('Journal')}
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-purple-50 dark:hover:bg-purple-950/30 border border-purple-400/30 text-purple-700 dark:text-[#ebb2ff] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            title="Journal Voucher (F7) - Adjustments & depreciation"
+          >
+            <span className="px-1 py-0.2 rounded bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 text-[9px]">F7</span>
+            Journal
+          </button>
+          <button
+            onClick={() => setIsCreateOpen(true)}
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-blue-400/30 text-blue-700 dark:text-blue-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            title="Sales Voucher (F8) - Tax Invoices"
+          >
+            <span className="px-1 py-0.2 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 text-[9px]">F8</span>
+            Sales (Tax Invoice)
+          </button>
+          <button
+            onClick={() => openVoucherEntry('Purchase')}
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-400/30 text-amber-700 dark:text-amber-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+            title="Purchase Voucher (F9) - Inward goods & expenses"
+          >
+            <span className="px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-[9px]">F9</span>
+            Purchase
+          </button>
+        </div>
+      </div>
+
       {/* Module Navigation Tabs */}
-      <div className="flex overflow-x-auto gap-2 border-b border-[#3a494b]/20 pb-2 scrollbar-hide">
+      <div className="flex overflow-x-auto gap-2 border-b border-slate-200 dark:border-[#3a494b]/20 pb-2 scrollbar-hide">
         {[
+          { id: 'DayBook', label: 'Day Book (Vouchers)', icon: 'menu_book' },
+          { id: 'Statements', label: 'Financial Statements (BS / P&L / TB)', icon: 'query_stats' },
           { id: 'Invoices', label: 'Tax Invoices Ledger', icon: 'receipt_long' },
           { id: 'GSTR', label: 'GST Returns (GSTR-1 / 3B)', icon: 'assignment' },
           { id: 'Ledger', label: 'General Ledger Book', icon: 'balance' },
-          { id: 'Parties', label: 'Customers (B2B / B2C)', icon: 'domain' },
+          { id: 'Parties', label: 'Customers & Vendors', icon: 'domain' },
           { id: 'Catalog', label: 'Items & HSN Catalog', icon: 'inventory_2' }
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-mono text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold shrink-0 transition-all cursor-pointer ${
               activeTab === tab.id
-                ? 'bg-[#00dbe7]/15 border border-[#00dbe7]/50 text-[#74f5ff] shadow-sm'
-                : 'bg-[#131316] border border-[#3a494b]/20 text-gray-400 hover:text-white'
+                ? 'bg-cyan-50 dark:bg-[#00dbe7]/15 border border-cyan-400 dark:border-[#00dbe7]/50 text-cyan-800 dark:text-[#74f5ff] shadow-xs'
+                : 'bg-white dark:bg-[#131316] border border-slate-200 dark:border-[#3a494b]/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
             }`}
           >
             <span className="material-symbols-outlined text-sm">{tab.icon}</span>
@@ -221,78 +298,93 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
         ))}
       </div>
 
-      {/* ==================== TAB 1: INVOICES LEDGER ==================== */}
+      {/* ==================== TAB 1: DAY BOOK (VOUCHERS) ==================== */}
+      {activeTab === 'DayBook' && (
+        <DayBookView
+          userToken={userToken}
+          onOpenVoucherModal={openVoucherEntry}
+        />
+      )}
+
+      {/* ==================== TAB 2: FINANCIAL STATEMENTS ==================== */}
+      {activeTab === 'Statements' && (
+        <FinancialStatementsView
+          userToken={userToken}
+        />
+      )}
+
+      {/* ==================== TAB 3: INVOICES LEDGER ==================== */}
       {activeTab === 'Invoices' && (
         <div className="space-y-5 animate-fade-in">
           {/* Dynamic Indian Rupee KPI Metric Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Total Invoiced */}
-            <div className="glass-panel p-4 rounded-xl border-l-4 border-[#00dbe7] flex flex-col justify-center">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-gray-400 mb-1 block">
+            <div className="bg-white dark:bg-[#121215] p-4 rounded-xl border border-slate-200 dark:border-[#3a494b]/30 border-l-4 border-l-cyan-500 flex flex-col justify-center shadow-xs">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500 dark:text-gray-400 mb-1 block">
                 Total Turnover (Gross)
               </span>
-              <span className="text-xl font-bold text-white font-sans block">
+              <span className="text-xl font-bold text-slate-900 dark:text-white font-sans block">
                 {formatINR(totalInvoiced)}
               </span>
-              <span className="text-[10px] font-mono text-gray-400 mt-1">
+              <span className="text-[10px] font-mono text-slate-500 dark:text-gray-400 mt-1">
                 Taxable: {formatINR(totalTaxable)}
               </span>
             </div>
 
             {/* Total Taxes Collected */}
-            <div className="glass-panel p-4 rounded-xl border-l-4 border-[#ce5dff] flex flex-col justify-center">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-gray-400 mb-1 block">
+            <div className="bg-white dark:bg-[#121215] p-4 rounded-xl border border-slate-200 dark:border-[#3a494b]/30 border-l-4 border-l-purple-500 flex flex-col justify-center shadow-xs">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500 dark:text-gray-400 mb-1 block">
                 Output GST Liability
               </span>
-              <span className="text-xl font-bold text-[#ebb2ff] font-sans block">
+              <span className="text-xl font-bold text-purple-700 dark:text-[#ebb2ff] font-sans block">
                 {formatINR(totalCGST + totalSGST + totalIGST)}
               </span>
-              <span className="text-[10px] font-mono text-gray-400 mt-1 flex gap-2">
+              <span className="text-[10px] font-mono text-slate-500 dark:text-gray-400 mt-1 flex gap-2">
                 <span>CGST: {formatINR(totalCGST)}</span>
                 <span>SGST: {formatINR(totalSGST)}</span>
               </span>
             </div>
 
             {/* Paid Inflow */}
-            <div className="glass-panel p-4 rounded-xl border-l-4 border-[#00e476] flex flex-col justify-center">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-gray-400 mb-1 block">
+            <div className="bg-white dark:bg-[#121215] p-4 rounded-xl border border-slate-200 dark:border-[#3a494b]/30 border-l-4 border-l-emerald-500 flex flex-col justify-center shadow-xs">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500 dark:text-gray-400 mb-1 block">
                 Realized Collections
               </span>
-              <span className="text-xl font-bold text-[#00e476] font-sans block">
+              <span className="text-xl font-bold text-emerald-700 dark:text-[#00e476] font-sans block">
                 {formatINR(totalPaid)}
               </span>
-              <span className="text-[10px] font-mono text-[#00e476]/80 mt-1">
+              <span className="text-[10px] font-mono text-emerald-600 dark:text-[#00e476]/80 mt-1">
                 Settled to Bank Account
               </span>
             </div>
 
             {/* Outstanding Receivables */}
-            <div className="glass-panel p-4 rounded-xl border-l-4 border-[#eab308] flex flex-col justify-center">
-              <span className="font-mono text-[9px] uppercase tracking-widest text-gray-400 mb-1 block">
+            <div className="bg-white dark:bg-[#121215] p-4 rounded-xl border border-slate-200 dark:border-[#3a494b]/30 border-l-4 border-l-amber-500 flex flex-col justify-center shadow-xs">
+              <span className="font-mono text-[9px] uppercase tracking-widest text-slate-500 dark:text-gray-400 mb-1 block">
                 Trade Receivables Due
               </span>
-              <span className="text-xl font-bold text-[#fde047] font-sans block">
+              <span className="text-xl font-bold text-amber-700 dark:text-[#fde047] font-sans block">
                 {formatINR(totalOutstanding)}
               </span>
-              <span className="text-[10px] font-mono text-gray-400 mt-1">
+              <span className="text-[10px] font-mono text-slate-500 dark:text-gray-400 mt-1">
                 Awaiting Buyer Payment
               </span>
             </div>
           </div>
 
           {/* Proportional GST Tax Weight Chart */}
-          <div className="glass-panel rounded-xl p-5 flex flex-col gap-3">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2 border-b border-[#3a494b]/20">
-              <h3 className="font-mono text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-                <span className="material-symbols-outlined text-[#00dbe7] text-base">bar_chart</span>
+          <div className="bg-white dark:bg-[#121215] rounded-xl p-5 border border-slate-200 dark:border-[#3a494b]/30 flex flex-col gap-3 shadow-xs">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2 border-b border-slate-200 dark:border-[#3a494b]/20">
+              <h3 className="font-mono text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <span className="material-symbols-outlined text-cyan-600 dark:text-[#00dbe7] text-base">bar_chart</span>
                 Invoice Payout Distribution & Tax Slices
               </h3>
-              <span className="text-[10px] font-mono text-gray-400">
+              <span className="text-[10px] font-mono text-slate-500 dark:text-gray-400">
                 Real-time proportional scale in Indian Rupees (₹)
               </span>
             </div>
 
-            <div className="h-[130px] relative chart-grid rounded-lg bg-surface-container-low/40 flex items-end p-4">
+            <div className="h-[130px] relative rounded-lg bg-slate-50 dark:bg-[#18181c] flex items-end p-4 border border-slate-200/60 dark:border-transparent">
               <svg className="absolute inset-0 w-full h-full" viewBox="0 0 500 130" preserveAspectRatio="none">
                 {invoices.map((inv, idx) => {
                   const xUnit = 500 / (invoices.length || 1);
@@ -304,7 +396,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                   const yPos = 130 - barHeight - 15;
 
                   const isPaid = inv.status === 'Paid';
-                  const barColor = isPaid ? '#00e476' : inv.isInterState ? '#ce5dff' : '#00dbe7';
+                  const barColor = isPaid ? '#10b981' : inv.isInterState ? '#a855f7' : '#06b6d4';
 
                   return (
                     <g key={inv.id} className="cursor-pointer" onClick={() => setSelectedInvoice(inv)}>
@@ -329,7 +421,8 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                       <text
                         x={xPos + barWidth / 2}
                         y={yPos - 4}
-                        fill="#ffffff"
+                        fill="currentColor"
+                        className="text-slate-700 dark:text-white"
                         fontSize="8"
                         textAnchor="middle"
                         fontFamily="monospace"
@@ -342,7 +435,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                 })}
               </svg>
 
-              <div className="absolute bottom-1 left-0 right-0 flex justify-between px-4 font-mono text-[8px] text-gray-400">
+              <div className="absolute bottom-1 left-0 right-0 flex justify-between px-4 font-mono text-[8px] text-slate-500 dark:text-gray-400">
                 {invoices.map(i => (
                   <span key={i.id} className="truncate max-w-[80px]">{i.invoiceNumber.split('/').pop()}</span>
                 ))}
@@ -351,17 +444,17 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           </div>
 
           {/* Ledger Table Container */}
-          <div className="glass-panel p-5 rounded-xl border border-outline/15 space-y-4">
+          <div className="bg-white dark:bg-[#121215] p-5 rounded-xl border border-slate-200 dark:border-[#3a494b]/30 space-y-4 shadow-xs">
             {/* Filter toolbar */}
             <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3">
-              <div className="flex-1 bg-[#18181c] rounded-lg border border-[#3a494b]/30 flex items-center px-3 py-1.5 focus-within:border-[#00dbe7]">
-                <span className="material-symbols-outlined text-sm text-gray-400 mr-2">search</span>
+              <div className="flex-1 bg-slate-50 dark:bg-[#18181c] rounded-lg border border-slate-200 dark:border-[#3a494b]/30 flex items-center px-3 py-1.5 focus-within:border-cyan-500">
+                <span className="material-symbols-outlined text-sm text-slate-400 dark:text-gray-400 mr-2">search</span>
                 <input
                   type="text"
                   placeholder="Search ledger by client, invoice number, state, or GSTIN..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="bg-transparent border-none text-xs font-mono text-white placeholder-gray-500 focus:outline-none w-full"
+                  className="bg-transparent border-none text-xs font-mono text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-gray-500 focus:outline-none w-full"
                 />
               </div>
 
@@ -370,7 +463,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                 <select
                   value={statusFilter}
                   onChange={e => setStatusFilter(e.target.value as any)}
-                  className="bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-1.5 text-xs font-mono text-gray-300 focus:outline-none"
+                  className="bg-slate-50 dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs font-mono text-slate-700 dark:text-gray-300 focus:outline-none"
                 >
                   <option value="ALL">All Status</option>
                   <option value="Paid">Cleared / Paid</option>
@@ -382,7 +475,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                 <select
                   value={taxFilter}
                   onChange={e => setTaxFilter(e.target.value as any)}
-                  className="bg-[#18181c] border border-[#3a494b]/30 rounded-lg p-1.5 text-xs font-mono text-gray-300 focus:outline-none"
+                  className="bg-slate-50 dark:bg-[#18181c] border border-slate-200 dark:border-[#3a494b]/30 rounded-lg p-2 text-xs font-mono text-slate-700 dark:text-gray-300 focus:outline-none"
                 >
                   <option value="ALL">All Jurisdictions</option>
                   <option value="INTRA">Intra-State (CGST+SGST)</option>
@@ -392,9 +485,9 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
             </div>
 
             {/* Invoices Data Grid */}
-            <div className="w-full overflow-x-auto rounded-lg border border-[#3a494b]/20">
-              <table className="w-full text-left font-mono text-xs border-collapse divide-y divide-[#3a494b]/15">
-                <thead className="bg-[#18181c] text-gray-400 text-[10px] uppercase">
+            <div className="w-full overflow-x-auto rounded-lg border border-slate-200 dark:border-[#3a494b]/20">
+              <table className="w-full text-left font-mono text-xs border-collapse divide-y divide-slate-200 dark:divide-[#3a494b]/15">
+                <thead className="bg-slate-50 dark:bg-[#18181c] text-slate-600 dark:text-gray-400 text-[10px] uppercase">
                   <tr>
                     <th className="p-3">Invoice No</th>
                     <th className="p-3">Date</th>
@@ -407,7 +500,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                     <th className="p-3 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#3a494b]/10 bg-surface-container-low/40">
+                <tbody className="divide-y divide-slate-100 dark:divide-[#3a494b]/10 bg-white dark:bg-[#121215]">
                   {filteredInvoices.map(inv => {
                     const isPaid = inv.status === 'Paid';
 
@@ -415,42 +508,42 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                       <tr
                         key={inv.id}
                         onClick={() => setSelectedInvoice(inv)}
-                        className="hover:bg-white/[0.03] transition-colors cursor-pointer group"
+                        className="hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors cursor-pointer group"
                       >
                         <td className="p-3">
-                          <span className="font-bold text-[#00dbe7] block">{inv.invoiceNumber}</span>
+                          <span className="font-bold text-cyan-600 dark:text-[#00dbe7] block">{inv.invoiceNumber}</span>
                           {inv.eInvoice && (
-                            <span className="text-[9px] text-gray-500 font-mono flex items-center gap-1">
-                              <span className="material-symbols-outlined text-[10px] text-[#00e476]">verified</span>
+                            <span className="text-[9px] text-slate-500 dark:text-gray-400 font-mono flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[10px] text-emerald-600 dark:text-[#00e476]">verified</span>
                               IRN Gen
                             </span>
                           )}
                         </td>
-                        <td className="p-3 text-gray-400">{inv.invoiceDate}</td>
+                        <td className="p-3 text-slate-500 dark:text-gray-400">{inv.invoiceDate}</td>
                         <td className="p-3">
-                          <span className="font-bold text-white font-sans block">{inv.buyer.legalName}</span>
-                          <span className="text-[10px] text-gray-400 font-mono">{inv.buyer.gstin || 'B2C Retail'}</span>
+                          <span className="font-bold text-slate-900 dark:text-white font-sans block">{inv.buyer.legalName}</span>
+                          <span className="text-[10px] text-slate-500 dark:text-gray-400 font-mono">{inv.buyer.gstin || 'B2C Retail'}</span>
                         </td>
                         <td className="p-3">
-                          <span className="text-gray-300 block">{inv.placeOfSupplyStateName}</span>
-                          <span className={`text-[9px] font-bold ${inv.isInterState ? 'text-[#ce5dff]' : 'text-[#00dbe7]'}`}>
+                          <span className="text-slate-700 dark:text-gray-300 block">{inv.placeOfSupplyStateName}</span>
+                          <span className={`text-[9px] font-bold ${inv.isInterState ? 'text-purple-600 dark:text-[#ce5dff]' : 'text-cyan-600 dark:text-[#00dbe7]'}`}>
                             {inv.isInterState ? 'IGST (Inter-State)' : 'CGST+SGST (Intra)'}
                           </span>
                         </td>
-                        <td className="p-3 text-right font-medium text-gray-300">
+                        <td className="p-3 text-right font-medium text-slate-700 dark:text-gray-300">
                           {formatINR(inv.taxableAmount).replace('₹ ', '')}
                         </td>
-                        <td className="p-3 text-right text-gray-400">
+                        <td className="p-3 text-right text-slate-500 dark:text-gray-400">
                           {formatINR(inv.totalTax).replace('₹ ', '')}
                         </td>
-                        <td className="p-3 text-right font-bold text-white text-sm">
+                        <td className="p-3 text-right font-bold text-slate-900 dark:text-white text-sm">
                           {formatINR(inv.grandTotal)}
                         </td>
                         <td className="p-3 text-center">
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase ${
                             isPaid
-                              ? 'bg-[#00e476]/15 text-[#00e476] border-[#00e476]/35'
-                              : 'bg-[#ce5dff]/15 text-[#ebb2ff] border-[#ce5dff]/35'
+                              ? 'bg-emerald-500/10 text-emerald-700 dark:text-[#00e476] border-emerald-500/30'
+                              : 'bg-purple-500/10 text-purple-700 dark:text-[#ebb2ff] border-purple-500/30'
                           }`}>
                             {inv.status}
                           </span>
@@ -460,7 +553,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                             <button
                               onClick={() => setSelectedInvoice(inv)}
                               title="View & Print Rule 46 Tax Invoice"
-                              className="w-7 h-7 rounded hover:bg-[#00dbe7]/20 text-gray-400 hover:text-[#00dbe7] flex items-center justify-center transition-colors cursor-pointer"
+                              className="w-7 h-7 rounded hover:bg-cyan-50 dark:hover:bg-[#00dbe7]/20 text-slate-500 hover:text-cyan-600 dark:text-gray-400 dark:hover:text-[#00dbe7] flex items-center justify-center transition-colors cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-sm">print</span>
                             </button>
@@ -469,7 +562,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                               <button
                                 onClick={() => handleMarkPaid(inv.id)}
                                 title="Mark Paid"
-                                className="w-7 h-7 rounded hover:bg-[#00e476]/20 text-gray-400 hover:text-[#00e476] flex items-center justify-center transition-colors cursor-pointer"
+                                className="w-7 h-7 rounded hover:bg-emerald-50 dark:hover:bg-[#00e476]/20 text-slate-500 hover:text-emerald-600 dark:text-gray-400 dark:hover:text-[#00e476] flex items-center justify-center transition-colors cursor-pointer"
                               >
                                 <span className="material-symbols-outlined text-sm">check_circle</span>
                               </button>
@@ -478,7 +571,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                             <button
                               onClick={e => handleDeleteInvoice(inv.id, e)}
                               title="Delete Record"
-                              className="w-7 h-7 rounded hover:bg-rose-500/20 text-gray-400 hover:text-rose-400 flex items-center justify-center transition-colors cursor-pointer"
+                              className="w-7 h-7 rounded hover:bg-rose-50 dark:hover:bg-rose-500/20 text-slate-500 hover:text-rose-600 dark:text-gray-400 dark:hover:text-rose-400 flex items-center justify-center transition-colors cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-sm">delete</span>
                             </button>
@@ -490,7 +583,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
 
                   {filteredInvoices.length === 0 && (
                     <tr>
-                      <td colSpan={9} className="p-12 text-center text-gray-500 font-light">
+                      <td colSpan={9} className="p-12 text-center text-slate-400 dark:text-gray-500 font-light">
                         No invoice ledger entries match filter criteria.
                       </td>
                     </tr>
@@ -502,13 +595,13 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
         </div>
       )}
 
-      {/* ==================== TAB 2: GSTR COMPLIANCE ==================== */}
+      {/* ==================== TAB 4: GSTR COMPLIANCE ==================== */}
       {activeTab === 'GSTR' && <GstrReportsView userToken={userToken} />}
 
-      {/* ==================== TAB 3: GENERAL LEDGER ==================== */}
+      {/* ==================== TAB 5: GENERAL LEDGER ==================== */}
       {activeTab === 'Ledger' && <GeneralLedgerView userToken={userToken} />}
 
-      {/* ==================== TAB 4: PARTIES (CUSTOMERS) ==================== */}
+      {/* ==================== TAB 6: PARTIES (CUSTOMERS & VENDORS) ==================== */}
       {activeTab === 'Parties' && (
         <PartyMasterView
           parties={parties}
@@ -524,7 +617,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
         />
       )}
 
-      {/* ==================== TAB 5: ITEMS & HSN CATALOG ==================== */}
+      {/* ==================== TAB 7: ITEMS & HSN CATALOG ==================== */}
       {activeTab === 'Catalog' && (
         <ItemCatalogView
           items={itemsCatalog}
@@ -546,6 +639,24 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
         logs={logs}
         defaultExpanded={false}
       />
+
+      {/* Voucher Entry Modal (Tally Prime / SAP F4-F9) */}
+      {isVoucherModalOpen && (
+        <VoucherEntryModal
+          initialType={voucherInitialType}
+          userToken={userToken}
+          parties={parties}
+          onClose={() => setIsVoucherModalOpen(false)}
+          onVoucherCreated={v => {
+            setDataRefreshCounter(c => c + 1);
+            onAddLog({
+              timestamp: new Date().toLocaleTimeString(),
+              type: 'SUCCESS',
+              message: `ACCOUNTING [${v.voucherType}]: Voucher ${v.voucherNumber} created. Dr: ${v.debitAccount} / Cr: ${v.creditAccount} for ${formatINR(v.amount)}.`
+            });
+          }}
+        />
+      )}
 
       {/* Rule 46 Tax Invoice Modal */}
       {selectedInvoice && (
