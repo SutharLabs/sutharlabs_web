@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-09T19:29:25.920Z",
+    "packagedAt": "2026-10-09T19:39:00.739Z",
     "archiveFileName": "wp_stock_analyzer-v1.1.2.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.2.zip",
     "sizeBytes": 77396,
-    "checksumSha256": "059e363cb7348297f72933d97ee6b75d7d37692b44cf539948ab3eef981d31d3"
+    "checksumSha256": "7891102f60637d2bcff256addf9af04fd59ee50a21625fb3589e3cb81a37ba24"
   },
   {
     "id": "wp_flow_designer",
@@ -25,11 +25,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-09T19:29:28.966Z",
+    "packagedAt": "2026-10-09T19:39:03.004Z",
     "archiveFileName": "wp_flow_designer-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.1.0.zip",
-    "sizeBytes": 1870,
-    "checksumSha256": "af79baee28f07dbdc8f60616ca454ccaf46057be2b406b25f03df8e43a48de7e"
+    "sizeBytes": 1869,
+    "checksumSha256": "de7b77b7bc501bee0f7832a3b59a825454a8c57774ff34ab6767072d8ac05a89"
   },
   {
     "id": "wp_doc_nexus",
@@ -41,26 +41,26 @@
     "iconSymbol": "description",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-09T19:29:29.928Z",
+    "packagedAt": "2026-10-09T19:39:04.071Z",
     "archiveFileName": "wp_doc_nexus-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.1.0.zip",
-    "sizeBytes": 2321,
-    "checksumSha256": "f1df7bcb30ca75c299103145044fe230e72cabc0d69a0520dd5c0c50218818f8"
+    "sizeBytes": 2323,
+    "checksumSha256": "0ec520661f2f562a559d280f9ac59c212bd7c7ecfb629e4ef11cc22118161699"
   },
   {
     "id": "wp_accounting",
     "name": "Accounting",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "category": "Operations",
     "type": "Native",
-    "description": "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), and Double-Entry General Ledger.",
+    "description": "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync.",
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-09T19:29:30.883Z",
-    "archiveFileName": "wp_accounting-v0.2.0.zip",
-    "packageUrl": "/storage/plugins/wp_accounting-v0.2.0.zip",
-    "sizeBytes": 68336,
-    "checksumSha256": "b30f3516eac0177358562183a3ac94bd8fb5ec889030a78e2ee9a09a0dc5ea16"
+    "packagedAt": "2026-10-09T19:39:05.066Z",
+    "archiveFileName": "wp_accounting-v0.2.1.zip",
+    "packageUrl": "/storage/plugins/wp_accounting-v0.2.1.zip",
+    "sizeBytes": 68388,
+    "checksumSha256": "0a2e85f2d7864158e1d0923ac649fb4bf2dce2e9e1225f3c998fef908faab877"
   }
 ]

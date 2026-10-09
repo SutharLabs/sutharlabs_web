@@ -128,9 +128,9 @@ async function seed() {
       name: "Accounting",
       category: "Operations",
       type: "Native",
-      description: "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), and Double-Entry General Ledger.",
+      description: "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync.",
       iconSymbol: "currency_exchange",
-      version: "0.2.0"
+      version: "0.2.1"
     }
   ];
 
@@ -238,6 +238,14 @@ async function seed() {
       version: "0.2.0",
       changelog: "Beta release: Enterprise Indian GST Compliance (Rule 46 Tax Invoicing, Intra/Inter-state POS engine, GSTR-1 & GSTR-3B return generation, E-Invoicing IRN & QR, and Double-Entry General Ledger).",
       checksumSha256: "4a0f1cb694a2737d711221e73893aa9220d919a2b10de5805958a762599a2a8a",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh"
+    },
+    {
+      pluginId: "wp_accounting",
+      version: "0.2.1",
+      changelog: "Beta release v0.2.1: Multi-Tenant Neon PostgreSQL Database Sync, per-user ledger isolation, fallback disk persistence, and enterprise Tally Prime / SAP ERP parity.",
+      checksumSha256: "b30f3516eac0177358562183a3ac94bd8fb5ec889030a78e2ee9a09a0dc5ea16",
       minEngineVersion: "0.1.0",
       publishedBy: "Suthar Suresh"
     }
