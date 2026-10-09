@@ -313,12 +313,11 @@ function sha256Sync(ascii: string): string {
 
   const mathPow = Math.pow;
   const maxWord = mathPow(2, 32);
-  let lengthProperty = 'length';
   let i, j;
   let result = '';
 
   const words: number[] = [];
-  const asciiBitLength = ascii[lengthProperty as any] * 8;
+  const asciiBitLength = ascii.length * 8;
 
   let hash = [
     0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a,
@@ -338,15 +337,15 @@ function sha256Sync(ascii: string): string {
 
   let compositeCount = 64;
   ascii += '\x80';
-  while ((ascii[lengthProperty as any] % 64) - 56) ascii += '\x00';
-  for (i = 0; i < ascii[lengthProperty as any]; i++) {
+  while ((ascii.length % 64) - 56) ascii += '\x00';
+  for (i = 0; i < ascii.length; i++) {
     j = ascii.charCodeAt(i);
     words[i >> 2] |= j << ((3 - (i % 4)) * 8);
   }
-  words[words[lengthProperty as any]] = (asciiBitLength / maxWord) | 0;
-  words[words[lengthProperty as any]] = asciiBitLength;
+  words[words.length] = (asciiBitLength / maxWord) | 0;
+  words[words.length] = asciiBitLength;
 
-  for (j = 0; j < words[lengthProperty as any];) {
+  for (j = 0; j < words.length;) {
     const w = words.slice(j, (j += 16));
     const oldHash = hash;
     hash = hash.slice(0, 8);

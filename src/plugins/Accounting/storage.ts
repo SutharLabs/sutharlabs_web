@@ -69,39 +69,153 @@ function getAccountingDataDirectory(): string {
   }
 }
 
-// In-memory cache for ultra-fast response & environments with read-only filesystems
-const memoryCache = new Map<string, any>();
+// ==================== MULTI-TENANT ARCHITECTURE & POSTGRESQL SYNC ====================
 
-function loadJson<T>(filename: string, defaultValue: T): T {
-  const dir = getAccountingDataDirectory();
-  const filePath = path.join(dir, filename);
-  try {
-    if (fs.existsSync(filePath)) {
-      const content = fs.readFileSync(filePath, 'utf-8');
-      const parsed = JSON.parse(content);
-      memoryCache.set(filename, parsed);
-      return parsed;
-    }
-  } catch (err) {
-    console.warn(`[AccountingStorage] Failed to read ${filename}, checking memory cache:`, err);
-  }
-
-  if (memoryCache.has(filename)) {
-    return memoryCache.get(filename);
-  }
-
-  saveJson(filename, defaultValue);
-  return defaultValue;
+export interface TenantAccountingData {
+  companyProfile: CompanyProfile;
+  parties: PartyCustomer[];
+  items: ItemMaster[];
+  invoices: GSTInvoice[];
+  vouchers: AccountingVoucher[];
 }
 
-function saveJson<T>(filename: string, data: T): void {
-  memoryCache.set(filename, data);
-  const dir = getAccountingDataDirectory();
-  const filePath = path.join(dir, filename);
+const tenantMemoryCache = new Map<string, TenantAccountingData>();
+
+export function normalizeUserEmail(email?: string): string {
+  if (!email || typeof email !== 'string') return 'default@sutharlabs.com';
+  const clean = email.toLowerCase().trim();
+  return clean || 'default@sutharlabs.com';
+}
+
+function getSafeFileSlug(email: string): string {
+  return email.replace(/[^a-zA-Z0-9_-]/g, '_');
+}
+
+export async function loadTenantData(userEmail?: string): Promise<TenantAccountingData> {
+  const normEmail = normalizeUserEmail(userEmail);
+  if (tenantMemoryCache.has(normEmail)) {
+    return tenantMemoryCache.get(normEmail)!;
+  }
+
+  // 1. Fetch from Neon PostgreSQL Database via Prisma
   try {
-    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
+    const prisma = getPrismaClient();
+    const row = await prisma.accountingTenantStore.findUnique({
+      where: { userEmail: normEmail }
+    });
+
+    if (row) {
+      let companyProfile: CompanyProfile = DEFAULT_COMPANY;
+      let parties: PartyCustomer[] = [];
+      let items: ItemMaster[] = [];
+      let invoices: GSTInvoice[] = [];
+      let vouchers: AccountingVoucher[] = [];
+
+      try {
+        const parsedComp = JSON.parse(row.companyProfile || '{}');
+        if (parsedComp && typeof parsedComp === 'object' && Object.keys(parsedComp).length > 0) {
+          companyProfile = { ...DEFAULT_COMPANY, ...parsedComp };
+        }
+      } catch {}
+      try { parties = JSON.parse(row.parties || '[]'); } catch {}
+      try { items = JSON.parse(row.items || '[]'); } catch {}
+      try { invoices = JSON.parse(row.invoices || '[]'); } catch {}
+      try { vouchers = JSON.parse(row.vouchers || '[]'); } catch {}
+
+      const tenant: TenantAccountingData = {
+        companyProfile,
+        parties: Array.isArray(parties) && parties.length > 0 ? parties : [...DEFAULT_PARTIES],
+        items: Array.isArray(items) && items.length > 0 ? items : [...DEFAULT_ITEMS],
+        invoices: Array.isArray(invoices) ? invoices : [],
+        vouchers: Array.isArray(vouchers) ? vouchers : []
+      };
+
+      tenantMemoryCache.set(normEmail, tenant);
+      return tenant;
+    }
   } catch (err) {
-    console.warn(`[AccountingStorage] Could not write ${filename} to disk, cached in-memory:`, err);
+    console.warn(`[AccountingTenantStore] DB read failed for ${normEmail}, checking local disk fallback:`, err);
+  }
+
+  // 2. Fetch from local file backup
+  const dir = getAccountingDataDirectory();
+  const slug = getSafeFileSlug(normEmail);
+  const tenantFile = path.join(dir, `tenant_${slug}.json`);
+
+  try {
+    if (fs.existsSync(tenantFile)) {
+      const content = fs.readFileSync(tenantFile, 'utf-8');
+      const parsed = JSON.parse(content);
+      const tenant: TenantAccountingData = {
+        companyProfile: parsed.companyProfile ? { ...DEFAULT_COMPANY, ...parsed.companyProfile } : { ...DEFAULT_COMPANY },
+        parties: Array.isArray(parsed.parties) && parsed.parties.length > 0 ? parsed.parties : [...DEFAULT_PARTIES],
+        items: Array.isArray(parsed.items) && parsed.items.length > 0 ? parsed.items : [...DEFAULT_ITEMS],
+        invoices: Array.isArray(parsed.invoices) ? parsed.invoices : [],
+        vouchers: Array.isArray(parsed.vouchers) ? parsed.vouchers : []
+      };
+      tenantMemoryCache.set(normEmail, tenant);
+      return tenant;
+    }
+  } catch (err) {
+    console.warn(`[AccountingTenantStore] Disk read error for ${normEmail}:`, err);
+  }
+
+  // 3. New Tenant initialization: seed with default company, parties, items, and seed sample invoices/vouchers
+  const initialTenant: TenantAccountingData = {
+    companyProfile: { ...DEFAULT_COMPANY },
+    parties: [...DEFAULT_PARTIES],
+    items: [...DEFAULT_ITEMS],
+    invoices: getInitialInvoices(),
+    vouchers: getInitialVouchers()
+  };
+
+  tenantMemoryCache.set(normEmail, initialTenant);
+
+  // Persist newly created tenant data to DB and disk
+  saveTenantData(normEmail, initialTenant).catch(e => {
+    console.warn(`[AccountingTenantStore] Initial save error for ${normEmail}:`, e);
+  });
+
+  return initialTenant;
+}
+
+export async function saveTenantData(userEmail: string | undefined, data: TenantAccountingData): Promise<void> {
+  const normEmail = normalizeUserEmail(userEmail);
+  tenantMemoryCache.set(normEmail, data);
+
+  // 1. Write to local disk cache
+  const dir = getAccountingDataDirectory();
+  const slug = getSafeFileSlug(normEmail);
+  const tenantFile = path.join(dir, `tenant_${slug}.json`);
+  try {
+    fs.writeFileSync(tenantFile, JSON.stringify(data, null, 2), 'utf-8');
+  } catch (err) {
+    console.warn(`[AccountingTenantStore] Disk write error for ${normEmail}:`, err);
+  }
+
+  // 2. Persist to Neon PostgreSQL Database via Prisma
+  try {
+    const prisma = getPrismaClient();
+    await prisma.accountingTenantStore.upsert({
+      where: { userEmail: normEmail },
+      update: {
+        companyProfile: JSON.stringify(data.companyProfile || {}),
+        parties: JSON.stringify(data.parties || []),
+        items: JSON.stringify(data.items || []),
+        invoices: JSON.stringify(data.invoices || []),
+        vouchers: JSON.stringify(data.vouchers || [])
+      },
+      create: {
+        userEmail: normEmail,
+        companyProfile: JSON.stringify(data.companyProfile || {}),
+        parties: JSON.stringify(data.parties || []),
+        items: JSON.stringify(data.items || []),
+        invoices: JSON.stringify(data.invoices || []),
+        vouchers: JSON.stringify(data.vouchers || [])
+      }
+    });
+  } catch (err) {
+    console.error(`[AccountingTenantStore] PostgreSQL upsert failed for ${normEmail}:`, err);
   }
 }
 
@@ -648,23 +762,26 @@ export function buildGSTInvoiceObject(params: any): GSTInvoice {
 // ==================== STORAGE CONTROLLER API ====================
 
 export class AccountingStorage {
-  static getCompany(): CompanyProfile {
-    return loadJson<CompanyProfile>('company_profile.json', DEFAULT_COMPANY);
+  static async getCompany(userEmail?: string): Promise<CompanyProfile> {
+    const tenant = await loadTenantData(userEmail);
+    return tenant.companyProfile;
   }
 
-  static updateCompany(profile: Partial<CompanyProfile>): CompanyProfile {
-    const current = this.getCompany();
-    const updated = { ...current, ...profile };
-    saveJson('company_profile.json', updated);
+  static async updateCompany(userEmail: string | undefined, profile: Partial<CompanyProfile>): Promise<CompanyProfile> {
+    const tenant = await loadTenantData(userEmail);
+    const updated = { ...tenant.companyProfile, ...profile };
+    tenant.companyProfile = updated;
+    await saveTenantData(userEmail, tenant);
     return updated;
   }
 
-  static getParties(): PartyCustomer[] {
-    return loadJson<PartyCustomer[]>('parties.json', DEFAULT_PARTIES);
+  static async getParties(userEmail?: string): Promise<PartyCustomer[]> {
+    const tenant = await loadTenantData(userEmail);
+    return tenant.parties;
   }
 
-  static addParty(party: Omit<PartyCustomer, 'id' | 'createdAt'>): PartyCustomer {
-    const parties = this.getParties();
+  static async addParty(userEmail: string | undefined, party: Omit<PartyCustomer, 'id' | 'createdAt'>): Promise<PartyCustomer> {
+    const tenant = await loadTenantData(userEmail);
     const stateObj = STATE_CODE_MAP.get(party.stateCode);
     const newParty: PartyCustomer = {
       ...party,
@@ -675,39 +792,42 @@ export class AccountingStorage {
       creditDays: party.creditDays || 30,
       createdAt: new Date().toISOString()
     };
-    parties.unshift(newParty);
-    saveJson('parties.json', parties);
+    tenant.parties.unshift(newParty);
+    await saveTenantData(userEmail, tenant);
     return newParty;
   }
 
-  static getItems(): ItemMaster[] {
-    return loadJson<ItemMaster[]>('items.json', DEFAULT_ITEMS);
+  static async getItems(userEmail?: string): Promise<ItemMaster[]> {
+    const tenant = await loadTenantData(userEmail);
+    return tenant.items;
   }
 
-  static addItem(item: Omit<ItemMaster, 'id'>): ItemMaster {
-    const items = this.getItems();
+  static async addItem(userEmail: string | undefined, item: Omit<ItemMaster, 'id'>): Promise<ItemMaster> {
+    const tenant = await loadTenantData(userEmail);
     const newItem: ItemMaster = {
       ...item,
       id: `item_${Date.now()}`
     };
-    items.unshift(newItem);
-    saveJson('items.json', items);
+    tenant.items.unshift(newItem);
+    await saveTenantData(userEmail, tenant);
     return newItem;
   }
 
-  static getInvoices(): GSTInvoice[] {
-    return loadJson<GSTInvoice[]>('invoices.json', getInitialInvoices());
+  static async getInvoices(userEmail?: string): Promise<GSTInvoice[]> {
+    const tenant = await loadTenantData(userEmail);
+    return tenant.invoices;
   }
 
-  static getInvoiceById(id: string): GSTInvoice | undefined {
-    const invoices = this.getInvoices();
+  static async getInvoiceById(userEmail: string | undefined, id: string): Promise<GSTInvoice | undefined> {
+    const invoices = await this.getInvoices(userEmail);
     return invoices.find(i => i.id === id || i.invoiceNumber === id);
   }
 
-  static async createInvoice(invoiceData: any): Promise<GSTInvoice> {
-    const company = this.getCompany();
-    const invoices = this.getInvoices();
-    const parties = this.getParties();
+  static async createInvoice(userEmail: string | undefined, invoiceData: any): Promise<GSTInvoice> {
+    const tenant = await loadTenantData(userEmail);
+    const company = tenant.companyProfile;
+    const invoices = tenant.invoices;
+    const parties = tenant.parties;
 
     let buyerParty: PartyCustomer | undefined;
     if (invoiceData.buyerId) {
@@ -728,7 +848,6 @@ export class AccountingStorage {
         createdAt: new Date().toISOString()
       };
       parties.push(buyerParty);
-      saveJson('parties.json', parties);
     }
 
     if (!buyerParty) {
@@ -755,36 +874,18 @@ export class AccountingStorage {
     });
 
     invoices.unshift(newInvoice);
-    saveJson('invoices.json', invoices);
 
     // Auto-create Sales Voucher in the Vouchers ledger
-    this.createSalesVoucherFromInvoice(newInvoice);
+    await this.createSalesVoucherFromInvoice(userEmail, newInvoice);
 
-    // Sync to Prisma
-    try {
-      const prisma = getPrismaClient();
-      await prisma.invoice.upsert({
-        where: { id: newInvoice.id },
-        update: {
-          client: newInvoice.buyer.legalName,
-          amount: newInvoice.grandTotal,
-          status: newInvoice.status === 'Paid' ? 'Paid' : 'Pending'
-        },
-        create: {
-          id: newInvoice.id,
-          date: newInvoice.invoiceDate,
-          client: newInvoice.buyer.legalName,
-          amount: newInvoice.grandTotal,
-          status: newInvoice.status === 'Paid' ? 'Paid' : 'Pending'
-        }
-      });
-    } catch (e) {}
+    await saveTenantData(userEmail, tenant);
 
     return newInvoice;
   }
 
-  static async updateInvoiceStatus(id: string, status: GSTInvoice['status']): Promise<GSTInvoice | null> {
-    const invoices = this.getInvoices();
+  static async updateInvoiceStatus(userEmail: string | undefined, id: string, status: GSTInvoice['status']): Promise<GSTInvoice | null> {
+    const tenant = await loadTenantData(userEmail);
+    const invoices = tenant.invoices;
     const index = invoices.findIndex(i => i.id === id || i.invoiceNumber === id);
     if (index === -1) return null;
 
@@ -794,10 +895,10 @@ export class AccountingStorage {
       invoices[index].balanceDue = 0;
 
       // Automatically post a Receipt Voucher for paid invoices if not already present
-      const vouchers = this.getVouchers();
+      const vouchers = tenant.vouchers;
       const existing = vouchers.find(v => v.referenceNo === invoices[index].invoiceNumber && v.voucherType === 'Receipt');
       if (!existing) {
-        this.addVoucher({
+        await this.addVoucher(userEmail, {
           voucherNumber: `RCP-${invoices[index].invoiceNumber.replace(/[^a-zA-Z0-9]/g, '')}`,
           voucherType: 'Receipt',
           date: new Date().toISOString().split('T')[0],
@@ -822,61 +923,51 @@ export class AccountingStorage {
     }
     invoices[index].updatedAt = new Date().toISOString();
 
-    saveJson('invoices.json', invoices);
-
-    try {
-      const prisma = getPrismaClient();
-      await prisma.invoice.update({
-        where: { id },
-        data: { status: status === 'Paid' ? 'Paid' : 'Pending' }
-      });
-    } catch (e) {}
-
+    await saveTenantData(userEmail, tenant);
     return invoices[index];
   }
 
-  static async deleteInvoice(id: string): Promise<boolean> {
-    const invoices = this.getInvoices();
+  static async deleteInvoice(userEmail: string | undefined, id: string): Promise<boolean> {
+    const tenant = await loadTenantData(userEmail);
+    const invoices = tenant.invoices;
     const filtered = invoices.filter(i => i.id !== id && i.invoiceNumber !== id);
     if (filtered.length === invoices.length) return false;
 
-    saveJson('invoices.json', filtered);
-
-    try {
-      const prisma = getPrismaClient();
-      await prisma.invoice.delete({ where: { id } });
-    } catch (e) {}
-
+    tenant.invoices = filtered;
+    await saveTenantData(userEmail, tenant);
     return true;
   }
 
   // ==================== VOUCHER ENGINE (F4 to F9) ====================
 
-  static getVouchers(): AccountingVoucher[] {
-    return loadJson<AccountingVoucher[]>('vouchers.json', getInitialVouchers());
+  static async getVouchers(userEmail?: string): Promise<AccountingVoucher[]> {
+    const tenant = await loadTenantData(userEmail);
+    return tenant.vouchers;
   }
 
-  static addVoucher(voucher: Omit<AccountingVoucher, 'id' | 'createdAt'>): AccountingVoucher {
-    const vouchers = this.getVouchers();
+  static async addVoucher(userEmail: string | undefined, voucher: Omit<AccountingVoucher, 'id' | 'createdAt'>): Promise<AccountingVoucher> {
+    const tenant = await loadTenantData(userEmail);
     const newVoucher: AccountingVoucher = {
       ...voucher,
       id: `VCH-${Date.now()}`,
       createdAt: new Date().toISOString()
     };
-    vouchers.unshift(newVoucher);
-    saveJson('vouchers.json', vouchers);
+    tenant.vouchers.unshift(newVoucher);
+    await saveTenantData(userEmail, tenant);
     return newVoucher;
   }
 
-  static deleteVoucher(id: string): boolean {
-    const vouchers = this.getVouchers();
+  static async deleteVoucher(userEmail: string | undefined, id: string): Promise<boolean> {
+    const tenant = await loadTenantData(userEmail);
+    const vouchers = tenant.vouchers;
     const filtered = vouchers.filter(v => v.id !== id);
     if (filtered.length === vouchers.length) return false;
-    saveJson('vouchers.json', filtered);
+    tenant.vouchers = filtered;
+    await saveTenantData(userEmail, tenant);
     return true;
   }
 
-  private static createSalesVoucherFromInvoice(inv: GSTInvoice): void {
+  private static async createSalesVoucherFromInvoice(userEmail: string | undefined, inv: GSTInvoice): Promise<void> {
     const lines = [
       {
         accountCode: '1100-AR-DEBTORS',
@@ -917,7 +1008,7 @@ export class AccountingStorage {
       });
     }
 
-    this.addVoucher({
+    await this.addVoucher(userEmail, {
       voucherNumber: `SLS-${inv.invoiceNumber}`,
       voucherType: 'Sales',
       date: inv.invoiceDate,
@@ -940,9 +1031,9 @@ export class AccountingStorage {
   /**
    * Generates Schedule III Balance Sheet compliant with Indian Companies Act, 2013
    */
-  static getBalanceSheet(): BalanceSheetReport {
-    const invoices = this.getInvoices().filter(i => i.status !== 'Cancelled');
-    const vouchers = this.getVouchers().filter(v => v.status !== 'Draft');
+  static async getBalanceSheet(userEmail?: string): Promise<BalanceSheetReport> {
+    const invoices = (await this.getInvoices(userEmail)).filter(i => i.status !== 'Cancelled');
+    const vouchers = (await this.getVouchers(userEmail)).filter(v => v.status !== 'Draft');
 
     // Aggregate figures from invoices & vouchers
     const receivables = invoices
@@ -1047,9 +1138,9 @@ export class AccountingStorage {
   /**
    * Generates Comprehensive Profit & Loss Account
    */
-  static getProfitAndLoss(): ProfitAndLossReport {
-    const invoices = this.getInvoices().filter(i => i.status !== 'Cancelled');
-    const vouchers = this.getVouchers().filter(v => v.status !== 'Draft');
+  static async getProfitAndLoss(userEmail?: string): Promise<ProfitAndLossReport> {
+    const invoices = (await this.getInvoices(userEmail)).filter(i => i.status !== 'Cancelled');
+    const vouchers = (await this.getVouchers(userEmail)).filter(v => v.status !== 'Draft');
 
     const grossSalesRevenue = invoices.reduce((sum, i) => sum + i.grandTotal, 0);
     const totalGstPaid = invoices.reduce((sum, i) => sum + i.totalTax, 0);
@@ -1122,9 +1213,9 @@ export class AccountingStorage {
   /**
    * Generates Grouped Trial Balance
    */
-  static getTrialBalance(): TrialBalanceReport {
-    const invoices = this.getInvoices().filter(i => i.status !== 'Cancelled');
-    const vouchers = this.getVouchers().filter(v => v.status !== 'Draft');
+  static async getTrialBalance(userEmail?: string): Promise<TrialBalanceReport> {
+    const invoices = (await this.getInvoices(userEmail)).filter(i => i.status !== 'Cancelled');
+    const vouchers = (await this.getVouchers(userEmail)).filter(v => v.status !== 'Draft');
 
     const accountsMap = new Map<string, { accountCode: string; accountName: string; group: string; debit: number; credit: number }>();
 
@@ -1177,9 +1268,9 @@ export class AccountingStorage {
   /**
    * Generates SAP FBL5N / Tally style Accounts Receivable & Payable Aging Analysis
    */
-  static getAgingAnalysis(): AgingAnalysisReport {
-    const invoices = this.getInvoices().filter(i => i.status !== 'Cancelled');
-    const parties = this.getParties();
+  static async getAgingAnalysis(userEmail?: string): Promise<AgingAnalysisReport> {
+    const invoices = (await this.getInvoices(userEmail)).filter(i => i.status !== 'Cancelled');
+    const parties = await this.getParties(userEmail);
 
     const receivablesAging: AgingAnalysisReport['receivablesAging'] = [];
 
@@ -1229,9 +1320,9 @@ export class AccountingStorage {
   /**
    * Generates Bank Reconciliation Statement (BRS)
    */
-  static getBankReconciliation(): BankReconciliationReport {
-    const company = this.getCompany();
-    const vouchers = this.getVouchers().filter(v => v.status === 'Posted');
+  static async getBankReconciliation(userEmail?: string): Promise<BankReconciliationReport> {
+    const company = await this.getCompany(userEmail);
+    const vouchers = (await this.getVouchers(userEmail)).filter(v => v.status === 'Posted');
 
     const transactions: BankReconciliationReport['transactions'] = vouchers
       .filter(v => v.debitAccount.includes('1010-BANK') || v.creditAccount.includes('1010-BANK'))
@@ -1279,9 +1370,9 @@ export class AccountingStorage {
 
   // ==================== STATUTORY GST REPORTING ====================
 
-  static getGSTR1Report(period: string = 'Current Quarter'): GSTR1Summary {
-    const invoices = this.getInvoices().filter(i => i.status !== 'Cancelled');
-    const company = this.getCompany();
+  static async getGSTR1Report(userEmail?: string, period: string = 'Current Quarter'): Promise<GSTR1Summary> {
+    const invoices = (await this.getInvoices(userEmail)).filter(i => i.status !== 'Cancelled');
+    const company = await this.getCompany(userEmail);
 
     let totalTaxableValue = 0;
     let totalCGST = 0;
@@ -1385,8 +1476,8 @@ export class AccountingStorage {
     };
   }
 
-  static getGSTR3BReport(): GSTR3BSummary {
-    const gstr1 = this.getGSTR1Report();
+  static async getGSTR3BReport(userEmail?: string): Promise<GSTR3BSummary> {
+    const gstr1 = await this.getGSTR1Report(userEmail);
     const simulatedItc = {
       integratedTax: Math.round(gstr1.totalIGST * 0.35 * 100) / 100,
       centralTax: Math.round(gstr1.totalCGST * 0.35 * 100) / 100,
@@ -1414,8 +1505,8 @@ export class AccountingStorage {
     };
   }
 
-  static getGeneralLedger(): JournalEntry[] {
-    const vouchers = this.getVouchers().filter(v => v.status !== 'Draft');
+  static async getGeneralLedger(userEmail?: string): Promise<JournalEntry[]> {
+    const vouchers = (await this.getVouchers(userEmail)).filter(v => v.status !== 'Draft');
     const entries: JournalEntry[] = [];
 
     for (const v of vouchers) {

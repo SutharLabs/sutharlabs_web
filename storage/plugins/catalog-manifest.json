@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-09T18:53:51.341Z",
+    "packagedAt": "2026-10-09T19:29:25.920Z",
     "archiveFileName": "wp_stock_analyzer-v1.1.2.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.2.zip",
-    "sizeBytes": 77397,
-    "checksumSha256": "dabfee5914cf902efd0418490aa17ec467f757bcb8b9744d91096ed6f766f94b"
+    "sizeBytes": 77396,
+    "checksumSha256": "059e363cb7348297f72933d97ee6b75d7d37692b44cf539948ab3eef981d31d3"
   },
   {
     "id": "wp_flow_designer",
@@ -25,11 +25,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-09T18:53:54.009Z",
+    "packagedAt": "2026-10-09T19:29:28.966Z",
     "archiveFileName": "wp_flow_designer-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.1.0.zip",
     "sizeBytes": 1870,
-    "checksumSha256": "218c93c3328c5c5bc163848ca43b6210baf9bc53c8e4928a04a3c457acd60547"
+    "checksumSha256": "af79baee28f07dbdc8f60616ca454ccaf46057be2b406b25f03df8e43a48de7e"
   },
   {
     "id": "wp_doc_nexus",
@@ -41,11 +41,11 @@
     "iconSymbol": "description",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-09T18:53:55.175Z",
+    "packagedAt": "2026-10-09T19:29:29.928Z",
     "archiveFileName": "wp_doc_nexus-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.1.0.zip",
-    "sizeBytes": 2323,
-    "checksumSha256": "3df5ea53693829758dae836148ca75a6c79561492773fbc4947d305c900838b1"
+    "sizeBytes": 2321,
+    "checksumSha256": "f1df7bcb30ca75c299103145044fe230e72cabc0d69a0520dd5c0c50218818f8"
   },
   {
     "id": "wp_accounting",
@@ -57,10 +57,10 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-09T18:53:56.653Z",
+    "packagedAt": "2026-10-09T19:29:30.883Z",
     "archiveFileName": "wp_accounting-v0.2.0.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.2.0.zip",
-    "sizeBytes": 67557,
-    "checksumSha256": "a5bc43e3243acda56b990594b592fec625b4b6a8f8f93d80efd274dceddad12e"
+    "sizeBytes": 68336,
+    "checksumSha256": "b30f3516eac0177358562183a3ac94bd8fb5ec889030a78e2ee9a09a0dc5ea16"
   }
 ]

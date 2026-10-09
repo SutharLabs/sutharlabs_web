@@ -23,6 +23,7 @@ model User {
   portfolio           Portfolio?
   workspacePlugins    UserWorkspacePlugin[]
   pluginReviews       WorkspacePluginReview[]
+  accountingStore     AccountingTenantStore?
 }
 
 // 2. Financial Ledgers
@@ -199,4 +200,20 @@ model SimulationStore {
   updatedAt          DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@map("simulation_stores")
+}
+
+// 11. Multi-Tenant Enterprise Accounting Store
+model AccountingTenantStore {
+  id             String   @id @default(uuid())
+  userEmail      String   @unique @map("user_email")
+  companyProfile String   @default("{}") @map("company_profile") // Serialized CompanyProfile JSON
+  parties        String   @default("[]") // Serialized PartyCustomer[] JSON
+  items          String   @default("[]") // Serialized ItemMaster[] JSON
+  invoices       String   @default("[]") // Serialized GSTInvoice[] JSON
+  vouchers       String   @default("[]") // Serialized AccountingVoucher[] JSON
+  updatedAt      DateTime @default(now()) @updatedAt @map("updated_at")
+
+  user           User?    @relation(fields: [userEmail], references: [email], onDelete: Cascade)
+
+  @@map("accounting_tenant_stores")
 }

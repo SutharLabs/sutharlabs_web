@@ -3,12 +3,16 @@ import { authenticateToken } from '../../middleware/auth.js';
 import { AccountingStorage } from './storage.js';
 import { validateGSTIN, COMMON_HSN_SAC_CATALOG, INDIAN_GST_STATES } from './gstEngine.js';
 
+function getUserEmail(req: any): string {
+  return req.user?.email || 'default@sutharlabs.com';
+}
+
 export function registerRoutes(router: Router) {
   // ==================== COMPANY PROFILE & GST SETTINGS ====================
 
-  router.get('/company', authenticateToken, async (_req, res) => {
+  router.get('/company', authenticateToken, async (req: any, res: any) => {
     try {
-      const company = AccountingStorage.getCompany();
+      const company = await AccountingStorage.getCompany(getUserEmail(req));
       res.json(company);
     } catch (error) {
       res.status(500).json({ error: 'Failed to retrieve company profile.' });
@@ -17,7 +21,7 @@ export function registerRoutes(router: Router) {
 
   router.put('/company', authenticateToken, async (req: any, res: any) => {
     try {
-      const updated = AccountingStorage.updateCompany(req.body);
+      const updated = await AccountingStorage.updateCompany(getUserEmail(req), req.body);
       res.json(updated);
     } catch (error) {
       res.status(500).json({ error: 'Failed to update company profile.' });
@@ -42,9 +46,9 @@ export function registerRoutes(router: Router) {
 
   // ==================== PARTIES (CUSTOMERS & VENDORS) ====================
 
-  router.get('/customers', authenticateToken, async (_req, res) => {
+  router.get('/customers', authenticateToken, async (req: any, res: any) => {
     try {
-      const parties = AccountingStorage.getParties();
+      const parties = await AccountingStorage.getParties(getUserEmail(req));
       res.json(parties);
     } catch (error) {
       res.status(500).json({ error: 'Failed to retrieve party masters.' });
@@ -65,7 +69,7 @@ export function registerRoutes(router: Router) {
         }
       }
 
-      const party = AccountingStorage.addParty({
+      const party = await AccountingStorage.addParty(getUserEmail(req), {
         name,
         tradeName,
         gstin,
@@ -87,9 +91,9 @@ export function registerRoutes(router: Router) {
 
   // ==================== ITEMS & HSN MASTER ====================
 
-  router.get('/items', authenticateToken, async (_req, res) => {
+  router.get('/items', authenticateToken, async (req: any, res: any) => {
     try {
-      const items = AccountingStorage.getItems();
+      const items = await AccountingStorage.getItems(getUserEmail(req));
       res.json(items);
     } catch (error) {
       res.status(500).json({ error: 'Failed to retrieve items catalog.' });
@@ -103,7 +107,7 @@ export function registerRoutes(router: Router) {
         return res.status(400).json({ error: 'Item name and unit price are required.' });
       }
 
-      const item = AccountingStorage.addItem({
+      const item = await AccountingStorage.addItem(getUserEmail(req), {
         code: code || `SKU-${Date.now().toString().slice(-4)}`,
         name,
         type: type || 'Services',
@@ -111,7 +115,7 @@ export function registerRoutes(router: Router) {
         unit: unit || 'NOS',
         unitPrice: parseFloat(unitPrice),
         purchasePrice: purchasePrice ? parseFloat(purchasePrice) : undefined,
-        gstRate: Number(gstRate) || 18,
+        gstRate: (Number(gstRate) || 18) as any,
         description
       });
       res.status(201).json(item);
@@ -122,9 +126,9 @@ export function registerRoutes(router: Router) {
 
   // ==================== INVOICES (RULE 46 GST TAX INVOICES) ====================
 
-  router.get('/invoices', authenticateToken, async (_req, res) => {
+  router.get('/invoices', authenticateToken, async (req: any, res: any) => {
     try {
-      const invoices = AccountingStorage.getInvoices();
+      const invoices = await AccountingStorage.getInvoices(getUserEmail(req));
       res.json(invoices);
     } catch (error) {
       res.status(500).json({ error: 'Failed to fetch invoices ledger.' });
@@ -133,7 +137,7 @@ export function registerRoutes(router: Router) {
 
   router.get('/invoices/:id', authenticateToken, async (req: any, res: any) => {
     try {
-      const invoice = AccountingStorage.getInvoiceById(req.params.id);
+      const invoice = await AccountingStorage.getInvoiceById(getUserEmail(req), req.params.id);
       if (!invoice) {
         return res.status(404).json({ error: 'Invoice not found.' });
       }
@@ -177,7 +181,7 @@ export function registerRoutes(router: Router) {
         ];
       }
 
-      const created = await AccountingStorage.createInvoice({
+      const created = await AccountingStorage.createInvoice(getUserEmail(req), {
         buyerId,
         buyerName: buyerName || client,
         buyerGstin,
@@ -201,7 +205,7 @@ export function registerRoutes(router: Router) {
   router.patch('/invoices/:id/status', authenticateToken, async (req: any, res: any) => {
     try {
       const { status } = req.body;
-      const updated = await AccountingStorage.updateInvoiceStatus(req.params.id, status);
+      const updated = await AccountingStorage.updateInvoiceStatus(getUserEmail(req), req.params.id, status);
       if (!updated) {
         return res.status(404).json({ error: 'Invoice not found.' });
       }
@@ -213,7 +217,7 @@ export function registerRoutes(router: Router) {
 
   router.delete('/invoices/:id', authenticateToken, async (req: any, res: any) => {
     try {
-      const success = await AccountingStorage.deleteInvoice(req.params.id);
+      const success = await AccountingStorage.deleteInvoice(getUserEmail(req), req.params.id);
       if (!success) {
         return res.status(404).json({ error: 'Invoice not found or could not be removed.' });
       }
@@ -225,9 +229,9 @@ export function registerRoutes(router: Router) {
 
   // ==================== TALLY / SAP VOUCHERS (F4 TO F9) ====================
 
-  router.get('/vouchers', authenticateToken, async (_req, res) => {
+  router.get('/vouchers', authenticateToken, async (req: any, res: any) => {
     try {
-      const vouchers = AccountingStorage.getVouchers();
+      const vouchers = await AccountingStorage.getVouchers(getUserEmail(req));
       res.json(vouchers);
     } catch (error) {
       res.status(500).json({ error: 'Failed to retrieve vouchers register.' });
@@ -268,7 +272,7 @@ export function registerRoutes(router: Router) {
       const prefix = voucherType.substring(0, 3).toUpperCase();
       const num = voucherNumber || `${prefix}-${Date.now().toString().slice(-6)}`;
 
-      const created = AccountingStorage.addVoucher({
+      const created = await AccountingStorage.addVoucher(getUserEmail(req), {
         voucherNumber: num,
         voucherType,
         date: date || today,
@@ -293,7 +297,7 @@ export function registerRoutes(router: Router) {
 
   router.delete('/vouchers/:id', authenticateToken, async (req: any, res: any) => {
     try {
-      const success = AccountingStorage.deleteVoucher(req.params.id);
+      const success = await AccountingStorage.deleteVoucher(getUserEmail(req), req.params.id);
       if (!success) {
         return res.status(404).json({ error: 'Voucher not found.' });
       }
@@ -305,45 +309,45 @@ export function registerRoutes(router: Router) {
 
   // ==================== SAP / TALLY FINANCIAL STATEMENTS ====================
 
-  router.get('/reports/balance-sheet', authenticateToken, async (_req, res) => {
+  router.get('/reports/balance-sheet', authenticateToken, async (req: any, res: any) => {
     try {
-      const bs = AccountingStorage.getBalanceSheet();
+      const bs = await AccountingStorage.getBalanceSheet(getUserEmail(req));
       res.json(bs);
     } catch (error) {
       res.status(500).json({ error: 'Failed to generate Balance Sheet.' });
     }
   });
 
-  router.get('/reports/profit-loss', authenticateToken, async (_req, res) => {
+  router.get('/reports/profit-loss', authenticateToken, async (req: any, res: any) => {
     try {
-      const pl = AccountingStorage.getProfitAndLoss();
+      const pl = await AccountingStorage.getProfitAndLoss(getUserEmail(req));
       res.json(pl);
     } catch (error) {
       res.status(500).json({ error: 'Failed to generate Profit & Loss statement.' });
     }
   });
 
-  router.get('/reports/trial-balance', authenticateToken, async (_req, res) => {
+  router.get('/reports/trial-balance', authenticateToken, async (req: any, res: any) => {
     try {
-      const tb = AccountingStorage.getTrialBalance();
+      const tb = await AccountingStorage.getTrialBalance(getUserEmail(req));
       res.json(tb);
     } catch (error) {
       res.status(500).json({ error: 'Failed to generate Trial Balance.' });
     }
   });
 
-  router.get('/reports/aging', authenticateToken, async (_req, res) => {
+  router.get('/reports/aging', authenticateToken, async (req: any, res: any) => {
     try {
-      const aging = AccountingStorage.getAgingAnalysis();
+      const aging = await AccountingStorage.getAgingAnalysis(getUserEmail(req));
       res.json(aging);
     } catch (error) {
       res.status(500).json({ error: 'Failed to generate Aging Analysis.' });
     }
   });
 
-  router.get('/reports/brs', authenticateToken, async (_req, res) => {
+  router.get('/reports/brs', authenticateToken, async (req: any, res: any) => {
     try {
-      const brs = AccountingStorage.getBankReconciliation();
+      const brs = await AccountingStorage.getBankReconciliation(getUserEmail(req));
       res.json(brs);
     } catch (error) {
       res.status(500).json({ error: 'Failed to generate Bank Reconciliation.' });
@@ -355,25 +359,25 @@ export function registerRoutes(router: Router) {
   router.get('/reports/gstr-1', authenticateToken, async (req: any, res: any) => {
     try {
       const period = (req.query.period as string) || 'Current Quarter';
-      const report = AccountingStorage.getGSTR1Report(period);
+      const report = await AccountingStorage.getGSTR1Report(getUserEmail(req), period);
       res.json(report);
     } catch (error) {
       res.status(500).json({ error: 'Failed to generate GSTR-1 summary.' });
     }
   });
 
-  router.get('/reports/gstr-3b', authenticateToken, async (_req, res) => {
+  router.get('/reports/gstr-3b', authenticateToken, async (req: any, res: any) => {
     try {
-      const report = AccountingStorage.getGSTR3BReport();
+      const report = await AccountingStorage.getGSTR3BReport(getUserEmail(req));
       res.json(report);
     } catch (error) {
       res.status(500).json({ error: 'Failed to generate GSTR-3B summary.' });
     }
   });
 
-  router.get('/reports/ledger', authenticateToken, async (_req, res) => {
+  router.get('/reports/ledger', authenticateToken, async (req: any, res: any) => {
     try {
-      const ledger = AccountingStorage.getGeneralLedger();
+      const ledger = await AccountingStorage.getGeneralLedger(getUserEmail(req));
       res.json(ledger);
     } catch (error) {
       res.status(500).json({ error: 'Failed to generate General Ledger.' });
