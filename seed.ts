@@ -232,6 +232,14 @@ async function seed() {
       checksumSha256: "5994471abb01112afcc18159f6cc74b4f511b99806da59b3caf5a9c173cacfc5",
       minEngineVersion: "0.1.0",
       publishedBy: "Suthar Suresh"
+    },
+    {
+      pluginId: "wp_accounting",
+      version: "0.2.0",
+      changelog: "Beta release: Enterprise Indian GST Compliance (Rule 46 Tax Invoicing, Intra/Inter-state POS engine, GSTR-1 & GSTR-3B return generation, E-Invoicing IRN & QR, and Double-Entry General Ledger).",
+      checksumSha256: "4a0f1cb694a2737d711221e73893aa9220d919a2b10de5805958a762599a2a8a",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh"
     }
   ];
 
