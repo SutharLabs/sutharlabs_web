@@ -2,7 +2,8 @@
 
 > **Version:** v0.2.1 (Beta)  
 > **Standard:** CBIC GST Rules 2017–2026, Section 31 of CGST Act, Rule 46 (Tax Invoice Specifications)  
-> **Inspiration / Parity:** Frappe Books & ERPNext India Compliance (`resilient-tech/india-compliance`)
+> **Inspiration / Parity:** Frappe Books & ERPNext India Compliance (`resilient-tech/india-compliance`)  
+> **Detailed Specification:** See [Architecture & Code Logic Specification](../../../docs/accounting_plugin_architecture_and_logic.md)
 
 ---
 
