@@ -117,11 +117,11 @@ async function seed() {
     {
       id: "wp_doc_nexus",
       name: "Doc Nexus",
-      category: "Documentation",
+      category: "Creativity & Docs",
       type: "Native",
-      description: "Collaborative markdown documentation studio with live preview, syntax highlighting, and cloud persistence.",
-      iconSymbol: "menu_book",
-      version: "0.1.0"
+      description: "Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations.",
+      iconSymbol: "auto_stories",
+      version: "0.3.0"
     },
     {
       id: "wp_accounting",

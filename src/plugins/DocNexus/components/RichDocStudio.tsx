@@ -1,0 +1,253 @@
+import React, { useState } from 'react';
+import { RichDocPage, RichDocState } from '../types.js';
+import { 
+  FileText, 
+  Plus, 
+  Trash2, 
+  Printer, 
+  ChevronLeft, 
+  ChevronRight, 
+  Sliders, 
+  Layers, 
+  Sparkles 
+} from 'lucide-react';
+
+interface RichDocStudioProps {
+  content: string;
+  onChangeContent: (newContent: string) => void;
+  theme?: 'dark' | 'light';
+}
+
+const DEFAULT_DOC_STATE: RichDocState = {
+  paperSize: 'A4',
+  orientation: 'portrait',
+  margins: 'normal',
+  headerText: 'SUTHARLABS SOVEREIGN DOCUMENT',
+  footerText: 'Page {page} of {total} • Strict Confidentiality',
+  showPageNumbers: true,
+  pages: [
+    {
+      id: 'p1',
+      title: 'ENTERPRISE PROJECT CHARTER',
+      watermark: 'CONFIDENTIAL',
+      body: '1. EXECUTIVE SUMMARY\nThis document establishes the architecture deliverables and execution plan.\n\n2. TECHNICAL CRITERIA\n- Multi-tenant data segregation\n- Microservice sequence compilation\n- Rule 46 GST Invoicing compliance'
+    }
+  ]
+};
+
+export default function RichDocStudio({
+  content,
+  onChangeContent,
+  theme = 'dark'
+}: RichDocStudioProps) {
+  const isLight = theme === 'light';
+
+  const docState: RichDocState = React.useMemo(() => {
+    try {
+      if (!content) return DEFAULT_DOC_STATE;
+      const parsed = JSON.parse(content);
+      return { ...DEFAULT_DOC_STATE, ...parsed };
+    } catch {
+      return DEFAULT_DOC_STATE;
+    }
+  }, [content]);
+
+  const [activePageIndex, setActivePageIndex] = useState(0);
+  const [fontFamily, setFontFamily] = useState<'sans' | 'serif' | 'mono'>('sans');
+  const [fontSize, setFontSize] = useState<number>(14);
+
+  const activePage = docState.pages[activePageIndex] || docState.pages[0];
+
+  const updateDoc = (newState: Partial<RichDocState>) => {
+    const updated = { ...docState, ...newState };
+    onChangeContent(JSON.stringify(updated));
+  };
+
+  const handleUpdateActivePage = (field: keyof RichDocPage, value: string) => {
+    const updatedPages = docState.pages.map((p, idx) =>
+      idx === activePageIndex ? { ...p, [field]: value } : p
+    );
+    updateDoc({ pages: updatedPages });
+  };
+
+  const handleAddPage = () => {
+    const newPage: RichDocPage = {
+      id: `p_${Date.now().toString(36)}`,
+      title: `SECTION ${docState.pages.length + 1}`,
+      body: 'Type page content here...',
+      watermark: activePage?.watermark || ''
+    };
+    const updatedPages = [...docState.pages, newPage];
+    updateDoc({ pages: updatedPages });
+    setActivePageIndex(updatedPages.length - 1);
+  };
+
+  const handleDeletePage = () => {
+    if (docState.pages.length <= 1) return;
+    const updatedPages = docState.pages.filter((_, idx) => idx !== activePageIndex);
+    updateDoc({ pages: updatedPages });
+    setActivePageIndex(Math.max(0, activePageIndex - 1));
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden select-none">
+      {/* Studio Ribbon Toolbar */}
+      <div className={`p-2.5 border-b flex items-center justify-between gap-3 font-mono text-xs z-10 ${
+        isLight ? 'bg-slate-100 border-slate-200' : 'bg-[#141418] border-outline/15'
+      }`}>
+        {/* Left: Page Navigator */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setActivePageIndex(p => Math.max(0, p - 1))}
+            disabled={activePageIndex === 0}
+            className="p-1 rounded hover:bg-white/10 disabled:opacity-30"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <span className="font-bold text-on-surface">
+            Page {activePageIndex + 1} of {docState.pages.length}
+          </span>
+          <button
+            onClick={() => setActivePageIndex(p => Math.min(docState.pages.length - 1, p + 1))}
+            disabled={activePageIndex === docState.pages.length - 1}
+            className="p-1 rounded hover:bg-white/10 disabled:opacity-30"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+          <button
+            onClick={handleAddPage}
+            className="px-2 py-1 rounded bg-[#00dbe7]/15 text-[#74f5ff] hover:bg-[#00dbe7]/25 flex items-center gap-1 font-bold ml-2"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            Add Page
+          </button>
+          {docState.pages.length > 1 && (
+            <button
+              onClick={handleDeletePage}
+              className="p-1 rounded hover:bg-red-500/20 text-red-400"
+              title="Delete Current Page"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
+
+        {/* Center: Formatting & Typography */}
+        <div className="flex items-center gap-2">
+          <select
+            value={fontFamily}
+            onChange={e => setFontFamily(e.target.value as any)}
+            className={`border rounded px-2 py-1 text-xs ${
+              isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-surface-container-low border-outline/20 text-white'
+            }`}
+          >
+            <option value="sans">Modern Sans</option>
+            <option value="serif">Executive Serif</option>
+            <option value="mono">Technical Mono</option>
+          </select>
+          <select
+            value={fontSize}
+            onChange={e => setFontSize(Number(e.target.value))}
+            className={`border rounded px-2 py-1 text-xs ${
+              isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-surface-container-low border-outline/20 text-white'
+            }`}
+          >
+            <option value={12}>12pt</option>
+            <option value={14}>14pt</option>
+            <option value={16}>16pt</option>
+            <option value={18}>18pt</option>
+          </select>
+          <select
+            value={activePage.watermark || ''}
+            onChange={e => handleUpdateActivePage('watermark', e.target.value)}
+            className={`border rounded px-2 py-1 text-xs ${
+              isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-surface-container-low border-outline/20 text-white'
+            }`}
+          >
+            <option value="">No Watermark</option>
+            <option value="CONFIDENTIAL">CONFIDENTIAL</option>
+            <option value="DRAFT">DRAFT</option>
+            <option value="OFFICIAL">OFFICIAL</option>
+            <option value="NDA PROTECTED">NDA PROTECTED</option>
+          </select>
+        </div>
+
+        {/* Right: Print Preview */}
+        <button
+          onClick={handlePrint}
+          className="px-3 py-1.5 rounded font-bold uppercase tracking-wider flex items-center gap-1.5 bg-[#ce5dff]/20 text-[#ebb2ff] hover:bg-[#ce5dff]/30 border border-[#ce5dff]/30 cursor-pointer"
+        >
+          <Printer className="w-3.5 h-3.5" />
+          Print / PDF
+        </button>
+      </div>
+
+      {/* Center Paginated A4 Viewport */}
+      <div className={`flex-1 overflow-auto p-8 flex justify-center custom-scrollbar ${isLight ? 'bg-slate-200/80' : 'bg-[#050507]'}`}>
+        {/* A4 Sheet Container */}
+        <div 
+          className={`w-[750px] min-h-[1050px] shadow-2xl rounded-sm p-14 flex flex-col justify-between relative border transition-all ${
+            isLight 
+              ? 'bg-white text-slate-900 border-slate-300' 
+              : 'bg-[#0f0f13] text-white border-outline/25 shadow-[0_0_30px_rgba(0,0,0,0.8)]'
+          } ${fontFamily === 'serif' ? 'font-serif' : fontFamily === 'mono' ? 'font-mono' : 'font-sans'}`}
+        >
+          {/* Watermark Diagonal Overlay */}
+          {activePage.watermark && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none z-0">
+              <span className="text-7xl font-black opacity-5 tracking-widest -rotate-45 font-sans border-8 border-current px-8 py-4">
+                {activePage.watermark}
+              </span>
+            </div>
+          )}
+
+          {/* Running Header */}
+          <div className="border-b pb-3 flex justify-between items-center text-[11px] font-mono opacity-50 z-10">
+            <input
+              type="text"
+              value={docState.headerText}
+              onChange={e => updateDoc({ headerText: e.target.value })}
+              className="bg-transparent border-none focus:outline-none w-full font-mono text-[11px]"
+            />
+            <span className="shrink-0 ml-4 font-bold uppercase">{docState.paperSize}</span>
+          </div>
+
+          {/* Page Body Content */}
+          <div className="flex-1 py-8 z-10 flex flex-col space-y-4">
+            <input
+              type="text"
+              value={activePage.title}
+              onChange={e => handleUpdateActivePage('title', e.target.value)}
+              placeholder="DOCUMENT / SECTION TITLE"
+              className="text-2xl font-bold tracking-tight bg-transparent border-none focus:outline-none w-full uppercase"
+            />
+            <textarea
+              value={activePage.body}
+              onChange={e => handleUpdateActivePage('body', e.target.value)}
+              placeholder="Start drafting legal or executive document content..."
+              style={{ fontSize: `${fontSize}px` }}
+              className="flex-1 w-full bg-transparent border-none focus:outline-none resize-none leading-relaxed custom-scrollbar"
+            />
+          </div>
+
+          {/* Running Footer */}
+          <div className="border-t pt-3 flex justify-between items-center text-[11px] font-mono opacity-50 z-10">
+            <input
+              type="text"
+              value={docState.footerText.replace('{page}', String(activePageIndex + 1)).replace('{total}', String(docState.pages.length))}
+              onChange={e => updateDoc({ footerText: e.target.value })}
+              className="bg-transparent border-none focus:outline-none w-2/3 font-mono text-[11px]"
+            />
+            <span className="font-bold">
+              Page {activePageIndex + 1} of {docState.pages.length}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -44,12 +44,12 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
   {
     dirName: 'DocNexus',
     id: 'wp_doc_nexus',
-    name: 'Markdown Documentation & Knowledge Base',
-    version: '0.1.0',
-    category: 'Documentation',
+    name: 'Doc Nexus',
+    version: '0.3.0',
+    category: 'Creativity & Docs',
     type: 'Native',
-    description: 'Collaborative split-pane markdown documentation editor with live render, code snippet styling, and cloud persistence.',
-    iconSymbol: 'description',
+    description: 'Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations.',
+    iconSymbol: 'auto_stories',
     minEngineVersion: '0.1.0'
   },
   {

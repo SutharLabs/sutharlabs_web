@@ -1,87 +1,140 @@
 import { Router } from "express";
-import { getPrismaClient } from "../../../api/_utils.js";
-import { authenticateToken } from "../../middleware/auth.js";
+import { optionalAuth } from "../../middleware/auth.js";
+import { BUILT_IN_TEMPLATES } from "./templates.js";
+import {
+  listDocuments,
+  getDocument,
+  saveDocument,
+  createDocument,
+  deleteDocument,
+  duplicateDocument,
+  getLegacyDocument,
+  saveLegacyDocument
+} from "./storage.js";
 
-const prisma = getPrismaClient();
-
-const DEFAULT_DOC_CONTENT = `# DocNexus Document Sandbox Guide
-
-Welcome to the **DocNexus Sovereign Document Engine**, a high-performance Markdown and diagramming playground!
-
-> [!NOTE]
-> This applet represents a complete TypeScript implementation of the enterprise-grade DocNexus core.
-
-## Feature Showcases
-
-### 1. Smart Sequence Diagram Compiler
-Type standard sequence flows below to compile an interactive calling diagram:
-
-\`\`\`sequence
-Alice -> Bob: Request API Token
-Bob -> Alice: Validate HMAC Signature
-Alice -> Gateway: Sync Telemetry
-\`\`\`
-
-### 2. Network Topology Visualizer
-Adorn your structural documents with professional node topologies instantly:
-
-\`\`\`topology
-[ClientApp] === [NginxGateway]
-[NginxGateway] === [ExpressAPI]
-[ExpressAPI] --- [PostgreSQL]
-[ExpressAPI] --- [RedisCache]
-\`\`\`
-
-### 3. High-Density Data Tables
-ASCII tables are parsed dynamically into modern dashboard grids:
-
-| Service Node | Role | Telemetry | Status |
-| :--- | :--- | :---: | :---: |
-| VM-East-01 | Primary API | 14ms | ACTIVE |
-| VM-East-02 | Secondary Node | 18ms | STANDBY |
-| db-sqlite-01 | Core Database | 4ms | SYNCHRONIZED |
-`;
+function resolveUserEmail(req: any): string {
+  return req.user?.email || "guest@sutharlabs.com";
+}
 
 export function registerRoutes(router: Router) {
-  // GET /document or /api/docnexus/document
-  router.get("/document", authenticateToken, async (_req, res) => {
+  // GET /templates - Get pre-configured gallery of built-in templates
+  router.get("/templates", (_req, res) => {
+    res.json(BUILT_IN_TEMPLATES);
+  });
+
+  // GET /documents - List all user documents
+  router.get("/documents", optionalAuth, async (req: any, res) => {
     try {
-      let doc = await prisma.document.findUnique({
-        where: { id: "doc_nexus_default" }
-      });
-
-      if (!doc) {
-        doc = await prisma.document.create({
-          data: {
-            id: "doc_nexus_default",
-            title: "DocNexus Sovereign Guide",
-            content: DEFAULT_DOC_CONTENT
-          }
-        });
-      }
-
-      res.json(doc);
+      const userEmail = resolveUserEmail(req);
+      const docs = await listDocuments(userEmail);
+      res.json(docs);
     } catch (error) {
-      res.status(500).json({ error: "Failed to retrieve docnexus document state." });
+      res.status(500).json({ error: "Failed to retrieve documents." });
     }
   });
 
-  // POST /document or /api/docnexus/document
-  router.post("/document", authenticateToken, async (req: any, res: any) => {
+  // POST /documents - Create new document
+  router.post("/documents", optionalAuth, async (req: any, res) => {
+    try {
+      const userEmail = resolveUserEmail(req);
+      const { title, format, content, templateId, metadata } = req.body;
+      const created = await createDocument(userEmail, {
+        title,
+        format,
+        content,
+        templateId,
+        metadata
+      });
+      res.status(201).json(created);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to create document." });
+    }
+  });
+
+  // GET /documents/:id - Fetch single document
+  router.get("/documents/:id", optionalAuth, async (req: any, res: any) => {
+    try {
+      const userEmail = resolveUserEmail(req);
+      const doc = await getDocument(userEmail, req.params.id);
+      if (!doc) {
+        return res.status(404).json({ error: "Document not found." });
+      }
+      res.json(doc);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to retrieve document details." });
+    }
+  });
+
+  // PUT /documents/:id - Save / Update document
+  router.put("/documents/:id", optionalAuth, async (req: any, res: any) => {
+    try {
+      const userEmail = resolveUserEmail(req);
+      const { title, format, content, metadata } = req.body;
+      const updated = await saveDocument(userEmail, {
+        id: req.params.id,
+        title,
+        format,
+        content,
+        metadata
+      });
+      res.json(updated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save document." });
+    }
+  });
+
+  // DELETE /documents/:id - Remove document
+  router.delete("/documents/:id", optionalAuth, async (req: any, res) => {
+    try {
+      const userEmail = resolveUserEmail(req);
+      const success = await deleteDocument(userEmail, req.params.id);
+      res.json({ success });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to delete document." });
+    }
+  });
+
+  // POST /documents/:id/duplicate - 1-Click clone document
+  router.post("/documents/:id/duplicate", optionalAuth, async (req: any, res: any) => {
+    try {
+      const userEmail = resolveUserEmail(req);
+      const duplicated = await duplicateDocument(userEmail, req.params.id);
+      if (!duplicated) {
+        return res.status(404).json({ error: "Source document not found for duplication." });
+      }
+      res.status(201).json(duplicated);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to duplicate document." });
+    }
+  });
+
+  // Backward compatibility legacy routes for /document
+  router.get("/document", optionalAuth, async (_req, res) => {
+    try {
+      const doc = await getLegacyDocument();
+      res.json({
+        id: "doc_nexus_default",
+        ...doc
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to retrieve legacy document state." });
+    }
+  });
+
+  router.post("/document", optionalAuth, async (req: any, res: any) => {
     const { title, content } = req.body;
     if (content === undefined) {
       return res.status(400).json({ error: "Document content is required." });
     }
-
     try {
-      const updated = await prisma.document.upsert({
-        where: { id: "doc_nexus_default" },
-        update: { title: title || "DocNexus Guide", content },
-        create: { id: "doc_nexus_default", title: title || "DocNexus Guide", content }
+      await saveLegacyDocument(title || "DocNexus Guide", content);
+      res.json({
+        id: "doc_nexus_default",
+        title: title || "DocNexus Guide",
+        content
       });
-      res.json(updated);
     } catch (error) {
-      res.status(500).json({ error: "Failed to save docnexus document." });
+      res.status(500).json({ error: "Failed to save legacy document." });
     }
   });
 }

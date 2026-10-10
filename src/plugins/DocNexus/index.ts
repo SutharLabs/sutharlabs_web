@@ -1,10 +1,10 @@
 import { manifest } from "./manifest.js";
-import DocNexusView from "../../components/DocNexusView";
+import DocNexusStudio from "./components/DocNexusStudio.js";
 
 export const DocNexusPlugin = {
   manifest,
-  View: DocNexusView
+  View: DocNexusStudio
 };
 
-export { manifest, DocNexusView as View };
+export { manifest, DocNexusStudio as View };
 export default DocNexusPlugin;
