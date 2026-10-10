@@ -103,6 +103,9 @@ export interface DocNexusMetadata {
   wordCount?: number;
   elementCount?: number;
   theme?: string;
+  pdfDataUrl?: string;
+  imageSrc?: string;
+  [key: string]: any;
 }
 
 export interface DocNexusDocument {

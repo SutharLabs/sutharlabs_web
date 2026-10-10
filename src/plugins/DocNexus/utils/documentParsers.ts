@@ -407,13 +407,16 @@ export async function parsePDF(buffer: ArrayBuffer, fileName: string): Promise<P
     }
   }
 
-  // Construct PDF base64 Data URL for optional preview embed
-  let base64 = '';
-  const chunkSize = 8192;
-  for (let i = 0; i < bytes.length; i += chunkSize) {
-    base64 += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
+  // Optional compact Data URL for small PDF files to prevent quota exhaustion
+  let pdfDataUrl = '';
+  if (bytes.length <= 64 * 1024) {
+    let base64 = '';
+    const chunkSize = 8192;
+    for (let i = 0; i < bytes.length; i += chunkSize) {
+      base64 += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
+    }
+    pdfDataUrl = `data:application/pdf;base64,${btoa(base64)}`;
   }
-  const pdfDataUrl = `data:application/pdf;base64,${btoa(base64)}`;
 
   // Construct Executive A4 multi-page document
   const pages: RichDocPage[] = [];

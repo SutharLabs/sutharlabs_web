@@ -111,7 +111,7 @@ export default function RichDocStudio({
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="font-semibold text-xs px-1 text-slate-700 dark:text-slate-200">
+          <span className={`font-semibold text-xs px-1 ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
             Page {activePageIndex + 1} of {docState.pages.length}
           </span>
           <button
@@ -199,7 +199,7 @@ export default function RichDocStudio({
               : 'bg-white/[0.05] hover:bg-white/[0.1] border-white/10 text-slate-200'
           }`}
         >
-          <Printer className="w-3.5 h-3.5 text-indigo-500 dark:text-cyan-400" />
+          <Printer className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
           <span>Print / PDF</span>
         </button>
       </div>

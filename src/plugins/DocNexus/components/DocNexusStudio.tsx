@@ -12,6 +12,7 @@ import ExportModal from './ExportModal.js';
 import CommandPaletteModal from './CommandPaletteModal.js';
 import OpenLocalWorkspaceModal from './OpenLocalWorkspaceModal.js';
 import CollapsibleLogDrawer from '../../../components/CollapsibleLogDrawer.js';
+import { saveVault, loadVault } from '../utils/vaultStorage.js';
 import { 
   Save, 
   Download, 
@@ -115,10 +116,19 @@ export default function DocNexusStudio({
     });
   };
 
-  // Save to localStorage cache on update
+  // Persist to quota-safe IndexedDB and storage cache on update
   useEffect(() => {
-    localStorage.setItem('sutharlabs_docnexus_vault', JSON.stringify(documents));
+    saveVault(documents);
   }, [documents]);
+
+  // Restore authoritative documents from IndexedDB storage on mount
+  useEffect(() => {
+    loadVault().then(savedDocs => {
+      if (savedDocs && savedDocs.length > 0) {
+        setDocuments(savedDocs);
+      }
+    });
+  }, []);
 
   // Global Ctrl+K / Cmd+K Command Palette Keyboard Listener
   useEffect(() => {
@@ -366,7 +376,7 @@ export default function DocNexusStudio({
           </div>
           
           <div className="min-w-0 flex items-center gap-1.5 text-xs font-sans">
-            <span className="hidden sm:inline font-medium text-slate-400 dark:text-slate-500 text-[11px] shrink-0">
+            <span className={`hidden sm:inline font-medium text-[11px] shrink-0 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
               {activeDocument?.metadata?.category || 'Vault'} /
             </span>
             
@@ -376,8 +386,10 @@ export default function DocNexusStudio({
               value={activeDocument?.title || 'Untitled Document'}
               onChange={e => handleTitleChange(e.target.value)}
               placeholder="Document Title"
-              className={`bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-white/20 focus:border-indigo-500 dark:focus:border-cyan-400 text-xs sm:text-sm font-semibold tracking-tight focus:outline-none truncate text-slate-900 dark:text-white font-sans w-28 sm:w-36 md:w-48 px-1 py-0.5 rounded transition-colors ${
-                isLight ? 'hover:bg-slate-100/60' : 'hover:bg-white/[0.04]'
+              className={`bg-transparent border-b border-transparent text-xs sm:text-sm font-semibold tracking-tight focus:outline-none truncate font-sans w-28 sm:w-36 md:w-48 px-1 py-0.5 rounded transition-colors ${
+                isLight 
+                  ? 'text-slate-900 hover:bg-slate-100/60 hover:border-slate-300 focus:border-indigo-500' 
+                  : 'text-white hover:bg-white/[0.04] hover:border-white/20 focus:border-cyan-400'
               }`}
             />
 
@@ -432,7 +444,7 @@ export default function DocNexusStudio({
             }`}
             title="Quick Find & Command Palette (Ctrl+K)"
           >
-            <Search className="w-3.5 h-3.5 text-cyan-500" />
+            <Search className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
             <kbd className={`hidden xl:inline text-[9px] px-1 py-0.5 rounded font-mono font-medium ${
               isLight ? 'bg-slate-100 text-slate-500 border border-slate-200' : 'bg-black/40 text-slate-400 border border-white/10'
             }`}>
@@ -474,7 +486,9 @@ export default function DocNexusStudio({
             disabled={isSaving}
             className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-medium flex items-center gap-1.5 cursor-pointer border transition-all shadow-xs ${
               saveSuccess
-                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
+                ? isLight 
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300' 
+                  : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                 : isLight
                   ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900'
                   : 'bg-white/[0.05] hover:bg-white/[0.09] text-white border-white/10'
@@ -488,7 +502,7 @@ export default function DocNexusStudio({
               </>
             ) : (
               <>
-                <Save className="w-3.5 h-3.5 text-indigo-500 dark:text-cyan-400" />
+                <Save className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
                 <span className="hidden xl:inline text-xs">{isSaving ? 'Saving...' : 'Save'}</span>
               </>
             )}

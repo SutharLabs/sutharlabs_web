@@ -53,47 +53,41 @@ const FORMAT_CONFIG: Record<DocumentFormat, {
   icon: any; 
   color: string; 
   bg: string;
-  badgeBg: string;
 }> = {
   canvas: { 
     label: 'Edgeless Canvas', 
     description: 'Vector whiteboard, architecture & mindmaps',
     icon: Shapes, 
     color: '#a855f7', 
-    bg: 'rgba(168, 85, 247, 0.12)',
-    badgeBg: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+    bg: 'rgba(168, 85, 247, 0.12)'
   },
   markdown: { 
     label: 'Technical Docs', 
     description: 'Markdown specs, code blocks & mermaid diagrams',
     icon: FileText, 
     color: '#06b6d4', 
-    bg: 'rgba(6, 182, 212, 0.12)',
-    badgeBg: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+    bg: 'rgba(6, 182, 212, 0.12)'
   },
   sheet: { 
     label: 'Database Grid', 
     description: 'Spreadsheets, formulas & structured datasets',
     icon: Table, 
     color: '#eab308', 
-    bg: 'rgba(234, 179, 8, 0.12)',
-    badgeBg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+    bg: 'rgba(234, 179, 8, 0.12)'
   },
   richtext: { 
     label: 'Executive A4', 
     description: 'Paginated corporate briefs, memos & print ready',
     icon: Layout, 
     color: '#10b981', 
-    bg: 'rgba(16, 185, 129, 0.12)',
-    badgeBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+    bg: 'rgba(16, 185, 129, 0.12)'
   },
   slides: { 
     label: 'Slide Deck', 
     description: '16:9 widescreen presentation pitch decks',
     icon: Presentation, 
     color: '#f43f5e', 
-    bg: 'rgba(244, 63, 94, 0.12)',
-    badgeBg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+    bg: 'rgba(244, 63, 94, 0.12)'
   }
 };
 
@@ -144,10 +138,10 @@ export default function DocExplorerSidebar({
               <FolderOpen className="w-4 h-4" />
             </div>
             <div>
-              <span className="font-sans text-xs font-bold text-slate-900 dark:text-white block leading-tight">
+              <span className={`font-sans text-xs font-bold block leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                 Document Vault
               </span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+              <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                 {documents.length} sovereign files
               </span>
             </div>
@@ -189,7 +183,7 @@ export default function DocExplorerSidebar({
                     ? 'bg-white/95 border-slate-200 text-slate-800 shadow-slate-300/50' 
                     : 'bg-[#12121a]/95 border-white/10 text-white shadow-black/80'
                 }`}>
-                  <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                  <div className={`px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                     Select Paradigm Blueprint
                   </div>
                   {(Object.keys(FORMAT_CONFIG) as DocumentFormat[]).map(fmt => {
@@ -213,10 +207,10 @@ export default function DocExplorerSidebar({
                           <IconComp className="w-4 h-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <span className="block font-semibold text-xs text-slate-900 dark:text-white">
+                          <span className={`block font-semibold text-xs ${isLight ? 'text-slate-900' : 'text-white'}`}>
                             {cfg.label}
                           </span>
-                          <span className="block text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                          <span className={`block text-[10px] leading-snug ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                             {cfg.description}
                           </span>
                         </div>
@@ -227,7 +221,7 @@ export default function DocExplorerSidebar({
                   {/* Local Disk Option inside dropdown */}
                   {onOpenLocalWorkspace && (
                     <>
-                      <div className="my-1 border-t border-slate-200/80 dark:border-white/10" />
+                      <div className={`my-1 border-t ${isLight ? 'border-slate-200' : 'border-white/10'}`} />
                       <button
                         onClick={() => {
                           setIsCreateMenuOpen(false);
@@ -255,9 +249,9 @@ export default function DocExplorerSidebar({
                     ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-xs' 
                     : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
                 }`}
-                title="Browse Local Document File (.md, .csv, .json, .txt)"
+                title="Browse Local Document File (.md, .csv, .json, .txt, .pdf, .docx, .pptx)"
               >
-                <FileUp className="w-3.5 h-3.5 text-cyan-400" />
+                <FileUp className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
                 <span>Browse File</span>
               </button>
 
@@ -270,7 +264,7 @@ export default function DocExplorerSidebar({
                 }`}
                 title="Load Local Project Directory"
               >
-                <FolderInput className="w-3.5 h-3.5 text-indigo-500 dark:text-cyan-400" />
+                <FolderInput className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
                 <span>Load Folder</span>
               </button>
             </div>
@@ -303,7 +297,11 @@ export default function DocExplorerSidebar({
               {onCloseLocalFolder && (
                 <button 
                   onClick={onCloseLocalFolder}
-                  className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 shrink-0 text-slate-400 hover:text-white"
+                  className={`p-1 rounded shrink-0 transition-colors ${
+                    isLight 
+                      ? 'hover:bg-slate-200 text-slate-500 hover:text-slate-800' 
+                      : 'hover:bg-white/10 text-slate-400 hover:text-white'
+                  }`}
                   title="Close Local Folder Workspace"
                 >
                   <X className="w-3 h-3" />
@@ -319,18 +317,22 @@ export default function DocExplorerSidebar({
                 ? 'bg-white border-slate-200 text-slate-800 focus-within:border-indigo-500' 
                 : 'bg-white/[0.04] border-white/10 text-white focus-within:border-cyan-400'
             }`}>
-              <Search className="w-3.5 h-3.5 text-slate-400 mr-2 shrink-0" />
+              <Search className={`w-3.5 h-3.5 mr-2 shrink-0 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
               <input
                 type="text"
                 placeholder="Search documents..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="bg-transparent border-none focus:outline-none w-full text-xs placeholder:text-slate-400 dark:placeholder:text-slate-500"
+                className={`bg-transparent border-none focus:outline-none w-full text-xs ${
+                  isLight ? 'placeholder:text-slate-400 text-slate-800' : 'placeholder:text-slate-500 text-white'
+                }`}
               />
               {searchQuery && (
                 <button 
                   onClick={() => setSearchQuery('')}
-                  className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                  className={`p-0.5 rounded transition-colors ${
+                    isLight ? 'text-slate-400 hover:text-slate-700' : 'text-slate-400 hover:text-white'
+                  }`}
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -366,7 +368,7 @@ export default function DocExplorerSidebar({
           {/* Document Cards List (High-Craft Creative Suite Items) */}
           <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1 space-y-1.5">
             {filteredDocs.length === 0 ? (
-              <div className="py-10 text-center text-slate-400 dark:text-slate-500 font-sans text-xs">
+              <div className={`py-10 text-center font-sans text-xs ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
                 No matching documents.
               </div>
             ) : (
@@ -404,13 +406,17 @@ export default function DocExplorerSidebar({
                           {doc.metadata?.isPinned && (
                             <Pin className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
                           )}
-                          <span className="font-sans text-xs font-semibold truncate block leading-snug text-slate-900 dark:text-white">
+                          <span className={`font-sans text-xs font-semibold truncate block leading-snug ${isLight ? 'text-slate-800' : 'text-white'}`}>
                             {doc.title || "Untitled Document"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 font-sans">
+                        <div className={`flex items-center gap-1.5 mt-0.5 text-[10px] font-sans ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                           {doc.metadata?.tags?.find(t => ['PDF', 'PPTX', 'DOCX', 'XLSX', 'IPYNB', 'RTF', 'CSV', 'EXCALIDRAW', 'PNG', 'JPG', 'JPEG', 'WEBP', 'SVG', 'GIF', 'BMP', 'ICO'].includes(t)) ? (
-                            <span className="font-mono text-[9px] font-bold px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/20">
+                            <span className={`font-mono text-[9px] font-bold px-1.5 py-0.2 rounded border ${
+                              isLight 
+                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
+                                : 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20'
+                            }`}>
                               {doc.metadata?.tags?.find(t => ['PDF', 'PPTX', 'DOCX', 'XLSX', 'IPYNB', 'RTF', 'CSV', 'EXCALIDRAW', 'PNG', 'JPG', 'JPEG', 'WEBP', 'SVG', 'GIF', 'BMP', 'ICO'].includes(t))}
                             </span>
                           ) : (

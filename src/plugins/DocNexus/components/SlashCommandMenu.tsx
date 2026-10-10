@@ -75,10 +75,13 @@ export default function SlashCommandMenu({
       >
         {/* Header search */}
         <div className="flex items-center justify-between px-2 pb-2 border-b border-outline/10">
-          <span className="font-bold text-[11px] text-on-surface uppercase tracking-wider flex items-center gap-1.5">
-            <span className="text-[#00dbe7] font-black text-sm">/</span> Slash Insert Menu
+          <span className={`font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 ${isLight ? 'text-slate-800' : 'text-on-surface'}`}>
+            <span className={`${isLight ? 'text-indigo-600' : 'text-[#00dbe7]'} font-black text-sm`}>/</span> Slash Insert Menu
           </span>
-          <button onClick={onClose} className="p-1 rounded hover:bg-white/10 text-on-surface-variant">
+          <button 
+            onClick={onClose} 
+            className={`p-1 rounded ${isLight ? 'hover:bg-slate-100 text-slate-500 hover:text-slate-800' : 'hover:bg-white/10 text-on-surface-variant hover:text-white'}`}
+          >
             <X className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -90,8 +93,10 @@ export default function SlashCommandMenu({
             value={search}
             onChange={e => setSearch(e.target.value)}
             autoFocus
-            className={`w-full px-3 py-1.5 rounded-lg border text-xs focus:outline-none focus:border-[#00dbe7] ${
-              isLight ? 'border-slate-300 bg-white text-slate-800' : 'border-outline/15 bg-surface-container-low text-white'
+            className={`w-full px-3 py-1.5 rounded-lg border text-xs focus:outline-none ${
+              isLight 
+                ? 'border-slate-300 bg-white text-slate-800 focus:border-indigo-500' 
+                : 'border-outline/15 bg-surface-container-low text-white focus:border-[#00dbe7]'
             }`}
           />
         </div>
@@ -108,12 +113,12 @@ export default function SlashCommandMenu({
                   onClose();
                 }}
                 className={`p-2 rounded-xl cursor-pointer flex items-center justify-between gap-2.5 transition-colors ${
-                  isLight ? 'hover:bg-purple-50 text-slate-800' : 'hover:bg-white/5 text-[#b9cacb] hover:text-white'
+                  isLight ? 'hover:bg-indigo-50 text-slate-800' : 'hover:bg-white/5 text-[#b9cacb] hover:text-white'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <span className={`p-2 rounded-lg text-[#00dbe7] ${
-                    isLight ? 'bg-cyan-50' : 'bg-surface-container-high'
+                  <span className={`p-2 rounded-lg ${
+                    isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-surface-container-high text-[#00dbe7]'
                   }`}>
                     <IconComp className="w-4 h-4" />
                   </span>

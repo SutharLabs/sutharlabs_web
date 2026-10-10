@@ -111,7 +111,7 @@ ${document.content}
           isLight ? 'border-slate-200' : 'border-outline/10'
         }`}>
           <div className="flex items-center gap-2">
-            <Download className="w-5 h-5 text-[#00dbe7]" />
+            <Download className={`w-5 h-5 ${isLight ? 'text-indigo-600' : 'text-[#00dbe7]'}`} />
             <h3 className={`font-bold text-base font-sans ${isLight ? 'text-slate-900' : 'text-white'}`}>Export Sovereign Artifact</h3>
           </div>
           <button
@@ -133,7 +133,7 @@ ${document.content}
             onClick={handleExportPrintPDF}
             className={`p-3.5 rounded-xl border flex items-center gap-3 text-left transition-all cursor-pointer ${
               isLight
-                ? 'border-slate-200 hover:border-purple-500 bg-slate-50 hover:bg-purple-50'
+                ? 'border-slate-200 hover:border-purple-500 bg-slate-50 hover:bg-purple-50/60'
                 : 'border-outline/20 hover:border-[#ce5dff] bg-surface-container-low/40 hover:bg-[#ce5dff]/10'
             }`}
           >
@@ -148,11 +148,11 @@ ${document.content}
             onClick={handleExportMarkdown}
             className={`p-3.5 rounded-xl border flex items-center gap-3 text-left transition-all cursor-pointer ${
               isLight
-                ? 'border-slate-200 hover:border-cyan-500 bg-slate-50 hover:bg-cyan-50'
+                ? 'border-slate-200 hover:border-indigo-500 bg-slate-50 hover:bg-indigo-50/60'
                 : 'border-outline/20 hover:border-[#00dbe7] bg-surface-container-low/40 hover:bg-[#00dbe7]/10'
             }`}
           >
-            <FileText className="w-5 h-5 text-[#00dbe7] shrink-0" />
+            <FileText className={`w-5 h-5 shrink-0 ${isLight ? 'text-indigo-600' : 'text-[#00dbe7]'}`} />
             <div>
               <span className={`font-bold block ${isLight ? 'text-slate-900' : 'text-white'}`}>Markdown (.md)</span>
               <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-on-surface-variant'}`}>Clean raw Markdown file</span>

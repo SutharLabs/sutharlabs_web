@@ -207,10 +207,10 @@ export default function OpenLocalWorkspaceModal({
               <HardDrive className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
+              <h2 className={`text-base font-bold leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
                 Universal Document Ingestion
               </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+              <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                 Load local documents, slide decks, PDFs, spreadsheets, and whole project directories
               </p>
             </div>
@@ -246,18 +246,22 @@ export default function OpenLocalWorkspaceModal({
                   }`}>
                     <FolderInput className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+                    isLight ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  }`}>
                     Full Workspace
                   </span>
                 </div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-1">
+                <h3 className={`font-bold text-sm mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   Load Local Directory
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
+                <p className={`text-xs leading-snug ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                   Mount an entire project directory. Auto-detects and converts PDFs, DOCX, PPTX, XLSX, Markdown, and CSV into sovereign workspaces.
                 </p>
               </div>
-              <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-cyan-400 group-hover:translate-x-1 transition-transform">
+              <div className={`mt-4 flex items-center gap-1.5 text-xs font-semibold group-hover:translate-x-1 transition-transform ${
+                isLight ? 'text-indigo-600' : 'text-cyan-400'
+              }`}>
                 <span>Select Folder</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </div>
@@ -280,18 +284,20 @@ export default function OpenLocalWorkspaceModal({
                   }`}>
                     <FileUp className="w-4 h-4" />
                   </div>
-                  <span className="text-[10px] font-medium text-slate-400 dark:text-slate-500">
+                  <span className={`text-[10px] font-medium ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
                     Multi-file
                   </span>
                 </div>
-                <h3 className="font-bold text-sm text-slate-900 dark:text-white mb-1">
+                <h3 className={`font-bold text-sm mb-1 ${isLight ? 'text-slate-900' : 'text-white'}`}>
                   Browse Document
                 </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
+                <p className={`text-xs leading-snug ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                   Select PDF (.pdf), PowerPoint (.pptx), Word (.docx), Excel (.xlsx), Jupyter (.ipynb), or Markdown.
                 </p>
               </div>
-              <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 group-hover:translate-x-1 transition-transform">
+              <div className={`mt-4 flex items-center gap-1.5 text-xs font-semibold group-hover:translate-x-1 transition-transform ${
+                isLight ? 'text-slate-700' : 'text-slate-300'
+              }`}>
                 <span>Choose Files</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </div>
@@ -313,53 +319,57 @@ export default function OpenLocalWorkspaceModal({
             <UploadCloud className={`w-8 h-8 mx-auto mb-2 ${
               dragOver ? (isLight ? 'text-indigo-600' : 'text-cyan-400') : 'text-slate-400'
             }`} />
-            <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
+            <p className={`text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>
               Drag & Drop files or directories here to import
             </p>
-            <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
+            <p className={`text-[11px] mt-1 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
               Direct parsing for PDF, PPTX slides, Word DOCX, Excel XLSX, Jupyter IPYNB, Markdown, and CSV
             </p>
           </div>
 
           {/* Status / Processing feedback */}
           {isProcessing && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-cyan-500/10 border border-cyan-400/20 text-xs text-cyan-300 animate-pulse">
-              <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
+            <div className={`flex items-center gap-2 p-3 rounded-xl border text-xs animate-pulse ${
+              isLight ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-cyan-500/10 border-cyan-400/20 text-cyan-300'
+            }`}>
+              <Sparkles className={`w-4 h-4 shrink-0 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
               <span>{statusMessage || 'Loading and parsing documents...'}</span>
             </div>
           )}
 
           {statusMessage && !isProcessing && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-400">
+            <div className={`flex items-center gap-2 p-3 rounded-xl border text-xs ${
+              isLight ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+            }`}>
               <AlertCircle className="w-4 h-4 shrink-0" />
               <span>{statusMessage}</span>
             </div>
           )}
 
           {/* Supported Format Grid Badges */}
-          <div className="pt-3 border-t border-slate-200/80 dark:border-white/[0.06] space-y-2 text-[11px]">
-            <div className="text-slate-400 dark:text-slate-500 font-medium text-[10px] uppercase tracking-wider">
+          <div className={`pt-3 border-t space-y-2 text-[11px] ${isLight ? 'border-slate-200/80' : 'border-white/[0.06]'}`}>
+            <div className={`font-medium text-[10px] uppercase tracking-wider ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
               Supported Formats & Native Engines:
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
-                <Presentation className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+              <div className={`flex items-center gap-1.5 p-1.5 rounded-lg ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-white/[0.03] text-slate-300'}`}>
+                <Presentation className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
                 <span className="font-mono text-[10px]">.pptx, .ppt</span>
               </div>
-              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
-                <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+              <div className={`flex items-center gap-1.5 p-1.5 rounded-lg ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-white/[0.03] text-slate-300'}`}>
+                <FileText className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-blue-600' : 'text-blue-400'}`} />
                 <span className="font-mono text-[10px]">.pdf, .docx</span>
               </div>
-              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
-                <Table className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+              <div className={`flex items-center gap-1.5 p-1.5 rounded-lg ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-white/[0.03] text-slate-300'}`}>
+                <Table className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`} />
                 <span className="font-mono text-[10px]">.xlsx, .csv</span>
               </div>
-              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
-                <ImageIcon className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <div className={`flex items-center gap-1.5 p-1.5 rounded-lg ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-white/[0.03] text-slate-300'}`}>
+                <ImageIcon className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
                 <span className="font-mono text-[10px]">.png, .svg, .jpg</span>
               </div>
-              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
-                <FileCode className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+              <div className={`flex items-center gap-1.5 p-1.5 rounded-lg ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-white/[0.03] text-slate-300'}`}>
+                <FileCode className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-purple-600' : 'text-purple-400'}`} />
                 <span className="font-mono text-[10px]">.ipynb, .md</span>
               </div>
             </div>

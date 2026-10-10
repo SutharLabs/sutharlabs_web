@@ -122,9 +122,9 @@ export default function CommandPaletteModal({
       >
         {/* Command Search Input Bar */}
         <div className={`flex items-center px-4 py-3.5 border-b gap-3 ${
-          isLight ? 'border-slate-200' : 'border-outline/10'
+          isLight ? 'border-slate-200 bg-slate-50/50' : 'border-outline/10'
         }`}>
-          <Search className="w-4 h-4 text-[#00dbe7] shrink-0" />
+          <Search className={`w-4 h-4 shrink-0 ${isLight ? 'text-indigo-600' : 'text-[#00dbe7]'}`} />
           <input
             ref={inputRef}
             type="text"
@@ -173,16 +173,16 @@ export default function CommandPaletteModal({
                     className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-colors ${
                       isSelected
                         ? isLight
-                          ? 'bg-purple-100/70 text-slate-900 font-semibold'
+                          ? 'bg-indigo-50 text-indigo-900 font-semibold border border-indigo-200/80 shadow-xs'
                           : 'bg-[#00dbe7]/15 text-white border border-[#00dbe7]/30'
                         : isLight
-                          ? 'hover:bg-slate-100 text-slate-700'
-                          : 'hover:bg-white/5 text-[#b9cacb]'
+                          ? 'hover:bg-slate-100 text-slate-700 border border-transparent'
+                          : 'hover:bg-white/5 text-[#b9cacb] border border-transparent'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
                       <span className={`p-1.5 rounded ${
-                        isLight ? 'bg-cyan-50 text-cyan-600' : 'bg-surface-container text-[#00dbe7]'
+                        isLight ? 'bg-indigo-100/80 text-indigo-700' : 'bg-surface-container text-[#00dbe7]'
                       }`}>
                         <IconComp className="w-3.5 h-3.5" />
                       </span>
@@ -198,7 +198,7 @@ export default function CommandPaletteModal({
                       </div>
                     </div>
                     {isSelected && (
-                      <ArrowRight className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+                      <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-indigo-600' : 'text-[#00dbe7]'}`} />
                     )}
                   </div>
                 );
@@ -219,16 +219,16 @@ export default function CommandPaletteModal({
                   className={`flex items-center justify-between p-2.5 rounded-xl cursor-pointer transition-colors ${
                     isSelected
                       ? isLight
-                        ? 'bg-purple-100/70 text-slate-900 font-semibold'
+                        ? 'bg-indigo-50 text-indigo-900 font-semibold border border-indigo-200/80 shadow-xs'
                         : 'bg-[#ce5dff]/15 text-white border border-[#ce5dff]/30'
                       : isLight
-                        ? 'hover:bg-slate-100 text-slate-700'
-                        : 'hover:bg-white/5 text-[#b9cacb]'
+                        ? 'hover:bg-slate-100 text-slate-700 border border-transparent'
+                        : 'hover:bg-white/5 text-[#b9cacb] border border-transparent'
                   }`}
                 >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <span className={`p-1.5 rounded ${
-                      isLight ? 'bg-purple-50 text-purple-600' : 'bg-surface-container text-[#ce5dff]'
+                      isLight ? 'bg-indigo-100/80 text-indigo-700' : 'bg-surface-container text-[#ce5dff]'
                     }`}>
                       <IconComp className="w-3.5 h-3.5" />
                     </span>
@@ -237,7 +237,7 @@ export default function CommandPaletteModal({
                     </span>
                   </div>
                   {isSelected && (
-                    <ArrowRight className="w-3.5 h-3.5 text-[#ce5dff] shrink-0" />
+                    <ArrowRight className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-indigo-600' : 'text-[#ce5dff]'}`} />
                   )}
                 </div>
               );
@@ -247,14 +247,14 @@ export default function CommandPaletteModal({
 
         {/* Footer shortcuts hint */}
         <div className={`p-2.5 border-t text-[10px] flex items-center justify-between px-4 ${
-          isLight ? 'border-slate-200 text-slate-500' : 'border-outline/10 text-on-surface-variant'
+          isLight ? 'border-slate-200 text-slate-500 bg-slate-50/50' : 'border-outline/10 text-on-surface-variant'
         }`}>
           <div className="flex items-center gap-3">
             <span>↑↓ Navigate</span>
             <span>↵ Select</span>
             <span>ESC Close</span>
           </div>
-          <span className="text-[#00dbe7] font-semibold">Outline &amp; Affine Standard</span>
+          <span className={`font-semibold ${isLight ? 'text-indigo-600' : 'text-[#00dbe7]'}`}>Outline &amp; Affine Standard</span>
         </div>
       </div>
     </div>

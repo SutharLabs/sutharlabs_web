@@ -424,7 +424,7 @@ export default function CanvasStudio({
           }`}
           title="Add Text Block (T)"
         >
-          <Type className="w-4 h-4 text-indigo-400 dark:text-cyan-200" />
+          <Type className={`w-4 h-4 ${isLight ? 'text-indigo-600' : 'text-cyan-300'}`} />
         </button>
         <button
           onClick={() => handleAddElement('sticky')}

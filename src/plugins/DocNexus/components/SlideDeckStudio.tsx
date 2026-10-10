@@ -152,7 +152,7 @@ export default function SlideDeckStudio({
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="font-semibold text-xs px-1 text-slate-700 dark:text-slate-200">
+          <span className={`font-semibold text-xs px-1 ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
             Slide {activeSlideIndex + 1} of {deckState.slides.length}
           </span>
           <button
