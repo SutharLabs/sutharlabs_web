@@ -101,6 +101,17 @@ export default function CreateInvoiceDrawer({
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
   const { isInterState } = determineSupplyType(company.stateCode, placeOfSupply);
 
   // Real-time tax and total calculations

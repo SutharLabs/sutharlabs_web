@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { VoucherType, AccountingVoucher, PartyCustomer } from '../types.js';
 import { formatINR } from '../gstEngine.js';
 
@@ -83,6 +83,39 @@ export default function VoucherEntryModal({
       setNarration('Being inward goods and cloud hardware bill entered.');
     }
   };
+
+  // Keyboard shortcut listener to switch voucher types or close modal with Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F4' || (e.altKey && e.key === '4')) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleTypeChange('Contra');
+      } else if (e.key === 'F5' || (e.altKey && e.key === '5')) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleTypeChange('Payment');
+      } else if (e.key === 'F6' || (e.altKey && e.key === '6')) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleTypeChange('Receipt');
+      } else if (e.key === 'F7' || (e.altKey && e.key === '7')) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleTypeChange('Journal');
+      } else if (e.key === 'F9' || (e.altKey && e.key === '9')) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleTypeChange('Purchase');
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const numAmount = parseFloat(amount) || 0;
 

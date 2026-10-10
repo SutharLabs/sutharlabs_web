@@ -183,6 +183,40 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
     setIsVoucherModalOpen(true);
   };
 
+  // Keyboard shortcut listener for F4..F9 (with e.preventDefault() preventing browser refresh/focus) and Alt+4..Alt+9
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'F4' || (e.altKey && e.key === '4')) {
+        e.preventDefault();
+        e.stopPropagation();
+        openVoucherEntry('Contra');
+      } else if (e.key === 'F5' || (e.altKey && e.key === '5')) {
+        e.preventDefault();
+        e.stopPropagation();
+        openVoucherEntry('Payment');
+      } else if (e.key === 'F6' || (e.altKey && e.key === '6')) {
+        e.preventDefault();
+        e.stopPropagation();
+        openVoucherEntry('Receipt');
+      } else if (e.key === 'F7' || (e.altKey && e.key === '7')) {
+        e.preventDefault();
+        e.stopPropagation();
+        openVoucherEntry('Journal');
+      } else if (e.key === 'F8' || (e.altKey && e.key === '8')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsCreateOpen(true);
+      } else if (e.key === 'F9' || (e.altKey && e.key === '9')) {
+        e.preventDefault();
+        e.stopPropagation();
+        openVoucherEntry('Purchase');
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Safe invoice collections
   const safeInvoices = Array.isArray(invoices) ? invoices : [];
 
@@ -269,7 +303,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           <button
             onClick={() => openVoucherEntry('Contra')}
             className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-cyan-50 dark:hover:bg-cyan-950/30 border border-cyan-400/30 text-cyan-700 dark:text-[#74f5ff] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-            title="Contra Voucher (F4) - Bank to Cash / Bank to Bank transfers"
+            title="Contra Voucher (Press F4 or Alt+4) - Bank to Cash / Bank to Bank transfers"
           >
             <span className="px-1 py-0.2 rounded bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-200 text-[9px]">F4</span>
             Contra
@@ -277,7 +311,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           <button
             onClick={() => openVoucherEntry('Payment')}
             className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-rose-400/30 text-rose-700 dark:text-rose-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-            title="Payment Voucher (F5) - Cash or Bank outflow"
+            title="Payment Voucher (Press F5 or Alt+5) - Cash or Bank outflow"
           >
             <span className="px-1 py-0.2 rounded bg-rose-100 dark:bg-rose-900/50 text-rose-800 dark:text-rose-200 text-[9px]">F5</span>
             Payment
@@ -285,7 +319,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           <button
             onClick={() => openVoucherEntry('Receipt')}
             className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-emerald-400/30 text-emerald-700 dark:text-[#00e476] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-            title="Receipt Voucher (F6) - Cash or Bank collections"
+            title="Receipt Voucher (Press F6 or Alt+6) - Cash or Bank collections"
           >
             <span className="px-1 py-0.2 rounded bg-emerald-100 dark:bg-emerald-900/50 text-emerald-800 dark:text-emerald-200 text-[9px]">F6</span>
             Receipt
@@ -293,7 +327,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           <button
             onClick={() => openVoucherEntry('Journal')}
             className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-purple-50 dark:hover:bg-purple-950/30 border border-purple-400/30 text-purple-700 dark:text-[#ebb2ff] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-            title="Journal Voucher (F7) - Adjustments & depreciation"
+            title="Journal Voucher (Press F7 or Alt+7) - Adjustments & depreciation"
           >
             <span className="px-1 py-0.2 rounded bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 text-[9px]">F7</span>
             Journal
@@ -301,7 +335,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           <button
             onClick={() => setIsCreateOpen(true)}
             className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-blue-400/30 text-blue-700 dark:text-blue-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-            title="Sales Voucher (F8) - Tax Invoices"
+            title="Sales Voucher (Press F8 or Alt+8) - Tax Invoices"
           >
             <span className="px-1 py-0.2 rounded bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 text-[9px]">F8</span>
             Sales (Tax Invoice)
@@ -309,7 +343,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           <button
             onClick={() => openVoucherEntry('Purchase')}
             className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-amber-400/30 text-amber-700 dark:text-amber-400 font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
-            title="Purchase Voucher (F9) - Inward goods & expenses"
+            title="Purchase Voucher (Press F9 or Alt+9) - Inward goods & expenses"
           >
             <span className="px-1 py-0.2 rounded bg-amber-100 dark:bg-amber-900/50 text-amber-800 dark:text-amber-200 text-[9px]">F9</span>
             Purchase

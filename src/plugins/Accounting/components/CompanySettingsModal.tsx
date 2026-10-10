@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CompanyProfile } from '../types.js';
 import { INDIAN_GST_STATES, validateGSTIN } from '../gstEngine.js';
 
@@ -18,6 +18,17 @@ export default function CompanySettingsModal({
   const [profile, setProfile] = useState<CompanyProfile>(company);
   const [gstinError, setGstinError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const handleGstinChange = (val: string) => {
     const uppercase = val.toUpperCase().trim();
