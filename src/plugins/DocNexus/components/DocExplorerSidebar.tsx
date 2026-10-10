@@ -27,10 +27,22 @@ interface DocExplorerSidebarProps {
   onDuplicateDoc: (id: string) => void;
   onDeleteDoc: (id: string) => void;
   onOpenTemplates: () => void;
+  onOpenLocalWorkspace?: () => void;
+  activeLocalFolder?: { name: string; count: number } | null;
+  onCloseLocalFolder?: () => void;
   theme?: 'dark' | 'light';
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
 }
+
+const FILTER_LABELS: Record<string, string> = {
+  ALL: 'All',
+  canvas: 'Canvas',
+  markdown: 'Docs',
+  sheet: 'Grid',
+  richtext: 'A4',
+  slides: 'Slides'
+};
 
 const FORMAT_CONFIG: Record<DocumentFormat, { 
   label: string; 
@@ -90,6 +102,9 @@ export default function DocExplorerSidebar({
   onDuplicateDoc,
   onDeleteDoc,
   onOpenTemplates,
+  onOpenLocalWorkspace,
+  activeLocalFolder,
+  onCloseLocalFolder,
   theme = 'dark',
   isCollapsed = false,
   onToggleCollapse
@@ -150,12 +165,12 @@ export default function DocExplorerSidebar({
 
       {!isCollapsed && (
         <>
-          {/* Action Area: New Document & Browse Templates */}
+          {/* Action Area: New Document & Browse / Load Local Workspace */}
           <div className={`p-3 space-y-2 border-b ${isLight ? 'border-slate-200/80' : 'border-white/[0.08]'}`}>
             <div className="relative">
               <button
                 onClick={() => setIsCreateMenuOpen(prev => !prev)}
-                className="w-full py-2.5 px-3.5 rounded-xl font-sans text-xs font-semibold flex items-center justify-between cursor-pointer transition-all shadow-sm bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 hover:from-violet-500 hover:via-indigo-500 hover:to-cyan-400 text-white active:scale-[0.98]"
+                className="w-full py-2 px-3.5 rounded-xl font-sans text-xs font-semibold flex items-center justify-between cursor-pointer transition-all shadow-sm bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 hover:from-violet-500 hover:via-indigo-500 hover:to-cyan-400 text-white active:scale-[0.98]"
               >
                 <span className="flex items-center gap-2">
                   <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -205,13 +220,61 @@ export default function DocExplorerSidebar({
                       </button>
                     );
                   })}
+
+                  {/* Local Disk Option inside dropdown */}
+                  {onOpenLocalWorkspace && (
+                    <>
+                      <div className="my-1 border-t border-slate-200/80 dark:border-white/10" />
+                      <button
+                        onClick={() => {
+                          setIsCreateMenuOpen(false);
+                          onOpenLocalWorkspace();
+                        }}
+                        className={`w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer ${
+                          isLight ? 'hover:bg-indigo-50 text-indigo-700' : 'hover:bg-cyan-500/10 text-cyan-300'
+                        }`}
+                      >
+                        <HardDrive className="w-4 h-4 shrink-0" />
+                        <span className="font-semibold text-xs">Open Local Files / Folder...</span>
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
 
+            {/* Quick Actions Row: Browse File & Load Folder */}
+            <div className="grid grid-cols-2 gap-1.5">
+              <button
+                onClick={onOpenLocalWorkspace}
+                className={`py-1.5 px-2 rounded-xl font-sans text-[11px] font-medium flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
+                  isLight 
+                    ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-xs' 
+                    : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
+                }`}
+                title="Browse Local Document File (.md, .csv, .json, .txt)"
+              >
+                <FileUp className="w-3.5 h-3.5 text-cyan-400" />
+                <span>Browse File</span>
+              </button>
+
+              <button
+                onClick={onOpenLocalWorkspace}
+                className={`py-1.5 px-2 rounded-xl font-sans text-[11px] font-medium flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
+                  isLight 
+                    ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-xs' 
+                    : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
+                }`}
+                title="Load Local Project Directory"
+              >
+                <FolderInput className="w-3.5 h-3.5 text-indigo-500 dark:text-cyan-400" />
+                <span>Load Folder</span>
+              </button>
+            </div>
+
             <button
               onClick={onOpenTemplates}
-              className={`w-full py-2 px-3 rounded-xl font-sans text-xs font-medium flex items-center justify-center gap-2 cursor-pointer border transition-all ${
+              className={`w-full py-1.5 px-3 rounded-xl font-sans text-xs font-medium flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
                 isLight 
                   ? 'bg-white hover:bg-slate-100/80 border-slate-200 text-slate-700 shadow-xs' 
                   : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
@@ -222,8 +285,32 @@ export default function DocExplorerSidebar({
             </button>
           </div>
 
+          {/* Active Local Folder Banner */}
+          {activeLocalFolder && (
+            <div className={`mx-3 mt-2 p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs font-sans animate-in fade-in ${
+              isLight ? 'bg-indigo-50/80 border-indigo-200 text-indigo-900' : 'bg-cyan-500/10 border-cyan-400/30 text-cyan-300'
+            }`}>
+              <div className="flex items-center gap-2 min-w-0">
+                <HardDrive className="w-3.5 h-3.5 shrink-0" />
+                <div className="min-w-0 truncate">
+                  <span className="font-semibold block truncate text-[11px]">{activeLocalFolder.name}</span>
+                  <span className="text-[10px] opacity-75">{activeLocalFolder.count} local docs loaded</span>
+                </div>
+              </div>
+              {onCloseLocalFolder && (
+                <button 
+                  onClick={onCloseLocalFolder}
+                  className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 shrink-0 text-slate-400 hover:text-white"
+                  title="Close Local Folder Workspace"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          )}
+
           {/* Search Input with Hotkey Pill */}
-          <div className="px-3 pt-3 pb-2">
+          <div className="px-3 pt-2 pb-1.5">
             <div className={`flex items-center px-3 py-1.5 rounded-xl border text-xs font-sans transition-colors ${
               isLight 
                 ? 'bg-white border-slate-200 text-slate-800 focus-within:border-indigo-500' 
@@ -248,16 +335,16 @@ export default function DocExplorerSidebar({
             </div>
           </div>
 
-          {/* Format Filter Badges */}
-          <div className="px-3 pb-2 flex gap-1 overflow-x-auto scrollbar-none">
+          {/* Format Filter Badges (Compact, Balanced, Zero Clipping) */}
+          <div className="px-3 pb-2 flex items-center justify-between gap-1 overflow-x-auto scrollbar-none">
             {(['ALL', 'canvas', 'markdown', 'sheet', 'richtext', 'slides'] as const).map(fmt => {
               const isSelected = formatFilter === fmt;
-              const label = fmt === 'ALL' ? 'All' : FORMAT_CONFIG[fmt].label.split(' ')[0];
+              const label = FILTER_LABELS[fmt];
               return (
                 <button
                   key={fmt}
                   onClick={() => setFormatFilter(fmt)}
-                  className={`px-2.5 py-1 rounded-lg text-[11px] font-sans font-medium shrink-0 cursor-pointer transition-all ${
+                  className={`px-2 py-1 rounded-lg text-[10px] font-sans font-medium shrink-0 cursor-pointer transition-all ${
                     isSelected
                       ? isLight 
                         ? 'bg-slate-900 text-white shadow-xs' 

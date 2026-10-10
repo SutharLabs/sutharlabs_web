@@ -12,7 +12,10 @@ import {
   Download, 
   X,
   Command,
-  ArrowRight
+  ArrowRight,
+  HardDrive,
+  FileUp,
+  FolderInput
 } from 'lucide-react';
 
 interface CommandPaletteModalProps {
@@ -23,6 +26,7 @@ interface CommandPaletteModalProps {
   onCreateDoc: (format: DocumentFormat) => void;
   onOpenTemplates: () => void;
   onOpenExport: () => void;
+  onOpenLocalWorkspace?: () => void;
   theme?: 'dark' | 'light';
 }
 
@@ -42,6 +46,7 @@ export default function CommandPaletteModal({
   onCreateDoc,
   onOpenTemplates,
   onOpenExport,
+  onOpenLocalWorkspace,
   theme = 'dark'
 }: CommandPaletteModalProps) {
   if (!isOpen) return null;
@@ -63,6 +68,8 @@ export default function CommandPaletteModal({
 
   // Quick action items
   const actionItems = [
+    { id: 'act_open_local_file', title: 'Open Local File (Browse Document)...', icon: FileUp, action: onOpenLocalWorkspace || (() => {}) },
+    { id: 'act_load_directory', title: 'Load Local Directory / Project Workspace...', icon: FolderInput, action: onOpenLocalWorkspace || (() => {}) },
     { id: 'act_new_canvas', title: 'New Visual Canvas (Edgeless Whiteboard)', icon: Shapes, action: () => onCreateDoc('canvas') },
     { id: 'act_new_doc', title: 'New Technical Markdown Document', icon: FileText, action: () => onCreateDoc('markdown') },
     { id: 'act_new_sheet', title: 'New Database Grid & Spreadsheet', icon: Table, action: () => onCreateDoc('sheet') },

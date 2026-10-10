@@ -156,26 +156,26 @@ export default function SpreadsheetStudio({
   return (
     <div className="flex flex-col h-full overflow-hidden select-none">
       {/* Studio Ribbon Toolbar */}
-      <div className={`p-2.5 border-b flex items-center justify-between gap-3 font-mono text-xs z-10 ${
+      <div className={`px-4 py-2 border-b flex flex-wrap items-center justify-between gap-2.5 font-mono text-xs z-10 ${
         isLight ? 'bg-slate-100 border-slate-200' : 'bg-[#141418] border-outline/15'
       }`}>
         <div className="flex items-center gap-2">
           <button
             onClick={handleAddRow}
-            className="px-2.5 py-1.5 rounded bg-[#00e476]/15 text-[#00e476] hover:bg-[#00e476]/25 font-bold flex items-center gap-1 border border-[#00e476]/30 cursor-pointer"
+            className="px-2.5 py-1.5 rounded-lg bg-[#00e476]/15 text-[#00e476] hover:bg-[#00e476]/25 font-bold flex items-center gap-1 border border-[#00e476]/30 cursor-pointer transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Row
           </button>
           <button
             onClick={handleAddColumn}
-            className="px-2.5 py-1.5 rounded bg-[#00dbe7]/15 text-[#74f5ff] hover:bg-[#00dbe7]/25 font-bold flex items-center gap-1 border border-[#00dbe7]/30 cursor-pointer"
+            className="px-2.5 py-1.5 rounded-lg bg-[#00dbe7]/15 text-[#74f5ff] hover:bg-[#00dbe7]/25 font-bold flex items-center gap-1 border border-[#00dbe7]/30 cursor-pointer transition-colors"
           >
             <Plus className="w-3.5 h-3.5" />
             Add Column
           </button>
           <div className="h-4 w-px bg-outline/20 mx-1"></div>
-          <div className={`flex items-center px-2 py-1 rounded border text-xs ${
+          <div className={`flex items-center px-2.5 py-1.5 rounded-lg border text-xs ${
             isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-surface-container-low border-outline/20 text-white'
           }`}>
             <Search className={`w-3.5 h-3.5 mr-1.5 ${isLight ? 'text-slate-500' : 'text-on-surface-variant'}`} />
@@ -184,7 +184,7 @@ export default function SpreadsheetStudio({
               placeholder="Filter grid..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              className="bg-transparent border-none focus:outline-none w-28 text-xs"
+              className="bg-transparent border-none focus:outline-none w-32 text-xs"
             />
           </div>
         </div>
@@ -192,7 +192,7 @@ export default function SpreadsheetStudio({
         <div className="flex items-center gap-2">
           <button
             onClick={handleExportCSV}
-            className="px-3 py-1.5 rounded font-bold uppercase tracking-wider flex items-center gap-1.5 bg-[#ce5dff]/20 text-[#ebb2ff] hover:bg-[#ce5dff]/30 border border-[#ce5dff]/30 cursor-pointer"
+            className="px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1.5 bg-[#ce5dff]/20 text-[#ebb2ff] hover:bg-[#ce5dff]/30 border border-[#ce5dff]/30 cursor-pointer transition-colors"
           >
             <Download className="w-3.5 h-3.5" />
             Export CSV
@@ -202,7 +202,7 @@ export default function SpreadsheetStudio({
 
       {/* Main Tabular Matrix Body */}
       <div className={`flex-1 overflow-auto p-4 custom-scrollbar ${isLight ? 'bg-slate-100' : 'bg-[#050507]'}`}>
-        <div className={`rounded-lg border overflow-hidden shadow-xl inline-block min-w-full ${
+        <div className={`rounded-xl border overflow-hidden shadow-xl inline-block min-w-full ${
           isLight ? 'bg-white border-slate-200' : 'bg-[#0c0c0e] border-outline/20'
         }`}>
           <table className="w-full text-left font-mono text-xs border-collapse">
@@ -211,9 +211,13 @@ export default function SpreadsheetStudio({
               isLight ? 'bg-slate-100 text-slate-700 border-b border-slate-200' : 'bg-[#101014] text-on-surface-variant border-b border-outline/15'
             }`}>
               <tr>
-                <th className="p-3 w-12 text-center border-b border-r border-outline/15">#</th>
+                <th className="p-3 w-12 min-w-[48px] text-center border-b border-r border-outline/15">#</th>
                 {sheet.columns.map(col => (
-                  <th key={col.id} className="p-2 border-b border-r border-outline/15 font-bold">
+                  <th 
+                    key={col.id} 
+                    style={{ minWidth: col.width || 170, width: col.width }}
+                    className="p-2 border-b border-r border-outline/15 font-bold"
+                  >
                     <div className="flex items-center justify-between gap-2">
                       <input
                         type="text"
@@ -231,7 +235,7 @@ export default function SpreadsheetStudio({
                     </div>
                   </th>
                 ))}
-                <th className="p-3 w-12 text-center border-b border-outline/15">Actions</th>
+                <th className="p-3 w-16 min-w-[64px] text-center border-b border-outline/15">Actions</th>
               </tr>
             </thead>
 
@@ -243,7 +247,11 @@ export default function SpreadsheetStudio({
                     {rIdx + 1}
                   </td>
                   {sheet.columns.map(col => (
-                    <td key={col.id} className={`p-1 ${isLight ? 'border-r border-slate-200' : 'border-r border-outline/10'}`}>
+                    <td 
+                      key={col.id} 
+                      style={{ minWidth: col.width || 170, width: col.width }}
+                      className={`p-1 ${isLight ? 'border-r border-slate-200' : 'border-r border-outline/10'}`}
+                    >
                       {col.type === 'status' ? (
                         <select
                           value={String(row.cells[col.id] || 'Active')}
@@ -298,7 +306,11 @@ export default function SpreadsheetStudio({
                   {sheet.columns.map(col => {
                     const summary = columnSummaries.find(s => s && s.id === col.id);
                     return (
-                      <td key={col.id} className={`p-3 text-xs ${isLight ? 'border-r border-slate-200' : 'border-r border-outline/10'}`}>
+                      <td 
+                        key={col.id} 
+                        style={{ minWidth: col.width || 170, width: col.width }}
+                        className={`p-3 text-xs ${isLight ? 'border-r border-slate-200' : 'border-r border-outline/10'}`}
+                      >
                         {summary ? (
                           <span className={isLight ? 'text-emerald-700 font-bold' : 'text-[#00e476]'}>
                             {col.type === 'currency' ? `₹ ${summary.sum.toLocaleString('en-IN')}` : summary.sum}
