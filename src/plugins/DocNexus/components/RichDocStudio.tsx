@@ -9,7 +9,9 @@ import {
   ChevronRight, 
   Sliders, 
   Layers, 
-  Sparkles 
+  Sparkles,
+  Eye,
+  Edit3
 } from 'lucide-react';
 
 interface RichDocStudioProps {
@@ -55,6 +57,7 @@ export default function RichDocStudio({
   const [activePageIndex, setActivePageIndex] = useState(0);
   const [fontFamily, setFontFamily] = useState<'sans' | 'serif' | 'mono'>('sans');
   const [fontSize, setFontSize] = useState<number>(14);
+  const [viewMode, setViewMode] = useState<'visual' | 'edit'>('visual');
 
   const activePage = docState.pages[activePageIndex] || docState.pages[0];
 
@@ -148,8 +151,39 @@ export default function RichDocStudio({
           )}
         </div>
 
-        {/* Center: Formatting & Typography */}
+        {/* Center: Formatting & Typography + PDF Visual / Text View Mode */}
         <div className="flex items-center gap-2">
+          {activePage.pageImage && (
+            <div className={`flex items-center p-0.5 rounded-xl border text-xs font-sans shrink-0 mr-1 ${
+              isLight ? 'bg-slate-200/60 border-slate-200' : 'bg-white/[0.04] border-white/10'
+            }`}>
+              <button
+                onClick={() => setViewMode('visual')}
+                className={`px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5 cursor-pointer transition-all ${
+                  viewMode === 'visual'
+                    ? isLight ? 'bg-white text-indigo-600 shadow-xs' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'
+                }`}
+                title="View original high-resolution PDF rendering"
+              >
+                <Eye className="w-3.5 h-3.5" />
+                <span>PDF View</span>
+              </button>
+              <button
+                onClick={() => setViewMode('edit')}
+                className={`px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5 cursor-pointer transition-all ${
+                  viewMode === 'edit'
+                    ? isLight ? 'bg-white text-indigo-600 shadow-xs' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'
+                }`}
+                title="View and edit uncorrupted extracted text"
+              >
+                <Edit3 className="w-3.5 h-3.5" />
+                <span>Text Editor</span>
+              </button>
+            </div>
+          )}
+
           <select
             value={fontFamily}
             onChange={e => setFontFamily(e.target.value as any)}
@@ -235,22 +269,32 @@ export default function RichDocStudio({
           </div>
 
           {/* Page Body Content */}
-          <div className="flex-1 py-8 z-10 flex flex-col space-y-4">
-            <input
-              type="text"
-              value={activePage.title}
-              onChange={e => handleUpdateActivePage('title', e.target.value)}
-              placeholder="DOCUMENT / SECTION TITLE"
-              className="text-2xl font-bold tracking-tight bg-transparent border-none focus:outline-none w-full uppercase"
-            />
-            <textarea
-              value={activePage.body}
-              onChange={e => handleUpdateActivePage('body', e.target.value)}
-              placeholder="Start drafting legal or executive document content..."
-              style={{ fontSize: `${fontSize}px` }}
-              className="flex-1 w-full bg-transparent border-none focus:outline-none resize-none leading-relaxed custom-scrollbar"
-            />
-          </div>
+          {viewMode === 'visual' && activePage.pageImage ? (
+            <div className="flex-1 py-4 z-10 flex flex-col items-center justify-center">
+              <img 
+                src={activePage.pageImage} 
+                alt={`PDF Page ${activePageIndex + 1}`}
+                className="w-full h-auto max-h-[850px] object-contain rounded shadow-sm border border-black/5"
+              />
+            </div>
+          ) : (
+            <div className="flex-1 py-8 z-10 flex flex-col space-y-4">
+              <input
+                type="text"
+                value={activePage.title}
+                onChange={e => handleUpdateActivePage('title', e.target.value)}
+                placeholder="DOCUMENT / SECTION TITLE"
+                className="text-2xl font-bold tracking-tight bg-transparent border-none focus:outline-none w-full uppercase"
+              />
+              <textarea
+                value={activePage.body}
+                onChange={e => handleUpdateActivePage('body', e.target.value)}
+                placeholder="Start drafting legal or executive document content..."
+                style={{ fontSize: `${fontSize}px` }}
+                className="flex-1 w-full bg-transparent border-none focus:outline-none resize-none leading-relaxed custom-scrollbar"
+              />
+            </div>
+          )}
 
           {/* Running Footer */}
           <div className="border-t pt-3 flex justify-between items-center text-[11px] font-mono opacity-50 z-10">

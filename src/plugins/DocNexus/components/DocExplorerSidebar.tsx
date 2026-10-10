@@ -246,7 +246,7 @@ export default function DocExplorerSidebar({
                 onClick={onOpenLocalWorkspace}
                 className={`py-1.5 px-2 rounded-xl font-sans text-[11px] font-medium flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
                   isLight 
-                    ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-xs' 
+                    ? 'bg-white hover:bg-indigo-50/70 border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 shadow-xs' 
                     : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
                 }`}
                 title="Browse Local Document File (.md, .csv, .json, .txt, .pdf, .docx, .pptx)"
@@ -259,7 +259,7 @@ export default function DocExplorerSidebar({
                 onClick={onOpenLocalWorkspace}
                 className={`py-1.5 px-2 rounded-xl font-sans text-[11px] font-medium flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
                   isLight 
-                    ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-xs' 
+                    ? 'bg-white hover:bg-indigo-50/70 border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 shadow-xs' 
                     : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
                 }`}
                 title="Load Local Project Directory"
@@ -352,7 +352,7 @@ export default function DocExplorerSidebar({
                   className={`px-2 py-1 rounded-lg text-[10px] font-sans font-medium shrink-0 cursor-pointer transition-all ${
                     isSelected
                       ? isLight 
-                        ? 'bg-slate-900 text-white shadow-xs' 
+                        ? 'bg-indigo-600 text-white shadow-xs' 
                         : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-xs'
                       : isLight 
                         ? 'bg-slate-200/60 text-slate-600 hover:bg-slate-200' 

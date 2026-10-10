@@ -43,6 +43,7 @@ export interface RichDocPage {
   title: string;
   body: string;
   watermark?: string;
+  pageImage?: string; // High-fidelity visual preview of original PDF page
 }
 
 export interface RichDocState {

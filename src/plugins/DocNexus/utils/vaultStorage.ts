@@ -55,6 +55,19 @@ function sanitizeForLocalStorage(documents: DocNexusDocument[]): DocNexusDocumen
           content = JSON.stringify(parsed);
         }
       } catch {}
+    } else if (content.length > 300000 && doc.format === 'richtext') {
+      try {
+        const parsed = JSON.parse(content);
+        if (parsed.pages) {
+          parsed.pages = parsed.pages.map((p: any) => {
+            if (p.pageImage && typeof p.pageImage === 'string' && p.pageImage.length > 25000) {
+              return { ...p, pageImage: undefined };
+            }
+            return p;
+          });
+          content = JSON.stringify(parsed);
+        }
+      } catch {}
     }
 
     return {

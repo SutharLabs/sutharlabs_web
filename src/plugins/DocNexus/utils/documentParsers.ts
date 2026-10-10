@@ -12,6 +12,14 @@ import {
   CanvasElement 
 } from '../types.js';
 import { unzipArchive, getZipEntryAsText } from './zipReader.js';
+import * as pdfjsLib from 'pdfjs-dist';
+
+// Configure PDF.js worker securely for browser execution
+if (typeof window !== 'undefined' && (pdfjsLib as any).GlobalWorkerOptions) {
+  try {
+    (pdfjsLib as any).GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${(pdfjsLib as any).version || '4.10.38'}/build/pdf.worker.min.mjs`;
+  } catch {}
+}
 
 export interface ParsedDocumentResult {
   format: DocumentFormat;
@@ -353,95 +361,146 @@ export async function parseXLSX(buffer: ArrayBuffer, fileName: string): Promise<
 }
 
 /**
- * 4. PDF Document Parser
- * Extracts text stream objects, page markers, and titles from raw PDF binary.
+ * 4. High-Fidelity PDF Document Parser
+ * Uses Mozilla PDF.js engine to extract uncorrupted, multi-page text streams,
+ * decode CMap fonts/FlateDecode streams, and generate vector page previews.
  */
 export async function parsePDF(buffer: ArrayBuffer, fileName: string): Promise<ParsedDocumentResult> {
   const cleanTitle = fileName.replace(/\.[^/.]+$/, '').trim() || 'Imported PDF Document';
-  const bytes = new Uint8Array(buffer);
-  
-  // Convert buffer to binary string for pattern scanning
-  let binaryStr = '';
-  const len = Math.min(bytes.length, 1024 * 1024 * 4); // Max 4MB scan
-  for (let i = 0; i < len; i++) {
-    binaryStr += String.fromCharCode(bytes[i]);
-  }
-
-  // 1. Extract text stream chunks between BT (Begin Text) and ET (End Text)
-  const textChunks: string[] = [];
-  const btEtRegex = /BT([\s\S]*?)ET/g;
-  let btMatch: RegExpExecArray | null;
-
-  while ((btMatch = btEtRegex.exec(binaryStr)) !== null) {
-    const textBlock = btMatch[1];
-    // Match literal strings: (Hello World) Tj or [(Hello) 10 (World)] TJ
-    const tjRegex = /\(([^)]*)\)\s*(?:Tj|'|")/g;
-    let tjMatch: RegExpExecArray | null;
-    let line = '';
-    while ((tjMatch = tjRegex.exec(textBlock)) !== null) {
-      line += unescapePdfString(tjMatch[1]) + ' ';
-    }
-
-    // Match hex strings: <48656c6c6f> Tj
-    const hexRegex = /<([0-9a-fA-F]+)>\s*Tj/g;
-    let hexMatch: RegExpExecArray | null;
-    while ((hexMatch = hexRegex.exec(textBlock)) !== null) {
-      line += decodePdfHexString(hexMatch[1]) + ' ';
-    }
-
-    const trimmed = line.trim();
-    if (trimmed && trimmed.length > 2) {
-      textChunks.push(trimmed);
-    }
-  }
-
-  // Detect page count from /Count or /Type /Page
-  let detectedPageCount = 1;
-  const countMatch = /\/Count\s+(\d+)/.exec(binaryStr);
-  if (countMatch) {
-    detectedPageCount = Math.max(1, parseInt(countMatch[1], 10));
-  } else {
-    const pageMatches = binaryStr.match(/\/Type\s*\/Page\b/g);
-    if (pageMatches) {
-      detectedPageCount = Math.max(1, pageMatches.length);
-    }
-  }
-
-  // Optional compact Data URL for small PDF files to prevent quota exhaustion
-  let pdfDataUrl = '';
-  if (bytes.length <= 64 * 1024) {
-    let base64 = '';
-    const chunkSize = 8192;
-    for (let i = 0; i < bytes.length; i += chunkSize) {
-      base64 += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunkSize)));
-    }
-    pdfDataUrl = `data:application/pdf;base64,${btoa(base64)}`;
-  }
-
-  // Construct Executive A4 multi-page document
+  const uint8 = new Uint8Array(buffer);
   const pages: RichDocPage[] = [];
-  const chunksPerPage = Math.max(1, Math.ceil(textChunks.length / detectedPageCount));
+  let detectedPageCount = 1;
+  let totalExtractedTokens = 0;
 
-  for (let p = 0; p < detectedPageCount; p++) {
-    const pageChunks = textChunks.slice(p * chunksPerPage, (p + 1) * chunksPerPage);
-    const body = pageChunks.length > 0 
-      ? pageChunks.join('\n\n')
-      : `Page ${p + 1} content extracted from PDF document.\nOriginal text streams or vector visual.`;
+  try {
+    const loadingTask = (pdfjsLib as any).getDocument({
+      data: uint8,
+      isEvalSupported: false,
+      useSystemFonts: true,
+      stopAtErrors: false
+    });
+    const pdf = await loadingTask.promise;
+    detectedPageCount = Math.max(1, pdf.numPages || 1);
+
+    for (let pageNum = 1; pageNum <= detectedPageCount; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const textContent = await page.getTextContent();
+      
+      // Group text items by line based on vertical Y coordinate
+      const linesMap = new Map<number, { x: number; text: string; fontSize: number }[]>();
+
+      for (const rawItem of textContent.items as any[]) {
+        if (!rawItem || typeof rawItem.str !== 'string') continue;
+        const str = rawItem.str;
+        if (!str.trim()) continue;
+        totalExtractedTokens++;
+
+        const tx = rawItem.transform || [1, 0, 0, 1, 0, 0];
+        const x = Math.round(tx[4]);
+        const y = Math.round(tx[5]);
+        const fontSize = Math.round(Math.hypot(tx[0], tx[1])) || 12;
+
+        // Group into line bins within 4px vertical tolerance
+        let foundY: number | null = null;
+        for (const existingY of linesMap.keys()) {
+          if (Math.abs(existingY - y) <= 4) {
+            foundY = existingY;
+            break;
+          }
+        }
+        const targetY = foundY !== null ? foundY : y;
+        if (!linesMap.has(targetY)) {
+          linesMap.set(targetY, []);
+        }
+        linesMap.get(targetY)!.push({ x, text: str, fontSize });
+      }
+
+      // Sort lines top-to-bottom (PDF Y=0 is at page bottom, so higher Y is higher on page)
+      const sortedY = Array.from(linesMap.keys()).sort((a, b) => b - a);
+      const formattedLines: string[] = [];
+      let pageTitleCandidate = '';
+
+      for (const y of sortedY) {
+        const lineItems = linesMap.get(y)!;
+        lineItems.sort((a, b) => a.x - b.x);
+        const lineText = lineItems.map(it => it.text).join(' ').trim();
+        if (lineText) {
+          if (!pageTitleCandidate && lineText.length < 80) {
+            pageTitleCandidate = lineText;
+          }
+          formattedLines.push(lineText);
+        }
+      }
+
+      // Render high-fidelity visual preview if running in browser
+      let pageImage: string | undefined = undefined;
+      if (typeof document !== 'undefined') {
+        try {
+          const viewport = page.getViewport({ scale: 1.4 });
+          const canvas = document.createElement('canvas');
+          canvas.width = Math.round(viewport.width);
+          canvas.height = Math.round(viewport.height);
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            pageImage = canvas.toDataURL('image/webp', 0.85);
+          }
+        } catch (renderErr) {
+          console.warn(`[DocNexus PDF] Visual page render skipped on page ${pageNum}:`, renderErr);
+        }
+      }
+
+      const bodyText = formattedLines.length > 0
+        ? formattedLines.join('\n\n')
+        : `Page ${pageNum} from ${cleanTitle}.\n(Contains vector illustrations or image-based scans)`;
+
+      pages.push({
+        id: `pdf_page_${pageNum}`,
+        title: pageTitleCandidate || `${cleanTitle.toUpperCase()} - P.${pageNum}`,
+        watermark: 'VERIFIED',
+        body: bodyText,
+        pageImage
+      });
+    }
+  } catch (pdfJsErr) {
+    console.warn('[DocNexus] PDF.js primary parser fallback triggered:', pdfJsErr);
+    
+    // Emergency Fallback: Clean uncompressed string scan with zero binary noise
+    let binaryStr = '';
+    const scanLen = Math.min(uint8.length, 1024 * 1024 * 2);
+    for (let i = 0; i < scanLen; i++) {
+      const c = uint8[i];
+      if (c >= 32 && c <= 126 || c === 10 || c === 13) {
+        binaryStr += String.fromCharCode(c);
+      } else {
+        binaryStr += ' ';
+      }
+    }
+
+    const words = binaryStr
+      .split(/\s+/)
+      .filter(w => w.length > 2 && /^[a-zA-Z0-9.,?!'"()\-:;/]+$/.test(w))
+      .slice(0, 500);
+
+    const fallbackBody = words.length > 20
+      ? words.join(' ')
+      : `Imported PDF Document: ${cleanTitle}\n\nProcessed with sovereign vault ingestion.`;
 
     pages.push({
-      id: `pdf_page_${p + 1}`,
-      title: `${cleanTitle.toUpperCase()} - P.${p + 1}`,
+      id: 'pdf_page_1',
+      title: cleanTitle.toUpperCase(),
       watermark: 'VERIFIED',
-      body
+      body: fallbackBody
     });
   }
 
+  // Construct Sovereign Executive A4 document structure
   const richDocState: RichDocState = {
     paperSize: 'A4',
     orientation: 'portrait',
     margins: 'normal',
     headerText: cleanTitle.toUpperCase(),
-    footerText: 'SutharLabs PDF Engine • Page {page} of {total}',
+    footerText: 'SutharLabs Sovereign PDF • Page {page} of {total}',
     showPageNumbers: true,
     pages
   };
@@ -452,9 +511,9 @@ export async function parsePDF(buffer: ArrayBuffer, fileName: string): Promise<P
     category: 'PDF Documents',
     tags: ['PDF', 'Executive A4', 'Vector'],
     extraMetadata: { 
-      pdfDataUrl, 
       pageCount: detectedPageCount,
-      extractedStreams: textChunks.length 
+      extractedStreams: totalExtractedTokens,
+      hasVisualPreview: pages.some(p => Boolean(p.pageImage))
     }
   };
 }

@@ -137,7 +137,7 @@ ${document.content}
                 : 'border-outline/20 hover:border-[#ce5dff] bg-surface-container-low/40 hover:bg-[#ce5dff]/10'
             }`}
           >
-            <Printer className="w-5 h-5 text-[#ce5dff] shrink-0" />
+            <Printer className={`w-5 h-5 shrink-0 ${isLight ? 'text-purple-600' : 'text-[#ce5dff]'}`} />
             <div>
               <span className={`font-bold block ${isLight ? 'text-slate-900' : 'text-white'}`}>Print / PDF</span>
               <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-on-surface-variant'}`}>Vector paginated layout</span>
@@ -167,7 +167,7 @@ ${document.content}
                 : 'border-outline/20 hover:border-[#00e476] bg-surface-container-low/40 hover:bg-[#00e476]/10'
             }`}
           >
-            <Code className="w-5 h-5 text-[#00e476] shrink-0" />
+            <Code className={`w-5 h-5 shrink-0 ${isLight ? 'text-emerald-600' : 'text-[#00e476]'}`} />
             <div>
               <span className={`font-bold block ${isLight ? 'text-slate-900' : 'text-white'}`}>Styled HTML (.html)</span>
               <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-on-surface-variant'}`}>Standalone web page</span>
@@ -182,7 +182,7 @@ ${document.content}
                 : 'border-outline/20 hover:border-[#ffd700] bg-surface-container-low/40 hover:bg-[#ffd700]/10'
             }`}
           >
-            <Archive className="w-5 h-5 text-amber-500 shrink-0" />
+            <Archive className={`w-5 h-5 shrink-0 ${isLight ? 'text-amber-600' : 'text-amber-400'}`} />
             <div>
               <span className={`font-bold block ${isLight ? 'text-slate-900' : 'text-white'}`}>Nexus JSON (.nexus)</span>
               <span className={`text-[10px] ${isLight ? 'text-slate-500' : 'text-on-surface-variant'}`}>Lossless project backup</span>

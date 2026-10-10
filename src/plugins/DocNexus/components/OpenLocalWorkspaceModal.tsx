@@ -241,8 +241,8 @@ export default function OpenLocalWorkspaceModal({
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className={`p-2 rounded-lg ${
-                    isLight ? 'bg-indigo-600 text-white' : 'bg-cyan-400 text-black'
+                  <div className={`p-2.5 rounded-xl transition-colors ${
+                    isLight ? 'bg-indigo-50 text-indigo-600 border border-indigo-200/80 shadow-xs' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-400/30'
                   }`}>
                     <FolderInput className="w-4 h-4" />
                   </div>
@@ -273,14 +273,14 @@ export default function OpenLocalWorkspaceModal({
               disabled={isProcessing}
               className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between group ${
                 isLight 
-                  ? 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300 shadow-xs' 
+                  ? 'border-slate-200 bg-white hover:bg-indigo-50/40 hover:border-indigo-300 shadow-xs' 
                   : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <div className={`p-2 rounded-lg ${
-                    isLight ? 'bg-slate-900 text-white' : 'bg-white text-black'
+                  <div className={`p-2.5 rounded-xl transition-colors ${
+                    isLight ? 'bg-indigo-50 text-indigo-600 border border-indigo-200/80 shadow-xs' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-400/30'
                   }`}>
                     <FileUp className="w-4 h-4" />
                   </div>
@@ -296,7 +296,7 @@ export default function OpenLocalWorkspaceModal({
                 </p>
               </div>
               <div className={`mt-4 flex items-center gap-1.5 text-xs font-semibold group-hover:translate-x-1 transition-transform ${
-                isLight ? 'text-slate-700' : 'text-slate-300'
+                isLight ? 'text-indigo-600' : 'text-cyan-400'
               }`}>
                 <span>Choose Files</span>
                 <ArrowRight className="w-3.5 h-3.5" />
