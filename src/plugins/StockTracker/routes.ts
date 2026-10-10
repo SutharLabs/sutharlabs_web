@@ -2,6 +2,7 @@ import { Router } from "express";
 import path from "path";
 import fs from "fs";
 import crypto from "crypto";
+import { authenticateToken, optionalAuth } from "../../middleware/auth.js";
 import {
   getQuote,
   getHistory,
@@ -213,29 +214,33 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // ── Database Watchlists Endpoints (Full CRUD with Market Metadata) ─────────
+  // ── Database Watchlists Endpoints (Strict Multi-Tenant Per-User Isolation) ─────────
   // GET /watchlists
-  router.get("/watchlists", (req: any, res: any) => {
+  router.get("/watchlists", optionalAuth, (req: any, res: any) => {
     try {
-      const userEmail = (req.query.email as string || '').toLowerCase().trim();
+      const userEmail = req.user?.email?.toLowerCase().trim();
       const all = loadWatchlistsFromDisk();
       if (!userEmail) {
-        return res.json(all);
+        // Guests/unauthenticated requests ONLY receive public system seed watchlists
+        const systemLists = all.filter(w => w.userEmail === 'system');
+        return res.json(systemLists.length > 0 ? systemLists : SEED_WATCHLISTS);
       }
-      const filtered = all.filter(w => !w.userEmail || w.userEmail === 'system' || w.userEmail === userEmail);
-      res.json(filtered.length > 0 ? filtered : all);
+      // Authenticated users receive public system watchlists + their own private watchlists
+      const filtered = all.filter(w => w.userEmail === 'system' || (w.userEmail && w.userEmail.toLowerCase() === userEmail));
+      res.json(filtered);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
   // POST /watchlists (Create new list)
-  router.post("/watchlists", (req: any, res: any) => {
+  router.post("/watchlists", authenticateToken, (req: any, res: any) => {
     try {
-      const { name, userEmail, items = [] } = req.body;
+      const { name, items = [] } = req.body;
       if (!name || !name.trim()) {
         return res.status(400).json({ error: "Watchlist name is required" });
       }
+      const userEmail = req.user.email.toLowerCase().trim();
 
       const all = loadWatchlistsFromDisk();
       const formattedItems: WatchlistItem[] = (items as any[]).map(item => {
@@ -265,7 +270,7 @@ export function registerRoutes(router: Router) {
       const newRecord: WatchlistRecord = {
         id: `wl-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
         name: name.trim(),
-        userEmail: userEmail ? userEmail.toLowerCase().trim() : "default_user",
+        userEmail: userEmail,
         items: formattedItems,
         symbols: formattedItems.map(i => i.symbol),
         createdAt: new Date().toISOString(),
@@ -281,10 +286,11 @@ export function registerRoutes(router: Router) {
   });
 
   // PUT /watchlists/:id (Update watchlist)
-  router.put("/watchlists/:id", (req: any, res: any) => {
+  router.put("/watchlists/:id", authenticateToken, (req: any, res: any) => {
     try {
       const { id } = req.params;
       const { name, items, isDefault } = req.body;
+      const userEmail = req.user.email.toLowerCase().trim();
       const all = loadWatchlistsFromDisk();
       const idx = all.findIndex(w => w.id === id);
       if (idx === -1) {
@@ -292,6 +298,10 @@ export function registerRoutes(router: Router) {
       }
 
       const existing = all[idx];
+      if (existing.userEmail === 'system' || (existing.userEmail && existing.userEmail.toLowerCase() !== userEmail)) {
+        return res.status(403).json({ error: "Forbidden: You cannot modify system or another user's watchlist." });
+      }
+
       if (name) existing.name = name.trim();
       if (isDefault !== undefined) existing.isDefault = Boolean(isDefault);
       if (items && Array.isArray(items)) {
@@ -323,16 +333,22 @@ export function registerRoutes(router: Router) {
   });
 
   // DELETE /watchlists/:id (Delete watchlist)
-  router.delete("/watchlists/:id", (req: any, res: any) => {
+  router.delete("/watchlists/:id", authenticateToken, (req: any, res: any) => {
     try {
       const { id } = req.params;
-      let all = loadWatchlistsFromDisk();
-      const initialLen = all.length;
-      all = all.filter(w => w.id !== id);
-      if (all.length === initialLen) {
+      const userEmail = req.user.email.toLowerCase().trim();
+      const all = loadWatchlistsFromDisk();
+      const target = all.find(w => w.id === id);
+      if (!target) {
         return res.status(404).json({ error: "Watchlist not found" });
       }
-      saveWatchlistsToDisk(all);
+
+      if (target.userEmail === 'system' || (target.userEmail && target.userEmail.toLowerCase() !== userEmail)) {
+        return res.status(403).json({ error: "Forbidden: You cannot delete system or another user's watchlist." });
+      }
+
+      const remaining = all.filter(w => w.id !== id);
+      saveWatchlistsToDisk(remaining);
       res.json({ success: true, removedId: id });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -340,18 +356,23 @@ export function registerRoutes(router: Router) {
   });
 
   // POST /watchlists/:id/symbols (Add stock with market info to watchlist)
-  router.post("/watchlists/:id/symbols", (req: any, res: any) => {
+  router.post("/watchlists/:id/symbols", authenticateToken, (req: any, res: any) => {
     try {
       const { id } = req.params;
       const { symbol, market, name, exchange } = req.body;
       if (!symbol) {
         return res.status(400).json({ error: "Stock symbol is required" });
       }
+      const userEmail = req.user.email.toLowerCase().trim();
 
       const all = loadWatchlistsFromDisk();
       const target = all.find(w => w.id === id);
       if (!target) {
         return res.status(404).json({ error: "Watchlist not found" });
+      }
+
+      if (target.userEmail === 'system' || (target.userEmail && target.userEmail.toLowerCase() !== userEmail)) {
+        return res.status(403).json({ error: "Forbidden: You cannot modify system or another user's watchlist." });
       }
 
       const norm = normalizeTicker(symbol, market || 'IN');
@@ -384,13 +405,18 @@ export function registerRoutes(router: Router) {
   });
 
   // DELETE /watchlists/:id/symbols/:symbol (Remove stock from watchlist)
-  router.delete("/watchlists/:id/symbols/:symbol", (req: any, res: any) => {
+  router.delete("/watchlists/:id/symbols/:symbol", authenticateToken, (req: any, res: any) => {
     try {
       const { id, symbol } = req.params;
+      const userEmail = req.user.email.toLowerCase().trim();
       const all = loadWatchlistsFromDisk();
       const target = all.find(w => w.id === id);
       if (!target) {
         return res.status(404).json({ error: "Watchlist not found" });
+      }
+
+      if (target.userEmail === 'system' || (target.userEmail && target.userEmail.toLowerCase() !== userEmail)) {
+        return res.status(403).json({ error: "Forbidden: You cannot modify system or another user's watchlist." });
       }
 
       const cleanTarget = symbol.replace(/\.(NS|BO|L|DE|PA|AS|HK|SS|SZ|T)$/i, '').toUpperCase();
@@ -408,15 +434,25 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // PUT /watchlists/sync (Batch sync all watchlists)
-  router.put("/watchlists/sync", (req: any, res: any) => {
+  // PUT /watchlists/sync (Batch sync user's watchlists without touching others)
+  router.put("/watchlists/sync", authenticateToken, (req: any, res: any) => {
     try {
       const { watchlists } = req.body;
       if (!Array.isArray(watchlists)) {
         return res.status(400).json({ error: "Watchlists array is required" });
       }
-      saveWatchlistsToDisk(watchlists);
-      res.json({ success: true, count: watchlists.length });
+      const userEmail = req.user.email.toLowerCase().trim();
+      const all = loadWatchlistsFromDisk();
+      // Keep watchlists belonging to other users or system
+      const others = all.filter(w => !w.userEmail || w.userEmail === 'system' || w.userEmail.toLowerCase() !== userEmail);
+      // Stamp verified userEmail on all synced items
+      const userScoped = watchlists.map((w: WatchlistRecord) => ({
+        ...w,
+        userEmail
+      }));
+      const merged = [...others, ...userScoped];
+      saveWatchlistsToDisk(merged);
+      res.json({ success: true, count: userScoped.length });
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -917,21 +953,56 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // ── Stage 6: Automated End-of-Day (EOD) Batch Trade Simulator ──
-  // List all registered simulations
-  router.get("/simulator/simulations", (_req: any, res: any) => {
+  // ── Stage 6: Automated End-of-Day (EOD) Batch Trade Simulator (Strict Tenant Isolation) ──
+  // Helper to extract sanitized tenant identifier
+  const getSimulatorTenantScope = (req: any): string => {
+    const email = req.user?.email;
+    if (email && typeof email === 'string') {
+      return email.toLowerCase().trim().replace(/[^a-z0-9_-]/g, '_');
+    }
+    return 'guest';
+  };
+
+  // Helper to check for automated system cron execution
+  const isAuthorizedSystemCron = (req: any): boolean => {
+    const authHeader = req.headers["authorization"];
+    const cronSecretHeader = req.headers["x-cron-secret"];
+    const cronSecret = process.env.CRON_SECRET || 'sutharlabs-eod-cron-key-2026';
+    return Boolean(
+      (cronSecretHeader && cronSecretHeader === cronSecret) ||
+      (authHeader && authHeader === `Bearer ${cronSecret}`) ||
+      (req.query.cronSecret && req.query.cronSecret === cronSecret)
+    );
+  };
+
+  // List simulations accessible to the requesting user
+  router.get("/simulator/simulations", optionalAuth, (req: any, res: any) => {
     try {
-      const simulations = listSimulations();
-      res.json(simulations);
+      const all = listSimulations();
+      const tenant = getSimulatorTenantScope(req);
+      if (tenant === 'guest') {
+        const publicOnly = all.filter(s => s.id === 'default' || s.id === 'cron_live' || !s.id.includes('__'));
+        return res.json(publicOnly);
+      }
+      const tenantPrefix = `${tenant}__`;
+      const accessible = all.filter(s => s.id.startsWith(tenantPrefix) || s.id === 'default' || s.id === 'cron_live');
+      res.json(accessible);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  // Delete a simulation from registry
-  router.delete("/simulator/simulations/:simId", (req: any, res: any) => {
+  // Delete a simulation from registry (Owner-verified only)
+  router.delete("/simulator/simulations/:simId", authenticateToken, (req: any, res: any) => {
     try {
       const { simId } = req.params;
+      const tenant = getSimulatorTenantScope(req);
+      const tenantPrefix = `${tenant}__`;
+
+      if (!simId.startsWith(tenantPrefix) && req.user?.role !== 'Admin') {
+        return res.status(403).json({ error: "Forbidden: You cannot delete another user's simulation session." });
+      }
+
       deleteSimulation(simId);
       res.json({ success: true, message: `Simulation ${simId} removed.` });
     } catch (e: any) {
@@ -939,10 +1010,27 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  router.all(["/simulator/run-eod", "/simulator/run-eod/"], async (req: any, res: any) => {
+  // Automated EOD Simulation Run (Supports both user paper runs and verified system background crons)
+  router.all(["/simulator/run-eod", "/simulator/run-eod/"], optionalAuth, async (req: any, res: any) => {
     try {
       const payload = req.method === "GET" ? req.query : (req.body || {});
-      const report = await runEODSimulation(payload);
+      const isCron = isAuthorizedSystemCron(req);
+      const rawSimId = (payload.simulationId || payload.simId || "default") as string;
+      let targetSimId: string;
+
+      if (isCron) {
+        targetSimId = rawSimId === "default" ? "system_eod_cron" : `system__${rawSimId}`;
+      } else if (req.user?.email) {
+        const tenant = getSimulatorTenantScope(req);
+        targetSimId = `${tenant}__${rawSimId}`;
+      } else {
+        return res.status(401).json({
+          error: "Unauthorized: Execution requires authenticated user session or verified CRON_SECRET header.",
+          code: "SIMULATOR_AUTH_REQUIRED"
+        });
+      }
+
+      const report = await runEODSimulation({ ...payload, simulationId: targetSimId });
       res.json(report);
     } catch (e: any) {
       console.error("[EOD Simulator] Simulation run failure:", e);
@@ -950,33 +1038,39 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  router.get("/simulator/history", async (req: any, res: any) => {
+  router.get("/simulator/history", optionalAuth, async (req: any, res: any) => {
     try {
-      const simId = (req.query.simulationId || req.query.simId || "default") as string;
-      const history = await getEODHistory(simId);
+      const rawSimId = (req.query.simulationId || req.query.simId || "default") as string;
+      const tenant = getSimulatorTenantScope(req);
+      const targetSimId = `${tenant}__${rawSimId}`;
+      const history = await getEODHistory(targetSimId);
       res.json(history);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  router.get("/simulator/portfolio", async (req: any, res: any) => {
+  router.get("/simulator/portfolio", optionalAuth, async (req: any, res: any) => {
     try {
-      const simId = (req.query.simulationId || req.query.simId || "default") as string;
-      const portfolio = await getEODPortfolio(simId);
+      const rawSimId = (req.query.simulationId || req.query.simId || "default") as string;
+      const tenant = getSimulatorTenantScope(req);
+      const targetSimId = `${tenant}__${rawSimId}`;
+      const portfolio = await getEODPortfolio(targetSimId);
       res.json(portfolio);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  router.post("/simulator/close-position", async (req: any, res: any) => {
+  router.post("/simulator/close-position", optionalAuth, async (req: any, res: any) => {
     try {
       const { positionId, simId, simulationId } = req.body || {};
       if (!positionId) {
         return res.status(400).json({ error: "positionId is required" });
       }
-      const targetSimId = simulationId || simId || "default";
+      const rawSimId = simulationId || simId || "default";
+      const tenant = getSimulatorTenantScope(req);
+      const targetSimId = `${tenant}__${rawSimId}`;
       const result = await closeEODPosition(positionId, targetSimId);
       if (!result.success) {
         return res.status(404).json({ error: "Position not found in portfolio" });
@@ -988,10 +1082,12 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  router.all(["/simulator/reset", "/simulator/reset/"], async (req: any, res: any) => {
+  router.all(["/simulator/reset", "/simulator/reset/"], optionalAuth, async (req: any, res: any) => {
     try {
       const { initialCapital, marketRegion, simId, simulationId } = req.body || req.query || {};
-      const targetSimId = simulationId || simId || "default";
+      const rawSimId = simulationId || simId || "default";
+      const tenant = getSimulatorTenantScope(req);
+      const targetSimId = `${tenant}__${rawSimId}`;
       const resetState = await resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN", targetSimId);
       res.json({ success: true, message: `Trade Simulator (${targetSimId}) reset successfully.`, portfolio: resetState });
     } catch (e: any) {

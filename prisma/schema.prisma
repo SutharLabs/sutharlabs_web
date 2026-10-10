@@ -38,6 +38,7 @@ model Invoice {
 // 3. Workflow Layout Nodes
 model FlowNode {
   id           String   @id
+  userEmail    String   @default("default@sutharlabs.com") @map("user_email")
   label        String
   type         String   // source, processor, output
   status       String   @default("IDLE") // IDLE, ACTIVE, EXECUTED
@@ -45,6 +46,8 @@ model FlowNode {
   fileUsed     String?
   x            Float
   y            Float
+
+  @@map("flow_nodes")
 }
 
 // 4. Stock Market Portfolios

@@ -1,19 +1,28 @@
 import { DocNexusDocument } from '../types.js';
 
-const STORAGE_KEY = 'sutharlabs_docnexus_vault';
-const DB_NAME = 'DocNexusVaultDB';
+export function getVaultStorageKey(userEmail?: string): string {
+  const safeUser = (userEmail || 'guest').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+  return `sutharlabs_docnexus_vault_${safeUser}`;
+}
+
+export function getVaultDbName(userEmail?: string): string {
+  const safeUser = (userEmail || 'guest').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+  return `DocNexusVaultDB_${safeUser}`;
+}
+
 const STORE_NAME = 'documents';
 const DB_VERSION = 1;
 
 /**
- * Open or create IndexedDB instance for high-capacity sovereign vault storage
+ * Open or create IndexedDB instance for high-capacity sovereign vault storage, scoped per user
  */
-function openVaultDB(): Promise<IDBDatabase> {
+function openVaultDB(userEmail?: string): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     if (typeof indexedDB === 'undefined') {
       return reject(new Error('IndexedDB not supported'));
     }
-    const request = indexedDB.open(DB_NAME, DB_VERSION);
+    const dbName = getVaultDbName(userEmail);
+    const request = indexedDB.open(dbName, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
@@ -82,10 +91,11 @@ function sanitizeForLocalStorage(documents: DocNexusDocument[]): DocNexusDocumen
  * Saves documents reliably using IndexedDB as primary, with a quota-protected
  * sanitized localStorage cache fallback.
  */
-export async function saveVault(documents: DocNexusDocument[]): Promise<void> {
+export async function saveVault(documents: DocNexusDocument[], userEmail?: string): Promise<void> {
+  const storageKey = getVaultStorageKey(userEmail);
   // 1. Save full, pristine documents to IndexedDB (virtually unlimited quota)
   try {
-    const db = await openVaultDB();
+    const db = await openVaultDB(userEmail);
     const tx = db.transaction(STORE_NAME, 'readwrite');
     const store = tx.objectStore(STORE_NAME);
 
@@ -111,7 +121,7 @@ export async function saveVault(documents: DocNexusDocument[]): Promise<void> {
   // 2. Save sanitized representation to localStorage without exceeding 5MB quota
   try {
     const sanitized = sanitizeForLocalStorage(documents);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+    localStorage.setItem(storageKey, JSON.stringify(sanitized));
   } catch (quotaErr) {
     console.warn('DocNexus: localStorage quota exceeded, pruning further:', quotaErr);
     try {
@@ -120,7 +130,7 @@ export async function saveVault(documents: DocNexusDocument[]): Promise<void> {
         ...d,
         content: d.content.slice(0, 10000)
       }));
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(emergencyDocs));
+      localStorage.setItem(storageKey, JSON.stringify(emergencyDocs));
     } catch {
       // Ignore localStorage failure since IndexedDB holds the authoritative data
     }
@@ -130,10 +140,11 @@ export async function saveVault(documents: DocNexusDocument[]): Promise<void> {
 /**
  * Loads documents, prioritizing IndexedDB if available, falling back to localStorage
  */
-export async function loadVault(): Promise<DocNexusDocument[] | null> {
+export async function loadVault(userEmail?: string): Promise<DocNexusDocument[] | null> {
+  const storageKey = getVaultStorageKey(userEmail);
   // 1. Try IndexedDB first
   try {
-    const db = await openVaultDB();
+    const db = await openVaultDB(userEmail);
     const tx = db.transaction(STORE_NAME, 'readonly');
     const store = tx.objectStore(STORE_NAME);
     const docs = await new Promise<DocNexusDocument[]>((resolve, reject) => {
@@ -151,7 +162,7 @@ export async function loadVault(): Promise<DocNexusDocument[] | null> {
 
   // 2. Fallback to localStorage
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = localStorage.getItem(storageKey);
     if (saved) {
       const parsed = JSON.parse(saved);
       if (Array.isArray(parsed) && parsed.length > 0) {
@@ -161,4 +172,19 @@ export async function loadVault(): Promise<DocNexusDocument[] | null> {
   } catch {}
 
   return null;
+}
+
+/**
+ * Purges a user's local vault cache upon logout or data wipe
+ */
+export async function clearVault(userEmail?: string): Promise<void> {
+  const storageKey = getVaultStorageKey(userEmail);
+  try {
+    localStorage.removeItem(storageKey);
+  } catch {}
+  try {
+    const db = await openVaultDB(userEmail);
+    const tx = db.transaction(STORE_NAME, 'readwrite');
+    tx.objectStore(STORE_NAME).clear();
+  } catch {}
 }

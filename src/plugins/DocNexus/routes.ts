@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { optionalAuth } from "../../middleware/auth.js";
+import { authenticateToken } from "../../middleware/auth.js";
 import { BUILT_IN_TEMPLATES } from "./templates.js";
 import {
   listDocuments,
@@ -12,20 +12,23 @@ import {
   saveLegacyDocument
 } from "./storage.js";
 
-function resolveUserEmail(req: any): string {
-  return req.user?.email || "guest@sutharlabs.com";
+function getValidatedUserEmail(req: any): string | null {
+  return req.user?.email ? String(req.user.email).toLowerCase().trim() : null;
 }
 
 export function registerRoutes(router: Router) {
-  // GET /templates - Get pre-configured gallery of built-in templates
+  // GET /templates - Public pre-configured gallery of built-in templates
   router.get("/templates", (_req, res) => {
     res.json(BUILT_IN_TEMPLATES);
   });
 
-  // GET /documents - List all user documents
-  router.get("/documents", optionalAuth, async (req: any, res) => {
+  // GET /documents - Strictly list all documents for authenticated user
+  router.get("/documents", authenticateToken, async (req: any, res: any) => {
+    const userEmail = getValidatedUserEmail(req);
+    if (!userEmail) {
+      return res.status(401).json({ error: "Unauthorized: Missing user authentication session." });
+    }
     try {
-      const userEmail = resolveUserEmail(req);
       const docs = await listDocuments(userEmail);
       res.json(docs);
     } catch (error) {
@@ -33,10 +36,13 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // POST /documents - Create new document
-  router.post("/documents", optionalAuth, async (req: any, res) => {
+  // POST /documents - Create new document isolated to authenticated user
+  router.post("/documents", authenticateToken, async (req: any, res: any) => {
+    const userEmail = getValidatedUserEmail(req);
+    if (!userEmail) {
+      return res.status(401).json({ error: "Unauthorized: Missing user authentication session." });
+    }
     try {
-      const userEmail = resolveUserEmail(req);
       const { title, format, content, templateId, metadata } = req.body;
       const created = await createDocument(userEmail, {
         title,
@@ -51,13 +57,16 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // GET /documents/:id - Fetch single document
-  router.get("/documents/:id", optionalAuth, async (req: any, res: any) => {
+  // GET /documents/:id - Fetch single document strictly checking ownership
+  router.get("/documents/:id", authenticateToken, async (req: any, res: any) => {
+    const userEmail = getValidatedUserEmail(req);
+    if (!userEmail) {
+      return res.status(401).json({ error: "Unauthorized: Missing user authentication session." });
+    }
     try {
-      const userEmail = resolveUserEmail(req);
       const doc = await getDocument(userEmail, req.params.id);
       if (!doc) {
-        return res.status(404).json({ error: "Document not found." });
+        return res.status(404).json({ error: "Document not found or access denied." });
       }
       res.json(doc);
     } catch (error) {
@@ -65,10 +74,13 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // PUT /documents/:id - Save / Update document
-  router.put("/documents/:id", optionalAuth, async (req: any, res: any) => {
+  // PUT /documents/:id - Save / Update document strictly checking ownership
+  router.put("/documents/:id", authenticateToken, async (req: any, res: any) => {
+    const userEmail = getValidatedUserEmail(req);
+    if (!userEmail) {
+      return res.status(401).json({ error: "Unauthorized: Missing user authentication session." });
+    }
     try {
-      const userEmail = resolveUserEmail(req);
       const { title, format, content, metadata } = req.body;
       const updated = await saveDocument(userEmail, {
         id: req.params.id,
@@ -83,10 +95,13 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // DELETE /documents/:id - Remove document
-  router.delete("/documents/:id", optionalAuth, async (req: any, res) => {
+  // DELETE /documents/:id - Remove document strictly isolated to authenticated user
+  router.delete("/documents/:id", authenticateToken, async (req: any, res: any) => {
+    const userEmail = getValidatedUserEmail(req);
+    if (!userEmail) {
+      return res.status(401).json({ error: "Unauthorized: Missing user authentication session." });
+    }
     try {
-      const userEmail = resolveUserEmail(req);
       const success = await deleteDocument(userEmail, req.params.id);
       res.json({ success });
     } catch (error) {
@@ -94,10 +109,13 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // POST /documents/:id/duplicate - 1-Click clone document
-  router.post("/documents/:id/duplicate", optionalAuth, async (req: any, res: any) => {
+  // POST /documents/:id/duplicate - Clone document strictly isolated to authenticated user
+  router.post("/documents/:id/duplicate", authenticateToken, async (req: any, res: any) => {
+    const userEmail = getValidatedUserEmail(req);
+    if (!userEmail) {
+      return res.status(401).json({ error: "Unauthorized: Missing user authentication session." });
+    }
     try {
-      const userEmail = resolveUserEmail(req);
       const duplicated = await duplicateDocument(userEmail, req.params.id);
       if (!duplicated) {
         return res.status(404).json({ error: "Source document not found for duplication." });
@@ -108,12 +126,16 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // Backward compatibility legacy routes for /document
-  router.get("/document", optionalAuth, async (_req, res) => {
+  // Backward compatibility legacy routes partitioned per user
+  router.get("/document", authenticateToken, async (req: any, res: any) => {
+    const userEmail = getValidatedUserEmail(req);
+    if (!userEmail) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
     try {
-      const doc = await getLegacyDocument();
+      const doc = await getLegacyDocument(userEmail);
       res.json({
-        id: "doc_nexus_default",
+        id: `doc_nexus_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
         ...doc
       });
     } catch (error) {
@@ -121,15 +143,19 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  router.post("/document", optionalAuth, async (req: any, res: any) => {
+  router.post("/document", authenticateToken, async (req: any, res: any) => {
+    const userEmail = getValidatedUserEmail(req);
+    if (!userEmail) {
+      return res.status(401).json({ error: "Unauthorized." });
+    }
     const { title, content } = req.body;
     if (content === undefined) {
       return res.status(400).json({ error: "Document content is required." });
     }
     try {
-      await saveLegacyDocument(title || "DocNexus Guide", content);
+      await saveLegacyDocument(userEmail, title || "DocNexus Guide", content);
       res.json({
-        id: "doc_nexus_default",
+        id: `doc_nexus_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}`,
         title: title || "DocNexus Guide",
         content
       });

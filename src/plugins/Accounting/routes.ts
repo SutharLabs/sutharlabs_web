@@ -4,7 +4,11 @@ import { AccountingStorage } from './storage.js';
 import { validateGSTIN, COMMON_HSN_SAC_CATALOG, INDIAN_GST_STATES } from './gstEngine.js';
 
 function getUserEmail(req: any): string {
-  return req.user?.email || 'default@sutharlabs.com';
+  const email = req.user?.email;
+  if (!email || typeof email !== 'string') {
+    throw new Error('Unauthorized: Missing or invalid user identity in authentication token');
+  }
+  return email.toLowerCase().trim();
 }
 
 export function registerRoutes(router: Router) {

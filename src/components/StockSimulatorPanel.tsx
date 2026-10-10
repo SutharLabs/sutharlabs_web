@@ -54,6 +54,7 @@ export interface StockSimulatorPanelProps {
   currencySymbol?: string;
   currencyCode?: string;
   userEmail?: string;
+  userToken?: string;
   onSelectSymbol: (symbol: string) => void;
   isDark?: boolean;
 }
@@ -67,11 +68,21 @@ export default function StockSimulatorPanel({
   currencySymbol,
   currencyCode,
   userEmail,
+  userToken,
   onSelectSymbol,
   isDark = true
 }: StockSimulatorPanelProps) {
   // Target Market State (IN = India ₹, US = United States $, EU = Europe €)
   const [selectedMarket, setSelectedMarket] = useState<string>(activeMarketKey || 'IN');
+
+  const getAuthHeaders = useCallback((): Record<string, string> => {
+    const token = userToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('token') || localStorage.getItem('sutharlabs_token') : null);
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    return headers;
+  }, [userToken]);
 
   useEffect(() => {
     if (activeMarketKey) {
@@ -213,7 +224,9 @@ export default function StockSimulatorPanel({
   // Fetch all registered simulations from the backend
   const fetchSimulationsList = useCallback(async () => {
     try {
-      const res = await fetch(`${STOCK_API}/simulator/simulations`);
+      const res = await fetch(`${STOCK_API}/simulator/simulations`, {
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
@@ -234,7 +247,7 @@ export default function StockSimulatorPanel({
     } catch (err) {
       console.warn('[Simulator] Error fetching simulations list:', err);
     }
-  }, []);
+  }, [getAuthHeaders]);
 
   useEffect(() => {
     fetchSimulationsList();
@@ -245,10 +258,11 @@ export default function StockSimulatorPanel({
     const simIdToFetch = targetSimId || selectedSimulationId || 'default';
     if (!silent) setIsLoadingPortfolio(true);
     try {
+      const headers = getAuthHeaders();
       const emailQuery = userEmail ? `&email=${encodeURIComponent(userEmail)}` : '';
       const [portRes, histRes] = await Promise.all([
-        fetch(`${STOCK_API}/simulator/portfolio?simulationId=${encodeURIComponent(simIdToFetch)}${emailQuery}`).catch(() => null),
-        fetch(`${STOCK_API}/simulator/history?simulationId=${encodeURIComponent(simIdToFetch)}${emailQuery}`).catch(() => null)
+        fetch(`${STOCK_API}/simulator/portfolio?simulationId=${encodeURIComponent(simIdToFetch)}${emailQuery}`, { headers }).catch(() => null),
+        fetch(`${STOCK_API}/simulator/history?simulationId=${encodeURIComponent(simIdToFetch)}${emailQuery}`, { headers }).catch(() => null)
       ]);
 
       if (portRes && portRes.ok) {
@@ -329,7 +343,7 @@ export default function StockSimulatorPanel({
 
       const res = await fetch(`${STOCK_API}/simulator/run-eod`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(payload)
       });
 
@@ -357,7 +371,7 @@ export default function StockSimulatorPanel({
     try {
       const res = await fetch(`${STOCK_API}/simulator/close-position`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({ positionId, simulationId: selectedSimulationId })
       });
 
@@ -397,7 +411,7 @@ export default function StockSimulatorPanel({
       try {
         const res = await fetch(url, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
           body: JSON.stringify({
             initialCapital: 100000,
             marketRegion: effectiveMarket,
@@ -501,7 +515,10 @@ export default function StockSimulatorPanel({
     if (simId === 'default') return;
     if (!window.confirm(`Delete simulation instance "${simId}"? This will remove its registry entry.`)) return;
     try {
-      const res = await fetch(`${STOCK_API}/simulator/simulations/${simId}`, { method: 'DELETE' });
+      const res = await fetch(`${STOCK_API}/simulator/simulations/${simId}`, {
+        method: 'DELETE',
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         handleSelectSimulation('default');
         await fetchSimulationsList();

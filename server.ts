@@ -1771,21 +1771,30 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
   // ==================== PORTFOLIO & AUDITABLE TRADING ====================
 
   // GET /api/portfolio
-  app.get("/api/portfolio", authenticateToken, async (req, res) => {
-    const { email } = req.query;
-    if (!email) {
-      return res.status(400).json({ error: "Email parameter is required." });
+  app.get("/api/portfolio", authenticateToken, async (req: any, res: any) => {
+    const authEmail = req.user?.email ? String(req.user.email).toLowerCase() : null;
+    const queryEmail = req.query.email ? String(req.query.email).toLowerCase() : null;
+
+    if (!authEmail) {
+      return res.status(401).json({ error: "Unauthorized: Missing active user authentication session." });
     }
+
+    // Zero-Trust Isolation: Normal users can NEVER view another user's financial ledger
+    if (queryEmail && queryEmail !== authEmail && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: "Access Denied: You cannot inspect another user's personal financial portfolio." });
+    }
+
+    const targetEmail = (req.user.role === 'Admin' && queryEmail) ? queryEmail : authEmail;
 
     try {
       let portfolio = await prisma.portfolio.findUnique({
-        where: { userEmail: String(email).toLowerCase() }
+        where: { userEmail: targetEmail }
       });
 
       if (!portfolio) {
         portfolio = await prisma.portfolio.create({
           data: {
-            userEmail: String(email).toLowerCase(),
+            userEmail: targetEmail,
             cash: 10000.0,
             shares: 0,
             buyPrice: 0.0
@@ -1804,10 +1813,23 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
   });
 
   // POST /api/portfolio/trade (Auditable immutable transaction logger)
-  app.post("/api/portfolio/trade", authenticateToken, async (req, res) => {
-    const { email, action, quantity, price } = req.body;
-    if (!email || !action || !quantity || !price) {
-      return res.status(400).json({ error: "Email, Action (BUY/SELL), Quantity, and Price are required trading parameters." });
+  app.post("/api/portfolio/trade", authenticateToken, async (req: any, res: any) => {
+    const authEmail = req.user?.email ? String(req.user.email).toLowerCase() : null;
+    const bodyEmail = req.body.email ? String(req.body.email).toLowerCase() : null;
+
+    if (!authEmail) {
+      return res.status(401).json({ error: "Unauthorized: Missing active user authentication session." });
+    }
+
+    // Zero-Trust Isolation: Users can NEVER execute transactions against another user's funds
+    if (bodyEmail && bodyEmail !== authEmail && req.user.role !== 'Admin') {
+      return res.status(403).json({ error: "Access Denied: You cannot execute transactions against another user's portfolio." });
+    }
+
+    const targetEmail = authEmail;
+    const { action, quantity, price } = req.body;
+    if (!action || !quantity || !price) {
+      return res.status(400).json({ error: "Action (BUY/SELL), Quantity, and Price are required trading parameters." });
     }
 
     const qty = parseInt(quantity);
@@ -1819,7 +1841,7 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
 
     try {
       const portfolio = await prisma.portfolio.findUnique({
-        where: { userEmail: String(email).toLowerCase() }
+        where: { userEmail: targetEmail }
       });
 
       if (!portfolio) {
@@ -1855,7 +1877,7 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
       // Create Immutable Auditable Trade Ledger log entry (State-of-the-Art audit trail)
       await prisma.trade.create({
         data: {
-          userEmail: String(email).toLowerCase(),
+          userEmail: targetEmail,
           action,
           shares: qty,
           price: prc

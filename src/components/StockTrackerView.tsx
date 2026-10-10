@@ -5549,6 +5549,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   currencySymbol={activeUniverse?.currencySymbol || (activeMarketKey === 'IN' ? '₹' : '$')}
                   currencyCode={activeUniverse?.currencyCode || (activeMarketKey === 'IN' ? 'INR' : 'USD')}
                   userEmail={userEmail}
+                  userToken={userToken}
                   onSelectSymbol={(sym) => {
                     const fmt = formatTickerDisplay(sym);
                     setSymbol(sym);

@@ -12,7 +12,7 @@ import ExportModal from './ExportModal.js';
 import CommandPaletteModal from './CommandPaletteModal.js';
 import OpenLocalWorkspaceModal from './OpenLocalWorkspaceModal.js';
 import CollapsibleLogDrawer from '../../../components/CollapsibleLogDrawer.js';
-import { saveVault, loadVault } from '../utils/vaultStorage.js';
+import { saveVault, loadVault, getVaultStorageKey } from '../utils/vaultStorage.js';
 import { telemetryLogger } from '../../../services/telemetryLogger.js';
 import { 
   Save, 
@@ -66,15 +66,16 @@ export default function DocNexusStudio({
 }: DocNexusStudioProps) {
   const isLight = theme === 'light';
 
-  // Documents state - initialized with rich blueprints so workspace is immediately active
+  // Documents state - initialized with user-scoped storage so workspaces remain strictly private
   const [documents, setDocuments] = useState<DocNexusDocument[]>(() => {
-    const saved = localStorage.getItem('sutharlabs_docnexus_vault');
-    if (saved) {
-      try {
+    try {
+      const storageKey = getVaultStorageKey(userEmail);
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      } catch {}
-    }
+      }
+    } catch {}
     return INITIAL_DOCS;
   });
   const [activeDocId, setActiveDocId] = useState<string>(() => {
@@ -117,19 +118,23 @@ export default function DocNexusStudio({
     });
   };
 
-  // Persist to quota-safe IndexedDB and storage cache on update
+  // Persist to quota-safe IndexedDB and storage cache on update, strictly partitioned by user
   useEffect(() => {
-    saveVault(documents);
-  }, [documents]);
+    saveVault(documents, userEmail);
+  }, [documents, userEmail]);
 
-  // Restore authoritative documents from IndexedDB storage on mount
+  // Restore authoritative documents from user-isolated storage whenever user changes
   useEffect(() => {
-    loadVault().then(savedDocs => {
+    loadVault(userEmail).then(savedDocs => {
       if (savedDocs && savedDocs.length > 0) {
         setDocuments(savedDocs);
+        setActiveDocId(savedDocs[0].id);
+      } else {
+        setDocuments(INITIAL_DOCS);
+        setActiveDocId(INITIAL_DOCS[0].id);
       }
     });
-  }, []);
+  }, [userEmail]);
 
   // Global Ctrl+K / Cmd+K Command Palette Keyboard Listener
   useEffect(() => {

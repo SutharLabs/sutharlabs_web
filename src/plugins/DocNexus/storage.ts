@@ -90,29 +90,38 @@ export async function getDocument(userEmail: string, id: string): Promise<DocNex
     return docMap.get(id)!;
   }
 
-  // Fallback check against Prisma database
+  // Fallback check against Prisma database with strict per-user ownership verification
   try {
+    const userPrefix = `doc_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}_`;
     const dbDoc = await prisma.document.findUnique({ where: { id } });
     if (dbDoc) {
+      let parsed: any = null;
       try {
-        const parsed = JSON.parse(dbDoc.content);
-        if (parsed && parsed.id && parsed.format) {
-          docMap.set(parsed.id, parsed);
-          return parsed;
-        }
-      } catch {
-        const fallbackDoc: DocNexusDocument = {
-          id: dbDoc.id,
-          title: dbDoc.title,
-          format: 'markdown',
-          content: dbDoc.content,
-          metadata: { format: 'markdown', authorEmail: userEmail },
-          createdAt: dbDoc.updatedAt.toISOString(),
-          updatedAt: dbDoc.updatedAt.toISOString()
-        };
-        docMap.set(fallbackDoc.id, fallbackDoc);
-        return fallbackDoc;
+        parsed = JSON.parse(dbDoc.content);
+      } catch {}
+
+      const author = parsed?.metadata?.authorEmail;
+      // Strictly block access if document does not belong to this user
+      if (!dbDoc.id.startsWith(userPrefix) && (!author || author.toLowerCase() !== userEmail.toLowerCase())) {
+        return null;
       }
+
+      if (parsed && parsed.id && parsed.format) {
+        docMap.set(parsed.id, parsed);
+        return parsed;
+      }
+
+      const fallbackDoc: DocNexusDocument = {
+        id: dbDoc.id,
+        title: dbDoc.title,
+        format: 'markdown',
+        content: dbDoc.content,
+        metadata: { format: 'markdown', authorEmail: userEmail },
+        createdAt: dbDoc.updatedAt.toISOString(),
+        updatedAt: dbDoc.updatedAt.toISOString()
+      };
+      docMap.set(fallbackDoc.id, fallbackDoc);
+      return fallbackDoc;
     }
   } catch {
     // Database query failed
