@@ -1,12 +1,12 @@
 {
   "id": "wp_accounting",
   "name": "Accounting",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "category": "Operations",
   "type": "Native",
   "description": "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync.",
   "iconSymbol": "currency_exchange",
   "main": "index.ts",
   "minEngineVersion": "0.1.0",
-  "packagedAt": "2026-10-10T07:06:54.004Z"
+  "packagedAt": "2026-10-10T07:26:07.599Z"
 }

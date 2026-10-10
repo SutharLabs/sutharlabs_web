@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T07:06:49.633Z",
+    "packagedAt": "2026-10-10T07:26:04.986Z",
     "archiveFileName": "wp_stock_analyzer-v1.1.2.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.2.zip",
     "sizeBytes": 77396,
-    "checksumSha256": "25ecd0e3d0bdc6efe233acbd23f727adeffa597c2fe73b4f3403316c96f5cbb2"
+    "checksumSha256": "7eebc18ea21775a99ea5f8de8dbf50855bb8a0dab6efefe93c889f8a7b5cf10d"
   },
   {
     "id": "wp_flow_designer",
@@ -25,11 +25,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T07:06:51.641Z",
+    "packagedAt": "2026-10-10T07:26:06.227Z",
     "archiveFileName": "wp_flow_designer-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.1.0.zip",
-    "sizeBytes": 1870,
-    "checksumSha256": "2896fd53c9ea559b0a1453cc10568eacfbf77bc9a295a8d93baec77200d79542"
+    "sizeBytes": 1869,
+    "checksumSha256": "96ec581331423532a03f865127bb697557da12ed54186555858a95217717ee6a"
   },
   {
     "id": "wp_doc_nexus",
@@ -41,26 +41,26 @@
     "iconSymbol": "description",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T07:06:52.896Z",
+    "packagedAt": "2026-10-10T07:26:06.921Z",
     "archiveFileName": "wp_doc_nexus-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.1.0.zip",
-    "sizeBytes": 2323,
-    "checksumSha256": "af88dff3087e8c260039f4e6f518befce63c92a6f3dae724c687a03239d3a018"
+    "sizeBytes": 2322,
+    "checksumSha256": "a76851ffeb8865a8f4f63af68965e13b82a5a6ec4acb9469307728defa0bddbb"
   },
   {
     "id": "wp_accounting",
     "name": "Accounting",
-    "version": "0.2.2",
+    "version": "0.2.3",
     "category": "Operations",
     "type": "Native",
     "description": "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync.",
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T07:06:54.004Z",
-    "archiveFileName": "wp_accounting-v0.2.2.zip",
-    "packageUrl": "/storage/plugins/wp_accounting-v0.2.2.zip",
-    "sizeBytes": 75005,
-    "checksumSha256": "329ef0434bbf00bf33d747a1a693f9a82c6c9d1a95d95d64446d5088655851e9"
+    "packagedAt": "2026-10-10T07:26:07.599Z",
+    "archiveFileName": "wp_accounting-v0.2.3.zip",
+    "packageUrl": "/storage/plugins/wp_accounting-v0.2.3.zip",
+    "sizeBytes": 78535,
+    "checksumSha256": "a94f990b6f6534f5d7e36863a06845bab885b1292119ef817f6ceafdbd65dd46"
   }
 ]

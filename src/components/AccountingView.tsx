@@ -11,6 +11,7 @@ import GeneralLedgerView from '../plugins/Accounting/components/GeneralLedgerVie
 import PartyMasterView from '../plugins/Accounting/components/PartyMasterView.js';
 import ItemCatalogView from '../plugins/Accounting/components/ItemCatalogView.js';
 import CompanySettingsModal from '../plugins/Accounting/components/CompanySettingsModal.js';
+import InvoiceAnalyticsChart from '../plugins/Accounting/components/InvoiceAnalyticsChart.js';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer.js';
 import { TerminalLog } from '../types.js';
 
@@ -471,76 +472,11 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
             </div>
           </div>
 
-          {/* Proportional GST Tax Weight Chart */}
-          <div className="bg-white dark:bg-[#121215] rounded-xl p-5 border border-slate-200 dark:border-[#3a494b]/30 flex flex-col gap-3 shadow-xs">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-2 border-b border-slate-200 dark:border-[#3a494b]/20">
-              <h3 className="font-mono text-xs font-bold text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
-                <span className="material-symbols-outlined text-cyan-600 dark:text-[#00dbe7] text-base">bar_chart</span>
-                Invoice Payout Distribution & Tax Slices
-              </h3>
-              <span className="text-[10px] font-mono text-slate-500 dark:text-gray-400">
-                Real-time proportional scale in Indian Rupees (₹)
-              </span>
-            </div>
-
-            <div className="h-[130px] relative rounded-lg bg-slate-50 dark:bg-[#18181c] flex items-end p-4 border border-slate-200/60 dark:border-transparent">
-              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 500 130" preserveAspectRatio="none">
-                {safeInvoices.map((inv, idx) => {
-                  const xUnit = 500 / (safeInvoices.length || 1);
-                  const xPos = idx * xUnit + (xUnit / 5);
-                  const barWidth = xUnit * 0.6;
-
-                  const maxVal = Math.max(...safeInvoices.map(i => i.grandTotal), 400000);
-                  const barHeight = Math.max(15, (inv.grandTotal / maxVal) * 90);
-                  const yPos = 130 - barHeight - 15;
-
-                  const isPaid = inv.status === 'Paid';
-                  const barColor = isPaid ? '#10b981' : inv.isInterState ? '#a855f7' : '#06b6d4';
-
-                  return (
-                    <g key={inv.id} className="cursor-pointer" onClick={() => setSelectedInvoice(inv)}>
-                      <rect
-                        x={xPos}
-                        y={yPos}
-                        width={barWidth}
-                        height={barHeight}
-                        rx="4"
-                        fill={barColor}
-                        opacity="0.25"
-                      />
-                      <rect
-                        x={xPos}
-                        y={yPos}
-                        width={barWidth}
-                        height={barHeight}
-                        rx="4"
-                        fill={barColor}
-                        opacity="0.85"
-                      />
-                      <text
-                        x={xPos + barWidth / 2}
-                        y={yPos - 4}
-                        fill="currentColor"
-                        className="text-slate-700 dark:text-white"
-                        fontSize="8"
-                        textAnchor="middle"
-                        fontFamily="monospace"
-                        fontWeight="bold"
-                      >
-                        ₹{(inv.grandTotal / 1000).toFixed(0)}k
-                      </text>
-                    </g>
-                  );
-                })}
-              </svg>
-
-              <div className="absolute bottom-1 left-0 right-0 flex justify-between px-4 font-mono text-[8px] text-slate-500 dark:text-gray-400">
-                {safeInvoices.map(i => (
-                  <span key={i.id} className="truncate max-w-[80px]">{i.invoiceNumber.split('/').pop()}</span>
-                ))}
-              </div>
-            </div>
-          </div>
+          {/* Institutional Invoice Analytics & Tax Slices Chart */}
+          <InvoiceAnalyticsChart
+            invoices={safeInvoices}
+            onSelectInvoice={inv => setSelectedInvoice(inv)}
+          />
 
           {/* Ledger Table Container */}
           <div className="bg-white dark:bg-[#121215] p-5 rounded-xl border border-slate-200 dark:border-[#3a494b]/30 space-y-4 shadow-xs">

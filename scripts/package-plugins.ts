@@ -56,7 +56,7 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'Accounting',
     id: 'wp_accounting',
     name: 'Accounting',
-    version: '0.2.2',
+    version: '0.2.3',
     category: 'Operations',
     type: 'Native',
     description: 'Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync.',
