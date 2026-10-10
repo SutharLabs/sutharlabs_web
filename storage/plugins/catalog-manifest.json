@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T14:21:01.695Z",
+    "packagedAt": "2026-10-10T14:40:07.307Z",
     "archiveFileName": "wp_stock_analyzer-v1.1.2.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.2.zip",
     "sizeBytes": 77396,
-    "checksumSha256": "388e7955fab541383374a4a1984c7f1afd6f7798fe2ec9eb52a157bbf5ee27c8"
+    "checksumSha256": "a52b1a272251abdcae26f9f9de0f26da7e2a6d84407dcbaff09a7ad6dbd4f62b"
   },
   {
     "id": "wp_flow_designer",
@@ -25,11 +25,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T14:21:05.209Z",
+    "packagedAt": "2026-10-10T14:40:10.424Z",
     "archiveFileName": "wp_flow_designer-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.1.0.zip",
     "sizeBytes": 1869,
-    "checksumSha256": "ec84792dd35240599518db91fe0e9b573863e6fb0691c7e29e8885dc017138d8"
+    "checksumSha256": "ca6aab3411864699e8a5dbb1e7eee6655c69cdd3829228df21ccc17e96ce80d7"
   },
   {
     "id": "wp_doc_nexus",
@@ -41,11 +41,11 @@
     "iconSymbol": "auto_stories",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T14:21:06.042Z",
+    "packagedAt": "2026-10-10T14:40:12.978Z",
     "archiveFileName": "wp_doc_nexus-v0.3.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.3.0.zip",
-    "sizeBytes": 69594,
-    "checksumSha256": "3b2999d9390bc63fb06ec19337e46319f7d967f267bb78cd5c824edd01510f69"
+    "sizeBytes": 69608,
+    "checksumSha256": "4e40bf9a0439bb0e3ae6942150478449679810a0984d94927562b95adefc748f"
   },
   {
     "id": "wp_accounting",
@@ -57,10 +57,10 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T14:21:07.604Z",
+    "packagedAt": "2026-10-10T14:40:14.652Z",
     "archiveFileName": "wp_accounting-v0.2.3.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.2.3.zip",
     "sizeBytes": 78864,
-    "checksumSha256": "165f11a39a7f23fc46164adafe77c527affdf2683faa78a754018222e93b7a07"
+    "checksumSha256": "72ed82af377bf736b0f19f454fdc8455b3a4007ead04c2fe8df11e4e080e894f"
   }
 ]

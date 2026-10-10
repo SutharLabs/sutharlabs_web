@@ -16,7 +16,10 @@ import {
   FolderOpen,
   X,
   ShieldCheck,
-  MoreVertical
+  MoreVertical,
+  HardDrive,
+  FileUp,
+  FolderInput
 } from 'lucide-react';
 
 interface DocExplorerSidebarProps {
