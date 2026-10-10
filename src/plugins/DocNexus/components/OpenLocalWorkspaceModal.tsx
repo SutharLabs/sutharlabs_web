@@ -7,14 +7,15 @@ import {
   FileText, 
   Table, 
   Shapes, 
-  Presentation,
+  Presentation, 
   CheckCircle2, 
-  AlertCircle,
-  Sparkles,
-  ArrowRight,
-  FolderInput,
-  UploadCloud,
-  FileCode
+  AlertCircle, 
+  Sparkles, 
+  ArrowRight, 
+  FolderInput, 
+  UploadCloud, 
+  FileCode,
+  Image as ImageIcon
 } from 'lucide-react';
 import { DocNexusDocument } from '../types.js';
 import { 
@@ -29,7 +30,7 @@ interface OpenLocalWorkspaceModalProps {
   theme?: 'dark' | 'light';
 }
 
-const SUPPORTED_EXTENSIONS_STRING = ".md,.markdown,.txt,.json,.csv,.tsv,.html,.htm,.doc,.docx,.pdf,.ppt,.pptx,.xls,.xlsx,.rtf,.ipynb,.excalidraw,.svg,.png,.jpg,.jpeg,.webp";
+const SUPPORTED_EXTENSIONS_STRING = ".md,.markdown,.txt,.json,.csv,.tsv,.html,.htm,.doc,.docx,.pdf,.ppt,.pptx,.xls,.xlsx,.rtf,.ipynb,.excalidraw,.svg,.png,.jpg,.jpeg,.webp,.gif,.bmp,.ico,.avif,.tiff,.tif";
 
 export default function OpenLocalWorkspaceModal({
   isOpen,
@@ -340,7 +341,7 @@ export default function OpenLocalWorkspaceModal({
             <div className="text-slate-400 dark:text-slate-500 font-medium text-[10px] uppercase tracking-wider">
               Supported Formats & Native Engines:
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
                 <Presentation className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                 <span className="font-mono text-[10px]">.pptx, .ppt</span>
@@ -352,6 +353,10 @@ export default function OpenLocalWorkspaceModal({
               <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
                 <Table className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                 <span className="font-mono text-[10px]">.xlsx, .csv</span>
+              </div>
+              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
+                <ImageIcon className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span className="font-mono text-[10px]">.png, .svg, .jpg</span>
               </div>
               <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
                 <FileCode className="w-3.5 h-3.5 text-purple-400 shrink-0" />

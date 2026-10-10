@@ -16,7 +16,8 @@ import {
   Layers,
   Palette,
   MousePointer,
-  Grid
+  Grid,
+  Image as ImageIcon
 } from 'lucide-react';
 
 interface CanvasStudioProps {
@@ -73,11 +74,81 @@ export default function CanvasStudio({
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   const selectedElement = scene.elements.find(el => el.id === selectedElementId) || null;
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   // Sync selected element to parent inspector
   useEffect(() => {
     onSelectElement(selectedElement);
   }, [selectedElementId, scene.elements]);
+
+  const handleTriggerImageUpload = () => {
+    imageInputRef.current?.click();
+  };
+
+  const handleImageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const newId = `img_${Date.now().toString(36)}`;
+      const newEl: CanvasElement = {
+        id: newId,
+        type: 'image',
+        imageUrl: dataUrl,
+        x: 350,
+        y: 180,
+        width: 440,
+        height: 300,
+        zIndex: scene.elements.length + 1,
+        text: file.name.replace(/\.[^/.]+$/, ''),
+        stroke: '#00dbe7',
+        strokeWidth: 1.5,
+        borderRadius: 10,
+        shadow: true,
+        imageFit: 'contain'
+      };
+      updateElements([...scene.elements, newEl]);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleCanvasDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const file = e.dataTransfer.files[0];
+      if (file.type.startsWith('image/') || /\.(png|jpg|jpeg|webp|svg|gif|bmp|ico|avif)$/i.test(file.name)) {
+        const svgRect = svgRef.current?.getBoundingClientRect();
+        const dropX = svgRect ? (e.clientX - svgRect.left) / zoom : 350;
+        const dropY = svgRect ? (e.clientY - svgRect.top) / zoom : 180;
+
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = reader.result as string;
+          const newId = `img_${Date.now().toString(36)}`;
+          const newEl: CanvasElement = {
+            id: newId,
+            type: 'image',
+            imageUrl: dataUrl,
+            x: Math.max(50, Math.round(dropX - 220)),
+            y: Math.max(50, Math.round(dropY - 150)),
+            width: 440,
+            height: 300,
+            zIndex: scene.elements.length + 1,
+            text: file.name.replace(/\.[^/.]+$/, ''),
+            stroke: '#00dbe7',
+            strokeWidth: 1.5,
+            borderRadius: 10,
+            shadow: true,
+            imageFit: 'contain'
+          };
+          updateElements([...scene.elements, newEl]);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
 
   const updateElements = (newElements: CanvasElement[]) => {
     const updatedScene: CanvasSceneState = {
@@ -382,6 +453,22 @@ export default function CanvasStudio({
         >
           <Tag className="w-4 h-4 text-sky-400" />
         </button>
+        <button
+          onClick={handleTriggerImageUpload}
+          className={`p-2 rounded-xl cursor-pointer transition-all ${
+            isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/[0.08] text-slate-300 hover:text-white'
+          }`}
+          title="Insert Image Graphic (PNG, JPG, SVG, WebP)"
+        >
+          <ImageIcon className="w-4 h-4 text-emerald-400" />
+        </button>
+        <input
+          ref={imageInputRef}
+          type="file"
+          accept="image/*,.svg,.png,.jpg,.jpeg,.webp,.gif,.bmp,.ico,.avif"
+          onChange={handleImageInputChange}
+          className="hidden"
+        />
 
         {/* Selected Element Quick Operations Bar */}
         {selectedElement && (
@@ -514,6 +601,8 @@ export default function CanvasStudio({
             viewBox={`0 0 ${scene.width} ${scene.height}`}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
+            onDragOver={e => e.preventDefault()}
+            onDrop={handleCanvasDrop}
             className="block cursor-default select-none"
             style={{ backgroundColor: isLight ? '#f8fafc' : scene.backgroundColor }}
           >
@@ -631,6 +720,35 @@ export default function CanvasStudio({
                         strokeWidth={isSelected ? 2 : 1}
                         filter="drop-shadow(0 4px 10px rgba(0,0,0,0.25))"
                       />
+                    )}
+
+                    {/* Image Element Rendering */}
+                    {el.type === 'image' && el.imageUrl && (
+                      <g>
+                        <image
+                          href={el.imageUrl}
+                          x={el.x}
+                          y={el.y}
+                          width={el.width}
+                          height={el.height}
+                          preserveAspectRatio={el.imageFit === 'fill' ? 'none' : el.imageFit === 'cover' ? 'xMidYMid slice' : 'xMidYMid meet'}
+                          opacity={el.opacity ?? 1}
+                          style={{
+                            filter: el.shadow ? 'drop-shadow(0 12px 28px rgba(0,0,0,0.45))' : undefined
+                          }}
+                        />
+                        {/* Interactive border frame around image */}
+                        <rect
+                          x={el.x}
+                          y={el.y}
+                          width={el.width}
+                          height={el.height}
+                          rx={el.borderRadius || 8}
+                          fill="none"
+                          stroke={isSelected ? '#00dbe7' : (el.stroke || 'rgba(255,255,255,0.12)')}
+                          strokeWidth={isSelected ? 2.5 : (el.strokeWidth || 1)}
+                        />
+                      </g>
                     )}
 
                     {/* Text Rendering with Multi-line Support */}

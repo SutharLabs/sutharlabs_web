@@ -2,7 +2,7 @@ import { TerminalLog } from "../../types.js";
 
 export type DocumentFormat = 'canvas' | 'markdown' | 'richtext' | 'sheet' | 'slides';
 
-export type CanvasShapeType = 'rect' | 'circle' | 'diamond' | 'text' | 'sticky' | 'arrow' | 'badge' | 'card';
+export type CanvasShapeType = 'rect' | 'circle' | 'diamond' | 'text' | 'sticky' | 'arrow' | 'badge' | 'card' | 'image';
 
 export interface CanvasElement {
   id: string;
@@ -24,6 +24,9 @@ export interface CanvasElement {
   shadow?: boolean;
   borderRadius?: number;
   arrowTo?: string; // Target element id if connector
+  imageUrl?: string;
+  imageFit?: 'contain' | 'cover' | 'fill';
+  aspectRatio?: number;
 }
 
 export interface CanvasSceneState {

@@ -166,7 +166,7 @@ export async function importFileFromBrowser(file: File, folderName?: string): Pr
       processedContent = res.content;
       category = res.category;
       tags = res.tags;
-    } else if (['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif'].includes(ext)) {
+    } else if (['png', 'jpg', 'jpeg', 'webp', 'svg', 'gif', 'bmp', 'ico', 'avif', 'tiff', 'tif', 'heic'].includes(ext)) {
       const dataUrl = await readFileAsDataURL(file);
       const res = parseImageToCanvas(dataUrl, fileName);
       format = res.format;
@@ -393,7 +393,7 @@ export async function readDirectoryHandleRecursively(
         const ALLOWED_EXTS = new Set([
           'md', 'markdown', 'txt', 'json', 'csv', 'tsv', 'html', 'htm',
           'docx', 'doc', 'pptx', 'ppt', 'xlsx', 'xls', 'pdf', 'rtf',
-          'ipynb', 'excalidraw', 'svg', 'png', 'jpg', 'jpeg', 'webp',
+          'ipynb', 'excalidraw', 'svg', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'ico', 'avif',
           'js', 'ts', 'tsx', 'jsx', 'py', 'sql', 'yaml', 'yml'
         ]);
 

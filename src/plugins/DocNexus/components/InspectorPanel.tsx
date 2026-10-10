@@ -183,6 +183,55 @@ export default function InspectorPanel({
                       }`}
                     />
                   </div>
+
+                  {/* Image Specific Controls */}
+                  {selectedCanvasElement.type === 'image' && (
+                    <div className="space-y-2 pt-2 border-t border-slate-200/80 dark:border-white/10">
+                      <label className="text-[11px] font-medium block text-cyan-500 dark:text-cyan-400">Image Scaling & Fit</label>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(['contain', 'cover', 'fill'] as const).map(fit => (
+                          <button
+                            key={fit}
+                            onClick={() => onUpdateCanvasElement({ imageFit: fit })}
+                            className={`py-1 px-2 rounded-lg text-[10px] font-semibold uppercase tracking-wider transition-colors cursor-pointer ${
+                              (selectedCanvasElement.imageFit || 'contain') === fit
+                                ? 'bg-cyan-500/20 text-cyan-500 dark:text-cyan-400 border border-cyan-400/40'
+                                : isLight ? 'bg-slate-100 text-slate-600 border border-transparent' : 'bg-white/5 text-slate-400 border border-transparent'
+                            }`}
+                          >
+                            {fit}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2 pt-1">
+                        <div>
+                          <label className="text-[10px] font-medium block mb-1 text-slate-500 dark:text-slate-400">Border Radius</label>
+                          <input
+                            type="number"
+                            value={selectedCanvasElement.borderRadius ?? 8}
+                            onChange={e => onUpdateCanvasElement({ borderRadius: Number(e.target.value) })}
+                            className={`w-full p-1.5 rounded-lg text-xs font-mono border ${
+                              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-white/[0.04] border-white/10 text-white'
+                            }`}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-medium block mb-1 text-slate-500 dark:text-slate-400">Shadow</label>
+                          <button
+                            onClick={() => onUpdateCanvasElement({ shadow: !selectedCanvasElement.shadow })}
+                            className={`w-full py-1.5 rounded-lg text-xs font-semibold border transition-colors cursor-pointer ${
+                              selectedCanvasElement.shadow
+                                ? 'bg-cyan-500/15 text-cyan-500 dark:text-cyan-400 border-cyan-400/30'
+                                : isLight ? 'bg-slate-100 border-slate-200 text-slate-600' : 'bg-white/5 border-white/10 text-slate-400'
+                            }`}
+                          >
+                            {selectedCanvasElement.shadow ? 'Active' : 'None'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className={`p-3.5 rounded-xl border text-[11px] leading-relaxed ${

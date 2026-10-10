@@ -578,35 +578,40 @@ export function parseExcalidraw(jsonText: string, fileName: string): ParsedDocum
  */
 export function parseImageToCanvas(dataUrl: string, fileName: string): ParsedDocumentResult {
   const cleanTitle = fileName.replace(/\.[^/.]+$/, '').trim() || 'Imported Graphic';
+  const ext = fileName.split('.').pop()?.toUpperCase() || 'IMG';
   
   const canvasState: CanvasSceneState = {
     elements: [
       {
         id: `img_${Date.now().toString(36)}`,
-        type: 'card',
+        type: 'image',
+        imageUrl: dataUrl,
         x: 180,
-        y: 140,
-        width: 480,
-        height: 320,
+        y: 120,
+        width: 520,
+        height: 360,
         zIndex: 1,
         text: cleanTitle,
-        fill: '#13131a',
         stroke: '#00dbe7',
-        textColor: '#ffffff',
-        fontSize: 14
+        strokeWidth: 1.5,
+        borderRadius: 12,
+        shadow: true,
+        imageFit: 'contain'
       },
       {
         id: `sticky_${Date.now().toString(36)}`,
         type: 'sticky',
-        x: 700,
-        y: 160,
-        width: 180,
-        height: 140,
+        x: 740,
+        y: 140,
+        width: 220,
+        height: 160,
         zIndex: 2,
-        text: `Imported Asset:\n${fileName}\n\nAnnotate or sketch ideas alongside this graphic.`,
-        fill: '#ffd700',
-        textColor: '#000000',
-        fontSize: 12
+        text: `Image Asset:\n${fileName}\n\n• Format: ${ext}\n• Status: Sovereign Vault\n\nAnnotate or link system components to this graphic asset.`,
+        fill: '#2c2813',
+        stroke: '#ffd700',
+        textColor: '#fff280',
+        fontSize: 12,
+        shadow: true
       }
     ],
     width: 1920,
@@ -620,8 +625,8 @@ export function parseImageToCanvas(dataUrl: string, fileName: string): ParsedDoc
     format: 'canvas',
     content: JSON.stringify(canvasState),
     category: 'Media Assets',
-    tags: ['Image', 'Asset', 'Canvas'],
-    extraMetadata: { imageSrc: dataUrl }
+    tags: ['Image', ext, 'Canvas'],
+    extraMetadata: { imageSrc: dataUrl, fileName }
   };
 }
 
