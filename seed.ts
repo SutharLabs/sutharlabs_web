@@ -121,7 +121,7 @@ async function seed() {
       type: "Native",
       description: "Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations.",
       iconSymbol: "auto_stories",
-      version: "0.3.0"
+      version: "3.0.0"
     },
     {
       id: "wp_accounting",

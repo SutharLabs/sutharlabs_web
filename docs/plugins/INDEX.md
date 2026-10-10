@@ -37,7 +37,7 @@ src/plugins/<PluginName>/
 
 | Plugin Name | Identifier | Version | Category | Route | Local Reference | Master Architectural Specification |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **Doc Nexus** | `wp_doc_nexus` | `v0.3.0` | Creativity & Docs | `/workspace/docnexus` | [README.md](../../src/plugins/DocNexus/README.md) | [DocNexus Studio Architecture & Logic](./docnexus_studio_architecture_and_logic.md) |
+| **Doc Nexus** | `wp_doc_nexus` | `v3.0.0` | Creativity & Docs | `/workspace/docnexus` | [README.md](../../src/plugins/DocNexus/README.md) | [DocNexus Studio Architecture & Logic](./docnexus_studio_architecture_and_logic.md) |
 | **Accounting** | `wp_accounting` | `v0.2.3` | Operations | `/workspace/accounting` | [README.md](../../src/plugins/Accounting/README.md) | [Accounting Architecture & GST Logic](./accounting_architecture_and_logic.md) |
 | **Stock Tracker** | `wp_stock_analyzer`| `v1.1.2` | Finance | `/workspace/stock-tracker` | [README.md](../../src/plugins/StockTracker/README.md) | [Stock Tracker Algo Review & Quant Roadmap](./stock_tracker_architecture_and_logic.md) |
 | **Custom Flow** | `wp_flow_designer` | `v0.1.0` | Architecture | `/workspace/flow` | In-Tree Module | [Flow Designer Architecture Spec](./flow_designer_architecture_and_logic.md) |
@@ -46,7 +46,7 @@ src/plugins/<PluginName>/
 
 ## 3. High-Level Summary by Plugin
 
-### A. Doc Nexus (`wp_doc_nexus` • v0.3.0)
+### A. Doc Nexus (`wp_doc_nexus` • v3.0.0)
 * **Scope:** Omni-format creative document processing engine and visual design workspace (Adobe Acrobat, Canva, Notion & Excalidraw parity).
 * **Paradigms:** Visual Vector Canvas, Technical Markdown with Sequence/Topology Compilers, Paginated A4 Executive Documents, High-Density Spreadsheets with Formulas, and 16:9 Presentation Slide Decks with Presenter Mode.
 * **Storage:** Scoped per user in Neon PostgreSQL with in-memory fallback cache.

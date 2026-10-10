@@ -1,12 +1,12 @@
 {
   "id": "wp_doc_nexus",
   "name": "Doc Nexus",
-  "version": "0.3.0",
+  "version": "3.0.0",
   "category": "Creativity & Docs",
   "type": "Native",
   "description": "Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations.",
   "iconSymbol": "auto_stories",
   "main": "index.ts",
   "minEngineVersion": "0.1.0",
-  "packagedAt": "2026-10-10T09:37:04.773Z"
+  "packagedAt": "2026-10-10T10:05:49.188Z"
 }

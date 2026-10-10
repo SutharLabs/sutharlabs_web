@@ -45,7 +45,7 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'DocNexus',
     id: 'wp_doc_nexus',
     name: 'Doc Nexus',
-    version: '0.3.0',
+    version: '3.0.0',
     category: 'Creativity & Docs',
     type: 'Native',
     description: 'Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations.',
@@ -149,24 +149,20 @@ async function packageAllPlugins() {
   fs.writeFileSync(catalogPath, JSON.stringify(manifestCatalog, null, 2), 'utf-8');
   console.log(`✅ Saved catalog manifest: ${catalogPath}`);
 
-  // 5. Optional DB Sync
-  if (process.argv.includes('--sync-db') && process.env.DATABASE_URL) {
+  // 5. Database Sync
+  if ((process.argv.includes('--sync-db') || true) && (process.env.DATABASE_URL || process.env.NEON_DB_URL)) {
     console.log('\n🔄 Syncing package URLs and checksums to Neon PostgreSQL database...');
     try {
-      const { PrismaClient } = await import('@prisma/client');
-      const { PrismaPg } = await import('@prisma/adapter-pg');
-      const pg = await import('pg');
-
-      const pool = new pg.default.Pool({ connectionString: process.env.DATABASE_URL });
-      const adapter = new PrismaPg(pool);
-      const prisma = new PrismaClient({ adapter });
+      const { getPrismaClient } = await import('../api/_utils.js');
+      const prisma = getPrismaClient();
 
       for (const item of manifestCatalog) {
         await prisma.workspacePluginVersion.upsert({
           where: { pluginId_version: { pluginId: item.id, version: item.version } },
           update: {
             packageUrl: item.packageUrl,
-            checksumSha256: item.checksumSha256
+            checksumSha256: item.checksumSha256,
+            changelog: item.description
           },
           create: {
             pluginId: item.id,
@@ -184,12 +180,13 @@ async function packageAllPlugins() {
           where: { id: item.id },
           data: {
             version: item.version,
-            description: item.description
+            description: item.description,
+            category: item.category,
+            iconSymbol: item.iconSymbol
           }
         }).catch(() => {});
       }
       console.log('✅ Database version records synchronized successfully.');
-      await prisma.$disconnect();
     } catch (e: any) {
       console.error('❌ Database sync failed:', e.message);
     }

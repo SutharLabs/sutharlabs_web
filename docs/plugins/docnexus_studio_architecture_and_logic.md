@@ -1,6 +1,6 @@
 # DocNexus Studio: Architecture, Logic & Systems Specification
 
-> **Version:** v0.3.0 (Production Release)  
+> **Version:** v3.0.0 (Production Release)  
 > **Plugin ID:** `wp_doc_nexus`  
 > **Route:** `/workspace/docnexus`  
 > **Inspiration / Parity:** AFFiNE (Doc vs Edgeless Canvas), Outline (Command Palette & Wiki Docs), Canva, Adobe Acrobat, Excalidraw  

@@ -3,7 +3,7 @@ import { WorkspacePluginManifest } from "../types.js";
 export const manifest: WorkspacePluginManifest = {
   id: "wp_doc_nexus",
   name: "Doc Nexus",
-  version: "0.3.0",
+  version: "3.0.0",
   category: "Creativity & Docs",
   type: "Native",
   iconSymbol: "auto_stories",

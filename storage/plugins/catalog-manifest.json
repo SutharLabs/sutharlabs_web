@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T09:37:00.163Z",
+    "packagedAt": "2026-10-10T10:05:43.500Z",
     "archiveFileName": "wp_stock_analyzer-v1.1.2.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.2.zip",
     "sizeBytes": 77395,
-    "checksumSha256": "95b3d1c8de8c197cc067c277c19696cea6affcae0958cadd9495727bfc91de2e"
+    "checksumSha256": "da0bab91271dd162ca1407e7d48620ea1fde2fc4c89121f76e28b882c97a5de6"
   },
   {
     "id": "wp_flow_designer",
@@ -25,27 +25,27 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T09:37:02.991Z",
+    "packagedAt": "2026-10-10T10:05:47.756Z",
     "archiveFileName": "wp_flow_designer-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.1.0.zip",
     "sizeBytes": 1870,
-    "checksumSha256": "e8bc73303d9eaef4b775b807fb3860f7f7604876334ebee11b85b029d339a8e7"
+    "checksumSha256": "50241822afb0721c48214b333148ce62b5a4f8d2729c912fa444fc64c5c9e4e1"
   },
   {
     "id": "wp_doc_nexus",
     "name": "Doc Nexus",
-    "version": "0.3.0",
+    "version": "3.0.0",
     "category": "Creativity & Docs",
     "type": "Native",
     "description": "Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations.",
     "iconSymbol": "auto_stories",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T09:37:04.773Z",
-    "archiveFileName": "wp_doc_nexus-v0.3.0.zip",
-    "packageUrl": "/storage/plugins/wp_doc_nexus-v0.3.0.zip",
-    "sizeBytes": 58564,
-    "checksumSha256": "cf0cfc65e267758ff6c6faf11bd3e1367bd89cc62d240f84a6fb3096a1c1d886"
+    "packagedAt": "2026-10-10T10:05:49.188Z",
+    "archiveFileName": "wp_doc_nexus-v3.0.0.zip",
+    "packageUrl": "/storage/plugins/wp_doc_nexus-v3.0.0.zip",
+    "sizeBytes": 58867,
+    "checksumSha256": "a2280f95abb71525e4a68e4522c959d6c505c6038125a3a7f32fd51a5119a7ca"
   },
   {
     "id": "wp_accounting",
@@ -57,10 +57,10 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T09:37:07.092Z",
+    "packagedAt": "2026-10-10T10:05:51.238Z",
     "archiveFileName": "wp_accounting-v0.2.3.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.2.3.zip",
-    "sizeBytes": 78534,
-    "checksumSha256": "9fc3eb94b0a84be5a85c46798f3e47f6ff6b91e1cb401f3e7282134520271eae"
+    "sizeBytes": 78864,
+    "checksumSha256": "ed25e2957a0035ddeb155b7bcab47bcd38a2d018dc6b9b66376a1321515c5cc1"
   }
 ]

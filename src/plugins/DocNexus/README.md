@@ -1,7 +1,7 @@
 # DocNexus Studio & Creative Document Suite
 
 > **Plugin ID:** `wp_doc_nexus`  
-> **Version:** `v0.3.0` (Production Release)  
+> **Version:** `v3.0.0` (Production Release)  
 > **Category:** Creativity & Docs  
 > **Standard:** Isomorphic Omni-Format Document Processing (Adobe Acrobat / Canva / Notion / Excalidraw Parity)  
 > **Detailed Master Specification:** See [DocNexus Architecture & Logic Specification](../../../docs/plugins/docnexus_studio_architecture_and_logic.md)
@@ -24,7 +24,7 @@
 
 ```
 src/plugins/DocNexus/
-├── manifest.json               # Package metadata descriptor (v0.3.0)
+├── manifest.json               # Package metadata descriptor (v3.0.0)
 ├── manifest.ts                 # Strongly-typed manifest for client bundling
 ├── index.ts                    # Client entrypoint exporting manifest + DocNexusStudio
 ├── routes.ts                   # Express REST API controller
@@ -77,7 +77,7 @@ DocNexus implements a multi-tenant persistence layer in [`storage.ts`](file:///d
 ## 5. Security & Packaging Pipeline
 
 When running `npm run package:plugins`:
-* The source directory is compressed into `storage/plugins/wp_doc_nexus-v0.3.0.zip`.
+* The source directory is compressed into `storage/plugins/wp_doc_nexus-v3.0.0.zip`.
 * The archive is encrypted using **AES-256-GCM** via [`pluginCrypto.ts`](file:///d:/Code/SutharLabs/website/src/plugins/security/pluginCrypto.ts).
 * An immutable SHA-256 hash is computed.
 * Release records are automatically synchronized to the `WorkspacePluginVersion` table in Neon PostgreSQL.
