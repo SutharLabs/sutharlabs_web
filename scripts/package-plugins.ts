@@ -45,7 +45,7 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'DocNexus',
     id: 'wp_doc_nexus',
     name: 'Doc Nexus',
-    version: '3.0.0',
+    version: '0.3.0',
     category: 'Creativity & Docs',
     type: 'Native',
     description: 'Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations.',
