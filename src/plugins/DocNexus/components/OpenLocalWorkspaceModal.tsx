@@ -7,15 +7,20 @@ import {
   FileText, 
   Table, 
   Shapes, 
+  Presentation,
   CheckCircle2, 
   AlertCircle,
   Sparkles,
   ArrowRight,
   FolderInput,
-  UploadCloud
+  UploadCloud,
+  FileCode
 } from 'lucide-react';
 import { DocNexusDocument } from '../types.js';
-import { parseImportedFile, readFileAsText, readDirectoryHandleRecursively } from '../utils/fileImport.js';
+import { 
+  importFileFromBrowser, 
+  readDirectoryHandleRecursively 
+} from '../utils/fileImport.js';
 
 interface OpenLocalWorkspaceModalProps {
   isOpen: boolean;
@@ -23,6 +28,8 @@ interface OpenLocalWorkspaceModalProps {
   onImportDocuments: (docs: DocNexusDocument[], folderName?: string) => void;
   theme?: 'dark' | 'light';
 }
+
+const SUPPORTED_EXTENSIONS_STRING = ".md,.markdown,.txt,.json,.csv,.tsv,.html,.htm,.doc,.docx,.pdf,.ppt,.pptx,.xls,.xlsx,.rtf,.ipynb,.excalidraw,.svg,.png,.jpg,.jpeg,.webp";
 
 export default function OpenLocalWorkspaceModal({
   isOpen,
@@ -55,18 +62,19 @@ export default function OpenLocalWorkspaceModal({
       const docs: DocNexusDocument[] = [];
       const fileArray = Array.from(files);
 
-      for (const file of fileArray) {
-        // Skip hidden and binaries > 5MB
-        if (file.name.startsWith('.') || file.size > 5 * 1024 * 1024) continue;
+      for (let i = 0; i < fileArray.length; i++) {
+        const file = fileArray[i];
+        // Skip hidden files or massive files (> 25MB)
+        if (file.name.startsWith('.') || file.size > 25 * 1024 * 1024) continue;
+        
+        setStatusMessage(`Ingesting ${file.name} (${i + 1}/${fileArray.length})...`);
         try {
-          const content = await readFileAsText(file);
-          // If relative path exists (webkitdirectory)
           const relPath = (file as any).webkitRelativePath;
           const detectedFolder = relPath ? relPath.split('/')[0] : folderName;
-          const doc = parseImportedFile(file.name, content, detectedFolder);
+          const doc = await importFileFromBrowser(file, detectedFolder);
           docs.push(doc);
         } catch (err) {
-          console.warn(`Could not read file ${file.name}:`, err);
+          console.warn(`Could not parse file ${file.name}:`, err);
         }
       }
 
@@ -74,7 +82,7 @@ export default function OpenLocalWorkspaceModal({
         onImportDocuments(docs, folderName);
         onClose();
       } else {
-        setStatusMessage('No supported text or document files found in selection.');
+        setStatusMessage('No supported documents, presentations, or spreadsheets found in selection.');
       }
     } catch (err: any) {
       setStatusMessage(`Import failed: ${err.message || 'Unknown error'}`);
@@ -106,16 +114,24 @@ export default function OpenLocalWorkspaceModal({
         const dirHandle = await (window as any).showDirectoryPicker({ mode: 'read' });
         setStatusMessage(`Scanning folder "${dirHandle.name}" for documents...`);
 
-        const filesData = await readDirectoryHandleRecursively(dirHandle, 50);
+        const filesData = await readDirectoryHandleRecursively(dirHandle, 60);
         if (filesData.length === 0) {
           setStatusMessage(`No compatible documents found in "${dirHandle.name}".`);
           setIsProcessing(false);
           return;
         }
 
-        const docs: DocNexusDocument[] = filesData.map(f => 
-          parseImportedFile(f.fileName, f.content, dirHandle.name)
-        );
+        const docs: DocNexusDocument[] = [];
+        for (let i = 0; i < filesData.length; i++) {
+          const item = filesData[i];
+          setStatusMessage(`Parsing ${item.fileName} (${i + 1}/${filesData.length})...`);
+          try {
+            const doc = await importFileFromBrowser(item.file, dirHandle.name);
+            docs.push(doc);
+          } catch (e) {
+            console.warn(`Failed parsing ${item.fileName}:`, e);
+          }
+        }
 
         onImportDocuments(docs, dirHandle.name);
         onClose();
@@ -162,7 +178,7 @@ export default function OpenLocalWorkspaceModal({
         ref={fileInputRef}
         type="file"
         multiple
-        accept=".md,.markdown,.txt,.json,.csv,.tsv,.html,.htm,.doc,.docx"
+        accept={SUPPORTED_EXTENSIONS_STRING}
         onChange={handleFileInputChange}
         className="hidden"
       />
@@ -174,7 +190,7 @@ export default function OpenLocalWorkspaceModal({
         className="hidden"
       />
 
-      <div className={`w-full max-w-xl rounded-2xl border shadow-2xl overflow-hidden font-sans transition-all ${
+      <div className={`w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden font-sans transition-all ${
         isLight 
           ? 'bg-white border-slate-200 text-slate-800 shadow-slate-400/40' 
           : 'bg-[#111218] border-white/10 text-white shadow-black/80'
@@ -184,17 +200,17 @@ export default function OpenLocalWorkspaceModal({
           isLight ? 'border-slate-200/80 bg-slate-50/70' : 'border-white/[0.08] bg-white/[0.02]'
         }`}>
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl ${
+            <div className={`p-2.5 rounded-xl ${
               isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-cyan-500/10 text-cyan-400'
             }`}>
               <HardDrive className="w-5 h-5" />
             </div>
             <div>
               <h2 className="text-base font-bold text-slate-900 dark:text-white leading-tight">
-                Open Local Workspace
+                Universal Document Ingestion
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                Browse local files or mount an entire directory into DocNexus
+                Load local documents, slide decks, PDFs, spreadsheets, and whole project directories
               </p>
             </div>
           </div>
@@ -237,7 +253,7 @@ export default function OpenLocalWorkspaceModal({
                   Load Local Directory
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
-                  Mount an entire project folder. Ingests all Markdown, CSV, JSON, and text specs into the vault.
+                  Mount an entire project directory. Auto-detects and converts PDFs, DOCX, PPTX, XLSX, Markdown, and CSV into sovereign workspaces.
                 </p>
               </div>
               <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-indigo-600 dark:text-cyan-400 group-hover:translate-x-1 transition-transform">
@@ -271,7 +287,7 @@ export default function OpenLocalWorkspaceModal({
                   Browse Document
                 </h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-snug">
-                  Select one or more documents from your local filesystem (.md, .csv, .json, .txt, .html).
+                  Select PDF (.pdf), PowerPoint (.pptx), Word (.docx), Excel (.xlsx), Jupyter (.ipynb), or Markdown.
                 </p>
               </div>
               <div className="mt-4 flex items-center gap-1.5 text-xs font-semibold text-slate-700 dark:text-slate-300 group-hover:translate-x-1 transition-transform">
@@ -297,10 +313,10 @@ export default function OpenLocalWorkspaceModal({
               dragOver ? (isLight ? 'text-indigo-600' : 'text-cyan-400') : 'text-slate-400'
             }`} />
             <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">
-              Drag and drop local files or folders here
+              Drag & Drop files or directories here to import
             </p>
             <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-1">
-              Supports Markdown (.md), CSV spreadsheets (.csv), JSON diagrams, and plain text
+              Direct parsing for PDF, PPTX slides, Word DOCX, Excel XLSX, Jupyter IPYNB, Markdown, and CSV
             </p>
           </div>
 
@@ -308,7 +324,7 @@ export default function OpenLocalWorkspaceModal({
           {isProcessing && (
             <div className="flex items-center gap-2 p-3 rounded-xl bg-cyan-500/10 border border-cyan-400/20 text-xs text-cyan-300 animate-pulse">
               <Sparkles className="w-4 h-4 text-cyan-400 shrink-0" />
-              <span>{statusMessage || 'Loading local files...'}</span>
+              <span>{statusMessage || 'Loading and parsing documents...'}</span>
             </div>
           )}
 
@@ -319,13 +335,28 @@ export default function OpenLocalWorkspaceModal({
             </div>
           )}
 
-          {/* Supported Format Badges */}
-          <div className="pt-2 border-t border-slate-200/80 dark:border-white/[0.06] flex items-center justify-between text-[11px] text-slate-400 dark:text-slate-500">
-            <span>Compatible with:</span>
-            <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1 font-mono"><FileText className="w-3 h-3 text-cyan-400" /> .md, .txt</span>
-              <span className="flex items-center gap-1 font-mono"><Table className="w-3 h-3 text-amber-400" /> .csv, .tsv</span>
-              <span className="flex items-center gap-1 font-mono"><Shapes className="w-3 h-3 text-purple-400" /> .json</span>
+          {/* Supported Format Grid Badges */}
+          <div className="pt-3 border-t border-slate-200/80 dark:border-white/[0.06] space-y-2 text-[11px]">
+            <div className="text-slate-400 dark:text-slate-500 font-medium text-[10px] uppercase tracking-wider">
+              Supported Formats & Native Engines:
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
+                <Presentation className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="font-mono text-[10px]">.pptx, .ppt</span>
+              </div>
+              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
+                <FileText className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="font-mono text-[10px]">.pdf, .docx</span>
+              </div>
+              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
+                <Table className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="font-mono text-[10px]">.xlsx, .csv</span>
+              </div>
+              <div className="flex items-center gap-1.5 p-1.5 rounded-lg bg-slate-100 dark:bg-white/[0.03] text-slate-700 dark:text-slate-300">
+                <FileCode className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                <span className="font-mono text-[10px]">.ipynb, .md</span>
+              </div>
             </div>
           </div>
         </div>

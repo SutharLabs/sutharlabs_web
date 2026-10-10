@@ -408,8 +408,14 @@ export default function DocExplorerSidebar({
                             {doc.title || "Untitled Document"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 font-sans">
-                          <span>{cfg.label.split(' ')[0]}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 font-sans">
+                          {doc.metadata?.tags?.find(t => ['PDF', 'PPTX', 'DOCX', 'XLSX', 'IPYNB', 'RTF', 'CSV', 'EXCALIDRAW'].includes(t)) ? (
+                            <span className="font-mono text-[9px] font-bold px-1.5 py-0.2 rounded bg-cyan-500/15 text-cyan-400 border border-cyan-500/20">
+                              {doc.metadata?.tags?.find(t => ['PDF', 'PPTX', 'DOCX', 'XLSX', 'IPYNB', 'RTF', 'CSV', 'EXCALIDRAW'].includes(t))}
+                            </span>
+                          ) : (
+                            <span>{cfg.label.split(' ')[0]}</span>
+                          )}
                           <span>•</span>
                           <span>{new Date(doc.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
                         </div>
