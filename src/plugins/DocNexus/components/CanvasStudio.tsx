@@ -297,159 +297,216 @@ export default function CanvasStudio({
 
   return (
     <div className="flex flex-col h-full overflow-hidden select-none relative">
-      {/* Canvas Studio Ribbon Toolbar */}
-      <div className={`p-2.5 border-b flex items-center justify-between gap-3 font-mono text-xs z-10 ${
-        isLight ? 'bg-slate-100/90 border-slate-200' : 'bg-[#141418]/90 border-outline/15 backdrop-blur-md'
+      {/* Floating Dynamic Island Creation Toolbar (Figma & Miro Standard) */}
+      <div className={`absolute top-4 left-1/2 -translate-x-1/2 z-30 backdrop-blur-2xl border rounded-2xl px-3 py-1.5 flex items-center gap-1.5 shadow-[0_16px_45px_rgba(0,0,0,0.35)] transition-all ${
+        isLight 
+          ? 'bg-white/95 border-slate-200/90 text-slate-800' 
+          : 'bg-[#12131c]/95 border-white/10 text-white'
       }`}>
-        {/* Element Creators */}
-        <div className="flex items-center gap-1 overflow-x-auto scrollbar-hide">
-          <span className="text-[10px] text-on-surface-variant font-bold uppercase mr-1">Shapes:</span>
-          <button
-            onClick={() => handleAddElement('rect')}
-            className={`p-2 rounded cursor-pointer transition-colors border ${
-              isLight ? 'hover:bg-slate-200 border-slate-300' : 'hover:bg-white/10 border-outline/20'
-            }`}
-            title="Add Rectangle / Card"
-          >
-            <Square className="w-3.5 h-3.5 text-[#00dbe7]" />
-          </button>
-          <button
-            onClick={() => handleAddElement('circle')}
-            className={`p-2 rounded cursor-pointer transition-colors border ${
-              isLight ? 'hover:bg-slate-200 border-slate-300' : 'hover:bg-white/10 border-outline/20'
-            }`}
-            title="Add Circle Node"
-          >
-            <CircleIcon className="w-3.5 h-3.5 text-[#ce5dff]" />
-          </button>
-          <button
-            onClick={() => handleAddElement('diamond')}
-            className={`p-2 rounded cursor-pointer transition-colors border ${
-              isLight ? 'hover:bg-slate-200 border-slate-300' : 'hover:bg-white/10 border-outline/20'
-            }`}
-            title="Add Diamond Decision"
-          >
-            <Diamond className="w-3.5 h-3.5 text-[#00e476]" />
-          </button>
-          <button
-            onClick={() => handleAddElement('text')}
-            className={`p-2 rounded cursor-pointer transition-colors border ${
-              isLight ? 'hover:bg-slate-200 border-slate-300' : 'hover:bg-white/10 border-outline/20'
-            }`}
-            title="Add Text Block"
-          >
-            <Type className="w-3.5 h-3.5 text-white" />
-          </button>
-          <button
-            onClick={() => handleAddElement('sticky')}
-            className={`p-2 rounded cursor-pointer transition-colors border ${
-              isLight ? 'hover:bg-slate-200 border-slate-300' : 'hover:bg-white/10 border-outline/20'
-            }`}
-            title="Add Sticky Note"
-          >
-            <StickyNote className="w-3.5 h-3.5 text-[#ffd700]" />
-          </button>
-          <button
-            onClick={() => handleAddElement('arrow')}
-            className={`p-2 rounded cursor-pointer transition-colors border ${
-              isLight ? 'hover:bg-slate-200 border-slate-300' : 'hover:bg-white/10 border-outline/20'
-            }`}
-            title="Add Arrow Flow"
-          >
-            <MoveRight className="w-3.5 h-3.5 text-[#ff7b72]" />
-          </button>
-          <button
-            onClick={() => handleAddElement('badge')}
-            className={`p-2 rounded cursor-pointer transition-colors border ${
-              isLight ? 'hover:bg-slate-200 border-slate-300' : 'hover:bg-white/10 border-outline/20'
-            }`}
-            title="Add Status Badge"
-          >
-            <Tag className="w-3.5 h-3.5 text-[#74f5ff]" />
-          </button>
-        </div>
+        {/* Tool: Select Pointer */}
+        <button
+          onClick={() => onSelectElement(null)}
+          className={`p-2 rounded-xl transition-all cursor-pointer ${
+            !selectedElement 
+              ? isLight ? 'bg-indigo-50 text-indigo-600 shadow-xs' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'
+              : isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-white/[0.08] text-slate-400 hover:text-white'
+          }`}
+          title="Select Tool (V)"
+        >
+          <MousePointer className="w-4 h-4" />
+        </button>
 
-        {/* Selected Element Quick Operations */}
+        <div className={`w-px h-5 mx-0.5 ${isLight ? 'bg-slate-200' : 'bg-white/10'}`} />
+
+        {/* Primary Vector Creators */}
+        <button
+          onClick={() => handleAddElement('rect')}
+          className={`p-2 rounded-xl cursor-pointer transition-all ${
+            isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/[0.08] text-slate-300 hover:text-white'
+          }`}
+          title="Add Rectangle / Card (R)"
+        >
+          <Square className="w-4 h-4 text-cyan-400" />
+        </button>
+        <button
+          onClick={() => handleAddElement('circle')}
+          className={`p-2 rounded-xl cursor-pointer transition-all ${
+            isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/[0.08] text-slate-300 hover:text-white'
+          }`}
+          title="Add Circle Node (O)"
+        >
+          <CircleIcon className="w-4 h-4 text-purple-400" />
+        </button>
+        <button
+          onClick={() => handleAddElement('diamond')}
+          className={`p-2 rounded-xl cursor-pointer transition-all ${
+            isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/[0.08] text-slate-300 hover:text-white'
+          }`}
+          title="Add Decision Diamond (D)"
+        >
+          <Diamond className="w-4 h-4 text-emerald-400" />
+        </button>
+        <button
+          onClick={() => handleAddElement('text')}
+          className={`p-2 rounded-xl cursor-pointer transition-all ${
+            isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/[0.08] text-slate-300 hover:text-white'
+          }`}
+          title="Add Text Block (T)"
+        >
+          <Type className="w-4 h-4 text-indigo-400 dark:text-cyan-200" />
+        </button>
+        <button
+          onClick={() => handleAddElement('sticky')}
+          className={`p-2 rounded-xl cursor-pointer transition-all ${
+            isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/[0.08] text-slate-300 hover:text-white'
+          }`}
+          title="Add Sticky Note (S)"
+        >
+          <StickyNote className="w-4 h-4 text-amber-400" />
+        </button>
+        <button
+          onClick={() => handleAddElement('arrow')}
+          className={`p-2 rounded-xl cursor-pointer transition-all ${
+            isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/[0.08] text-slate-300 hover:text-white'
+          }`}
+          title="Add Connector Flow (A)"
+        >
+          <MoveRight className="w-4 h-4 text-rose-400" />
+        </button>
+        <button
+          onClick={() => handleAddElement('badge')}
+          className={`p-2 rounded-xl cursor-pointer transition-all ${
+            isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/[0.08] text-slate-300 hover:text-white'
+          }`}
+          title="Add Status Badge (B)"
+        >
+          <Tag className="w-4 h-4 text-sky-400" />
+        </button>
+
+        {/* Selected Element Quick Operations Bar */}
         {selectedElement && (
-          <div className="flex items-center gap-1.5 border-l border-r px-2 border-outline/20">
-            <div className="flex gap-1">
+          <>
+            <div className={`w-px h-5 mx-1 ${isLight ? 'bg-slate-200' : 'bg-white/10'}`} />
+            
+            {/* Swatch color presets */}
+            <div className="flex items-center gap-1.5 px-1">
               {COLOR_PRESETS.map((p, idx) => (
                 <button
                   key={idx}
                   onClick={() => handleApplyPresetColor(p)}
                   style={{ backgroundColor: p.stroke }}
-                  className="w-4 h-4 rounded-full border border-black/30 hover:scale-125 transition-transform"
+                  className="w-4 h-4 rounded-full border border-black/20 hover:scale-125 transition-transform cursor-pointer shadow-xs"
                   title={p.label}
                 />
               ))}
             </div>
-            <div className="h-4 w-px bg-outline/20 mx-1"></div>
+
+            <div className={`w-px h-5 mx-1 ${isLight ? 'bg-slate-200' : 'bg-white/10'}`} />
+
             <button
               onClick={handleBringForward}
-              className="p-1 rounded hover:bg-white/10 text-on-surface-variant hover:text-white"
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-white/10 text-slate-300 hover:text-white'
+              }`}
               title="Bring Forward"
             >
-              <Layers className="w-3.5 h-3.5" />
+              <Layers className="w-4 h-4" />
             </button>
             <button
               onClick={handleDuplicateSelected}
-              className="p-1 rounded hover:bg-white/10 text-on-surface-variant hover:text-white"
-              title="Duplicate"
+              className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-white/10 text-slate-300 hover:text-white'
+              }`}
+              title="Duplicate (Cmd+D)"
             >
-              <Copy className="w-3.5 h-3.5" />
+              <Copy className="w-4 h-4" />
             </button>
             <button
               onClick={handleDeleteSelected}
-              className="p-1 rounded hover:bg-red-500/20 text-red-400"
-              title="Delete"
+              className="p-1.5 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors cursor-pointer"
+              title="Delete (Backspace)"
             >
-              <Trash2 className="w-3.5 h-3.5" />
+              <Trash2 className="w-4 h-4" />
             </button>
-          </div>
+          </>
         )}
-
-        {/* Zoom & View Settings */}
-        <div className="flex items-center gap-1 text-[11px]">
-          <button
-            onClick={() => setZoom(prev => Math.max(0.4, prev - 0.1))}
-            className="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant"
-            title="Zoom Out"
-          >
-            <ZoomOut className="w-3.5 h-3.5" />
-          </button>
-          <span className="font-mono text-on-surface w-10 text-center font-bold">
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            onClick={() => setZoom(prev => Math.min(2.5, prev + 0.1))}
-            className="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant"
-            title="Zoom In"
-          >
-            <ZoomIn className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={() => setZoom(1)}
-            className="p-1.5 rounded hover:bg-surface-container-high text-on-surface-variant"
-            title="Reset Zoom"
-          >
-            <RotateCcw className="w-3 h-3" />
-          </button>
-        </div>
       </div>
 
-      {/* Center Interactive SVG Artboard */}
+      {/* Floating Canvas Control HUD (Bottom-Right) */}
+      <div className={`absolute bottom-6 right-6 z-30 backdrop-blur-2xl border rounded-2xl p-1.5 flex items-center gap-1 shadow-[0_12px_36px_rgba(0,0,0,0.35)] font-sans text-xs transition-all ${
+        isLight 
+          ? 'bg-white/95 border-slate-200/90 text-slate-800' 
+          : 'bg-[#12131c]/95 border-white/10 text-white'
+      }`}>
+        <button
+          onClick={() => setZoom(prev => Math.max(0.4, Number((prev - 0.1).toFixed(1))))}
+          className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
+            isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-white/10 text-slate-300'
+          }`}
+          title="Zoom Out"
+        >
+          <ZoomOut className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => setZoom(1)}
+          className={`px-2 py-1 rounded-lg font-mono text-xs font-semibold cursor-pointer ${
+            isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/10 text-slate-200'
+          }`}
+          title="Click to reset zoom to 100%"
+        >
+          {Math.round(zoom * 100)}%
+        </button>
+        <button
+          onClick={() => setZoom(prev => Math.min(2.5, Number((prev + 0.1).toFixed(1))))}
+          className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
+            isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-white/10 text-slate-300'
+          }`}
+          title="Zoom In"
+        >
+          <ZoomIn className="w-4 h-4" />
+        </button>
+
+        <div className={`w-px h-4 mx-0.5 ${isLight ? 'bg-slate-200' : 'bg-white/10'}`} />
+
+        <button
+          onClick={() => setZoom(1)}
+          className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
+            isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-white/10 text-slate-300'
+          }`}
+          title="Reset to 100%"
+        >
+          <RotateCcw className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* Center Interactive SVG Artboard Stage */}
       <div 
-        className={`flex-1 overflow-auto p-8 flex items-center justify-center relative custom-scrollbar ${isLight ? 'bg-slate-200/60' : 'bg-[#050507]'}`}
+        className={`flex-1 overflow-auto p-12 flex items-center justify-center relative custom-scrollbar transition-colors ${
+          isLight ? 'bg-slate-100' : 'bg-[#060608]'
+        }`}
         onClick={() => onSelectElement(null)}
       >
         <div 
           style={{
             transform: `scale(${zoom})`,
             transformOrigin: 'center center',
-            transition: 'transform 0.1s ease-out'
+            transition: 'transform 0.12s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
-          className={`shadow-2xl rounded-xl border overflow-hidden relative ${isLight ? 'border-slate-300 bg-white shadow-xl' : 'border-outline/25 bg-[#0d0d11]'}`}
+          className={`rounded-2xl border overflow-hidden relative shadow-[0_25px_60px_-15px_rgba(0,0,0,0.6)] ${
+            isLight ? 'border-slate-300/80 bg-white' : 'border-white/10 bg-[#0d0d12]'
+          }`}
         >
+          {/* Top Artboard Dimension Label */}
+          <div className={`px-4 py-2 border-b flex items-center justify-between text-[11px] font-sans ${
+            isLight ? 'border-slate-200/80 bg-slate-50/80 text-slate-500' : 'border-white/[0.06] bg-white/[0.02] text-slate-400'
+          }`}>
+            <span className="font-medium flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-cyan-400"></span>
+              Edgeless Vector Canvas
+            </span>
+            <span className="font-mono text-[10px] opacity-75">1000 × 650 px • 16:9</span>
+          </div>
+
           <svg
             ref={svgRef}
             width={scene.width}
@@ -462,8 +519,8 @@ export default function CanvasStudio({
           >
             {/* Grid Dots Pattern */}
             <defs>
-              <pattern id="canvas-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                <circle cx="2" cy="2" r="1" fill={isLight ? '#cbd5e1' : '#26262b'} />
+              <pattern id="canvas-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+                <circle cx="2" cy="2" r="1.2" fill={isLight ? '#cbd5e1' : '#23232c'} />
               </pattern>
             </defs>
             <rect width="100%" height="100%" fill="url(#canvas-grid)" />
@@ -487,11 +544,11 @@ export default function CanvasStudio({
                         y={el.y}
                         width={el.width}
                         height={el.height}
-                        rx={el.borderRadius || 6}
+                        rx={el.borderRadius || 10}
                         fill={el.fill || '#1e1e24'}
                         stroke={isSelected ? '#00dbe7' : (el.stroke || '#3a494b')}
                         strokeWidth={isSelected ? 2.5 : (el.strokeWidth || 1.5)}
-                        filter={el.shadow ? 'drop-shadow(0 4px 6px rgba(0,0,0,0.3))' : undefined}
+                        filter={el.shadow ? 'drop-shadow(0 8px 16px rgba(0,0,0,0.35))' : undefined}
                       />
                     )}
 
@@ -503,6 +560,7 @@ export default function CanvasStudio({
                         fill={el.fill || '#1e1e24'}
                         stroke={isSelected ? '#00dbe7' : (el.stroke || '#3a494b')}
                         strokeWidth={isSelected ? 2.5 : (el.strokeWidth || 1.5)}
+                        filter="drop-shadow(0 6px 12px rgba(0,0,0,0.3))"
                       />
                     )}
 
@@ -512,6 +570,7 @@ export default function CanvasStudio({
                         fill={el.fill || '#1e1e24'}
                         stroke={isSelected ? '#00dbe7' : (el.stroke || '#3a494b')}
                         strokeWidth={isSelected ? 2.5 : (el.strokeWidth || 1.5)}
+                        filter="drop-shadow(0 6px 12px rgba(0,0,0,0.3))"
                       />
                     )}
 
@@ -522,18 +581,20 @@ export default function CanvasStudio({
                           y={el.y}
                           width={el.width}
                           height={el.height}
+                          rx="4"
                           fill={el.fill || '#2c2813'}
                           stroke={isSelected ? '#00dbe7' : (el.stroke || '#ffd700')}
                           strokeWidth={isSelected ? 2 : 1}
-                          filter="drop-shadow(2px 6px 8px rgba(0,0,0,0.4))"
+                          filter="drop-shadow(3px 8px 14px rgba(0,0,0,0.45))"
                         />
                         {/* Tape effect on sticky note */}
                         <rect
-                          x={el.x + el.width / 2 - 20}
-                          y={el.y - 6}
-                          width="40"
-                          height="12"
-                          fill="rgba(255,255,255,0.2)"
+                          x={el.x + el.width / 2 - 22}
+                          y={el.y - 7}
+                          width="44"
+                          height="14"
+                          rx="2"
+                          fill="rgba(255,255,255,0.25)"
                           transform={`rotate(-2, ${el.x + el.width / 2}, ${el.y})`}
                         />
                       </g>
@@ -547,11 +608,12 @@ export default function CanvasStudio({
                           x2={el.x + el.width}
                           y2={el.y + el.height}
                           stroke={isSelected ? '#00dbe7' : (el.stroke || '#74f5ff')}
-                          strokeWidth={el.strokeWidth || 2}
-                          strokeDasharray={isSelected ? '4,4' : undefined}
+                          strokeWidth={el.strokeWidth || 2.5}
+                          strokeDasharray={isSelected ? '5,5' : undefined}
+                          strokeLinecap="round"
                         />
                         <polygon
-                          points={`${el.x + el.width},${el.y + el.height} ${el.x + el.width - 8},${el.y + el.height - 5} ${el.x + el.width - 8},${el.y + el.height + 5}`}
+                          points={`${el.x + el.width},${el.y + el.height} ${el.x + el.width - 10},${el.y + el.height - 6} ${el.x + el.width - 10},${el.y + el.height + 6}`}
                           fill={el.stroke || '#74f5ff'}
                         />
                       </g>
@@ -567,6 +629,7 @@ export default function CanvasStudio({
                         fill={el.fill || '#132338'}
                         stroke={isSelected ? '#00dbe7' : (el.stroke || '#00dbe7')}
                         strokeWidth={isSelected ? 2 : 1}
+                        filter="drop-shadow(0 4px 10px rgba(0,0,0,0.25))"
                       />
                     )}
 
@@ -578,15 +641,15 @@ export default function CanvasStudio({
                         textAnchor={el.type === 'text' ? 'start' : 'middle'}
                         fill={el.textColor || '#ffffff'}
                         fontSize={el.fontSize || 12}
-                        fontFamily="monospace, sans-serif"
-                        fontWeight={el.type === 'text' ? 'bold' : 'normal'}
+                        fontFamily="Inter, system-ui, -apple-system, sans-serif"
+                        fontWeight={el.type === 'text' ? '600' : '500'}
                         pointerEvents="none"
                       >
                         {el.text.split('\n').map((line, lIdx) => (
                           <tspan
                             key={lIdx}
                             x={el.type === 'circle' ? el.x + el.width / 2 : el.x + (el.type === 'text' ? 5 : el.width / 2)}
-                            dy={lIdx === 0 ? 0 : 16}
+                            dy={lIdx === 0 ? 0 : 18}
                           >
                             {line}
                           </tspan>
@@ -594,19 +657,26 @@ export default function CanvasStudio({
                       </text>
                     )}
 
-                    {/* Active Selection Bounding Box & Handles */}
+                    {/* Active Selection Bounding Box & Figma-Style Handles */}
                     {isSelected && (
-                      <rect
-                        x={el.x - 3}
-                        y={el.y - 3}
-                        width={el.width + 6}
-                        height={el.height + 6}
-                        fill="none"
-                        stroke="#00dbe7"
-                        strokeWidth="1.5"
-                        strokeDasharray="4,4"
-                        pointerEvents="none"
-                      />
+                      <g pointerEvents="none">
+                        <rect
+                          x={el.x - 4}
+                          y={el.y - 4}
+                          width={el.width + 8}
+                          height={el.height + 8}
+                          fill="none"
+                          stroke="#00dbe7"
+                          strokeWidth="1.5"
+                          strokeDasharray="4,4"
+                          rx="4"
+                        />
+                        {/* Figma Corner Handles */}
+                        <circle cx={el.x - 4} cy={el.y - 4} r="3" fill="#ffffff" stroke="#00dbe7" strokeWidth="1.5" />
+                        <circle cx={el.x + el.width + 4} cy={el.y - 4} r="3" fill="#ffffff" stroke="#00dbe7" strokeWidth="1.5" />
+                        <circle cx={el.x - 4} cy={el.y + el.height + 4} r="3" fill="#ffffff" stroke="#00dbe7" strokeWidth="1.5" />
+                        <circle cx={el.x + el.width + 4} cy={el.y + el.height + 4} r="3" fill="#ffffff" stroke="#00dbe7" strokeWidth="1.5" />
+                      </g>
                     )}
                   </g>
                 );

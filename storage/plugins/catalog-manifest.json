@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T12:48:04.693Z",
+    "packagedAt": "2026-10-10T13:43:30.490Z",
     "archiveFileName": "wp_stock_analyzer-v1.1.2.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.2.zip",
-    "sizeBytes": 77397,
-    "checksumSha256": "7b7bcd6c36e8ad5f15760314d34dde2912a12ee53ee386fc40d8d3c9b2358dee"
+    "sizeBytes": 77396,
+    "checksumSha256": "565fb9684a2d9c5dbc6f208101de7bd18f922caf396a4620dcdd321af69b37e5"
   },
   {
     "id": "wp_flow_designer",
@@ -25,11 +25,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T12:48:09.022Z",
+    "packagedAt": "2026-10-10T13:43:33.178Z",
     "archiveFileName": "wp_flow_designer-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.1.0.zip",
-    "sizeBytes": 1869,
-    "checksumSha256": "8ce0759fc2051951d837cfafe10fca910210b7a676fe8bf1c3c569db8a175925"
+    "sizeBytes": 1870,
+    "checksumSha256": "b5e4f4f6db962cdc728916334a304c16437aa8b0890cef3b7e94988a24e95b04"
   },
   {
     "id": "wp_doc_nexus",
@@ -41,11 +41,11 @@
     "iconSymbol": "auto_stories",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T12:48:11.136Z",
+    "packagedAt": "2026-10-10T13:43:35.090Z",
     "archiveFileName": "wp_doc_nexus-v0.3.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.3.0.zip",
-    "sizeBytes": 58865,
-    "checksumSha256": "9243c5e4e455ee25ae3075de6bd4b1bc6bc16958f4283cfe34823a09247072ed"
+    "sizeBytes": 61464,
+    "checksumSha256": "4b1789b9b591e5f19cfe477ddebba410d259f4f2076a0a04124a9b8bebc21ac0"
   },
   {
     "id": "wp_accounting",
@@ -57,10 +57,10 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T12:48:14.183Z",
+    "packagedAt": "2026-10-10T13:43:36.398Z",
     "archiveFileName": "wp_accounting-v0.2.3.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.2.3.zip",
     "sizeBytes": 78864,
-    "checksumSha256": "97c06dc2b9e78053210838d6c4c42249e965bc3acec15f1c836d6d297ab3844d"
+    "checksumSha256": "2d057f2304601a2c680d30df8b5cf33cab75f85348c197b4b8e66c34d021080b"
   }
 ]

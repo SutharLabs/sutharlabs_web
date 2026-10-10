@@ -138,38 +138,50 @@ export default function SlideDeckStudio({
   return (
     <div className="flex flex-col h-full overflow-hidden select-none relative">
       {/* Studio Ribbon Toolbar */}
-      <div className={`p-2.5 border-b flex items-center justify-between gap-3 font-mono text-xs z-10 ${
-        isLight ? 'bg-slate-100 border-slate-200' : 'bg-[#141418] border-outline/15'
+      <div className={`px-4 py-2.5 border-b flex items-center justify-between gap-3 font-sans text-xs z-10 transition-colors ${
+        isLight ? 'bg-slate-50/90 border-slate-200/90 text-slate-800' : 'bg-[#0e0e14]/90 border-white/[0.08] text-white'
       }`}>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={() => setActiveSlideIndex(s => Math.max(0, s - 1))}
             disabled={activeSlideIndex === 0}
-            className="p-1 rounded hover:bg-white/10 disabled:opacity-30"
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-30 ${
+              isLight ? 'hover:bg-slate-200/70 text-slate-600' : 'hover:bg-white/10 text-slate-400'
+            }`}
+            title="Previous Slide"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className="font-bold text-on-surface">
+          <span className="font-semibold text-xs px-1 text-slate-700 dark:text-slate-200">
             Slide {activeSlideIndex + 1} of {deckState.slides.length}
           </span>
           <button
             onClick={() => setActiveSlideIndex(s => Math.min(deckState.slides.length - 1, s + 1))}
             disabled={activeSlideIndex === deckState.slides.length - 1}
-            className="p-1 rounded hover:bg-white/10 disabled:opacity-30"
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer disabled:opacity-30 ${
+              isLight ? 'hover:bg-slate-200/70 text-slate-600' : 'hover:bg-white/10 text-slate-400'
+            }`}
+            title="Next Slide"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
+
           <button
             onClick={handleAddSlide}
-            className="px-2.5 py-1 rounded bg-[#00dbe7]/15 text-[#74f5ff] hover:bg-[#00dbe7]/25 font-bold flex items-center gap-1 ml-2 border border-[#00dbe7]/30 cursor-pointer"
+            className={`px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 ml-2 transition-all cursor-pointer border ${
+              isLight 
+                ? 'bg-white hover:bg-slate-100 border-slate-200 text-slate-700 shadow-xs' 
+                : 'bg-white/[0.05] hover:bg-white/[0.1] border-white/10 text-cyan-300'
+            }`}
           >
             <Plus className="w-3.5 h-3.5" />
             Add Slide
           </button>
+
           {deckState.slides.length > 1 && (
             <button
               onClick={handleDeleteSlide}
-              className="p-1.5 rounded hover:bg-red-500/20 text-red-400"
+              className="p-1.5 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors cursor-pointer ml-1"
               title="Delete Current Slide"
             >
               <Trash2 className="w-3.5 h-3.5" />
@@ -182,10 +194,8 @@ export default function SlideDeckStudio({
           <select
             value={activeSlide.layout}
             onChange={e => handleUpdateActiveSlide('layout', e.target.value)}
-            className={`rounded px-2 py-1 text-xs ${
-              isLight 
-                ? 'bg-white border border-slate-300 text-slate-800' 
-                : 'bg-surface-container-low border border-outline/20 text-white'
+            className={`border rounded-xl px-2.5 py-1.5 text-xs font-sans transition-colors ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-white/[0.04] border-white/10 text-white'
             }`}
           >
             <option value="title">Title Layout</option>
@@ -198,10 +208,8 @@ export default function SlideDeckStudio({
           <select
             value={deckState.theme}
             onChange={e => updateDeck({ theme: e.target.value as any })}
-            className={`rounded px-2 py-1 text-xs ${
-              isLight 
-                ? 'bg-white border border-slate-300 text-slate-800' 
-                : 'bg-surface-container-low border border-outline/20 text-white'
+            className={`border rounded-xl px-2.5 py-1.5 text-xs font-sans transition-colors ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-white/[0.04] border-white/10 text-white'
             }`}
           >
             <option value="cyan">Cyan Theme</option>
@@ -213,10 +221,10 @@ export default function SlideDeckStudio({
 
           <button
             onClick={() => setIsPresenterMode(true)}
-            className="px-3 py-1.5 rounded font-bold uppercase tracking-wider flex items-center gap-1.5 bg-[#00e476]/20 text-[#00e476] hover:bg-[#00e476]/30 border border-[#00e476]/30 cursor-pointer ml-2"
+            className="px-3.5 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-sm bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white ml-2 active:scale-95"
           >
-            <Play className="w-3.5 h-3.5" />
-            Present
+            <Play className="w-3.5 h-3.5 fill-current" />
+            <span>Present</span>
           </button>
         </div>
       </div>

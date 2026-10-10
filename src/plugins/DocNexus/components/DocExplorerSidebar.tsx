@@ -12,7 +12,11 @@ import {
   Presentation, 
   Shapes,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  FolderOpen,
+  X,
+  ShieldCheck,
+  MoreVertical
 } from 'lucide-react';
 
 interface DocExplorerSidebarProps {
@@ -28,12 +32,54 @@ interface DocExplorerSidebarProps {
   onToggleCollapse?: () => void;
 }
 
-const FORMAT_CONFIG: Record<DocumentFormat, { label: string; icon: any; color: string; bg: string }> = {
-  canvas: { label: 'Canvas', icon: Shapes, color: '#ce5dff', bg: 'rgba(206,93,255,0.1)' },
-  markdown: { label: 'Markdown', icon: FileText, color: '#74f5ff', bg: 'rgba(0,219,231,0.1)' },
-  richtext: { label: 'Executive Doc', icon: Layout, color: '#00e476', bg: 'rgba(0,228,118,0.1)' },
-  sheet: { label: 'Spreadsheet', icon: Table, color: '#ffd700', bg: 'rgba(255,215,0,0.1)' },
-  slides: { label: 'Slides', icon: Presentation, color: '#ff7b72', bg: 'rgba(255,123,114,0.1)' }
+const FORMAT_CONFIG: Record<DocumentFormat, { 
+  label: string; 
+  description: string;
+  icon: any; 
+  color: string; 
+  bg: string;
+  badgeBg: string;
+}> = {
+  canvas: { 
+    label: 'Edgeless Canvas', 
+    description: 'Vector whiteboard, architecture & mindmaps',
+    icon: Shapes, 
+    color: '#a855f7', 
+    bg: 'rgba(168, 85, 247, 0.12)',
+    badgeBg: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20'
+  },
+  markdown: { 
+    label: 'Technical Docs', 
+    description: 'Markdown specs, code blocks & mermaid diagrams',
+    icon: FileText, 
+    color: '#06b6d4', 
+    bg: 'rgba(6, 182, 212, 0.12)',
+    badgeBg: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20'
+  },
+  sheet: { 
+    label: 'Database Grid', 
+    description: 'Spreadsheets, formulas & structured datasets',
+    icon: Table, 
+    color: '#eab308', 
+    bg: 'rgba(234, 179, 8, 0.12)',
+    badgeBg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20'
+  },
+  richtext: { 
+    label: 'Executive A4', 
+    description: 'Paginated corporate briefs, memos & print ready',
+    icon: Layout, 
+    color: '#10b981', 
+    bg: 'rgba(16, 185, 129, 0.12)',
+    badgeBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+  },
+  slides: { 
+    label: 'Slide Deck', 
+    description: '16:9 widescreen presentation pitch decks',
+    icon: Presentation, 
+    color: '#f43f5e', 
+    bg: 'rgba(244, 63, 94, 0.12)',
+    badgeBg: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20'
+  }
 };
 
 export default function DocExplorerSidebar({
@@ -52,6 +98,7 @@ export default function DocExplorerSidebar({
   const [searchQuery, setSearchQuery] = useState('');
   const [formatFilter, setFormatFilter] = useState<'ALL' | DocumentFormat>('ALL');
   const [isCreateMenuOpen, setIsCreateMenuOpen] = useState(false);
+  const [activeMenuDocId, setActiveMenuDocId] = useState<string | null>(null);
 
   const filteredDocs = documents.filter(doc => {
     const matchesFormat = formatFilter === 'ALL' || doc.format === formatFilter;
@@ -63,26 +110,37 @@ export default function DocExplorerSidebar({
 
   return (
     <aside className={`flex flex-col border-r transition-all duration-200 select-none ${
-      isCollapsed ? 'w-14' : 'w-72'
+      isCollapsed ? 'w-14' : 'w-76'
     } ${
       isLight 
-        ? 'bg-slate-50/95 border-slate-200 text-slate-800' 
-        : 'bg-[#0a0a0c]/95 border-outline/15 text-[#b9cacb]'
+        ? 'bg-slate-50/95 border-slate-200/90 text-slate-800' 
+        : 'bg-[#09090d]/95 border-white/[0.08] text-slate-300'
     }`}>
       {/* Top Header / Collapse Trigger */}
-      <div className="p-3 border-b border-outline/10 flex items-center justify-between">
+      <div className={`p-3.5 border-b flex items-center justify-between ${
+        isLight ? 'border-slate-200/80' : 'border-white/[0.08]'
+      }`}>
         {!isCollapsed && (
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-lg text-[#00dbe7]">folder_open</span>
-            <span className="font-mono text-xs font-bold uppercase tracking-wider text-on-surface">
-              Document Vault
-            </span>
+          <div className="flex items-center gap-2.5">
+            <div className={`p-1.5 rounded-lg ${isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-cyan-500/10 text-cyan-400'}`}>
+              <FolderOpen className="w-4 h-4" />
+            </div>
+            <div>
+              <span className="font-sans text-xs font-bold text-slate-900 dark:text-white block leading-tight">
+                Document Vault
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                {documents.length} sovereign files
+              </span>
+            </div>
           </div>
         )}
         {onToggleCollapse && (
           <button
             onClick={onToggleCollapse}
-            className="p-1 rounded hover:bg-surface-container-high text-on-surface-variant transition-colors"
+            className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+              isLight ? 'hover:bg-slate-200/70 text-slate-500' : 'hover:bg-white/[0.08] text-slate-400'
+            }`}
             title={isCollapsed ? "Expand Sidebar" : "Collapse Sidebar"}
           >
             <ChevronRight className={`w-4 h-4 transition-transform ${isCollapsed ? '' : 'rotate-180'}`} />
@@ -92,28 +150,30 @@ export default function DocExplorerSidebar({
 
       {!isCollapsed && (
         <>
-          {/* Action Buttons: New Document & Templates */}
-          <div className="p-3 space-y-2 border-b border-outline/10">
+          {/* Action Area: New Document & Browse Templates */}
+          <div className={`p-3 space-y-2 border-b ${isLight ? 'border-slate-200/80' : 'border-white/[0.08]'}`}>
             <div className="relative">
               <button
                 onClick={() => setIsCreateMenuOpen(prev => !prev)}
-                className={`w-full py-2 px-3 rounded-lg font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-between shadow-sm cursor-pointer transition-all ${
-                  isLight 
-                    ? 'bg-purple-600 hover:bg-purple-700 text-white' 
-                    : 'bg-[#ce5dff]/20 hover:bg-[#ce5dff]/30 text-[#ebb2ff] border border-[#ce5dff]/40'
-                }`}
+                className="w-full py-2.5 px-3.5 rounded-xl font-sans text-xs font-semibold flex items-center justify-between cursor-pointer transition-all shadow-sm bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 hover:from-violet-500 hover:via-indigo-500 hover:to-cyan-400 text-white active:scale-[0.98]"
               >
-                <span className="flex items-center gap-1.5">
-                  <Plus className="w-4 h-4" />
-                  New Document
+                <span className="flex items-center gap-2">
+                  <Plus className="w-4 h-4 stroke-[2.5]" />
+                  <span>Create Document</span>
                 </span>
-                <span className="text-[10px] opacity-75">▼</span>
+                <span className="text-[10px] opacity-80">▼</span>
               </button>
 
+              {/* Rich Creation Menu (Adobe / Canva Creative Suite Style) */}
               {isCreateMenuOpen && (
-                <div className={`absolute top-full left-0 right-0 mt-1.5 rounded-lg border shadow-xl z-50 p-1.5 font-mono text-xs ${
-                  isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#151518] border-outline/25 text-white'
+                <div className={`absolute top-full left-0 right-0 mt-2 rounded-2xl border shadow-2xl z-50 p-2 font-sans text-xs backdrop-blur-xl animate-in fade-in zoom-in-95 duration-100 ${
+                  isLight 
+                    ? 'bg-white/95 border-slate-200 text-slate-800 shadow-slate-300/50' 
+                    : 'bg-[#12121a]/95 border-white/10 text-white shadow-black/80'
                 }`}>
+                  <div className="px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                    Select Paradigm Blueprint
+                  </div>
                   {(Object.keys(FORMAT_CONFIG) as DocumentFormat[]).map(fmt => {
                     const cfg = FORMAT_CONFIG[fmt];
                     const IconComp = cfg.icon;
@@ -124,15 +184,23 @@ export default function DocExplorerSidebar({
                           onCreateDoc(fmt);
                           setIsCreateMenuOpen(false);
                         }}
-                        className={`w-full flex items-center gap-2 px-2.5 py-2 rounded text-left transition-colors cursor-pointer ${
-                          isLight ? 'hover:bg-slate-100' : 'hover:bg-white/5'
+                        className={`w-full flex items-start gap-3 p-2.5 rounded-xl text-left transition-all cursor-pointer ${
+                          isLight ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'
                         }`}
                       >
-                        <span style={{ color: cfg.color }} className="p-1 rounded bg-black/20">
-                          <IconComp className="w-3.5 h-3.5" />
-                        </span>
-                        <div className="flex-1">
-                          <span className="block font-semibold text-[11px]">{cfg.label}</span>
+                        <div 
+                          style={{ color: cfg.color, backgroundColor: cfg.bg }}
+                          className="p-2 rounded-lg shrink-0 mt-0.5"
+                        >
+                          <IconComp className="w-4 h-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <span className="block font-semibold text-xs text-slate-900 dark:text-white">
+                            {cfg.label}
+                          </span>
+                          <span className="block text-[10px] text-slate-500 dark:text-slate-400 leading-snug">
+                            {cfg.description}
+                          </span>
                         </div>
                       </button>
                     );
@@ -143,57 +211,72 @@ export default function DocExplorerSidebar({
 
             <button
               onClick={onOpenTemplates}
-              className={`w-full py-1.5 px-3 rounded-lg font-mono text-xs font-semibold flex items-center justify-center gap-1.5 cursor-pointer border transition-colors ${
+              className={`w-full py-2 px-3 rounded-xl font-sans text-xs font-medium flex items-center justify-center gap-2 cursor-pointer border transition-all ${
                 isLight 
-                  ? 'bg-white hover:bg-slate-100 border-slate-300 text-slate-700' 
-                  : 'bg-surface-container-low hover:bg-white/5 border-outline/20 text-[#74f5ff]'
+                  ? 'bg-white hover:bg-slate-100/80 border-slate-200 text-slate-700 shadow-xs' 
+                  : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
               }`}
             >
-              <Sparkles className="w-3.5 h-3.5 text-[#00dbe7]" />
-              Browse Templates
+              <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+              <span>Explore Templates</span>
             </button>
           </div>
 
-          {/* Search Input */}
-          <div className="p-3 pb-2">
-            <div className={`flex items-center px-2.5 py-1.5 rounded-lg border text-xs font-mono ${
-              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#121214] border-outline/15 text-white'
+          {/* Search Input with Hotkey Pill */}
+          <div className="px-3 pt-3 pb-2">
+            <div className={`flex items-center px-3 py-1.5 rounded-xl border text-xs font-sans transition-colors ${
+              isLight 
+                ? 'bg-white border-slate-200 text-slate-800 focus-within:border-indigo-500' 
+                : 'bg-white/[0.04] border-white/10 text-white focus-within:border-cyan-400'
             }`}>
-              <Search className="w-3.5 h-3.5 text-on-surface-variant mr-2 shrink-0" />
+              <Search className="w-3.5 h-3.5 text-slate-400 mr-2 shrink-0" />
               <input
                 type="text"
                 placeholder="Search documents..."
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                className="bg-transparent border-none focus:outline-none w-full text-xs placeholder:text-on-surface-variant"
+                className="bg-transparent border-none focus:outline-none w-full text-xs placeholder:text-slate-400 dark:placeholder:text-slate-500"
               />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="p-0.5 text-slate-400 hover:text-slate-600 dark:hover:text-white"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
           </div>
 
           {/* Format Filter Badges */}
-          <div className="px-3 pb-2 flex gap-1 overflow-x-auto scrollbar-hide">
-            {(['ALL', 'canvas', 'markdown', 'richtext', 'sheet', 'slides'] as const).map(fmt => {
+          <div className="px-3 pb-2 flex gap-1 overflow-x-auto scrollbar-none">
+            {(['ALL', 'canvas', 'markdown', 'sheet', 'richtext', 'slides'] as const).map(fmt => {
               const isSelected = formatFilter === fmt;
+              const label = fmt === 'ALL' ? 'All' : FORMAT_CONFIG[fmt].label.split(' ')[0];
               return (
                 <button
                   key={fmt}
                   onClick={() => setFormatFilter(fmt)}
-                  className={`px-2 py-0.5 rounded text-[10px] font-mono shrink-0 cursor-pointer transition-all ${
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-sans font-medium shrink-0 cursor-pointer transition-all ${
                     isSelected
-                      ? isLight ? 'bg-slate-900 text-white font-bold' : 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/40 font-bold'
-                      : isLight ? 'bg-slate-200/70 text-slate-600 hover:bg-slate-200' : 'bg-surface-container-low text-on-surface-variant hover:text-white'
+                      ? isLight 
+                        ? 'bg-slate-900 text-white shadow-xs' 
+                        : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-xs'
+                      : isLight 
+                        ? 'bg-slate-200/60 text-slate-600 hover:bg-slate-200' 
+                        : 'bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08]'
                   }`}
                 >
-                  {fmt === 'ALL' ? 'ALL' : FORMAT_CONFIG[fmt].label}
+                  {label}
                 </button>
               );
             })}
           </div>
 
-          {/* Document Tree List */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-1">
+          {/* Document Cards List (High-Craft Creative Suite Items) */}
+          <div className="flex-1 overflow-y-auto custom-scrollbar px-2 py-1 space-y-1.5">
             {filteredDocs.length === 0 ? (
-              <div className="p-6 text-center text-on-surface-variant font-mono text-xs italic">
+              <div className="py-10 text-center text-slate-400 dark:text-slate-500 font-sans text-xs">
                 No matching documents.
               </div>
             ) : (
@@ -206,34 +289,37 @@ export default function DocExplorerSidebar({
                   <div
                     key={doc.id}
                     onClick={() => onSelectDoc(doc.id)}
-                    className={`group relative p-2.5 rounded-lg cursor-pointer transition-all border flex items-start justify-between gap-2 ${
+                    className={`group relative p-2.5 rounded-xl cursor-pointer transition-all border flex items-center justify-between gap-2.5 ${
                       isActive
                         ? isLight
-                          ? 'bg-purple-50/80 border-purple-300 text-slate-900 shadow-xs'
-                          : 'bg-[#18181c] border-[#00dbe7]/40 text-white shadow-[0_0_12px_rgba(0,219,231,0.08)]'
+                          ? 'bg-white border-indigo-200 text-slate-900 shadow-sm ring-1 ring-indigo-500/20'
+                          : 'bg-[#15161f] border-cyan-400/40 text-white shadow-[0_2px_12px_rgba(0,0,0,0.4)] ring-1 ring-cyan-400/20'
                         : isLight
-                          ? 'bg-transparent border-transparent hover:bg-slate-100/70 text-slate-700'
-                          : 'bg-transparent border-transparent hover:bg-white/[0.03] text-[#b9cacb]'
+                          ? 'bg-transparent border-transparent hover:bg-white hover:border-slate-200/60 text-slate-700 hover:shadow-xs'
+                          : 'bg-transparent border-transparent hover:bg-white/[0.04] hover:border-white/5 text-slate-300'
                     }`}
                   >
-                    <div className="flex items-start gap-2.5 min-w-0 flex-1">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      {/* Document Format Icon Badge */}
                       <div 
                         style={{ color: cfg.color, backgroundColor: cfg.bg }}
-                        className="p-1.5 rounded shrink-0 mt-0.5"
+                        className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0"
                       >
-                        <IconComp className="w-3.5 h-3.5" />
+                        <IconComp className="w-4 h-4" />
                       </div>
+
+                      {/* Title & Metadata */}
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5">
                           {doc.metadata?.isPinned && (
-                            <Pin className="w-3 h-3 text-[#ffd700] fill-current shrink-0" />
+                            <Pin className="w-3 h-3 text-amber-400 fill-amber-400 shrink-0" />
                           )}
-                          <span className="font-sans text-xs font-semibold truncate block leading-snug">
+                          <span className="font-sans text-xs font-semibold truncate block leading-snug text-slate-900 dark:text-white">
                             {doc.title || "Untitled Document"}
                           </span>
                         </div>
-                        <div className="flex items-center gap-2 mt-1 font-mono text-[9px] text-on-surface-variant">
-                          <span>{cfg.label}</span>
+                        <div className="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400 dark:text-slate-500 font-sans">
+                          <span>{cfg.label.split(' ')[0]}</span>
                           <span>•</span>
                           <span>{new Date(doc.updatedAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
                         </div>
@@ -247,20 +333,22 @@ export default function DocExplorerSidebar({
                           e.stopPropagation();
                           onDuplicateDoc(doc.id);
                         }}
-                        className="p-1 rounded hover:bg-white/10 text-on-surface-variant hover:text-white"
+                        className={`p-1.5 rounded-lg transition-colors ${
+                          isLight ? 'hover:bg-slate-200/80 text-slate-600' : 'hover:bg-white/10 text-slate-400 hover:text-white'
+                        }`}
                         title="Duplicate Document"
                       >
-                        <Copy className="w-3 h-3" />
+                        <Copy className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={e => {
                           e.stopPropagation();
                           onDeleteDoc(doc.id);
                         }}
-                        className="p-1 rounded hover:bg-red-500/20 text-on-surface-variant hover:text-red-400"
+                        className="p-1.5 rounded-lg hover:bg-red-500/20 text-slate-400 hover:text-red-400 transition-colors"
                         title="Delete Document"
                       >
-                        <Trash2 className="w-3 h-3" />
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
@@ -269,12 +357,17 @@ export default function DocExplorerSidebar({
             )}
           </div>
 
-          {/* Bottom Document Counter */}
-          <div className="p-3 border-t border-outline/10 font-mono text-[10px] text-on-surface-variant flex justify-between items-center">
-            <span>{documents.length} Sovereign Documents</span>
-            <span className="text-[#00e476] flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#00fb83]"></span>
-              Synced
+          {/* Bottom Vault Status Footer */}
+          <div className={`p-3 border-t font-sans text-[11px] flex justify-between items-center ${
+            isLight ? 'border-slate-200/80 text-slate-500' : 'border-white/[0.08] text-slate-400'
+          }`}>
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Sovereign Storage</span>
+            </span>
+            <span className="text-emerald-500 font-medium flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              Live Synced
             </span>
           </div>
         </>

@@ -326,35 +326,57 @@ export default function DocNexusStudio({
 
   return (
     <div className="flex flex-col h-full overflow-hidden select-none">
-      {/* Top Studio Control Bar (Outline & Affine Standard) */}
-      <div className={`p-2.5 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-3 z-20 ${
-        isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#0a0a0d] border-outline/15 text-white'
+      {/* Top Studio Ribbon Bar (World-Class Creative Suite Header) */}
+      <header className={`px-4 py-2.5 border-b flex flex-col md:flex-row justify-between items-start md:items-center gap-3 z-20 backdrop-blur-md transition-colors ${
+        isLight 
+          ? 'bg-white/90 border-slate-200/90 text-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.03)]' 
+          : 'bg-[#08080c]/90 border-white/[0.08] text-white shadow-[0_4px_20px_rgba(0,0,0,0.3)]'
       }`}>
-        {/* Left: Breadcrumbs & Document Title */}
-        <div className="flex items-center gap-2.5 flex-1 min-w-0">
-          <div className="p-1.5 rounded-lg bg-[#00dbe7]/15 text-[#74f5ff] shrink-0">
-            <BookOpen className="w-4 h-4" />
+        {/* Left: Breadcrumbs, Document Identity & Live Sync Status */}
+        <div className="flex items-center gap-3 flex-1 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 p-[1px] shadow-sm shrink-0">
+            <div className={`w-full h-full rounded-[11px] flex items-center justify-center ${
+              isLight ? 'bg-white text-indigo-600' : 'bg-[#0e0e14] text-cyan-300'
+            }`}>
+              <BookOpen className="w-4 h-4" />
+            </div>
           </div>
+          
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2 text-xs font-mono text-on-surface-variant truncate">
-              <span>Vault</span>
+            <div className="flex items-center gap-2 text-xs font-sans text-slate-500 dark:text-slate-400">
+              <span className="font-medium hover:text-slate-700 dark:hover:text-slate-200 cursor-pointer transition-colors">Vault</span>
               <ChevronRight className="w-3 h-3 opacity-40 shrink-0" />
-              <span className="capitalize">{activeDocument?.metadata?.category || 'General'}</span>
+              <span className="capitalize font-medium text-slate-600 dark:text-slate-300">
+                {activeDocument?.metadata?.category || 'General'}
+              </span>
               <ChevronRight className="w-3 h-3 opacity-40 shrink-0" />
+              
+              {/* Document Title Input */}
               <input
                 type="text"
-                value={activeDocument?.title || 'DocNexus Studio'}
+                value={activeDocument?.title || 'Untitled Document'}
                 onChange={e => handleTitleChange(e.target.value)}
-                className={`bg-transparent border-none text-sm font-bold tracking-tight focus:outline-none focus:border-b truncate text-on-surface font-sans max-w-sm ${
-                  isLight ? 'focus:border-purple-600' : 'focus:border-[#00dbe7]'
+                placeholder="Document Title"
+                className={`bg-transparent border-b border-transparent hover:border-slate-300 dark:hover:border-white/20 focus:border-indigo-500 dark:focus:border-cyan-400 text-sm font-semibold tracking-tight focus:outline-none truncate text-slate-900 dark:text-white font-sans max-w-xs md:max-w-sm px-1 py-0.5 rounded transition-colors ${
+                  isLight ? 'hover:bg-slate-100/60' : 'hover:bg-white/[0.04]'
                 }`}
               />
+
+              {/* Live Cloud Status Pill */}
+              <span className="hidden sm:inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium tracking-normal shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Saved to Cloud
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Center: Affine-Style Segmented Mode Switcher (Page vs Edgeless Canvas vs Database) */}
-        <div className="flex items-center gap-0.5 bg-surface-container-low p-1 rounded-xl border border-outline/15 text-xs font-mono">
+        {/* Center: Apple / Figma / Canva-Style Segmented Paradigm Switcher Dock */}
+        <div className={`flex items-center p-1 rounded-xl border text-xs font-sans transition-all ${
+          isLight 
+            ? 'bg-slate-100/90 border-slate-200/80 shadow-inner' 
+            : 'bg-[#121218]/90 border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]'
+        }`}>
           {FORMAT_TABS.map(tab => {
             const isSelected = activeDocument?.format === tab.format;
             const IconComp = tab.icon;
@@ -362,34 +384,40 @@ export default function DocNexusStudio({
               <button
                 key={tab.format}
                 onClick={() => handleSwitchFormat(tab.format)}
-                className={`px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-bold transition-all cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 font-medium transition-all cursor-pointer relative ${
                   isSelected
                     ? isLight
-                      ? 'bg-white text-purple-700 shadow-xs border border-purple-200'
-                      : 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/40 shadow-[0_0_10px_rgba(0,219,231,0.15)]'
-                    : 'text-on-surface-variant hover:text-white border border-transparent'
+                      ? 'bg-white text-indigo-600 shadow-sm font-semibold border border-slate-200/60'
+                      : 'bg-[#1e1e28] text-cyan-300 shadow-[0_2px_8px_rgba(0,0,0,0.5)] font-semibold border border-cyan-400/30'
+                    : isLight
+                      ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
+                      : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
                 }`}
               >
-                <IconComp className="w-3.5 h-3.5 shrink-0" />
-                <span className="hidden sm:inline text-[11px]">{tab.label}</span>
+                <IconComp className={`w-3.5 h-3.5 shrink-0 ${isSelected ? (isLight ? 'text-indigo-600' : 'text-cyan-400') : 'opacity-70'}`} />
+                <span className="hidden sm:inline text-xs">{tab.label}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Right: Command Palette, Zen Mode, Save, Export */}
-        <div className="flex items-center gap-2 font-mono text-xs shrink-0">
-          {/* Command Palette Trigger */}
+        {/* Right: Quick Search, Zen Mode, Templates, Save & Canva-Grade Export */}
+        <div className="flex items-center gap-2 font-sans text-xs shrink-0">
+          {/* Quick Find (⌘K) */}
           <button
             onClick={() => setIsCommandPaletteOpen(true)}
-            className={`px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer border transition-all text-on-surface-variant hover:text-white ${
-              isLight ? 'bg-slate-100 border-slate-300' : 'bg-surface-container-low border-outline/20'
+            className={`px-2.5 py-1.5 rounded-xl flex items-center gap-1.5 cursor-pointer border transition-all text-xs ${
+              isLight 
+                ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900 shadow-xs' 
+                : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-300 hover:text-white'
             }`}
             title="Open Command Palette (Ctrl+K)"
           >
-            <Search className="w-3.5 h-3.5 text-[#00dbe7]" />
-            <span className="text-[11px] hidden lg:inline">Search</span>
-            <kbd className="text-[9px] px-1 py-0.2 rounded bg-black/30 border border-white/10 opacity-70">
+            <Search className="w-3.5 h-3.5 text-cyan-500" />
+            <span className="hidden xl:inline text-xs font-medium">Quick Find</span>
+            <kbd className={`text-[10px] px-1.5 py-0.5 rounded font-mono font-medium ${
+              isLight ? 'bg-slate-100 text-slate-500 border border-slate-200' : 'bg-black/40 text-slate-400 border border-white/10'
+            }`}>
               ⌘K
             </kbd>
           </button>
@@ -397,65 +425,68 @@ export default function DocNexusStudio({
           {/* Zen Focus Mode Toggle */}
           <button
             onClick={toggleZenMode}
-            className={`p-2 rounded-lg border transition-all cursor-pointer ${
+            className={`p-2 rounded-xl border transition-all cursor-pointer ${
               isZenMode
-                ? 'bg-[#00dbe7]/20 text-[#74f5ff] border-[#00dbe7]/40'
-                : 'text-on-surface-variant hover:text-white border-outline/20 bg-surface-container-low'
+                ? isLight 
+                  ? 'bg-indigo-50 text-indigo-600 border-indigo-200 shadow-xs' 
+                  : 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40 shadow-[0_0_10px_rgba(0,219,231,0.2)]'
+                : isLight
+                  ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900 shadow-xs'
+                  : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-400 hover:text-white'
             }`}
             title={isZenMode ? "Exit Zen Focus Mode" : "Enter Zen Focus Mode"}
           >
             {isZenMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
           </button>
 
+          {/* Templates Trigger */}
           <button
             onClick={() => setIsTemplateModalOpen(true)}
-            className={`px-2.5 py-1.5 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer border transition-all ${
+            className={`px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 cursor-pointer border transition-all shadow-xs ${
               isLight 
-                ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700' 
-                : 'bg-surface-container-low hover:bg-white/5 border-outline/20 text-[#74f5ff]'
+                ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900' 
+                : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200 hover:text-white'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-[#00dbe7]" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
             <span className="hidden sm:inline">Templates</span>
           </button>
 
+          {/* Save Vault Button */}
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className={`px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer border transition-all ${
+            className={`px-3 py-1.5 rounded-xl font-medium flex items-center gap-1.5 cursor-pointer border transition-all shadow-xs ${
               saveSuccess
-                ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30'
                 : isLight
-                  ? 'bg-purple-600 hover:bg-purple-700 text-white border-transparent'
-                  : 'bg-[#ce5dff]/20 hover:bg-[#ce5dff]/30 text-[#ebb2ff] border border-[#ce5dff]/40'
+                  ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900'
+                  : 'bg-white/[0.05] hover:bg-white/[0.09] text-white border-white/10'
             }`}
           >
             {saveSuccess ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-400" />
-                Synced!
+                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                <span>Synced</span>
               </>
             ) : (
               <>
-                <Save className="w-3.5 h-3.5" />
-                {isSaving ? 'Saving...' : 'Save Vault'}
+                <Save className="w-3.5 h-3.5 text-indigo-500 dark:text-cyan-400" />
+                <span>{isSaving ? 'Saving...' : 'Save'}</span>
               </>
             )}
           </button>
 
+          {/* Canva-Grade Luxury Export Primary CTA Button */}
           <button
             onClick={() => setIsExportModalOpen(true)}
-            className={`px-3 py-1.5 rounded-lg font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer border transition-all ${
-              isLight 
-                ? 'bg-sky-50 text-sky-700 border-sky-300 hover:bg-sky-100' 
-                : 'bg-[#00dbe7]/15 text-[#74f5ff] border-[#00dbe7]/30 hover:bg-[#00dbe7]/25'
-            }`}
+            className="px-3.5 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-sm bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 hover:from-violet-500 hover:via-indigo-500 hover:to-cyan-400 text-white hover:shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95"
           >
             <Download className="w-3.5 h-3.5" />
-            Export
+            <span>Export</span>
           </button>
         </div>
-      </div>
+      </header>
 
       {/* Main Studio Workbench (Sidebar + Active Format Canvas + Inspector) */}
       <div className="flex-1 flex overflow-hidden relative">
