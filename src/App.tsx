@@ -12,6 +12,9 @@ import ManageAppsView from './components/ManageAppsView';
 import ManagePluginsView from './components/ManagePluginsView';
 import ManagePortfoliosView from './components/ManagePortfoliosView';
 import ManageContactInquiriesView from './components/ManageContactInquiriesView';
+import ManageBugReportsView from './components/ManageBugReportsView';
+import BugReportModal from './components/BugReportModal';
+import { telemetryLogger } from './services/telemetryLogger';
 import WorkspacePluginStore from './components/WorkspacePluginStore';
 import ErrorBoundary from './components/ErrorBoundary';
 import CookieConsentBanner from './components/CookieConsentBanner';
@@ -33,6 +36,7 @@ const INSTALLED_PLUGINS: { name: WorkspaceTab; icon: string; size: string }[] = 
 
 const ADMIN_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
   { name: 'Admin Console', icon: 'security', size: '' },
+  { name: 'Reported Bugs', icon: 'bug_report', size: '' },
   { name: 'Contact Inquiries', icon: 'mark_email_unread', size: '' },
   { name: 'Manage Plugins', icon: 'bolt', size: '' },
   { name: 'Manage Apps', icon: 'apps', size: '' },
@@ -51,6 +55,7 @@ const ROUTE_MAP: Record<WorkspaceTab, string> = {
   'Custom Flow': '/workspace/flow',
   'Accounting': '/workspace/accounting',
   'Admin Console': '/admin',
+  'Reported Bugs': '/admin/bug-reports',
   'Contact Inquiries': '/admin/contact-inquiries',
   'Doc Nexus': '/workspace/docnexus',
   'Manage Plugins': '/admin/manage-plugins',
@@ -102,6 +107,13 @@ export default function App() {
   }, [theme]);
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
+  useEffect(() => {
+    telemetryLogger.setUserContext(user.isLoggedIn ? { email: user.email, role: user.role } : null);
+    if (user.isLoggedIn) {
+      telemetryLogger.scope('main:session').info(`Active user session bound: ${user.email} (${user.role || 'Developer'})`);
+    }
+  }, [user]);
 
   const [isAuthOpen, setIsAuthOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'signin' | 'signup'>('signin');
@@ -248,6 +260,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
   const [isPluginsOpen, setIsPluginsOpen] = React.useState(true);
   const [isAdminOpen, setIsAdminOpen] = React.useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  const [isBugReportOpen, setIsBugReportOpen] = React.useState(false);
   const navigate = useNavigate();
   
   if (!user.isLoggedIn) return <Navigate to="/auth" />;
@@ -315,6 +328,17 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
           >
             <span className="material-symbols-outlined text-sm">person</span>
             <span className="hidden sm:inline">Profile</span>
+          </button>
+
+          {/* Quick Bug Report & Live Telemetry Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsBugReportOpen(true)}
+            className="py-1 px-2.5 rounded border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/50 transition-all flex items-center gap-1.5 font-mono text-[10px] cursor-pointer"
+            title="Report an issue or submit live telemetry diagnostics"
+          >
+            <span className="material-symbols-outlined text-sm">bug_report</span>
+            <span className="hidden sm:inline">Report Issue</span>
           </button>
 
           {/* Theme Toggle Button */}
@@ -602,7 +626,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 />
               )}
 
-              {(activeTab === 'Admin Console' || activeTab === 'Contact Inquiries' || activeTab === 'Manage Plugins' || activeTab === 'Manage Apps' || activeTab === 'Manage Portfolios') && user.role !== 'Admin' && (
+              {(activeTab === 'Admin Console' || activeTab === 'Reported Bugs' || activeTab === 'Contact Inquiries' || activeTab === 'Manage Plugins' || activeTab === 'Manage Apps' || activeTab === 'Manage Portfolios') && user.role !== 'Admin' && (
                   <div className="glass-panel p-8 rounded-xl border border-red-900/20 bg-red-950/5 flex flex-col items-center justify-center text-center max-w-lg mx-auto my-12 space-y-4">
                     <div className="w-16 h-16 rounded-full bg-red-950/20 border border-red-900 flex items-center justify-center mb-2">
                       <span className="material-symbols-outlined text-3xl text-[#ffb4ab]">security</span>
@@ -616,6 +640,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               
               {activeTab === 'Admin Console' && user.role === 'Admin' && (
                 <AdminConsoleView logs={logs} onAddLog={addLog} currentUserEmail={user.email} userToken={user.token || ''} theme={theme} />
+              )}
+              {activeTab === 'Reported Bugs' && user.role === 'Admin' && (
+                <ManageBugReportsView logs={logs} onAddLog={addLog} userToken={user.token || ''} theme={theme} />
               )}
               {activeTab === 'Contact Inquiries' && user.role === 'Admin' && (
                 <ManageContactInquiriesView logs={logs} onAddLog={addLog} userToken={user.token || ''} />
@@ -642,6 +669,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 'Plugin Store',
                 'Profile & Settings',
                 'Admin Console',
+                'Reported Bugs',
                 'Contact Inquiries',
                 'Manage Apps',
                 'Manage Plugins',
@@ -662,6 +690,12 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
 
       </div>
 
+      <BugReportModal
+        isOpen={isBugReportOpen}
+        onClose={() => setIsBugReportOpen(false)}
+        currentUser={user}
+        theme={theme}
+      />
     </div>
   );
 }

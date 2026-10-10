@@ -13,6 +13,7 @@ import CommandPaletteModal from './CommandPaletteModal.js';
 import OpenLocalWorkspaceModal from './OpenLocalWorkspaceModal.js';
 import CollapsibleLogDrawer from '../../../components/CollapsibleLogDrawer.js';
 import { saveVault, loadVault } from '../utils/vaultStorage.js';
+import { telemetryLogger } from '../../../services/telemetryLogger.js';
 import { 
   Save, 
   Download, 
@@ -186,6 +187,10 @@ export default function DocNexusStudio({
     setDocuments(prev =>
       prev.map(d => d.id === activeDocument.id ? { ...d, format: newFormat, updatedAt: new Date().toISOString() } : d)
     );
+    telemetryLogger.scope('plugin:wp_doc_nexus').info(
+      `Format paradigm switched: ${activeDocument.format} -> ${newFormat}`,
+      { docId: activeDocument.id, docTitle: activeDocument.title }
+    );
     onAddLog({
       timestamp: new Date().toLocaleTimeString(),
       type: 'INFO',
@@ -222,6 +227,10 @@ export default function DocNexusStudio({
 
       if (res.ok) {
         setSaveSuccess(true);
+        telemetryLogger.scope('plugin:wp_doc_nexus').info(
+          `Document saved to sovereign storage`,
+          { docId: activeDocument.id, docTitle: activeDocument.title, format: activeDocument.format }
+        );
         onAddLog({
           timestamp: new Date().toLocaleTimeString(),
           type: 'SUCCESS',
@@ -229,7 +238,12 @@ export default function DocNexusStudio({
         });
         setTimeout(() => setSaveSuccess(false), 3000);
       }
-    } catch (err) {
+    } catch (err: any) {
+      telemetryLogger.scope('plugin:wp_doc_nexus').error(
+        `Failed to save document "${activeDocument.title}"`,
+        { docId: activeDocument.id },
+        err
+      );
       console.error('Failed to save document:', err);
     } finally {
       setIsSaving(false);

@@ -1,0 +1,114 @@
+[
+  {
+    "id": "bug_demo_101",
+    "trackingId": "BUG-49201",
+    "userEmail": "johan.decker@consensys.net",
+    "userName": "Johan Decker",
+    "title": "PDF Document preview displayed compressed binary artifacts on upload",
+    "description": "1. Navigated to Doc Nexus creative suite\n2. Clicked 'Browse Document' and chose multi-page quarterly_report.pdf\n3. The document ingested but text blocks contained scrambled glyphs and Flate-encoded symbols instead of readable text.",
+    "module": "Doc Nexus (Creative Docs & PDF)",
+    "severity": "High",
+    "status": "Investigating",
+    "environment": {
+      "browser": "Chrome",
+      "os": "Windows",
+      "screen": "2560x1440",
+      "viewport": "1920x960",
+      "route": "/workspace/docnexus",
+      "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+      "theme": "dark"
+    },
+    "capturedLogs": [
+      {
+        "id": "log_8910",
+        "timestamp": "2026-10-10T21:40:10.120Z",
+        "timeFormatted": "21:40:10",
+        "level": "INFO",
+        "scope": "main:router",
+        "message": "User navigated to /workspace/docnexus"
+      },
+      {
+        "id": "log_8911",
+        "timestamp": "2026-10-10T21:40:12.300Z",
+        "timeFormatted": "21:40:12",
+        "level": "INFO",
+        "scope": "plugin:wp_doc_nexus",
+        "message": "Opened OpenLocalWorkspaceModal dialog"
+      },
+      {
+        "id": "log_8912",
+        "timestamp": "2026-10-10T21:40:18.450Z",
+        "timeFormatted": "21:40:18",
+        "level": "INFO",
+        "scope": "plugin:wp_doc_nexus:parser",
+        "message": "User ingested file quarterly_report.pdf (1.8 MB)"
+      },
+      {
+        "id": "log_8913",
+        "timestamp": "2026-10-10T21:40:19.100Z",
+        "timeFormatted": "21:40:19",
+        "level": "WARN",
+        "scope": "plugin:wp_doc_nexus:pdf",
+        "message": "Raw binary regular expression detected FlateDecode streams without decompressor hook"
+      },
+      {
+        "id": "log_8914",
+        "timestamp": "2026-10-10T21:40:20.010Z",
+        "timeFormatted": "21:40:20",
+        "level": "ERROR",
+        "scope": "plugin:wp_doc_nexus:render",
+        "message": "Font CMap glyph decoding anomaly detected during text extraction",
+        "data": { "page": 1, "streamCount": 14, "uncompressedBytes": 0 }
+      }
+    ],
+    "expectedBehavior": "PDF should render legible text lines with high-resolution visual previews.",
+    "actualBehavior": "Garbled characters and uncompressed binary stream artifacts appeared.",
+    "adminNotes": "Root cause identified: Raw regex parser lacked zlib FlateDecode. Resolved via Mozilla PDF.js v6.4 integration in release v0.3.0.",
+    "ipAddress": "192.168.1.104",
+    "createdAt": "2026-10-10T21:40:30.000Z",
+    "updatedAt": "2026-10-10T21:55:00.000Z"
+  },
+  {
+    "id": "bug_demo_102",
+    "trackingId": "BUG-81240",
+    "userEmail": "developer@sutharlabs.com",
+    "userName": "Suthar Developer",
+    "title": "Browse Document modal icon background too dark in light theme",
+    "description": "When switching the main application to Light Theme, the 'Browse Document' button in the Open Local Workspace modal retains a dark black background (bg-slate-900), creating visual contrast issues with other tonal elements.",
+    "module": "Doc Nexus (Creative Docs & PDF)",
+    "severity": "Low",
+    "status": "Resolved",
+    "environment": {
+      "browser": "Chrome",
+      "os": "macOS",
+      "screen": "1920x1080",
+      "viewport": "1440x800",
+      "route": "/workspace/docnexus",
+      "theme": "light"
+    },
+    "capturedLogs": [
+      {
+        "id": "log_9001",
+        "timestamp": "2026-10-10T21:45:00.000Z",
+        "timeFormatted": "21:45:00",
+        "level": "INFO",
+        "scope": "main:theme",
+        "message": "Theme toggled to light"
+      },
+      {
+        "id": "log_9002",
+        "timestamp": "2026-10-10T21:45:05.100Z",
+        "timeFormatted": "21:45:05",
+        "level": "INFO",
+        "scope": "plugin:wp_doc_nexus",
+        "message": "Opened OpenLocalWorkspaceModal"
+      }
+    ],
+    "expectedBehavior": "Icon container should use brand-aligned light container with indigo styling (bg-indigo-50).",
+    "actualBehavior": "Solid pitch-black icon container appeared.",
+    "adminNotes": "Fixed in OpenLocalWorkspaceModal.tsx and DocExplorerSidebar.tsx.",
+    "ipAddress": "127.0.0.1",
+    "createdAt": "2026-10-10T21:45:10.000Z",
+    "updatedAt": "2026-10-10T21:50:00.000Z"
+  }
+]

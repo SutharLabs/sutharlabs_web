@@ -20,6 +20,7 @@ export type WorkspaceTab =
   | 'Manage Apps' 
   | 'Manage Portfolios' 
   | 'Contact Inquiries'
+  | 'Reported Bugs'
   | 'Doc Nexus' 
   | 'README' 
   | 'Plugin Store' 

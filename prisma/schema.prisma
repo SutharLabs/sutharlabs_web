@@ -217,3 +217,43 @@ model AccountingTenantStore {
 
   @@map("accounting_tenant_stores")
 }
+
+// 12. User Bug Reports with Live Telemetry Capture
+model BugReport {
+  id               String   @id @default(uuid())
+  trackingId       String   @unique @map("tracking_id") // e.g. "BUG-58192"
+  userEmail        String   @map("user_email")
+  userName         String   @default("Anonymous") @map("user_name")
+  title            String
+  description      String
+  module           String   @default("Main Website") // "Doc Nexus", "Stock Tracker", "Accounting", "Custom Flow", etc.
+  severity         String   @default("Medium") // "Low", "Medium", "High", "Critical"
+  status           String   @default("New") // "New", "Investigating", "In Progress", "Resolved", "Closed"
+  environment      String   @default("{}") // JSON: browser, os, screen, route, memory, userAgent
+  capturedLogs     String   @default("[]") @map("captured_logs") // Serialized JSON array of telemetry breadcrumb entries
+  expectedBehavior String?  @map("expected_behavior")
+  actualBehavior    String?  @map("actual_behavior")
+  adminNotes       String?  @map("admin_notes")
+  ipAddress        String?  @map("ip_address")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  @@map("bug_reports")
+}
+
+// 13. Live Client Telemetry Logs Ingestion
+model LiveTelemetryLog {
+  id          String   @id @default(uuid())
+  sessionId   String   @map("session_id")
+  userEmail   String?  @map("user_email")
+  level       String   @default("INFO") // DEBUG, INFO, WARN, ERROR
+  scope       String   @default("main") // plugin:wp_doc_nexus, main:auth, etc.
+  message     String
+  data        String?  // JSON context
+  errorTrace  String?  @map("error_trace")
+  url         String?
+  timestamp   DateTime @default(now())
+
+  @@map("live_telemetry_logs")
+}
+

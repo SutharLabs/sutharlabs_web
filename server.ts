@@ -12,6 +12,14 @@ import { isEncryptedPluginPackage, resolvePluginArchiveBuffer, encryptPluginPack
 import { getSystemTelemetry } from "./src/services/telemetryService.js";
 import { notifyAdminNewInquiry } from "./src/services/emailService.js";
 import {
+  createBugReport,
+  getBugReports,
+  updateBugReport,
+  deleteBugReport,
+  ingestTelemetryLogs,
+  getLiveTelemetryLogs
+} from "./src/services/bugReportStorage.js";
+import {
   isBlobConfigured,
   uploadToBlob,
   deleteFromBlob,
@@ -1628,6 +1636,118 @@ app.post("/api/admin/contact-inquiries/:id/test-email", authenticateToken, requi
   } catch (error) {
     console.error("Failed to test dispatch email:", error);
     res.status(500).json({ error: "Failed to dispatch test notification email." });
+  }
+});
+
+// ==========================================
+// BUG REPORTING & TELEMETRY DIAGNOSTICS API
+// ==========================================
+
+// Public / Authenticated: Submit a user bug report with live log capture
+app.post("/api/bug-reports", generalApiLimiter, async (req: any, res: any) => {
+  try {
+    const { title, description, module, severity, environment, capturedLogs, expectedBehavior, actualBehavior, userEmail, userName } = req.body;
+    if (!title || !description) {
+      return res.status(400).json({ error: "Title and description are required to submit an issue." });
+    }
+
+    const clientIp = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || null;
+    const report = await createBugReport({
+      userEmail: userEmail || 'anonymous@sutharlabs.com',
+      userName: userName || 'Anonymous User',
+      title,
+      description,
+      module,
+      severity,
+      environment,
+      capturedLogs,
+      expectedBehavior,
+      actualBehavior,
+      ipAddress: clientIp
+    });
+
+    res.status(201).json({
+      success: true,
+      trackingId: report.trackingId,
+      message: "Bug report and diagnostic telemetry ingested successfully.",
+      report
+    });
+  } catch (error) {
+    console.error("Failed to process bug report submission:", error);
+    res.status(500).json({ error: "Failed to process bug report." });
+  }
+});
+
+// Admin: Get all bug reports with statistics and filters
+app.get("/api/admin/bug-reports", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const { status, severity, module, search } = req.query;
+    const result = await getBugReports({
+      status: status as string,
+      severity: severity as string,
+      module: module as string,
+      search: search as string
+    });
+
+    res.json(result);
+  } catch (error) {
+    console.error("Failed to fetch bug reports:", error);
+    res.status(500).json({ error: "Failed to load bug reports." });
+  }
+});
+
+// Admin: Update a bug report status or add admin resolution notes
+app.patch("/api/admin/bug-reports/:id", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    const { status, severity, adminNotes } = req.body;
+
+    const updated = await updateBugReport(id, { status, severity, adminNotes });
+    if (!updated) {
+      return res.status(404).json({ error: "Bug report not found." });
+    }
+
+    res.json(updated);
+  } catch (error) {
+    console.error("Failed to update bug report:", error);
+    res.status(500).json({ error: "Failed to update bug report." });
+  }
+});
+
+// Admin: Delete a bug report
+app.delete("/api/admin/bug-reports/:id", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const { id } = req.params;
+    await deleteBugReport(id);
+    res.json({ success: true, message: "Bug report deleted successfully." });
+  } catch (error) {
+    console.error("Failed to delete bug report:", error);
+    res.status(500).json({ error: "Failed to delete bug report." });
+  }
+});
+
+// Ingest live client telemetry logs
+app.post("/api/telemetry/client-logs", async (req: any, res: any) => {
+  try {
+    const { logs } = req.body;
+    if (Array.isArray(logs)) {
+      const count = await ingestTelemetryLogs(logs);
+      return res.json({ success: true, ingested: count });
+    }
+    res.status(400).json({ error: "Logs array expected." });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to ingest telemetry logs." });
+  }
+});
+
+// Admin: Get recent live telemetry stream
+app.get("/api/admin/telemetry/live-logs", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const limit = parseInt(req.query.limit || '100', 10);
+    const logs = await getLiveTelemetryLogs(limit);
+    res.json({ logs });
+  } catch (error) {
+    res.status(500).json({ error: "Failed to fetch live telemetry logs." });
   }
 });
 

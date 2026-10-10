@@ -1,4 +1,6 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { telemetryLogger } from '../services/telemetryLogger';
+import BugReportModal from './BugReportModal';
 
 interface Props {
   children: ReactNode;
@@ -8,29 +10,35 @@ interface Props {
 interface State {
   hasError: boolean;
   error: Error | null;
+  isReportModalOpen: boolean;
 }
 
 export default class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
-    error: null
+    error: null,
+    isReportModalOpen: false
   };
 
   public static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error };
+    return { hasError: true, error, isReportModalOpen: false };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('ErrorBoundary caught an unhandled error:', error, errorInfo);
+    telemetryLogger.scope('main:error-boundary').error(
+      'React ErrorBoundary captured an unhandled view exception',
+      { componentStack: errorInfo.componentStack },
+      error
+    );
   }
 
   private handleReset = () => {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, isReportModalOpen: false });
     window.location.reload();
   };
 
   private handleGoHome = () => {
-    this.setState({ hasError: false, error: null });
+    this.setState({ hasError: false, error: null, isReportModalOpen: false });
     window.location.href = '/workspace/stock-tracker';
   };
 
@@ -51,24 +59,38 @@ export default class ErrorBoundary extends Component<Props, State> {
               {this.state.error?.message || 'An unexpected rendering error occurred in this workspace module.'}
             </p>
 
-            <div className="flex items-center justify-center gap-3 pt-2">
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => this.setState({ isReportModalOpen: true })}
+                className="px-4 py-2 bg-gradient-to-r from-rose-500 to-indigo-600 hover:from-rose-600 hover:to-indigo-700 text-white text-xs font-mono font-bold rounded-lg transition-all shadow-md cursor-pointer flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-sm">bug_report</span>
+                Report Crash with Logs
+              </button>
               <button
                 type="button"
                 onClick={this.handleReset}
-                className="px-4 py-2 bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] text-xs font-mono font-bold uppercase rounded-lg transition-all shadow-md cursor-pointer flex items-center gap-2"
+                className="px-3.5 py-2 bg-[#201f21] border border-[#3a494b]/40 text-[#00dbe7] hover:border-[#00dbe7]/50 text-xs font-mono font-medium rounded-lg transition-all cursor-pointer flex items-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-sm">refresh</span>
-                Reload Platform
+                Reload
               </button>
               <button
                 type="button"
                 onClick={this.handleGoHome}
-                className="px-4 py-2 bg-[#201f21] border border-[#3a494b]/40 text-[#e5e1e4] hover:bg-[#2e2d30] text-xs font-mono font-medium rounded-lg transition-all cursor-pointer"
+                className="px-3.5 py-2 bg-[#201f21] border border-[#3a494b]/40 text-[#e5e1e4] hover:bg-[#2e2d30] text-xs font-mono font-medium rounded-lg transition-all cursor-pointer"
               >
-                Go to Stock Tracker
+                Stock Tracker
               </button>
             </div>
           </div>
+
+          <BugReportModal
+            isOpen={this.state.isReportModalOpen}
+            onClose={() => this.setState({ isReportModalOpen: false })}
+            initialError={this.state.error || undefined}
+          />
         </div>
       );
     }

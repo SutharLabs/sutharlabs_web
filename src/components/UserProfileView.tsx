@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UserProfile, TerminalLog } from '../types';
 import { openCookiePreferencesModal, getStoredCookiePreferences } from './CookieConsentBanner';
+import BugReportModal from './BugReportModal';
 
 interface UserProfileViewProps {
   user: UserProfile;
@@ -64,6 +65,7 @@ export default function UserProfileView({
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false);
   const [deleteConfirmationText, setDeleteConfirmationText] = useState('');
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [isBugModalOpen, setIsBugModalOpen] = useState(false);
   const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null);
 
   const notify = (text: string, type: 'success' | 'alert' | 'error' = 'success') => {
@@ -412,7 +414,16 @@ export default function UserProfileView({
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 self-end sm:self-auto">
+          <div className="flex items-center gap-2.5 self-end sm:self-auto flex-wrap">
+            <button
+              type="button"
+              onClick={() => setIsBugModalOpen(true)}
+              className="px-3.5 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-400 transition-all flex items-center gap-1.5 cursor-pointer"
+              title="Report an issue or submit telemetry diagnostics"
+            >
+              <span className="material-symbols-outlined text-sm">bug_report</span>
+              Report Issue
+            </button>
             <button
               type="button"
               onClick={handleExportData}
@@ -827,6 +838,14 @@ export default function UserProfileView({
           </div>
         </div>
       )}
+
+      {/* Bug Report Modal */}
+      <BugReportModal
+        isOpen={isBugModalOpen}
+        onClose={() => setIsBugModalOpen(false)}
+        currentUser={user}
+        theme={theme}
+      />
     </div>
   );
 }

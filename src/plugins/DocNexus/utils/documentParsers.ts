@@ -13,6 +13,7 @@ import {
 } from '../types.js';
 import { unzipArchive, getZipEntryAsText } from './zipReader.js';
 import * as pdfjsLib from 'pdfjs-dist';
+import { telemetryLogger } from '../../../services/telemetryLogger.js';
 
 // Configure PDF.js worker securely for browser execution
 if (typeof window !== 'undefined' && (pdfjsLib as any).GlobalWorkerOptions) {
@@ -504,6 +505,11 @@ export async function parsePDF(buffer: ArrayBuffer, fileName: string): Promise<P
     showPageNumbers: true,
     pages
   };
+
+  telemetryLogger.scope('plugin:wp_doc_nexus:pdf').info(
+    `Decoded PDF "${cleanTitle}" successfully`,
+    { pagesCount: pages.length, extractedStreams: totalExtractedTokens, hasPreviews: pages.some(p => Boolean(p.pageImage)) }
+  );
 
   return {
     format: 'richtext',
