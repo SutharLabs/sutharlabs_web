@@ -169,6 +169,18 @@ export interface GSTInvoice {
   terms?: string;
   createdAt: string;
   updatedAt: string;
+  version?: number; // Revision counter (starts at 1)
+  editNote?: string; // Latest amendment / revision reason
+  editHistory?: InvoiceEditRecord[]; // Section 128 statutory audit trail
+}
+
+export interface InvoiceEditRecord {
+  editedAt: string;
+  editNote: string;
+  previousGrandTotal: number;
+  previousTaxableAmount: number;
+  previousItemsCount: number;
+  version: number;
 }
 
 // ==================== TALLY / SAP VOUCHER & LEDGER ENGINE ====================
@@ -182,6 +194,16 @@ export type VoucherType =
   | 'Purchase'   // F9: Vendor Bill / Inward supply
   | 'Credit Note'// Sales return / rebate
   | 'Debit Note';// Purchase return / supplier debit
+
+export interface VoucherEditRecord {
+  editedAt: string;
+  editNote: string;
+  previousAmount: number;
+  previousDebitAccount: string;
+  previousCreditAccount: string;
+  previousNarration?: string;
+  version: number;
+}
 
 export interface AccountingVoucher {
   id: string; // VCH-2026-0001
@@ -199,6 +221,10 @@ export interface AccountingVoucher {
   narration: string; // Tally style Narration (Being payment made for...)
   status: 'Posted' | 'Draft' | 'Reconciled';
   createdAt: string;
+  updatedAt?: string;
+  version?: number; // Revision sequence (v1 -> v2)
+  editNote?: string; // Reason for alteration / edit note
+  editHistory?: VoucherEditRecord[]; // MCA / Section 128 audit trail
   lines: {
     accountCode: string;
     accountName: string;

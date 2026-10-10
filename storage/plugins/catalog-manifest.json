@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T06:46:30.516Z",
+    "packagedAt": "2026-10-10T07:06:49.633Z",
     "archiveFileName": "wp_stock_analyzer-v1.1.2.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.2.zip",
     "sizeBytes": 77396,
-    "checksumSha256": "52e4f1d52d6ae32b9b8fecec6b29e4b52d7f74670592ac96a6681798eccca53a"
+    "checksumSha256": "25ecd0e3d0bdc6efe233acbd23f727adeffa597c2fe73b4f3403316c96f5cbb2"
   },
   {
     "id": "wp_flow_designer",
@@ -25,11 +25,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T06:46:32.184Z",
+    "packagedAt": "2026-10-10T07:06:51.641Z",
     "archiveFileName": "wp_flow_designer-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.1.0.zip",
     "sizeBytes": 1870,
-    "checksumSha256": "e7ed4646c6709ecae0fbe49123bffd49efb6152cc9906497de9544cc922e7393"
+    "checksumSha256": "2896fd53c9ea559b0a1453cc10568eacfbf77bc9a295a8d93baec77200d79542"
   },
   {
     "id": "wp_doc_nexus",
@@ -41,26 +41,26 @@
     "iconSymbol": "description",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T06:46:32.953Z",
+    "packagedAt": "2026-10-10T07:06:52.896Z",
     "archiveFileName": "wp_doc_nexus-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.1.0.zip",
-    "sizeBytes": 2324,
-    "checksumSha256": "f4c8004e591e4b1118f29e6d3c0d7c416db6a9ea4fd131d3eb5beec6152bcc54"
+    "sizeBytes": 2323,
+    "checksumSha256": "af88dff3087e8c260039f4e6f518befce63c92a6f3dae724c687a03239d3a018"
   },
   {
     "id": "wp_accounting",
     "name": "Accounting",
-    "version": "0.2.1",
+    "version": "0.2.2",
     "category": "Operations",
     "type": "Native",
     "description": "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync.",
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-10T06:46:33.638Z",
-    "archiveFileName": "wp_accounting-v0.2.1.zip",
-    "packageUrl": "/storage/plugins/wp_accounting-v0.2.1.zip",
-    "sizeBytes": 68988,
-    "checksumSha256": "1610508f984941927cbff3e33fe53c2544ec7c0ae5130f1b3a8e7b6ed74345e2"
+    "packagedAt": "2026-10-10T07:06:54.004Z",
+    "archiveFileName": "wp_accounting-v0.2.2.zip",
+    "packageUrl": "/storage/plugins/wp_accounting-v0.2.2.zip",
+    "sizeBytes": 75005,
+    "checksumSha256": "329ef0434bbf00bf33d747a1a693f9a82c6c9d1a95d95d64446d5088655851e9"
   }
 ]

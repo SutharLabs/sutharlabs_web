@@ -39,9 +39,12 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
 
   // Modals & Drawers
   const [selectedInvoice, setSelectedInvoice] = useState<GSTInvoice | null>(null);
+  const [editingInvoice, setEditingInvoice] = useState<GSTInvoice | null>(null);
+  const [selectedAuditInvoice, setSelectedAuditInvoice] = useState<GSTInvoice | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
+  const [editingVoucher, setEditingVoucher] = useState<AccountingVoucher | null>(null);
   const [voucherInitialType, setVoucherInitialType] = useState<VoucherType>('Payment');
   const [dataRefreshCounter, setDataRefreshCounter] = useState(0);
 
@@ -177,8 +180,19 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
     });
   };
 
+  const handleInvoiceUpdated = (updatedInv: GSTInvoice) => {
+    setInvoices(prev => (Array.isArray(prev) ? prev.map(i => i.id === updatedInv.id || i.invoiceNumber === updatedInv.invoiceNumber ? updatedInv : i) : [updatedInv]));
+    setDataRefreshCounter(c => c + 1);
+    onAddLog({
+      timestamp: new Date().toLocaleTimeString(),
+      type: 'INFO',
+      message: `ACCOUNTING AUDIT: Invoice [${updatedInv.invoiceNumber}] amended to Rev v${updatedInv.version || 2}. Note: "${updatedInv.editNote}". Total: ${formatINR(updatedInv.grandTotal)}.`
+    });
+  };
+
   // Launch voucher modal with specific type
   const openVoucherEntry = (type: VoucherType = 'Payment') => {
+    setEditingVoucher(null);
     setVoucherInitialType(type);
     setIsVoucherModalOpen(true);
   };
@@ -383,6 +397,10 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           vouchers={vouchers}
           userToken={userToken}
           onOpenVoucherModal={openVoucherEntry}
+          onEditVoucher={v => {
+            setEditingVoucher(v);
+            setIsVoucherModalOpen(true);
+          }}
           onDeleteVoucher={handleDeleteVoucher}
         />
       )}
@@ -592,7 +610,23 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                         className="hover:bg-slate-50 dark:hover:bg-white/[0.03] transition-colors cursor-pointer group"
                       >
                         <td className="p-3">
-                          <span className="font-bold text-cyan-600 dark:text-[#00dbe7] block">{inv.invoiceNumber}</span>
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-cyan-600 dark:text-[#00dbe7] block">{inv.invoiceNumber}</span>
+                            {((inv.version && inv.version > 1) || (inv.editHistory && inv.editHistory.length > 0)) && (
+                              <button
+                                type="button"
+                                onClick={e => {
+                                  e.stopPropagation();
+                                  setSelectedAuditInvoice(inv);
+                                }}
+                                title={`Amended (Revision v${inv.version || 2}) - Click to view Audit Trail`}
+                                className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/15 text-amber-700 dark:text-amber-300 border border-amber-500/30 flex items-center gap-0.5 hover:bg-amber-500/25 transition-colors cursor-pointer"
+                              >
+                                <span className="material-symbols-outlined text-[10px]">history_edu</span>
+                                Rev v{inv.version || 2}
+                              </button>
+                            )}
+                          </div>
                           {inv.eInvoice && (
                             <span className="text-[9px] text-slate-500 dark:text-gray-400 font-mono flex items-center gap-1">
                               <span className="material-symbols-outlined text-[10px] text-emerald-600 dark:text-[#00e476]">verified</span>
@@ -637,6 +671,18 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
                               className="w-7 h-7 rounded hover:bg-cyan-50 dark:hover:bg-[#00dbe7]/20 text-slate-500 hover:text-cyan-600 dark:text-gray-400 dark:hover:text-[#00dbe7] flex items-center justify-center transition-colors cursor-pointer"
                             >
                               <span className="material-symbols-outlined text-sm">print</span>
+                            </button>
+
+                            <button
+                              onClick={e => {
+                                e.stopPropagation();
+                                setEditingInvoice(inv);
+                                setIsCreateOpen(true);
+                              }}
+                              title="Amend / Edit Invoice"
+                              className="w-7 h-7 rounded hover:bg-amber-50 dark:hover:bg-amber-500/20 text-slate-500 hover:text-amber-600 dark:text-gray-400 dark:hover:text-amber-400 flex items-center justify-center transition-colors cursor-pointer"
+                            >
+                              <span className="material-symbols-outlined text-sm">edit</span>
                             </button>
 
                             {!isPaid && (
@@ -725,9 +771,13 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
       {isVoucherModalOpen && (
         <VoucherEntryModal
           initialType={voucherInitialType}
+          editingVoucher={editingVoucher}
           userToken={userToken}
           parties={parties}
-          onClose={() => setIsVoucherModalOpen(false)}
+          onClose={() => {
+            setIsVoucherModalOpen(false);
+            setEditingVoucher(null);
+          }}
           onVoucherCreated={v => {
             setVouchers(prev => (Array.isArray(prev) ? [v, ...prev] : [v]));
             setDataRefreshCounter(c => c + 1);
@@ -735,6 +785,15 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
               timestamp: new Date().toLocaleTimeString(),
               type: 'SUCCESS',
               message: `ACCOUNTING [${v.voucherType}]: Voucher ${v.voucherNumber} created. Dr: ${v.debitAccount} / Cr: ${v.creditAccount} for ${formatINR(v.amount)}.`
+            });
+          }}
+          onVoucherUpdated={v => {
+            setVouchers(prev => (Array.isArray(prev) ? prev.map(item => item.id === v.id ? v : item) : [v]));
+            setDataRefreshCounter(c => c + 1);
+            onAddLog({
+              timestamp: new Date().toLocaleTimeString(),
+              type: 'INFO',
+              message: `ACCOUNTING AUDIT: Voucher [${v.voucherNumber}] altered to Rev v${v.version || 2}. Reason: "${v.editNote}". Value: ${formatINR(v.amount)}.`
             });
           }}
         />
@@ -749,16 +808,93 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
         />
       )}
 
-      {/* Invoice Studio Creator Drawer */}
+      {/* Invoice Studio Creator / Amendment Drawer */}
       {isCreateOpen && company && (
         <CreateInvoiceDrawer
           company={company}
           parties={parties}
           itemsCatalog={itemsCatalog}
           userToken={userToken}
-          onClose={() => setIsCreateOpen(false)}
+          editingInvoice={editingInvoice}
+          onClose={() => {
+            setIsCreateOpen(false);
+            setEditingInvoice(null);
+          }}
           onInvoiceCreated={handleInvoiceCreated}
+          onInvoiceUpdated={handleInvoiceUpdated}
         />
+      )}
+
+      {/* Invoice Audit Trail Modal */}
+      {selectedAuditInvoice && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in font-mono text-xs">
+          <div className="w-full max-w-lg bg-white dark:bg-[#121215] border border-slate-200 dark:border-[#3a494b]/40 rounded-2xl p-6 shadow-2xl">
+            <div className="flex justify-between items-start pb-3 border-b border-slate-200 dark:border-white/10">
+              <div>
+                <h3 className="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                  <span className="material-symbols-outlined text-amber-500">history_edu</span>
+                  Audit Trail: {selectedAuditInvoice.invoiceNumber}
+                </h3>
+                <p className="text-[11px] text-slate-500 dark:text-gray-400">
+                  GST Rule 46 Statutory Amendment History (Current Version: v{selectedAuditInvoice.version || 1})
+                </p>
+              </div>
+              <button
+                onClick={() => setSelectedAuditInvoice(null)}
+                className="w-7 h-7 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-[#201f21] flex items-center justify-center text-slate-500 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-sm">close</span>
+              </button>
+            </div>
+
+            <div className="mt-4 space-y-3 max-h-80 overflow-y-auto">
+              <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+                <span className="text-[10px] uppercase font-bold text-emerald-700 dark:text-[#00e476] block">
+                  Current Active State (v{selectedAuditInvoice.version || 1})
+                </span>
+                <div className="text-slate-900 dark:text-white font-bold mt-1">
+                  Invoice Value: {formatINR(selectedAuditInvoice.grandTotal)} | Taxable: {formatINR(selectedAuditInvoice.taxableAmount)}
+                </div>
+                {selectedAuditInvoice.editNote && (
+                  <p className="text-slate-600 dark:text-gray-300 mt-1 italic">
+                    Reason: "{selectedAuditInvoice.editNote}"
+                  </p>
+                )}
+                <div className="text-[10px] text-slate-500 dark:text-gray-400 mt-1">
+                  Updated: {new Date(selectedAuditInvoice.updatedAt || selectedAuditInvoice.createdAt).toLocaleString()}
+                </div>
+              </div>
+
+              {selectedAuditInvoice.editHistory && selectedAuditInvoice.editHistory.length > 0 ? (
+                selectedAuditInvoice.editHistory.map((hist, i) => (
+                  <div key={i} className="p-3 rounded-xl bg-slate-50 dark:bg-[#18181c] border border-slate-200 dark:border-white/10">
+                    <div className="flex justify-between items-center text-[10px] text-slate-500 dark:text-gray-400">
+                      <span className="font-bold text-amber-600 dark:text-amber-400">Prior State (v{hist.version})</span>
+                      <span>{new Date(hist.editedAt).toLocaleString()}</span>
+                    </div>
+                    <p className="font-semibold text-slate-800 dark:text-gray-200 mt-1">
+                      Amendment Reason: "{hist.editNote}"
+                    </p>
+                    <div className="text-[11px] text-slate-600 dark:text-gray-400 mt-1">
+                      Grand Total was: {formatINR(hist.previousGrandTotal)} | Taxable: {formatINR(hist.previousTaxableAmount)} ({hist.previousItemsCount} items)
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-center text-slate-400 py-4">No prior revisions recorded.</p>
+              )}
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-white/10 flex justify-end">
+              <button
+                onClick={() => setSelectedAuditInvoice(null)}
+                className="px-4 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-[#201f21] text-xs font-mono font-bold cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Company Settings Modal */}

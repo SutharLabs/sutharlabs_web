@@ -883,6 +883,154 @@ export class AccountingStorage {
     return newInvoice;
   }
 
+  static async updateInvoice(userEmail: string | undefined, id: string, invoiceData: any): Promise<GSTInvoice> {
+    const tenant = await loadTenantData(userEmail);
+    const invoices = tenant.invoices;
+    const index = invoices.findIndex(i => i.id === id || i.invoiceNumber === id);
+    if (index === -1) {
+      throw new Error(`Invoice ${id} not found.`);
+    }
+
+    const existingInv = invoices[index];
+    const company = tenant.companyProfile;
+    const parties = tenant.parties;
+
+    let buyerParty: PartyCustomer | undefined;
+    if (invoiceData.buyerId) {
+      buyerParty = parties.find(p => p.id === invoiceData.buyerId);
+    }
+    if (!buyerParty && invoiceData.buyerName) {
+      const stateObj = STATE_CODE_MAP.get(invoiceData.buyerStateCode || company.stateCode);
+      buyerParty = {
+        id: `party_${Date.now()}`,
+        name: invoiceData.buyerName,
+        gstin: invoiceData.buyerGstin,
+        partyType: invoiceData.buyerGstin ? 'B2B' : 'B2C',
+        stateCode: invoiceData.buyerStateCode || company.stateCode,
+        stateName: stateObj ? stateObj.name : company.stateName,
+        billingAddress: invoiceData.buyerAddress || `${stateObj?.name || 'Ahmedabad'}, India`,
+        email: 'billing@client.com',
+        phone: '+91 98000 00000',
+        createdAt: new Date().toISOString()
+      };
+      parties.push(buyerParty);
+    }
+    if (!buyerParty) {
+      buyerParty = {
+        id: existingInv.buyer.customerId || 'party_unknown',
+        name: existingInv.buyer.legalName,
+        tradeName: existingInv.buyer.tradeName,
+        gstin: existingInv.buyer.gstin,
+        partyType: existingInv.buyer.partyType,
+        stateCode: existingInv.buyer.stateCode,
+        stateName: existingInv.buyer.stateName,
+        billingAddress: existingInv.buyer.billingAddress,
+        shippingAddress: existingInv.buyer.shippingAddress,
+        email: existingInv.buyer.email || '',
+        phone: existingInv.buyer.phone || '',
+        createdAt: existingInv.createdAt
+      };
+    }
+
+    const nextVersion = (existingInv.version || 1) + 1;
+    const editNote = (invoiceData.editNote || '').trim() || 'Invoice line items / details amended.';
+
+    const editHistory = Array.isArray(existingInv.editHistory) ? [...existingInv.editHistory] : [];
+    editHistory.unshift({
+      editedAt: new Date().toISOString(),
+      editNote,
+      previousGrandTotal: existingInv.grandTotal,
+      previousTaxableAmount: existingInv.taxableAmount,
+      previousItemsCount: existingInv.items.length,
+      version: existingInv.version || 1
+    });
+
+    const rebuilt = buildGSTInvoiceObject({
+      invoiceNumber: existingInv.invoiceNumber,
+      invoiceDate: invoiceData.invoiceDate || existingInv.invoiceDate,
+      dueDate: invoiceData.dueDate || existingInv.dueDate,
+      supplier: company,
+      buyer: buyerParty,
+      placeOfSupplyStateCode: invoiceData.placeOfSupplyStateCode || buyerParty.stateCode || existingInv.placeOfSupplyStateCode,
+      items: invoiceData.items || existingInv.items,
+      status: invoiceData.status || existingInv.status,
+      notes: invoiceData.notes !== undefined ? invoiceData.notes : existingInv.notes
+    });
+
+    const updatedInvoice: GSTInvoice = {
+      ...rebuilt,
+      id: existingInv.id,
+      invoiceNumber: existingInv.invoiceNumber,
+      createdAt: existingInv.createdAt,
+      updatedAt: new Date().toISOString(),
+      version: nextVersion,
+      editNote,
+      editHistory
+    };
+
+    invoices[index] = updatedInvoice;
+
+    // Synchronize corresponding Sales Voucher in the Vouchers ledger
+    const vouchers = tenant.vouchers;
+    const salesVoucherIdx = vouchers.findIndex(v => v.referenceNo === updatedInvoice.invoiceNumber && v.voucherType === 'Sales');
+    if (salesVoucherIdx !== -1) {
+      const sv = vouchers[salesVoucherIdx];
+      const svLines = [
+        {
+          accountCode: '1100-AR-DEBTORS',
+          accountName: `Trade Receivables (${updatedInvoice.buyer.legalName})`,
+          debit: updatedInvoice.grandTotal,
+          credit: 0
+        },
+        {
+          accountCode: '4000-REV-SALES',
+          accountName: 'Sales & Professional Services Revenue',
+          debit: 0,
+          credit: updatedInvoice.taxableAmount
+        }
+      ];
+      if (updatedInvoice.cgstTotal > 0) {
+        svLines.push({
+          accountCode: '2110-OUTPUT-CGST',
+          accountName: 'Output Central GST Payable',
+          debit: 0,
+          credit: updatedInvoice.cgstTotal
+        });
+      }
+      if (updatedInvoice.sgstTotal > 0) {
+        svLines.push({
+          accountCode: '2120-OUTPUT-SGST',
+          accountName: 'Output State GST Payable',
+          debit: 0,
+          credit: updatedInvoice.sgstTotal
+        });
+      }
+      if (updatedInvoice.igstTotal > 0) {
+        svLines.push({
+          accountCode: '2130-OUTPUT-IGST',
+          accountName: 'Output Integrated GST Payable',
+          debit: 0,
+          credit: updatedInvoice.igstTotal
+        });
+      }
+
+      vouchers[salesVoucherIdx] = {
+        ...sv,
+        amount: updatedInvoice.grandTotal,
+        date: updatedInvoice.invoiceDate,
+        partyName: updatedInvoice.buyer.legalName,
+        narration: `Updated Tax Invoice ${updatedInvoice.invoiceNumber} (Rev ${nextVersion}) issued to ${updatedInvoice.buyer.legalName}`,
+        updatedAt: new Date().toISOString(),
+        version: (sv.version || 1) + 1,
+        editNote: `Auto-updated following invoice amendment: ${editNote}`,
+        lines: svLines
+      };
+    }
+
+    await saveTenantData(userEmail, tenant);
+    return updatedInvoice;
+  }
+
   static async updateInvoiceStatus(userEmail: string | undefined, id: string, status: GSTInvoice['status']): Promise<GSTInvoice | null> {
     const tenant = await loadTenantData(userEmail);
     const invoices = tenant.invoices;
@@ -955,6 +1103,68 @@ export class AccountingStorage {
     tenant.vouchers.unshift(newVoucher);
     await saveTenantData(userEmail, tenant);
     return newVoucher;
+  }
+
+  static async updateVoucher(userEmail: string | undefined, id: string, voucherData: any): Promise<AccountingVoucher> {
+    const tenant = await loadTenantData(userEmail);
+    const vouchers = tenant.vouchers;
+    const index = vouchers.findIndex(v => v.id === id);
+    if (index === -1) {
+      throw new Error(`Voucher ${id} not found.`);
+    }
+
+    const existing = vouchers[index];
+    const numAmount = parseFloat(voucherData.amount);
+    if (isNaN(numAmount) || numAmount <= 0) {
+      throw new Error('Valid voucher amount is required.');
+    }
+
+    const nextVersion = (existing.version || 1) + 1;
+    const editNote = (voucherData.editNote || '').trim() || 'Voucher accounts / narration altered.';
+
+    const editHistory = Array.isArray(existing.editHistory) ? [...existing.editHistory] : [];
+    editHistory.unshift({
+      editedAt: new Date().toISOString(),
+      editNote,
+      previousAmount: existing.amount,
+      previousDebitAccount: existing.debitAccount,
+      previousCreditAccount: existing.creditAccount,
+      previousNarration: existing.narration,
+      version: existing.version || 1
+    });
+
+    const debitAccount = voucherData.debitAccount || existing.debitAccount;
+    const creditAccount = voucherData.creditAccount || existing.creditAccount;
+
+    const finalLines = voucherData.lines && voucherData.lines.length > 0 ? voucherData.lines : [
+      { accountCode: debitAccount, accountName: debitAccount, debit: numAmount, credit: 0 },
+      { accountCode: creditAccount, accountName: creditAccount, debit: 0, credit: numAmount }
+    ];
+
+    const updated: AccountingVoucher = {
+      ...existing,
+      voucherType: voucherData.voucherType || existing.voucherType,
+      date: voucherData.date || existing.date,
+      referenceNo: voucherData.referenceNo !== undefined ? voucherData.referenceNo : existing.referenceNo,
+      partyId: voucherData.partyId !== undefined ? voucherData.partyId : existing.partyId,
+      partyName: voucherData.partyName !== undefined ? voucherData.partyName : existing.partyName,
+      debitAccount,
+      creditAccount,
+      amount: numAmount,
+      taxAmount: voucherData.taxAmount !== undefined ? parseFloat(voucherData.taxAmount) : existing.taxAmount,
+      paymentMode: voucherData.paymentMode || existing.paymentMode,
+      narration: voucherData.narration || existing.narration,
+      status: voucherData.status || existing.status,
+      updatedAt: new Date().toISOString(),
+      version: nextVersion,
+      editNote,
+      editHistory,
+      lines: finalLines
+    };
+
+    vouchers[index] = updated;
+    await saveTenantData(userEmail, tenant);
+    return updated;
   }
 
   static async deleteVoucher(userEmail: string | undefined, id: string): Promise<boolean> {

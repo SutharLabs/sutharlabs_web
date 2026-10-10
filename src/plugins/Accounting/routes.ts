@@ -202,6 +202,51 @@ export function registerRoutes(router: Router) {
     }
   });
 
+  router.put('/invoices/:id', authenticateToken, async (req: any, res: any) => {
+    try {
+      const {
+        buyerId,
+        buyerName,
+        client,
+        buyerGstin,
+        buyerStateCode,
+        buyerAddress,
+        placeOfSupplyStateCode,
+        invoiceDate,
+        dueDate,
+        items,
+        status,
+        notes,
+        editNote
+      } = req.body;
+
+      let processedItems = items;
+      if (!processedItems || !Array.isArray(processedItems) || processedItems.length === 0) {
+        return res.status(400).json({ error: 'Invoice must contain at least one line item.' });
+      }
+
+      const updated = await AccountingStorage.updateInvoice(getUserEmail(req), req.params.id, {
+        buyerId,
+        buyerName: buyerName || client,
+        buyerGstin,
+        buyerStateCode,
+        buyerAddress,
+        placeOfSupplyStateCode,
+        invoiceDate,
+        dueDate,
+        items: processedItems,
+        status,
+        notes,
+        editNote
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      console.error('Update invoice error:', error);
+      res.status(500).json({ error: error.message || 'Failed to update GST Tax Invoice.' });
+    }
+  });
+
   router.patch('/invoices/:id/status', authenticateToken, async (req: any, res: any) => {
     try {
       const { status } = req.body;
@@ -292,6 +337,50 @@ export function registerRoutes(router: Router) {
       res.status(201).json(created);
     } catch (error: any) {
       res.status(500).json({ error: error.message || 'Failed to post voucher.' });
+    }
+  });
+
+  router.put('/vouchers/:id', authenticateToken, async (req: any, res: any) => {
+    try {
+      const {
+        voucherType,
+        date,
+        referenceNo,
+        partyId,
+        partyName,
+        debitAccount,
+        creditAccount,
+        amount,
+        taxAmount,
+        paymentMode,
+        narration,
+        editNote,
+        lines
+      } = req.body;
+
+      if (!amount || !debitAccount || !creditAccount) {
+        return res.status(400).json({ error: 'Accounts and amount are required.' });
+      }
+
+      const updated = await AccountingStorage.updateVoucher(getUserEmail(req), req.params.id, {
+        voucherType,
+        date,
+        referenceNo,
+        partyId,
+        partyName,
+        debitAccount,
+        creditAccount,
+        amount,
+        taxAmount,
+        paymentMode,
+        narration,
+        editNote,
+        lines
+      });
+
+      res.json(updated);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || 'Failed to update voucher.' });
     }
   });
 

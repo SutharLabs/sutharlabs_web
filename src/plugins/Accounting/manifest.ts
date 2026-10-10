@@ -3,7 +3,7 @@ import { WorkspacePluginManifest } from "../types.js";
 export const manifest: WorkspacePluginManifest = {
   id: "wp_accounting",
   name: "Accounting",
-  version: "0.2.1",
+  version: "0.2.2",
   category: "Operations",
   type: "Native",
   iconSymbol: "currency_exchange",
