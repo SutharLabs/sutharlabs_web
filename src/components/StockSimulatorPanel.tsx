@@ -355,6 +355,14 @@ export default function StockSimulatorPanel({
       if (portRes && portRes.ok) {
         const portData = await portRes.json();
         setPortfolio(portData);
+        if (portData?.lastUpdated) {
+          setSimulationsList(prev => prev.map(s => {
+            if (s.id === simIdToFetch) {
+              return { ...s, lastHeartbeatAt: portData.lastUpdated, lastRunAt: portData.lastUpdated };
+            }
+            return s;
+          }));
+        }
       }
 
       if (histRes && histRes.ok) {
@@ -407,6 +415,7 @@ export default function StockSimulatorPanel({
         return;
       }
       fetchPortfolioAndHistory(selectedSimulationId, true);
+      fetchSimulationsList();
     }, 30000);
 
     return () => {
@@ -1049,8 +1058,29 @@ export default function StockSimulatorPanel({
 
               {/* Background Cron Heartbeat Status Pill */}
               {(() => {
-                const lastHeartbeat = (currentSim as any)?.lastHeartbeatAt || currentSim?.lastRunAt;
-                if (!lastHeartbeat) {
+                const candidates: number[] = [];
+                if (portfolio?.lastUpdated) {
+                  const t = new Date(portfolio.lastUpdated).getTime();
+                  if (!isNaN(t) && t > 0) candidates.push(t);
+                }
+                if (historyRuns && historyRuns.length > 0 && historyRuns[0]?.executionTimestamp) {
+                  const t = new Date(historyRuns[0].executionTimestamp).getTime();
+                  if (!isNaN(t) && t > 0) candidates.push(t);
+                }
+                if (latestReport?.executionTimestamp) {
+                  const t = new Date(latestReport.executionTimestamp).getTime();
+                  if (!isNaN(t) && t > 0) candidates.push(t);
+                }
+                if ((currentSim as any)?.lastHeartbeatAt) {
+                  const t = new Date((currentSim as any).lastHeartbeatAt).getTime();
+                  if (!isNaN(t) && t > 0) candidates.push(t);
+                }
+                if (currentSim?.lastRunAt) {
+                  const t = new Date(currentSim.lastRunAt).getTime();
+                  if (!isNaN(t) && t > 0) candidates.push(t);
+                }
+
+                if (candidates.length === 0) {
                   return (
                     <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] border border-outline/20">
                       <Clock className="w-3 h-3 opacity-60" />
@@ -1058,8 +1088,11 @@ export default function StockSimulatorPanel({
                     </span>
                   );
                 }
-                const secAgo = Math.max(0, Math.floor((nowTick - new Date(lastHeartbeat).getTime()) / 1000));
-                const isFresh = secAgo < 180; // Within 3 minutes
+
+                const bestHeartbeat = Math.max(...candidates);
+                const secAgo = Math.max(0, Math.floor((nowTick - bestHeartbeat) / 1000));
+                // Fresh / Active if pinged within last 3 minutes (180s)
+                const isFresh = secAgo < 180;
                 const timeText = secAgo < 60 ? `${secAgo}s ago` : `${Math.floor(secAgo / 60)}m ago`;
 
                 return (
@@ -1069,7 +1102,7 @@ export default function StockSimulatorPanel({
                         ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
                         : 'bg-surface-container-high text-on-surface-variant border-outline/20'
                     }`}
-                    title={`Last cron heartbeat executed at: ${new Date(lastHeartbeat).toLocaleString()}`}
+                    title={`Last cron heartbeat executed at: ${new Date(bestHeartbeat).toLocaleString()} (${secAgo}s ago)`}
                   >
                     <span className={`w-1.5 h-1.5 rounded-full ${isFresh ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`}></span>
                     Cron: {isFresh ? `Active (${timeText})` : `Idle (${timeText})`}

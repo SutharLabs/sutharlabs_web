@@ -1028,13 +1028,15 @@ export function registerRoutes(router: Router) {
 
       // Load simulation owners dynamically from database table simulation_stores
       const dbOwnerMap = new Map<string, string>();
+      const dbUpdatedAtMap = new Map<string, string>();
       try {
         const prisma = getPrismaClient();
         const dbStores = await prisma.simulationStore.findMany({
-          select: { simId: true, owner: true }
+          select: { simId: true, owner: true, updatedAt: true }
         });
         dbStores.forEach(s => {
           if (s.owner) dbOwnerMap.set(s.simId, s.owner);
+          if (s.updatedAt) dbUpdatedAtMap.set(s.simId, s.updatedAt.toISOString());
         });
       } catch (dbErr) {
         console.warn("[Simulator] Could not load DB owners:", dbErr);
@@ -1043,7 +1045,10 @@ export function registerRoutes(router: Router) {
       const formatEntries = (entries: any[]) => entries.map(s => {
         const dbOwner = dbOwnerMap.get(s.id);
         const owner = dbOwner || s.owner || (s.id === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (s.id.includes('__') ? s.id.split('__')[0] : 'mr.sutharsuresh@gmail.com'));
-        return { ...s, owner };
+        const dbUpdated = dbUpdatedAtMap.get(s.id);
+        const lastHeartbeatAt = dbUpdated || s.lastHeartbeatAt || s.lastRunAt;
+        const lastRunAt = dbUpdated || s.lastRunAt;
+        return { ...s, owner, lastHeartbeatAt, lastRunAt };
       });
 
       if (isAdmin) {
