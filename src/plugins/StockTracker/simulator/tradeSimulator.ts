@@ -214,23 +214,18 @@ function readRegistry(): SimulationRegistryEntry[] {
       lastRunAt: nowIso,
       totalRuns: 0,
       totalTradeRuns: 0,
-      isPublic: true,
-      owner: "mr.sutharsuresh"
+      isPublic: true
     });
     modified = true;
   }
 
-  // Ensure cron_live entry is explicitly public and assigned owner mr.sutharsuresh
+  // Ensure cron_live entry is explicitly public
   for (const item of reg) {
     if (item.id === "cron_live") {
       if (item.isPublic === undefined) { item.isPublic = true; modified = true; }
-      if (!item.owner || item.owner === "system") { item.owner = "mr.sutharsuresh"; modified = true; }
     } else if (!item.owner) {
       if (item.id.includes("__")) {
         item.owner = item.id.split("__")[0];
-        modified = true;
-      } else {
-        item.owner = "mr.sutharsuresh";
         modified = true;
       }
     }
@@ -348,6 +343,9 @@ export async function ensureSimulatorStore(simId: string): Promise<PersistedEODS
     });
 
     if (row) {
+      if (row.owner) {
+        upsertRegistry(safeSimId, { owner: row.owner });
+      }
       let positions: EODPosition[] = [];
       let closedTrades: EODTradeExecution[] = [];
       try { positions = JSON.parse(row.positions || '[]'); } catch {}
@@ -452,7 +450,7 @@ export async function ensureSimulatorStore(simId: string): Promise<PersistedEODS
   return store;
 }
 
-export async function saveSimulatorStore(state: PersistedEODState, simId: string): Promise<void> {
+export async function saveSimulatorStore(state: PersistedEODState, simId: string, owner?: string): Promise<void> {
   const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
 
   // 1. Write memory cache and local JSON file
@@ -468,34 +466,40 @@ export async function saveSimulatorStore(state: PersistedEODState, simId: string
   // 2. Persist to Neon PostgreSQL database
   try {
     const prisma = getPrismaClient();
+    const updateData: any = {
+      initialCash: state.initialCash,
+      cash: state.cash,
+      positions: JSON.stringify(state.positions || []),
+      closedTrades: JSON.stringify(state.closedTrades || []),
+      lastRunDate: state.lastRunDate || null,
+      totalRealizedPnL: state.totalRealizedPnL ?? 0,
+      totalFrictionPaid: state.totalFrictionPaid ?? 0,
+      winCount: state.winCount ?? 0,
+      lossCount: state.lossCount ?? 0,
+      lastUpdated: state.lastUpdated || new Date().toISOString()
+    };
+    if (owner) updateData.owner = owner;
+
+    const createData: any = {
+      simId: safeSimId,
+      owner: owner || (safeSimId.includes('__') ? safeSimId.split('__')[0] : null),
+      initialCash: state.initialCash,
+      cash: state.cash,
+      positions: JSON.stringify(state.positions || []),
+      closedTrades: JSON.stringify(state.closedTrades || []),
+      history: '[]',
+      lastRunDate: state.lastRunDate || null,
+      totalRealizedPnL: state.totalRealizedPnL ?? 0,
+      totalFrictionPaid: state.totalFrictionPaid ?? 0,
+      winCount: state.winCount ?? 0,
+      lossCount: state.lossCount ?? 0,
+      lastUpdated: state.lastUpdated || new Date().toISOString()
+    };
+
     await prisma.simulationStore.upsert({
       where: { simId: safeSimId },
-      update: {
-        initialCash: state.initialCash,
-        cash: state.cash,
-        positions: JSON.stringify(state.positions || []),
-        closedTrades: JSON.stringify(state.closedTrades || []),
-        lastRunDate: state.lastRunDate || null,
-        totalRealizedPnL: state.totalRealizedPnL ?? 0,
-        totalFrictionPaid: state.totalFrictionPaid ?? 0,
-        winCount: state.winCount ?? 0,
-        lossCount: state.lossCount ?? 0,
-        lastUpdated: state.lastUpdated || new Date().toISOString()
-      },
-      create: {
-        simId: safeSimId,
-        initialCash: state.initialCash,
-        cash: state.cash,
-        positions: JSON.stringify(state.positions || []),
-        closedTrades: JSON.stringify(state.closedTrades || []),
-        history: '[]',
-        lastRunDate: state.lastRunDate || null,
-        totalRealizedPnL: state.totalRealizedPnL ?? 0,
-        totalFrictionPaid: state.totalFrictionPaid ?? 0,
-        winCount: state.winCount ?? 0,
-        lossCount: state.lossCount ?? 0,
-        lastUpdated: state.lastUpdated || new Date().toISOString()
-      }
+      update: updateData,
+      create: createData
     });
   } catch (dbErr) {
     console.error(`[Simulator DB] Error saving simulation store ${safeSimId} to DB:`, dbErr);
@@ -758,7 +762,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     totalRuns: (existingEntry?.totalRuns ?? 0) + 1,
     totalTradeRuns: existingEntry?.totalTradeRuns ?? 0, // updated after we know if trades happened
     isPublic: isPublicResolved,
-    owner: options.userEmail || existingEntry?.owner || (simId === "cron_live" ? "mr.sutharsuresh" : (simId.includes("__") ? simId.split("__")[0] : "mr.sutharsuresh"))
+    owner: options.userEmail || existingEntry?.owner || (simId.includes("__") ? simId.split("__")[0] : undefined)
   });
 
   // 2. Resolve tracked assets for Simulation based on selected market

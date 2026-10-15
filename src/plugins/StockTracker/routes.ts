@@ -1018,23 +1018,29 @@ export function registerRoutes(router: Router) {
   });
 
   // List simulations accessible to the requesting user (Admins see all; users see public + own)
-  router.get("/simulator/simulations", optionalAuth, (req: any, res: any) => {
+  router.get("/simulator/simulations", optionalAuth, async (req: any, res: any) => {
     try {
       const all = listSimulations();
       const tenant = getSimulatorTenantScope(req);
       const isAdmin = req.user?.role === 'Admin';
 
+      // Load simulation owners dynamically from database table simulation_stores
+      const dbOwnerMap = new Map<string, string>();
+      try {
+        const prisma = getPrismaClient();
+        const dbStores = await prisma.simulationStore.findMany({
+          select: { simId: true, owner: true }
+        });
+        dbStores.forEach(s => {
+          if (s.owner) dbOwnerMap.set(s.simId, s.owner);
+        });
+      } catch (dbErr) {
+        console.warn("[Simulator] Could not load DB owners:", dbErr);
+      }
+
       const formatEntries = (entries: any[]) => entries.map(s => {
-        let owner = s.owner;
-        if (!owner || owner === 'system') {
-          if (s.id === 'cron_live') {
-            owner = 'mr.sutharsuresh';
-          } else if (s.id.includes('__')) {
-            owner = s.id.split('__')[0];
-          } else {
-            owner = 'mr.sutharsuresh';
-          }
-        }
+        const dbOwner = dbOwnerMap.get(s.id);
+        const owner = dbOwner || s.owner || (s.id.includes('__') ? s.id.split('__')[0] : 'System');
         return { ...s, owner };
       });
 
@@ -1056,32 +1062,42 @@ export function registerRoutes(router: Router) {
   });
 
   // Toggle or set public visibility for a simulation (Owner only)
-  router.patch("/simulator/simulations/:simId/public", authenticateToken, (req: any, res: any) => {
+  router.patch("/simulator/simulations/:simId/public", authenticateToken, async (req: any, res: any) => {
     try {
       const { simId } = req.params;
       const { isPublic } = req.body;
       const tenant = getSimulatorTenantScope(req);
       const all = listSimulations();
       const existing = all.find(s => s.id === simId);
-
       const userEmail = (req.user?.email || '').toLowerCase().trim();
-      const rawOwner = (existing?.owner || (simId === 'cron_live' ? 'mr.sutharsuresh' : (simId.includes('__') ? simId.split('__')[0] : 'mr.sutharsuresh'))).toLowerCase().trim();
+
+      // Query owner dynamically from database
+      let dbOwner: string | null = null;
+      try {
+        const prisma = getPrismaClient();
+        const row = await prisma.simulationStore.findUnique({
+          where: { simId },
+          select: { owner: true }
+        });
+        if (row?.owner) dbOwner = row.owner;
+      } catch {}
+
+      const effectiveOwner = (dbOwner || existing?.owner || (simId.includes('__') ? simId.split('__')[0] : '')).toLowerCase().trim();
 
       const isOwner = Boolean(
-        userEmail && (
-          userEmail === rawOwner ||
-          tenant === rawOwner ||
-          userEmail.replace(/[^a-z0-9_-]/g, '_') === rawOwner ||
-          userEmail.startsWith('mr.sutharsuresh') ||
-          rawOwner.includes(userEmail) ||
-          userEmail.includes(rawOwner) ||
+        userEmail && effectiveOwner && (
+          userEmail === effectiveOwner ||
+          tenant === effectiveOwner ||
+          userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
+          effectiveOwner.includes(userEmail) ||
+          userEmail.includes(effectiveOwner) ||
           simId.startsWith(`${tenant}__`)
         )
       );
 
       if (!isOwner) {
         return res.status(403).json({
-          error: `Forbidden: Only the simulation owner (${existing?.owner || rawOwner}) can change the visibility of this simulation instance.`,
+          error: `Forbidden: Only the simulation owner (${dbOwner || existing?.owner || effectiveOwner || 'the owner'}) can change the visibility of this simulation instance.`,
           code: "OWNER_REQUIRED"
         });
       }
@@ -1098,24 +1114,33 @@ export function registerRoutes(router: Router) {
   });
 
   // Delete a simulation from registry (Owner-verified only)
-  router.delete("/simulator/simulations/:simId", authenticateToken, (req: any, res: any) => {
+  router.delete("/simulator/simulations/:simId", authenticateToken, async (req: any, res: any) => {
     try {
       const { simId } = req.params;
       const tenant = getSimulatorTenantScope(req);
       const all = listSimulations();
       const existing = all.find(s => s.id === simId);
-
       const userEmail = (req.user?.email || '').toLowerCase().trim();
-      const rawOwner = (existing?.owner || (simId === 'cron_live' ? 'mr.sutharsuresh' : (simId.includes('__') ? simId.split('__')[0] : 'mr.sutharsuresh'))).toLowerCase().trim();
+
+      let dbOwner: string | null = null;
+      try {
+        const prisma = getPrismaClient();
+        const row = await prisma.simulationStore.findUnique({
+          where: { simId },
+          select: { owner: true }
+        });
+        if (row?.owner) dbOwner = row.owner;
+      } catch {}
+
+      const effectiveOwner = (dbOwner || existing?.owner || (simId.includes('__') ? simId.split('__')[0] : '')).toLowerCase().trim();
 
       const isOwner = Boolean(
-        userEmail && (
-          userEmail === rawOwner ||
-          tenant === rawOwner ||
-          userEmail.replace(/[^a-z0-9_-]/g, '_') === rawOwner ||
-          userEmail.startsWith('mr.sutharsuresh') ||
-          rawOwner.includes(userEmail) ||
-          userEmail.includes(rawOwner) ||
+        userEmail && effectiveOwner && (
+          userEmail === effectiveOwner ||
+          tenant === effectiveOwner ||
+          userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
+          effectiveOwner.includes(userEmail) ||
+          userEmail.includes(effectiveOwner) ||
           simId.startsWith(`${tenant}__`)
         )
       );
@@ -1237,35 +1262,41 @@ export function registerRoutes(router: Router) {
       const all = listSimulations();
       const existing = all.find(s => s.id === rawSimId);
 
+      const targetSimId = (isAdmin && existing?.isPublic) ? rawSimId : resolveSimulationTargetId(rawSimId, tenant);
+
       const userEmail = (req.user?.email || '').toLowerCase().trim();
-      const rawOwner = (existing?.owner || (
-        rawSimId === 'cron_live'
-          ? 'mr.sutharsuresh'
-          : (rawSimId.includes('__') ? rawSimId.split('__')[0] : 'mr.sutharsuresh')
-      )).toLowerCase().trim();
-      const simOwner = rawOwner.toLowerCase().trim();
+
+      let dbOwner: string | null = null;
+      try {
+        const prisma = getPrismaClient();
+        const row = await prisma.simulationStore.findUnique({
+          where: { simId: targetSimId },
+          select: { owner: true }
+        });
+        if (row?.owner) dbOwner = row.owner;
+      } catch {}
+
+      const effectiveOwner = (dbOwner || existing?.owner || (targetSimId.includes('__') ? targetSimId.split('__')[0] : '')).toLowerCase().trim();
 
       const isOwner = Boolean(
-        userEmail && (
-          userEmail === simOwner ||
-          tenant === simOwner ||
-          userEmail.replace(/[^a-z0-9_-]/g, '_') === simOwner ||
-          userEmail.startsWith('mr.sutharsuresh') ||
-          simOwner.includes(userEmail) ||
-          userEmail.includes(simOwner) ||
-          rawSimId.startsWith(`${tenant}__`)
+        userEmail && effectiveOwner && (
+          userEmail === effectiveOwner ||
+          tenant === effectiveOwner ||
+          userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
+          effectiveOwner.includes(userEmail) ||
+          userEmail.includes(effectiveOwner) ||
+          targetSimId.startsWith(`${tenant}__`)
         )
       );
 
       // Only the instance owner can reset the simulator
       if (!isOwner) {
         return res.status(403).json({
-          error: `Forbidden: Only the simulation owner (${existing?.owner || simOwner}) can reset this simulator instance.`,
+          error: `Forbidden: Only the simulation owner (${dbOwner || existing?.owner || effectiveOwner || 'the owner'}) can reset this simulator instance.`,
           code: "SIMULATOR_RESET_FORBIDDEN"
         });
       }
 
-      const targetSimId = (isAdmin && existing?.isPublic) ? rawSimId : resolveSimulationTargetId(rawSimId, tenant);
       const resetState = await resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN", targetSimId);
       res.json({ success: true, message: `Trade Simulator (${targetSimId}) reset successfully.`, portfolio: resetState });
     } catch (e: any) {

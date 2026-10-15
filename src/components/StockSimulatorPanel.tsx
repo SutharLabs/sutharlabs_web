@@ -270,24 +270,22 @@ export default function StockSimulatorPanel({
     if (!userEmail) return false;
     const cleanEmail = userEmail.toLowerCase().trim();
     const cleanTenant = cleanEmail.replace(/[^a-z0-9_-]/g, '_');
-    const rawOwner = (currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'mr.sutharsuresh' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'mr.sutharsuresh'))).toLowerCase().trim();
+    const simOwner = (currentSim?.owner || (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : '')).toLowerCase().trim();
 
     return Boolean(
-      rawOwner && (
-        cleanEmail === rawOwner ||
-        cleanTenant === rawOwner ||
-        cleanEmail.replace(/[^a-z0-9_-]/g, '_') === rawOwner ||
-        cleanEmail.startsWith('mr.sutharsuresh') ||
-        rawOwner.includes(cleanEmail) ||
-        cleanEmail.includes(rawOwner) ||
+      simOwner && (
+        cleanEmail === simOwner ||
+        cleanTenant === simOwner ||
+        cleanEmail.replace(/[^a-z0-9_-]/g, '_') === simOwner ||
+        simOwner.includes(cleanEmail) ||
+        cleanEmail.includes(simOwner) ||
         selectedSimulationId.startsWith(`${cleanTenant}__`)
       )
     );
   }, [userEmail, currentSim, selectedSimulationId]);
 
   const currentSimOwnerDisplay = useMemo(() => {
-    const rawOwner = currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'mr.sutharsuresh' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'mr.sutharsuresh'));
-    return rawOwner === 'system' ? 'mr.sutharsuresh' : rawOwner;
+    return currentSim?.owner || (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'System');
   }, [currentSim, selectedSimulationId]);
 
   useEffect(() => {
@@ -1001,7 +999,7 @@ export default function StockSimulatorPanel({
 
               {/* Public Visibility Toggle Button (Owner only) */}
               {(() => {
-                const isPub = Boolean(currentSim?.isPublic || selectedSimulationId === 'cron_live');
+                const isPub = currentSim?.isPublic !== undefined ? currentSim.isPublic : (selectedSimulationId === 'cron_live');
                 return (
                   <button
                     type="button"

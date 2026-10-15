@@ -189,6 +189,7 @@ model ContactInquiry {
 // 10. Automated Paper Trading & Quantitative Trade Simulations
 model SimulationStore {
   simId              String   @id @map("sim_id")
+  owner              String?  @map("owner")
   initialCash        Float    @default(100000.0) @map("initial_cash")
   cash               Float    @default(100000.0)
   positions          String   @default("[]")
