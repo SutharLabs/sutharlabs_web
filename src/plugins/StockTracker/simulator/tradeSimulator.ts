@@ -199,17 +199,9 @@ function readRegistry(): SimulationRegistryEntry[] {
   const nowIso = new Date().toISOString();
   let modified = false;
 
-  if (!reg.some(r => r.id === "default")) {
-    reg.unshift({
-      id: "default",
-      label: "Default Interactive Simulation",
-      createdAt: nowIso,
-      lastRunAt: nowIso,
-      totalRuns: 0,
-      totalTradeRuns: 0,
-      isPublic: true,
-      owner: "system"
-    });
+  // Remove previously seeded hardcoded 'default' simulation from registry if present
+  if (reg.some(r => r.id === "default")) {
+    reg = reg.filter(r => r.id !== "default");
     modified = true;
   }
 
@@ -228,9 +220,9 @@ function readRegistry(): SimulationRegistryEntry[] {
     modified = true;
   }
 
-  // Ensure default and cron_live entries are explicitly public and assigned owners
+  // Ensure cron_live entry is explicitly public and assigned owner
   for (const item of reg) {
-    if (item.id === "default" || item.id === "cron_live") {
+    if (item.id === "cron_live") {
       if (item.isPublic === undefined) { item.isPublic = true; modified = true; }
       if (!item.owner) { item.owner = "system"; modified = true; }
     } else if (!item.owner) {
@@ -289,7 +281,7 @@ export function setSimulationPublicStatus(simId: string, isPublic: boolean): Sim
 }
 
 export async function deleteSimulation(simId: string): Promise<void> {
-  if (simId === "default" || simId === "cron_live") {
+  if (simId === "cron_live") {
     throw new Error(`Cannot delete protected simulation "${simId}".`);
   }
   const safeSimId = simId.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -754,7 +746,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   const existingEntry = reg.find(r => r.id === simId);
   const isPublicResolved = options.isPublic !== undefined
     ? options.isPublic
-    : (existingEntry?.isPublic ?? (simId === "default" || simId === "cron_live"));
+    : (existingEntry?.isPublic ?? (simId === "cron_live"));
 
   upsertRegistry(simId, {
     label: options.simulationLabel || existingEntry?.label || simId,
@@ -766,7 +758,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     totalRuns: (existingEntry?.totalRuns ?? 0) + 1,
     totalTradeRuns: existingEntry?.totalTradeRuns ?? 0, // updated after we know if trades happened
     isPublic: isPublicResolved,
-    owner: options.userEmail || existingEntry?.owner || (simId === "default" || simId === "cron_live" ? "system" : (simId.includes("__") ? simId.split("__")[0] : "system"))
+    owner: options.userEmail || existingEntry?.owner || (simId === "cron_live" ? "system" : (simId.includes("__") ? simId.split("__")[0] : "system"))
   });
 
   // 2. Resolve tracked assets for Simulation based on selected market

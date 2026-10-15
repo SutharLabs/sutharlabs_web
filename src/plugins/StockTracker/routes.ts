@@ -978,12 +978,12 @@ export function registerRoutes(router: Router) {
 
   // Helper to resolve simulation ID across public instances and user tenant namespaces
   const resolveSimulationTargetId = (rawSimId: string, tenant: string): string => {
-    if (!rawSimId) return 'default';
+    if (!rawSimId) return 'cron_live';
     const all = listSimulations();
     const exactMatch = all.find(s => s.id === rawSimId);
     if (exactMatch) {
-      // If marked public, default, cron_live, or a system instance, access directly
-      if (exactMatch.isPublic || exactMatch.id === 'default' || exactMatch.id === 'cron_live' || exactMatch.id.startsWith('system__')) {
+      // If marked public, cron_live, or a system instance, access directly
+      if (exactMatch.isPublic || exactMatch.id === 'cron_live' || exactMatch.id.startsWith('system__')) {
         return exactMatch.id;
       }
       if (tenant !== 'guest' && exactMatch.id.startsWith(`${tenant}__`)) {
@@ -991,7 +991,7 @@ export function registerRoutes(router: Router) {
       }
     }
 
-    if (rawSimId === 'default' || rawSimId === 'cron_live') {
+    if (rawSimId === 'cron_live') {
       return rawSimId;
     }
 
@@ -1027,7 +1027,7 @@ export function registerRoutes(router: Router) {
       const formatEntries = (entries: any[]) => entries.map(s => {
         let owner = s.owner;
         if (!owner) {
-          if (s.id === 'default' || s.id === 'cron_live') {
+          if (s.id === 'cron_live') {
             owner = 'system';
           } else if (s.id.includes('__')) {
             owner = s.id.split('__')[0];
@@ -1043,12 +1043,12 @@ export function registerRoutes(router: Router) {
       }
 
       if (tenant === 'guest') {
-        const publicOnly = all.filter(s => s.isPublic || s.id === 'default' || s.id === 'cron_live' || !s.id.includes('__'));
+        const publicOnly = all.filter(s => s.isPublic || s.id === 'cron_live' || !s.id.includes('__'));
         return res.json(formatEntries(publicOnly));
       }
 
       const tenantPrefix = `${tenant}__`;
-      const accessible = all.filter(s => s.isPublic || s.id === 'default' || s.id === 'cron_live' || s.id.startsWith(tenantPrefix));
+      const accessible = all.filter(s => s.isPublic || s.id === 'cron_live' || s.id.startsWith(tenantPrefix));
       res.json(formatEntries(accessible));
     } catch (e: any) {
       res.status(500).json({ error: e.message });
@@ -1211,7 +1211,7 @@ export function registerRoutes(router: Router) {
       const userEmail = (req.user?.email || '').toLowerCase().trim();
       const isAdmin = req.user?.role === 'Admin' || req.user?.role === 'Developer';
       const rawOwner = existing?.owner || (
-        rawSimId === 'default' || rawSimId === 'cron_live'
+        rawSimId === 'cron_live'
           ? 'system'
           : (rawSimId.includes('__') ? rawSimId.split('__')[0] : 'system')
       );

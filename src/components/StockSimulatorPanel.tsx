@@ -35,7 +35,8 @@ import {
   Plus,
   Trash2,
   CheckCheck,
-  UserCheck
+  UserCheck,
+  Sparkles
 } from 'lucide-react';
 import { IStrategy } from '../plugins/StockTracker/strategies/types';
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
@@ -199,9 +200,11 @@ export default function StockSimulatorPanel({
   const [simulationsList, setSimulationsList] = useState<SimulationRegistryEntry[]>([]);
   const [selectedSimulationId, setSelectedSimulationId] = useState<string>(() => {
     try {
-      return localStorage.getItem('sutharlabs_active_simulation_id') || 'default';
+      const stored = localStorage.getItem('sutharlabs_active_simulation_id');
+      if (stored && stored !== 'default') return stored;
+      return 'cron_live';
     } catch {
-      return 'default';
+      return 'cron_live';
     }
   });
   const [showNewSimModal, setShowNewSimModal] = useState<boolean>(false);
@@ -238,20 +241,19 @@ export default function StockSimulatorPanel({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          const list = [...data];
-          if (!list.some(s => s.id === 'default')) {
-            list.unshift({
-              id: 'default',
-              label: 'Default Paper Portfolio',
-              market: 'IN',
-              createdAt: new Date().toISOString(),
-              totalRuns: 0,
-              totalTradeRuns: 0,
-              isPublic: true,
-              owner: 'system'
-            });
-          }
+          // Exclude any obsolete 'default' entries
+          const list = data.filter(s => s.id !== 'default');
           setSimulationsList(list);
+
+          // Update active simulation selection if current selection is invalid or stale
+          setSelectedSimulationId(prev => {
+            if (prev && prev !== 'default' && list.some(s => s.id === prev)) {
+              return prev;
+            }
+            const next = list[0]?.id || 'cron_live';
+            try { localStorage.setItem('sutharlabs_active_simulation_id', next); } catch {}
+            return next;
+          });
         }
       }
     } catch (err) {
@@ -269,7 +271,7 @@ export default function StockSimulatorPanel({
     if (!userEmail) return false;
     const cleanEmail = userEmail.toLowerCase().trim();
     const cleanTenant = cleanEmail.replace(/[^a-z0-9_-]/g, '_');
-    const rawOwner = (currentSim?.owner || (selectedSimulationId === 'default' || selectedSimulationId === 'cron_live' ? 'system' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'system'))).toLowerCase().trim();
+    const rawOwner = (currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'system' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'system'))).toLowerCase().trim();
     return Boolean(
       rawOwner && (
         cleanEmail === rawOwner ||
@@ -281,7 +283,7 @@ export default function StockSimulatorPanel({
   }, [userRole, userEmail, currentSim, selectedSimulationId]);
 
   const currentSimOwnerDisplay = useMemo(() => {
-    const rawOwner = currentSim?.owner || (selectedSimulationId === 'default' || selectedSimulationId === 'cron_live' ? 'system' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'System Admin'));
+    const rawOwner = currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'system' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'System Admin'));
     return rawOwner === 'system' ? 'System Admin' : rawOwner;
   }, [currentSim, selectedSimulationId]);
 
@@ -305,7 +307,7 @@ export default function StockSimulatorPanel({
 
   // Fetch Current Portfolio & Simulation History from server for selectedSimulationId
   const fetchPortfolioAndHistory = useCallback(async (targetSimId?: string, silent: boolean = false) => {
-    const simIdToFetch = targetSimId || selectedSimulationId || 'default';
+    const simIdToFetch = targetSimId || selectedSimulationId || 'cron_live';
     if (!silent) setIsLoadingPortfolio(true);
     try {
       const headers = getAuthHeaders();
@@ -558,7 +560,7 @@ export default function StockSimulatorPanel({
 
   // Delete custom simulation
   const handleDeleteSimulation = async (simId: string) => {
-    if (simId === 'default' || simId === 'cron_live') return;
+    if (simId === 'cron_live') return;
     if (!window.confirm(`Delete simulation instance "${simId}"? This will remove its registry entry.`)) return;
     try {
       const res = await fetch(`${STOCK_API}/simulator/simulations/${simId}`, {
@@ -566,7 +568,8 @@ export default function StockSimulatorPanel({
         headers: getAuthHeaders()
       });
       if (res.ok) {
-        handleSelectSimulation('default');
+        const remaining = simulationsList.filter(s => s.id !== simId);
+        handleSelectSimulation(remaining[0]?.id || 'cron_live');
         await fetchSimulationsList();
       }
     } catch (err) {
@@ -991,18 +994,17 @@ export default function StockSimulatorPanel({
               {/* Public Visibility Toggle Button */}
               {(() => {
                 const isPub = Boolean(currentSim?.isPublic || selectedSimulationId === 'cron_live');
-                const isDefault = selectedSimulationId === 'default';
                 return (
                   <button
                     type="button"
                     onClick={() => handleTogglePublic(selectedSimulationId, !isPub)}
-                    disabled={isTogglingPublic || isDefault}
+                    disabled={isTogglingPublic}
                     className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all select-none ${
                       isPub
                         ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/30'
                         : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant border-outline/30 hover:text-on-surface'
-                    } ${isDefault ? 'opacity-40 cursor-not-allowed' : ''}`}
-                    title={isDefault ? "Default simulation cannot be altered" : (isPub ? "Visible to all visitors. Click to make Private." : "Private. Click to make Public (visible to all users).")}
+                    }`}
+                    title={isPub ? "Visible to all visitors. Click to make Private." : "Private. Click to make Public (visible to all users)."}
                   >
                     <Globe className={`w-3.5 h-3.5 ${isPub ? 'text-emerald-400' : 'text-on-surface-variant'}`} />
                     <span>{isTogglingPublic ? 'Updating...' : (isPub ? 'Public (All Users)' : 'Make Public')}</span>
@@ -1020,7 +1022,7 @@ export default function StockSimulatorPanel({
                 <span>New Simulation</span>
               </button>
 
-              {selectedSimulationId !== 'default' && selectedSimulationId !== 'cron_live' && (
+              {selectedSimulationId !== 'cron_live' && (
                 <button
                   type="button"
                   onClick={() => handleDeleteSimulation(selectedSimulationId)}
@@ -1052,6 +1054,26 @@ export default function StockSimulatorPanel({
               <span>
                 <strong>Market Closed ({marketSession.timeStr || marketSession.hours}):</strong> Live positions and trailing stops are actively tracked & retained in database. Algorithmic entries are strictly paused until market open ({marketSession.hours}).
               </span>
+            </div>
+          )}
+
+          {/* Onboarding Callout: When only cron_live is present, invite user to create their first personalized simulation */}
+          {simulationsList.length > 0 && !simulationsList.some(s => s.id !== 'cron_live') && !showNewSimModal && (
+            <div className="mt-1 p-3 rounded-xl bg-[#00e476]/10 border border-[#00e476]/30 flex items-center justify-between gap-3 flex-wrap">
+              <div className="flex items-center gap-2 text-xs text-on-surface">
+                <Sparkles className="w-4 h-4 text-[#00e476] shrink-0" />
+                <span>
+                  Currently monitoring the <strong>Cloud Cron Live Trading</strong> instance. Create your own private simulation to test custom strategies and capital allocations.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowNewSimModal(true)}
+                className="px-3 py-1.5 rounded-lg bg-[#00e476] text-[#002022] font-bold text-xs hover:brightness-110 cursor-pointer flex items-center gap-1.5 shrink-0"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Create Your Own Simulation</span>
+              </button>
             </div>
           )}
         </div>
