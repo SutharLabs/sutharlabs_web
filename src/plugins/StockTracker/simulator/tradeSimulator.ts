@@ -207,7 +207,8 @@ function readRegistry(): SimulationRegistryEntry[] {
       lastRunAt: nowIso,
       totalRuns: 0,
       totalTradeRuns: 0,
-      isPublic: true
+      isPublic: true,
+      owner: "system"
     });
     modified = true;
   }
@@ -221,16 +222,25 @@ function readRegistry(): SimulationRegistryEntry[] {
       lastRunAt: nowIso,
       totalRuns: 0,
       totalTradeRuns: 0,
-      isPublic: true
+      isPublic: true,
+      owner: "system"
     });
     modified = true;
   }
 
-  // Ensure default and cron_live entries are explicitly public
+  // Ensure default and cron_live entries are explicitly public and assigned owners
   for (const item of reg) {
-    if ((item.id === "default" || item.id === "cron_live") && item.isPublic === undefined) {
-      item.isPublic = true;
-      modified = true;
+    if (item.id === "default" || item.id === "cron_live") {
+      if (item.isPublic === undefined) { item.isPublic = true; modified = true; }
+      if (!item.owner) { item.owner = "system"; modified = true; }
+    } else if (!item.owner) {
+      if (item.id.includes("__")) {
+        item.owner = item.id.split("__")[0];
+        modified = true;
+      } else {
+        item.owner = "system";
+        modified = true;
+      }
     }
   }
 
@@ -618,9 +628,11 @@ export async function getEODHistory(simId: string = "default"): Promise<EODSimul
   try {
     const prisma = getPrismaClient();
     const row = await prisma.simulationStore.findUnique({ where: { simId: safeSimId } });
-    if (row && row.history) {
-      const parsed = JSON.parse(row.history);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    if (row && row.history !== null && row.history !== undefined) {
+      try {
+        const parsed = JSON.parse(row.history);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {}
     }
   } catch {}
 
@@ -753,7 +765,8 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     lastRunAt: nowIsoStart,
     totalRuns: (existingEntry?.totalRuns ?? 0) + 1,
     totalTradeRuns: existingEntry?.totalTradeRuns ?? 0, // updated after we know if trades happened
-    isPublic: isPublicResolved
+    isPublic: isPublicResolved,
+    owner: options.userEmail || existingEntry?.owner || (simId === "default" || simId === "cron_live" ? "system" : (simId.includes("__") ? simId.split("__")[0] : "system"))
   });
 
   // 2. Resolve tracked assets for Simulation based on selected market
@@ -1647,58 +1660,73 @@ export async function resetSimulator(
     lastUpdated: new Date().toISOString()
   };
 
-  await saveSimulatorStore(freshState, safeSimId);
-  writeJsonData(historyKey(safeSimId), []);
+  // Identify all potential ID aliases (e.g. cron_live and system__cron_live) so all layers are purged
+  const relatedSimIds = Array.from(new Set([
+    safeSimId,
+    simId,
+    `system__${safeSimId}`,
+    safeSimId.replace(/^system__/, '')
+  ]));
 
-  try {
-    upsertRegistry(safeSimId, { market: (marketRegion || "IN").toUpperCase() });
-  } catch {}
+  // 1. Wipe local memory cache and JSON files across all related IDs
+  for (const id of relatedSimIds) {
+    writeJsonData(portfolioKey(id), freshState);
+    writeJsonData(historyKey(id), []);
+    try {
+      const histPath = localHistoryPath(id);
+      const portPath = localPortfolioPath(id);
+      if (fs.existsSync(histPath)) fs.writeFileSync(histPath, "[]\n", "utf8");
+      if (fs.existsSync(portPath)) fs.writeFileSync(portPath, JSON.stringify(freshState, null, 2), "utf8");
+    } catch {}
+  }
 
+  // 2. Wipe and overwrite rows in Neon PostgreSQL DB
   try {
     const prisma = getPrismaClient();
-    await prisma.simulationStore.upsert({
-      where: { simId: safeSimId },
-      update: {
-        initialCash,
-        cash: initialCash,
-        positions: "[]",
-        closedTrades: "[]",
-        history: "[]",
-        totalRealizedPnL: 0,
-        totalFrictionPaid: 0,
-        winCount: 0,
-        lossCount: 0,
-        lastUpdated: new Date().toISOString()
-      },
-      create: {
-        simId: safeSimId,
-        initialCash,
-        cash: initialCash,
-        positions: "[]",
-        closedTrades: "[]",
-        history: "[]"
-      }
-    });
-  } catch {}
+    for (const id of relatedSimIds) {
+      await prisma.simulationStore.upsert({
+        where: { simId: id },
+        update: {
+          initialCash,
+          cash: initialCash,
+          positions: "[]",
+          closedTrades: "[]",
+          history: "[]",
+          totalRealizedPnL: 0,
+          totalFrictionPaid: 0,
+          winCount: 0,
+          lossCount: 0,
+          lastRunDate: null,
+          lastUpdated: new Date().toISOString()
+        },
+        create: {
+          simId: id,
+          initialCash,
+          cash: initialCash,
+          positions: "[]",
+          closedTrades: "[]",
+          history: "[]",
+          totalRealizedPnL: 0,
+          totalFrictionPaid: 0,
+          winCount: 0,
+          lossCount: 0,
+          lastRunDate: null,
+          lastUpdated: new Date().toISOString()
+        }
+      });
+    }
+  } catch (dbErr) {
+    console.warn(`[Simulator DB] Warning while purging simulation store in DB for ${safeSimId}:`, dbErr);
+  }
 
-  // Update registry metrics on reset
+  // 3. Update registry metrics on reset
   upsertRegistry(safeSimId, {
     initialCash,
     totalRuns: 0,
-    totalTradeRuns: 0
+    totalTradeRuns: 0,
+    lastRunAt: new Date().toISOString(),
+    lastTradeAt: undefined
   });
-
-  // Also clear local development data directory files if writable
-  try {
-    const histPath = localHistoryPath(safeSimId);
-    const portPath = localPortfolioPath(safeSimId);
-    if (fs.existsSync(histPath)) {
-      fs.writeFileSync(histPath, "[]\n", "utf8");
-    }
-    if (fs.existsSync(portPath)) {
-      fs.writeFileSync(portPath, JSON.stringify(freshState, null, 2), "utf8");
-    }
-  } catch {}
 
   return freshState;
 }

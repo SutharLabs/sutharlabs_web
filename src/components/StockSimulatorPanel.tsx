@@ -34,7 +34,8 @@ import {
   Copy,
   Plus,
   Trash2,
-  CheckCheck
+  CheckCheck,
+  UserCheck
 } from 'lucide-react';
 import { IStrategy } from '../plugins/StockTracker/strategies/types';
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
@@ -246,7 +247,8 @@ export default function StockSimulatorPanel({
               createdAt: new Date().toISOString(),
               totalRuns: 0,
               totalTradeRuns: 0,
-              isPublic: true
+              isPublic: true,
+              owner: 'system'
             });
           }
           setSimulationsList(list);
@@ -256,6 +258,32 @@ export default function StockSimulatorPanel({
       console.warn('[Simulator] Error fetching simulations list:', err);
     }
   }, [getAuthHeaders]);
+
+  // Derived current simulation instance and owner permissions
+  const currentSim = useMemo(() => {
+    return simulationsList.find(s => s.id === selectedSimulationId);
+  }, [simulationsList, selectedSimulationId]);
+
+  const isCurrentSimOwner = useMemo(() => {
+    if (userRole === 'Admin' || userRole === 'Developer') return true;
+    if (!userEmail) return false;
+    const cleanEmail = userEmail.toLowerCase().trim();
+    const cleanTenant = cleanEmail.replace(/[^a-z0-9_-]/g, '_');
+    const rawOwner = (currentSim?.owner || (selectedSimulationId === 'default' || selectedSimulationId === 'cron_live' ? 'system' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'system'))).toLowerCase().trim();
+    return Boolean(
+      rawOwner && (
+        cleanEmail === rawOwner ||
+        cleanTenant === rawOwner ||
+        cleanEmail.replace(/[^a-z0-9_-]/g, '_') === rawOwner ||
+        selectedSimulationId.startsWith(`${cleanTenant}__`)
+      )
+    );
+  }, [userRole, userEmail, currentSim, selectedSimulationId]);
+
+  const currentSimOwnerDisplay = useMemo(() => {
+    const rawOwner = currentSim?.owner || (selectedSimulationId === 'default' || selectedSimulationId === 'cron_live' ? 'system' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'System Admin'));
+    return rawOwner === 'system' ? 'System Admin' : rawOwner;
+  }, [currentSim, selectedSimulationId]);
 
   useEffect(() => {
     fetchSimulationsList();
@@ -415,58 +443,49 @@ export default function StockSimulatorPanel({
     }
   };
 
-  // Reset Trade Simulator Portfolio & History with resilient multi-endpoint fallback
+  // Reset Trade Simulator Portfolio & History (Authorized simulation owner or Admin only)
   const handleResetSimulator = async () => {
+    if (!isCurrentSimOwner) {
+      setErrorMessage(`Only the simulation owner (${currentSimOwnerDisplay}) can reset this simulator.`);
+      setShowResetConfirm(false);
+      return;
+    }
+
     setIsResettingSim(true);
     setErrorMessage(null);
     let resetSucceeded = false;
     let newPortfolioState: any = null;
+    let failureError: string | null = null;
 
-    const endpoints = [
-      `${STOCK_API}/simulator/reset`,
-      '/api/workspace/stock-analyzer/simulator/reset',
-      '/api/plugins/wp_stock_analyzer/simulator/reset',
-      '/api/simulator/reset'
-    ];
+    try {
+      const res = await fetch(`${STOCK_API}/simulator/reset`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          initialCapital: 100000,
+          marketRegion: effectiveMarket,
+          simulationId: selectedSimulationId
+        })
+      });
 
-    for (const url of endpoints) {
-      try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
-          body: JSON.stringify({
-            initialCapital: 100000,
-            marketRegion: effectiveMarket,
-            simulationId: selectedSimulationId
-          })
-        });
-        if (res.ok) {
-          const data = await res.json().catch(() => ({}));
-          newPortfolioState = data.portfolio;
-          resetSucceeded = true;
-          break;
-        }
-      } catch (err) {
-        console.warn(`[Trade Simulator] Reset failed on ${url}:`, err);
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        newPortfolioState = data.portfolio;
+        resetSucceeded = true;
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        failureError = errJson.error || `Server returned error (${res.status})`;
       }
+    } catch (err: any) {
+      console.warn(`[Trade Simulator] Reset request failed:`, err);
+      failureError = err.message || 'Network error attempting to reset simulation.';
     }
 
     if (!resetSucceeded) {
-      for (const url of endpoints) {
-        try {
-          const res = await fetch(`${url}?initialCapital=100000&marketRegion=${encodeURIComponent(effectiveMarket)}&simulationId=${encodeURIComponent(selectedSimulationId)}`, {
-            method: 'GET'
-          });
-          if (res.ok) {
-            const data = await res.json().catch(() => ({}));
-            newPortfolioState = data.portfolio;
-            resetSucceeded = true;
-            break;
-          }
-        } catch (err) {
-          console.warn(`[Trade Simulator] Reset GET failed on ${url}:`, err);
-        }
-      }
+      setErrorMessage(failureError || 'Failed to reset simulator.');
+      setIsResettingSim(false);
+      setShowResetConfirm(false);
+      return;
     }
 
     // Fresh reset state
@@ -487,7 +506,10 @@ export default function StockSimulatorPanel({
     setHistoryRuns([]);
     setShowResetConfirm(false);
     setIsResettingSim(false);
-    fetchSimulationsList();
+
+    // Refresh simulation registry list and sync freshly wiped DB state
+    await fetchSimulationsList();
+    await fetchPortfolioAndHistory(selectedSimulationId, false);
   };
 
   // Create a brand new independent simulation instance
@@ -887,11 +909,23 @@ export default function StockSimulatorPanel({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                if (!isCurrentSimOwner) {
+                  setErrorMessage(`Reset disabled: Only the owner (${currentSimOwnerDisplay}) can reset this simulator.`);
+                  return;
+                }
                 setShowResetConfirm(true);
               }}
-              disabled={isRunningSim || isResettingSim}
-              className="px-3.5 py-2 bg-surface-container-high hover:bg-rose-500/20 text-on-surface hover:text-rose-400 border border-outline/30 rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all disabled:opacity-50 text-xs"
-              title="Reset virtual portfolio cash, open positions, and trade history"
+              disabled={isRunningSim || isResettingSim || !isCurrentSimOwner}
+              className={`px-3.5 py-2 border rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all text-xs ${
+                !isCurrentSimOwner
+                  ? 'bg-surface-container opacity-40 cursor-not-allowed border-outline/20 text-on-surface-variant'
+                  : 'bg-surface-container-high hover:bg-rose-500/20 text-on-surface hover:text-rose-400 border border-outline/30'
+              }`}
+              title={
+                !isCurrentSimOwner
+                  ? `Reset disabled: Only the owner (${currentSimOwnerDisplay}) can reset this simulator.`
+                  : "Reset virtual portfolio cash, open positions, and trade history"
+              }
             >
               <RotateCcw className={`w-3.5 h-3.5 ${isResettingSim ? 'animate-spin' : ''}`} />
               <span>{isResettingSim ? 'Resetting...' : 'Reset Simulator'}</span>
@@ -938,9 +972,24 @@ export default function StockSimulatorPanel({
                 ))}
               </select>
 
+              {/* Simulation Owner Indicator */}
+              <div
+                className="px-2.5 py-1.5 rounded-lg bg-surface-container-high border border-outline/20 text-xs font-mono text-on-surface-variant flex items-center gap-1.5 select-none"
+                title={`Simulation Instance Owner: ${currentSimOwnerDisplay}`}
+              >
+                <UserCheck className="w-3.5 h-3.5 text-[#00e476]" />
+                <span>
+                  Owner: <strong className="text-on-surface">{currentSimOwnerDisplay}</strong>
+                </span>
+                {isCurrentSimOwner && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold ml-0.5">
+                    You
+                  </span>
+                )}
+              </div>
+
               {/* Public Visibility Toggle Button */}
               {(() => {
-                const currentSim = simulationsList.find(s => s.id === selectedSimulationId);
                 const isPub = Boolean(currentSim?.isPublic || selectedSimulationId === 'cron_live');
                 const isDefault = selectedSimulationId === 'default';
                 return (
@@ -1118,7 +1167,7 @@ export default function StockSimulatorPanel({
             <div className="flex items-center gap-2 text-on-surface">
               <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
               <span className="text-xs">
-                Reset Trade Simulator to initial capital ({currencySign}100,000) and clear all open positions & trade history?
+                Reset Trade Simulator <strong>"{currentSim?.label || selectedSimulationId}"</strong> (Owner: {currentSimOwnerDisplay}) to initial capital ({currencySign}100,000) and clear all open positions & trade history from database?
               </span>
             </div>
             <div className="flex items-center gap-2">

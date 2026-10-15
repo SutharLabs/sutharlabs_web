@@ -1024,18 +1024,32 @@ export function registerRoutes(router: Router) {
       const tenant = getSimulatorTenantScope(req);
       const isAdmin = req.user?.role === 'Admin';
 
+      const formatEntries = (entries: any[]) => entries.map(s => {
+        let owner = s.owner;
+        if (!owner) {
+          if (s.id === 'default' || s.id === 'cron_live') {
+            owner = 'system';
+          } else if (s.id.includes('__')) {
+            owner = s.id.split('__')[0];
+          } else {
+            owner = 'system';
+          }
+        }
+        return { ...s, owner };
+      });
+
       if (isAdmin) {
-        return res.json(all);
+        return res.json(formatEntries(all));
       }
 
       if (tenant === 'guest') {
         const publicOnly = all.filter(s => s.isPublic || s.id === 'default' || s.id === 'cron_live' || !s.id.includes('__'));
-        return res.json(publicOnly);
+        return res.json(formatEntries(publicOnly));
       }
 
       const tenantPrefix = `${tenant}__`;
       const accessible = all.filter(s => s.isPublic || s.id === 'default' || s.id === 'cron_live' || s.id.startsWith(tenantPrefix));
-      res.json(accessible);
+      res.json(formatEntries(accessible));
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
@@ -1122,7 +1136,11 @@ export function registerRoutes(router: Router) {
         });
       }
 
-      const report = await runEODSimulation({ ...payload, simulationId: targetSimId });
+      const report = await runEODSimulation({
+        ...payload,
+        simulationId: targetSimId,
+        userEmail: req.user?.email || payload.userEmail
+      });
       res.json(report);
     } catch (e: any) {
       console.error("[EOD Simulator] Simulation run failure:", e);
@@ -1185,17 +1203,38 @@ export function registerRoutes(router: Router) {
   router.all(["/simulator/reset", "/simulator/reset/"], optionalAuth, async (req: any, res: any) => {
     try {
       const { initialCapital, marketRegion, simId, simulationId } = req.body || req.query || {};
-      const rawSimId = simulationId || simId || "default";
+      const rawSimId = (simulationId || simId || "default") as string;
       const tenant = getSimulatorTenantScope(req);
       const all = listSimulations();
       const existing = all.find(s => s.id === rawSimId);
 
-      // Prevent non-admins from resetting public simulations
-      if (existing && existing.isPublic && req.user?.role !== 'Admin') {
-        return res.status(403).json({ error: "Forbidden: Public live simulations can only be reset by Administrators." });
+      const userEmail = (req.user?.email || '').toLowerCase().trim();
+      const isAdmin = req.user?.role === 'Admin' || req.user?.role === 'Developer';
+      const rawOwner = existing?.owner || (
+        rawSimId === 'default' || rawSimId === 'cron_live'
+          ? 'system'
+          : (rawSimId.includes('__') ? rawSimId.split('__')[0] : 'system')
+      );
+      const simOwner = rawOwner.toLowerCase().trim();
+
+      const isOwner = Boolean(
+        userEmail && (
+          userEmail === simOwner ||
+          tenant === simOwner ||
+          userEmail.replace(/[^a-z0-9_-]/g, '_') === simOwner ||
+          rawSimId.startsWith(`${tenant}__`)
+        )
+      );
+
+      // Only the instance owner or an Administrator can reset the simulator
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({
+          error: `Forbidden: Only the simulation owner (${existing?.owner || simOwner || 'System Admin'}) can reset this simulator instance.`,
+          code: "SIMULATOR_RESET_FORBIDDEN"
+        });
       }
 
-      const targetSimId = (req.user?.role === 'Admin' && existing?.isPublic) ? rawSimId : resolveSimulationTargetId(rawSimId, tenant);
+      const targetSimId = (isAdmin && existing?.isPublic) ? rawSimId : resolveSimulationTargetId(rawSimId, tenant);
       const resetState = await resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN", targetSimId);
       res.json({ success: true, message: `Trade Simulator (${targetSimId}) reset successfully.`, portfolio: resetState });
     } catch (e: any) {

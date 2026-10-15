@@ -114,6 +114,7 @@ export interface EODSimulationOptions {
 export interface SimulationRegistryEntry {
   id: string;                    // simulationId key
   label: string;                 // human-readable name
+  owner?: string;                // user email or 'system'
   strategyId?: string;
   strategyName?: string;
   market?: string;
