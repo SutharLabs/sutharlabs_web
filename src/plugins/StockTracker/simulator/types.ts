@@ -119,6 +119,11 @@ export interface SimulationRegistryEntry {
   strategyName?: string;
   market?: string;
   initialCash?: number;
+  timeframe?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
+  interval?: string;
+  capitalAllocationPct?: number;
+  allocationPct?: number;
+  trailingStopPct?: number;
   createdAt: string;             // ISO timestamp
   lastRunAt?: string;            // ISO timestamp of most recent run
   lastTradeAt?: string;          // ISO timestamp of most recent run with actual trades

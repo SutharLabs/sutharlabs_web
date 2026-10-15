@@ -210,19 +210,27 @@ function readRegistry(): SimulationRegistryEntry[] {
       id: "cron_live",
       label: "Cloud Cron Live Trading (1m)",
       market: "IN",
+      strategyId: "strat-ema-cross",
+      strategyName: "EMA 9/21 Dynamic Trend Cross",
+      timeframe: "1m",
+      interval: "1m",
+      capitalAllocationPct: 0.20,
+      trailingStopPct: 3.0,
       createdAt: nowIso,
       lastRunAt: nowIso,
       totalRuns: 0,
       totalTradeRuns: 0,
-      isPublic: true
+      isPublic: true,
+      owner: "mr.sutharsuresh@gmail.com"
     });
     modified = true;
   }
 
-  // Ensure cron_live entry is explicitly public
+  // Ensure cron_live entry is explicitly public and assigned owner mr.sutharsuresh@gmail.com
   for (const item of reg) {
     if (item.id === "cron_live") {
       if (item.isPublic === undefined) { item.isPublic = true; modified = true; }
+      if (!item.owner) { item.owner = "mr.sutharsuresh@gmail.com"; modified = true; }
     } else if (!item.owner) {
       if (item.id.includes("__")) {
         item.owner = item.id.split("__")[0];
@@ -273,6 +281,40 @@ export function setSimulationPublicStatus(simId: string, isPublic: boolean): Sim
   reg[idx] = { ...reg[idx], isPublic };
   writeJsonData(SIM_REGISTRY_KEY, reg);
   return reg[idx];
+}
+
+export function updateSimulationConfig(
+  simId: string,
+  config: Partial<SimulationRegistryEntry>
+): SimulationRegistryEntry {
+  const reg = readRegistry();
+  const existing = reg.find(r => r.id === simId);
+  if (!existing) {
+    throw new Error(`Simulation "${simId}" not found in registry.`);
+  }
+
+  let stratName = config.strategyName;
+  if (config.strategyId && !stratName) {
+    const s = getStrategyById(config.strategyId);
+    if (s) stratName = s.name;
+  }
+
+  const patch: Partial<SimulationRegistryEntry> = {
+    ...config,
+    label: config.label || existing.label,
+    strategyId: config.strategyId || existing.strategyId,
+    strategyName: stratName || existing.strategyName,
+    market: config.market ? config.market.toUpperCase() : existing.market,
+    timeframe: (config.timeframe || (config as any).interval || existing.timeframe || "1d") as any,
+    interval: (config.timeframe || (config as any).interval || existing.interval || existing.timeframe || "1d") as string,
+    capitalAllocationPct: config.capitalAllocationPct !== undefined ? config.capitalAllocationPct : (config.allocationPct !== undefined ? config.allocationPct : existing.capitalAllocationPct),
+    allocationPct: config.capitalAllocationPct !== undefined ? config.capitalAllocationPct : (config.allocationPct !== undefined ? config.allocationPct : existing.capitalAllocationPct),
+    trailingStopPct: config.trailingStopPct !== undefined ? config.trailingStopPct : existing.trailingStopPct
+  };
+
+  upsertRegistry(simId, patch);
+  const updatedReg = readRegistry();
+  return updatedReg.find(r => r.id === simId) || { ...existing, ...patch };
 }
 
 export async function deleteSimulation(simId: string): Promise<void> {
@@ -482,7 +524,7 @@ export async function saveSimulatorStore(state: PersistedEODState, simId: string
 
     const createData: any = {
       simId: safeSimId,
-      owner: owner || (safeSimId.includes('__') ? safeSimId.split('__')[0] : null),
+      owner: owner || (safeSimId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (safeSimId.includes('__') ? safeSimId.split('__')[0] : null)),
       initialCash: state.initialCash,
       cash: state.cash,
       positions: JSON.stringify(state.positions || []),
@@ -736,18 +778,23 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     store.initialCash = options.forcedCapital;
   }
 
-  const allocationPct = options.allocationPct || options.capitalAllocationPct || 0.15; // default 15% per trade
-  const trailingStopPct = options.trailingStopPct || 3.0; // default 3.0% trailing stop
+  // Register / update this simulation in the shared registry (upsert)
+  const reg = readRegistry();
+  const existingEntry = reg.find(r => r.id === simId);
+
+  const allocationPct = options.allocationPct || options.capitalAllocationPct || existingEntry?.capitalAllocationPct || existingEntry?.allocationPct || 0.15;
+  const trailingStopPct = options.trailingStopPct !== undefined ? options.trailingStopPct : (existingEntry?.trailingStopPct ?? 3.0);
 
   // 1. Resolve active strategy
-  let strategy = options.strategyId ? getStrategyById(options.strategyId) : undefined;
+  const stratId = options.strategyId || existingEntry?.strategyId;
+  let strategy = stratId ? getStrategyById(stratId) : undefined;
   if (!strategy) {
     strategy = PRESET_STRATEGIES.find(p => p.id === "strat-ema-cross") || PRESET_STRATEGIES[0];
   }
 
-  // Register / update this simulation in the shared registry (upsert)
-  const reg = readRegistry();
-  const existingEntry = reg.find(r => r.id === simId);
+  // Resolve timeframe interval ('1m' | '5m' | '15m' | '1h' | '4h' | '1d')
+  const resolvedTimeframe = options.timeframe || (options as any).interval || existingEntry?.timeframe || existingEntry?.interval || (options.mode === "HISTORICAL_REPLAY" ? "15m" : (simId === "cron_live" ? "1m" : "1d"));
+
   const isPublicResolved = options.isPublic !== undefined
     ? options.isPublic
     : (existingEntry?.isPublic ?? (simId === "cron_live"));
@@ -758,11 +805,16 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     strategyName: strategy.name,
     market: (options.market || options.marketRegion || existingEntry?.market || "IN").toUpperCase(),
     initialCash: options.forcedCapital || existingEntry?.initialCash || store.initialCash,
+    timeframe: resolvedTimeframe as any,
+    interval: resolvedTimeframe,
+    capitalAllocationPct: allocationPct,
+    allocationPct: allocationPct,
+    trailingStopPct: trailingStopPct,
     lastRunAt: nowIsoStart,
     totalRuns: (existingEntry?.totalRuns ?? 0) + 1,
     totalTradeRuns: existingEntry?.totalTradeRuns ?? 0, // updated after we know if trades happened
     isPublic: isPublicResolved,
-    owner: options.userEmail || existingEntry?.owner || (simId.includes("__") ? simId.split("__")[0] : undefined)
+    owner: options.userEmail || existingEntry?.owner || (simId === "cron_live" ? "mr.sutharsuresh@gmail.com" : (simId.includes("__") ? simId.split("__")[0] : undefined))
   });
 
   // 2. Resolve tracked assets for Simulation based on selected market
@@ -782,7 +834,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   }
 
   // Resolve timeframe interval ('1m' | '5m' | '15m' | '1h' | '4h' | '1d')
-  const targetInterval = options.timeframe || (options.mode === "HISTORICAL_REPLAY" ? "15m" : "1d");
+  const targetInterval = resolvedTimeframe;
   let replayDaysNeeded = options.replayDays !== undefined ? options.replayDays : 30;
   if (options.startDate) {
     const diffDays = Math.ceil((Date.now() - new Date(options.startDate).getTime()) / (1000 * 3600 * 24));

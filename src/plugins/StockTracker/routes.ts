@@ -3,6 +3,7 @@ import path from "path";
 import fs from "fs";
 import crypto from "crypto";
 import { authenticateToken, optionalAuth } from "../../middleware/auth.js";
+import { getPrismaClient } from "../../../api/_utils.js";
 import {
   getQuote,
   getHistory,
@@ -45,7 +46,8 @@ import {
   closeEODPosition,
   listSimulations,
   deleteSimulation,
-  setSimulationPublicStatus
+  setSimulationPublicStatus,
+  updateSimulationConfig
 } from "./simulator/index.js";
 import { readJsonData, writeJsonData } from "./storageUtils.js";
 
@@ -1040,7 +1042,7 @@ export function registerRoutes(router: Router) {
 
       const formatEntries = (entries: any[]) => entries.map(s => {
         const dbOwner = dbOwnerMap.get(s.id);
-        const owner = dbOwner || s.owner || (s.id.includes('__') ? s.id.split('__')[0] : 'System');
+        const owner = dbOwner || s.owner || (s.id === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (s.id.includes('__') ? s.id.split('__')[0] : 'mr.sutharsuresh@gmail.com'));
         return { ...s, owner };
       });
 
@@ -1082,16 +1084,19 @@ export function registerRoutes(router: Router) {
         if (row?.owner) dbOwner = row.owner;
       } catch {}
 
-      const effectiveOwner = (dbOwner || existing?.owner || (simId.includes('__') ? simId.split('__')[0] : '')).toLowerCase().trim();
+      const effectiveOwner = (dbOwner || existing?.owner || (simId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (simId.includes('__') ? simId.split('__')[0] : ''))).toLowerCase().trim();
 
+      const isAdmin = req.user?.role === 'Admin';
       const isOwner = Boolean(
-        userEmail && effectiveOwner && (
-          userEmail === effectiveOwner ||
-          tenant === effectiveOwner ||
-          userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
-          effectiveOwner.includes(userEmail) ||
-          userEmail.includes(effectiveOwner) ||
-          simId.startsWith(`${tenant}__`)
+        isAdmin || (
+          userEmail && effectiveOwner && (
+            userEmail === effectiveOwner ||
+            tenant === effectiveOwner ||
+            userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
+            effectiveOwner.includes(userEmail) ||
+            userEmail.includes(effectiveOwner) ||
+            simId.startsWith(`${tenant}__`)
+          )
         )
       );
 
@@ -1107,6 +1112,62 @@ export function registerRoutes(router: Router) {
         success: true,
         simulation: updated,
         message: `Simulation "${simId}" visibility set to ${isPublic ? 'Public' : 'Private'}.`
+      });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // Update simulation configuration (Strategy, Timeframe, Allocation, Trailing Stop, Market, Label)
+  router.patch(["/simulator/simulations/:simId/config", "/simulator/simulations/:simId/settings"], optionalAuth, async (req: any, res: any) => {
+    try {
+      const { simId } = req.params;
+      const config = req.body || {};
+      const tenant = getSimulatorTenantScope(req);
+      const isAdmin = req.user?.role === 'Admin';
+      const all = listSimulations();
+      const existing = all.find(s => s.id === simId);
+      const userEmail = (req.user?.email || '').toLowerCase().trim();
+
+      let dbOwner: string | null = null;
+      try {
+        const prisma = getPrismaClient();
+        const row = await prisma.simulationStore.findUnique({
+          where: { simId },
+          select: { owner: true }
+        });
+        if (row?.owner) dbOwner = row.owner;
+      } catch {}
+
+      const effectiveOwner = (dbOwner || existing?.owner || (simId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (simId.includes('__') ? simId.split('__')[0] : ''))).toLowerCase().trim();
+
+      const isOwner = Boolean(
+        isAdmin ||
+        userEmail === 'mr.sutharsuresh@gmail.com' ||
+        (
+          userEmail && effectiveOwner && (
+            userEmail === effectiveOwner ||
+            tenant === effectiveOwner ||
+            userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
+            effectiveOwner.includes(userEmail) ||
+            userEmail.includes(effectiveOwner) ||
+            simId.startsWith(`${tenant}__`)
+          )
+        )
+      );
+
+      if (!isOwner) {
+        return res.status(403).json({
+          error: `Forbidden: Only the simulation owner (${dbOwner || existing?.owner || effectiveOwner || 'the owner'}) can edit this simulation configuration.`,
+          code: "OWNER_REQUIRED"
+        });
+      }
+
+      const updated = updateSimulationConfig(simId, config);
+      res.json({
+        success: true,
+        simulation: updated,
+        message: `Simulation "${simId}" configuration saved successfully.`
       });
     } catch (e: any) {
       res.status(400).json({ error: e.message });
@@ -1132,16 +1193,19 @@ export function registerRoutes(router: Router) {
         if (row?.owner) dbOwner = row.owner;
       } catch {}
 
-      const effectiveOwner = (dbOwner || existing?.owner || (simId.includes('__') ? simId.split('__')[0] : '')).toLowerCase().trim();
+      const effectiveOwner = (dbOwner || existing?.owner || (simId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (simId.includes('__') ? simId.split('__')[0] : ''))).toLowerCase().trim();
 
+      const isAdmin = req.user?.role === 'Admin';
       const isOwner = Boolean(
-        userEmail && effectiveOwner && (
-          userEmail === effectiveOwner ||
-          tenant === effectiveOwner ||
-          userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
-          effectiveOwner.includes(userEmail) ||
-          userEmail.includes(effectiveOwner) ||
-          simId.startsWith(`${tenant}__`)
+        isAdmin || (
+          userEmail && effectiveOwner && (
+            userEmail === effectiveOwner ||
+            tenant === effectiveOwner ||
+            userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
+            effectiveOwner.includes(userEmail) ||
+            userEmail.includes(effectiveOwner) ||
+            simId.startsWith(`${tenant}__`)
+          )
         )
       );
 
@@ -1192,6 +1256,9 @@ export function registerRoutes(router: Router) {
 
       const report = await runEODSimulation({
         ...payload,
+        capitalAllocationPct: payload.capitalAllocationPct !== undefined && payload.capitalAllocationPct !== '' ? Number(payload.capitalAllocationPct) : undefined,
+        allocationPct: payload.allocationPct !== undefined && payload.allocationPct !== '' ? Number(payload.allocationPct) : undefined,
+        trailingStopPct: payload.trailingStopPct !== undefined && payload.trailingStopPct !== '' ? Number(payload.trailingStopPct) : undefined,
         simulationId: targetSimId,
         userEmail: req.user?.email || payload.userEmail
       });
@@ -1259,6 +1326,7 @@ export function registerRoutes(router: Router) {
       const { initialCapital, marketRegion, simId, simulationId } = req.body || req.query || {};
       const rawSimId = (simulationId || simId || "default") as string;
       const tenant = getSimulatorTenantScope(req);
+      const isAdmin = req.user?.role === 'Admin';
       const all = listSimulations();
       const existing = all.find(s => s.id === rawSimId);
 
@@ -1276,16 +1344,18 @@ export function registerRoutes(router: Router) {
         if (row?.owner) dbOwner = row.owner;
       } catch {}
 
-      const effectiveOwner = (dbOwner || existing?.owner || (targetSimId.includes('__') ? targetSimId.split('__')[0] : '')).toLowerCase().trim();
+      const effectiveOwner = (dbOwner || existing?.owner || (targetSimId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (targetSimId.includes('__') ? targetSimId.split('__')[0] : ''))).toLowerCase().trim();
 
       const isOwner = Boolean(
-        userEmail && effectiveOwner && (
-          userEmail === effectiveOwner ||
-          tenant === effectiveOwner ||
-          userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
-          effectiveOwner.includes(userEmail) ||
-          userEmail.includes(effectiveOwner) ||
-          targetSimId.startsWith(`${tenant}__`)
+        isAdmin || (
+          userEmail && effectiveOwner && (
+            userEmail === effectiveOwner ||
+            tenant === effectiveOwner ||
+            userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
+            effectiveOwner.includes(userEmail) ||
+            userEmail.includes(effectiveOwner) ||
+            targetSimId.startsWith(`${tenant}__`)
+          )
         )
       );
 

@@ -1996,10 +1996,11 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
     "/api/plugins/wp_stock_analyzer/simulator/reset/",
     "/api/simulator/reset",
     "/api/simulator/reset/"
-  ], (req, res) => {
+  ], async (req, res) => {
     try {
-      const { initialCapital, marketRegion } = req.body || req.query || {};
-      const resetState = resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN");
+      const { initialCapital, marketRegion, simId, simulationId } = req.body || req.query || {};
+      const targetSimId = simulationId || simId || "cron_live";
+      const resetState = await resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN", targetSimId);
       res.json({ success: true, message: "Trade Simulator reset successfully.", portfolio: resetState });
     } catch (e: any) {
       console.error("[Trade Simulator] Reset error:", e);

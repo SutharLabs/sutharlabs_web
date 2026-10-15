@@ -219,6 +219,8 @@ export default function StockSimulatorPanel({
   const [copiedCronUrl, setCopiedCronUrl] = useState<boolean>(false);
   const [cronSecret, setCronSecret] = useState<string>('sutharlabs-eod-cron-key-2026');
   const [isTogglingPublic, setIsTogglingPublic] = useState<boolean>(false);
+  const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false);
+  const [savedConfigSuccess, setSavedConfigSuccess] = useState<boolean>(false);
 
   // Live Portfolio & History State
   const [portfolio, setPortfolio] = useState<EODPortfolioStore | null>(null);
@@ -247,11 +249,28 @@ export default function StockSimulatorPanel({
 
           // Update active simulation selection if current selection is invalid or stale
           setSelectedSimulationId(prev => {
-            if (prev && prev !== 'default' && list.some(s => s.id === prev)) {
-              return prev;
+            let next = prev;
+            if (!prev || prev !== 'default' || !list.some(s => s.id === prev)) {
+              if (prev && prev !== 'default' && list.some(s => s.id === prev)) {
+                next = prev;
+              } else {
+                next = list[0]?.id || 'cron_live';
+                try { localStorage.setItem('sutharlabs_active_simulation_id', next); } catch {}
+              }
             }
-            const next = list[0]?.id || 'cron_live';
-            try { localStorage.setItem('sutharlabs_active_simulation_id', next); } catch {}
+            const activeEntry = list.find(s => s.id === next);
+            if (activeEntry) {
+              if (activeEntry.strategyId) setSelectedStrategyId(activeEntry.strategyId);
+              if (activeEntry.timeframe) setSelectedTimeframe(activeEntry.timeframe as any);
+              else if ((activeEntry as any).interval) setSelectedTimeframe((activeEntry as any).interval as any);
+              if (activeEntry.capitalAllocationPct) setAllocationPct(activeEntry.capitalAllocationPct);
+              else if ((activeEntry as any).allocationPct) setAllocationPct((activeEntry as any).allocationPct);
+              if (activeEntry.trailingStopPct !== undefined) {
+                setTrailingStopPct(activeEntry.trailingStopPct);
+                setEnableTrailingStop(activeEntry.trailingStopPct > 0);
+              }
+              if (activeEntry.market) setSelectedMarket(activeEntry.market);
+            }
             return next;
           });
         }
@@ -267,25 +286,31 @@ export default function StockSimulatorPanel({
   }, [simulationsList, selectedSimulationId]);
 
   const isCurrentSimOwner = useMemo(() => {
+    if (userRole === 'Admin') return true;
     if (!userEmail) return false;
     const cleanEmail = userEmail.toLowerCase().trim();
     const cleanTenant = cleanEmail.replace(/[^a-z0-9_-]/g, '_');
-    const simOwner = (currentSim?.owner || (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : '')).toLowerCase().trim();
+    const simOwner = (currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : ''))).toLowerCase().trim();
 
     return Boolean(
-      simOwner && (
-        cleanEmail === simOwner ||
-        cleanTenant === simOwner ||
-        cleanEmail.replace(/[^a-z0-9_-]/g, '_') === simOwner ||
-        simOwner.includes(cleanEmail) ||
-        cleanEmail.includes(simOwner) ||
-        selectedSimulationId.startsWith(`${cleanTenant}__`)
+      (userRole === 'Admin') ||
+      cleanEmail === 'mr.sutharsuresh@gmail.com' ||
+      cleanTenant === 'mr_sutharsuresh_gmail_com' ||
+      (
+        simOwner && (
+          cleanEmail === simOwner ||
+          cleanTenant === simOwner ||
+          cleanEmail.replace(/[^a-z0-9_-]/g, '_') === simOwner ||
+          simOwner.includes(cleanEmail) ||
+          cleanEmail.includes(simOwner) ||
+          selectedSimulationId.startsWith(`${cleanTenant}__`)
+        )
       )
     );
-  }, [userEmail, currentSim, selectedSimulationId]);
+  }, [userEmail, userRole, currentSim, selectedSimulationId]);
 
   const currentSimOwnerDisplay = useMemo(() => {
-    return currentSim?.owner || (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'System');
+    return currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'mr.sutharsuresh@gmail.com'));
   }, [currentSim, selectedSimulationId]);
 
   useEffect(() => {
@@ -367,6 +392,21 @@ export default function StockSimulatorPanel({
     try {
       localStorage.setItem('sutharlabs_active_simulation_id', simId);
     } catch {}
+
+    const target = simulationsList.find(s => s.id === simId);
+    if (target) {
+      if (target.strategyId) setSelectedStrategyId(target.strategyId);
+      if (target.timeframe) setSelectedTimeframe(target.timeframe as any);
+      else if ((target as any).interval) setSelectedTimeframe((target as any).interval as any);
+      if (target.capitalAllocationPct) setAllocationPct(target.capitalAllocationPct);
+      else if ((target as any).allocationPct) setAllocationPct((target as any).allocationPct);
+      if (target.trailingStopPct !== undefined) {
+        setTrailingStopPct(target.trailingStopPct);
+        setEnableTrailingStop(target.trailingStopPct > 0);
+      }
+      if (target.market) setSelectedMarket(target.market);
+    }
+
     fetchPortfolioAndHistory(simId);
   };
 
@@ -613,14 +653,80 @@ export default function StockSimulatorPanel({
     }
   };
 
-  // Copy full Cron-Job.org URL with authenticated cronSecret
-  const handleCopyCronUrl = (simId: string) => {
+  // Save simulation configuration manually to backend registry
+  const handleSaveConfig = async (simId: string) => {
+    setIsSavingConfig(true);
+    setErrorMessage(null);
+    try {
+      const activeStrategy = allStrategies.find(s => s.id === selectedStrategyId);
+      const res = await fetch(`${STOCK_API}/simulator/simulations/${encodeURIComponent(simId)}/config`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          timeframe: selectedTimeframe,
+          interval: selectedTimeframe,
+          strategyId: selectedStrategyId,
+          strategyName: activeStrategy?.name,
+          market: effectiveMarket,
+          capitalAllocationPct: allocationPct,
+          allocationPct: allocationPct,
+          trailingStopPct: enableTrailingStop ? trailingStopPct : 0
+        })
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Failed to save configuration (${res.status})`);
+      }
+      setSavedConfigSuccess(true);
+      setTimeout(() => setSavedConfigSuccess(false), 2500);
+      await fetchSimulationsList();
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Error saving simulation configuration.');
+    } finally {
+      setIsSavingConfig(false);
+    }
+  };
+
+  // Copy full Cron-Job.org URL with authenticated cronSecret and full explicit configuration
+  const handleCopyCronUrl = async (simId: string) => {
     let origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.sutharlabs.com';
     if (origin.includes('sutharlabs.com') && !origin.includes('www.')) {
       origin = origin.replace('sutharlabs.com', 'www.sutharlabs.com');
     }
     const secretKey = cronSecret || 'sutharlabs-eod-cron-key-2026';
-    const cronUrl = `${origin}${STOCK_API}/simulator/run-eod?simulationId=${encodeURIComponent(simId)}&market=${encodeURIComponent(effectiveMarket)}&cronSecret=${encodeURIComponent(secretKey)}`;
+
+    // Auto-save active configuration to ensure backend simulation entry stays in sync
+    try {
+      const activeStrategy = allStrategies.find(s => s.id === selectedStrategyId);
+      await fetch(`${STOCK_API}/simulator/simulations/${encodeURIComponent(simId)}/config`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({
+          timeframe: selectedTimeframe,
+          interval: selectedTimeframe,
+          strategyId: selectedStrategyId,
+          strategyName: activeStrategy?.name,
+          market: effectiveMarket,
+          capitalAllocationPct: allocationPct,
+          allocationPct: allocationPct,
+          trailingStopPct: enableTrailingStop ? trailingStopPct : 0
+        })
+      });
+      fetchSimulationsList();
+    } catch {}
+
+    const params = new URLSearchParams({
+      simulationId: simId,
+      market: effectiveMarket,
+      timeframe: selectedTimeframe,
+      interval: selectedTimeframe,
+      strategyId: selectedStrategyId,
+      capitalAllocationPct: String(allocationPct),
+      trailingStopPct: enableTrailingStop ? String(trailingStopPct) : '0',
+      cronSecret: secretKey
+    });
+
+    const cronUrl = `${origin}${STOCK_API}/simulator/run-eod?${params.toString()}`;
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(cronUrl).then(() => {
         setCopiedCronUrl(true);
@@ -1053,17 +1159,63 @@ export default function StockSimulatorPanel({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => handleSaveConfig(selectedSimulationId)}
+                disabled={isSavingConfig || !isCurrentSimOwner}
+                className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                  !isCurrentSimOwner
+                    ? 'opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant border-outline/20'
+                    : savedConfigSuccess
+                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                    : 'bg-surface-container-high hover:bg-[#00e476]/15 hover:text-[#00e476] border-outline/30 text-on-surface'
+                }`}
+                title="Save manual configuration (Timeframe, Strategy, Market, Capital Allocation, Trailing Stop) for this simulation"
+              >
+                {savedConfigSuccess ? <Check className="w-3.5 h-3.5 text-[#00e476]" /> : <Sliders className="w-3.5 h-3.5 text-[#00e476]" />}
+                <span>{isSavingConfig ? 'Saving...' : (savedConfigSuccess ? 'Config Saved!' : 'Save Config')}</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => handleCopyCronUrl(selectedSimulationId)}
                 className="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs font-mono text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1.5 transition-all"
-                title="Copy the authenticated URL (with authorized cronSecret) to paste into Cron-Job.org to ping this simulation"
+                title="Copy the authenticated URL (with authorized cronSecret and all active config params) to paste into Cron-Job.org to ping this simulation"
               >
                 {copiedCronUrl ? <CheckCheck className="w-3.5 h-3.5 text-[#00e476]" /> : <Copy className="w-3.5 h-3.5 text-[#00dbe7]" />}
-                <span>{copiedCronUrl ? 'Cron URL Copied! (Authenticated)' : 'Copy Cron-Job URL'}</span>
+                <span>{copiedCronUrl ? 'Cron URL Copied! (Config Included)' : 'Copy Cron-Job URL'}</span>
               </button>
             </div>
+          </div>
+
+          {/* Captured Configuration Summary */}
+          <div className="flex items-center gap-2 flex-wrap text-[11px] font-mono text-on-surface-variant pt-1 border-t border-outline/10">
+            <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1">
+              Captured Settings:
+            </span>
+            <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
+              <Clock className="w-3 h-3 text-[#00dbe7]" />
+              Candle: <strong className="text-on-surface">{selectedTimeframe}</strong>
+            </span>
+            <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
+              <Zap className="w-3 h-3 text-[#00e476]" />
+              Strategy: <strong className="text-on-surface">{allStrategies.find(s => s.id === selectedStrategyId)?.name || selectedStrategyId}</strong>
+            </span>
+            <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
+              <Globe className="w-3 h-3 text-amber-400" />
+              Market: <strong className="text-on-surface">{effectiveMarket}</strong>
+            </span>
+            <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
+              <DollarSign className="w-3 h-3 text-emerald-400" />
+              Alloc: <strong className="text-on-surface">{(allocationPct * 100).toFixed(0)}%</strong>
+            </span>
+            {enableTrailingStop && (
+              <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
+                <Shield className="w-3 h-3 text-purple-400" />
+                Trailing SL: <strong className="text-on-surface">{trailingStopPct}%</strong>
+              </span>
+            )}
           </div>
 
           {!marketSession.isOpen && simulationMode === 'SINGLE_STEP' && (
