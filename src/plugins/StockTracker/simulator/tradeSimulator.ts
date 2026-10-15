@@ -215,22 +215,22 @@ function readRegistry(): SimulationRegistryEntry[] {
       totalRuns: 0,
       totalTradeRuns: 0,
       isPublic: true,
-      owner: "system"
+      owner: "mr.sutharsuresh"
     });
     modified = true;
   }
 
-  // Ensure cron_live entry is explicitly public and assigned owner
+  // Ensure cron_live entry is explicitly public and assigned owner mr.sutharsuresh
   for (const item of reg) {
     if (item.id === "cron_live") {
       if (item.isPublic === undefined) { item.isPublic = true; modified = true; }
-      if (!item.owner) { item.owner = "system"; modified = true; }
+      if (!item.owner || item.owner === "system") { item.owner = "mr.sutharsuresh"; modified = true; }
     } else if (!item.owner) {
       if (item.id.includes("__")) {
         item.owner = item.id.split("__")[0];
         modified = true;
       } else {
-        item.owner = "system";
+        item.owner = "mr.sutharsuresh";
         modified = true;
       }
     }
@@ -758,7 +758,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     totalRuns: (existingEntry?.totalRuns ?? 0) + 1,
     totalTradeRuns: existingEntry?.totalTradeRuns ?? 0, // updated after we know if trades happened
     isPublic: isPublicResolved,
-    owner: options.userEmail || existingEntry?.owner || (simId === "cron_live" ? "system" : (simId.includes("__") ? simId.split("__")[0] : "system"))
+    owner: options.userEmail || existingEntry?.owner || (simId === "cron_live" ? "mr.sutharsuresh" : (simId.includes("__") ? simId.split("__")[0] : "mr.sutharsuresh"))
   });
 
   // 2. Resolve tracked assets for Simulation based on selected market

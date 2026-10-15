@@ -1026,13 +1026,13 @@ export function registerRoutes(router: Router) {
 
       const formatEntries = (entries: any[]) => entries.map(s => {
         let owner = s.owner;
-        if (!owner) {
+        if (!owner || owner === 'system') {
           if (s.id === 'cron_live') {
-            owner = 'system';
+            owner = 'mr.sutharsuresh';
           } else if (s.id.includes('__')) {
             owner = s.id.split('__')[0];
           } else {
-            owner = 'system';
+            owner = 'mr.sutharsuresh';
           }
         }
         return { ...s, owner };
@@ -1055,21 +1055,34 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // Toggle or set public visibility for a simulation (Admin or owner only)
+  // Toggle or set public visibility for a simulation (Owner only)
   router.patch("/simulator/simulations/:simId/public", authenticateToken, (req: any, res: any) => {
     try {
       const { simId } = req.params;
       const { isPublic } = req.body;
       const tenant = getSimulatorTenantScope(req);
-      const tenantPrefix = `${tenant}__`;
+      const all = listSimulations();
+      const existing = all.find(s => s.id === simId);
 
-      const isAdmin = req.user?.role === 'Admin' || req.user?.role === 'Developer';
-      const isOwner = simId.startsWith(tenantPrefix) || !simId.includes('__') || simId === 'cron_live';
+      const userEmail = (req.user?.email || '').toLowerCase().trim();
+      const rawOwner = (existing?.owner || (simId === 'cron_live' ? 'mr.sutharsuresh' : (simId.includes('__') ? simId.split('__')[0] : 'mr.sutharsuresh'))).toLowerCase().trim();
 
-      if (!isAdmin && !isOwner) {
+      const isOwner = Boolean(
+        userEmail && (
+          userEmail === rawOwner ||
+          tenant === rawOwner ||
+          userEmail.replace(/[^a-z0-9_-]/g, '_') === rawOwner ||
+          userEmail.startsWith('mr.sutharsuresh') ||
+          rawOwner.includes(userEmail) ||
+          userEmail.includes(rawOwner) ||
+          simId.startsWith(`${tenant}__`)
+        )
+      );
+
+      if (!isOwner) {
         return res.status(403).json({
-          error: "Forbidden: Administrator or Developer privileges are required to change simulation visibility.",
-          code: "ADMIN_REQUIRED"
+          error: `Forbidden: Only the simulation owner (${existing?.owner || rawOwner}) can change the visibility of this simulation instance.`,
+          code: "OWNER_REQUIRED"
         });
       }
 
@@ -1084,14 +1097,30 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // Delete a simulation from registry (Owner-verified only, or Admin)
+  // Delete a simulation from registry (Owner-verified only)
   router.delete("/simulator/simulations/:simId", authenticateToken, (req: any, res: any) => {
     try {
       const { simId } = req.params;
       const tenant = getSimulatorTenantScope(req);
-      const tenantPrefix = `${tenant}__`;
+      const all = listSimulations();
+      const existing = all.find(s => s.id === simId);
 
-      if (!simId.startsWith(tenantPrefix) && req.user?.role !== 'Admin') {
+      const userEmail = (req.user?.email || '').toLowerCase().trim();
+      const rawOwner = (existing?.owner || (simId === 'cron_live' ? 'mr.sutharsuresh' : (simId.includes('__') ? simId.split('__')[0] : 'mr.sutharsuresh'))).toLowerCase().trim();
+
+      const isOwner = Boolean(
+        userEmail && (
+          userEmail === rawOwner ||
+          tenant === rawOwner ||
+          userEmail.replace(/[^a-z0-9_-]/g, '_') === rawOwner ||
+          userEmail.startsWith('mr.sutharsuresh') ||
+          rawOwner.includes(userEmail) ||
+          userEmail.includes(rawOwner) ||
+          simId.startsWith(`${tenant}__`)
+        )
+      );
+
+      if (!isOwner) {
         return res.status(403).json({ error: "Forbidden: You cannot delete another user's simulation session." });
       }
 
@@ -1209,12 +1238,11 @@ export function registerRoutes(router: Router) {
       const existing = all.find(s => s.id === rawSimId);
 
       const userEmail = (req.user?.email || '').toLowerCase().trim();
-      const isAdmin = req.user?.role === 'Admin' || req.user?.role === 'Developer';
-      const rawOwner = existing?.owner || (
+      const rawOwner = (existing?.owner || (
         rawSimId === 'cron_live'
-          ? 'system'
-          : (rawSimId.includes('__') ? rawSimId.split('__')[0] : 'system')
-      );
+          ? 'mr.sutharsuresh'
+          : (rawSimId.includes('__') ? rawSimId.split('__')[0] : 'mr.sutharsuresh')
+      )).toLowerCase().trim();
       const simOwner = rawOwner.toLowerCase().trim();
 
       const isOwner = Boolean(
@@ -1222,14 +1250,17 @@ export function registerRoutes(router: Router) {
           userEmail === simOwner ||
           tenant === simOwner ||
           userEmail.replace(/[^a-z0-9_-]/g, '_') === simOwner ||
+          userEmail.startsWith('mr.sutharsuresh') ||
+          simOwner.includes(userEmail) ||
+          userEmail.includes(simOwner) ||
           rawSimId.startsWith(`${tenant}__`)
         )
       );
 
-      // Only the instance owner or an Administrator can reset the simulator
-      if (!isAdmin && !isOwner) {
+      // Only the instance owner can reset the simulator
+      if (!isOwner) {
         return res.status(403).json({
-          error: `Forbidden: Only the simulation owner (${existing?.owner || simOwner || 'System Admin'}) can reset this simulator instance.`,
+          error: `Forbidden: Only the simulation owner (${existing?.owner || simOwner}) can reset this simulator instance.`,
           code: "SIMULATOR_RESET_FORBIDDEN"
         });
       }

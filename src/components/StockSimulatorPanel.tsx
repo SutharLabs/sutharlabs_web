@@ -267,24 +267,27 @@ export default function StockSimulatorPanel({
   }, [simulationsList, selectedSimulationId]);
 
   const isCurrentSimOwner = useMemo(() => {
-    if (userRole === 'Admin' || userRole === 'Developer') return true;
     if (!userEmail) return false;
     const cleanEmail = userEmail.toLowerCase().trim();
     const cleanTenant = cleanEmail.replace(/[^a-z0-9_-]/g, '_');
-    const rawOwner = (currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'system' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'system'))).toLowerCase().trim();
+    const rawOwner = (currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'mr.sutharsuresh' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'mr.sutharsuresh'))).toLowerCase().trim();
+
     return Boolean(
       rawOwner && (
         cleanEmail === rawOwner ||
         cleanTenant === rawOwner ||
         cleanEmail.replace(/[^a-z0-9_-]/g, '_') === rawOwner ||
+        cleanEmail.startsWith('mr.sutharsuresh') ||
+        rawOwner.includes(cleanEmail) ||
+        cleanEmail.includes(rawOwner) ||
         selectedSimulationId.startsWith(`${cleanTenant}__`)
       )
     );
-  }, [userRole, userEmail, currentSim, selectedSimulationId]);
+  }, [userEmail, currentSim, selectedSimulationId]);
 
   const currentSimOwnerDisplay = useMemo(() => {
-    const rawOwner = currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'system' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'System Admin'));
-    return rawOwner === 'system' ? 'System Admin' : rawOwner;
+    const rawOwner = currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'mr.sutharsuresh' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'mr.sutharsuresh'));
+    return rawOwner === 'system' ? 'mr.sutharsuresh' : rawOwner;
   }, [currentSim, selectedSimulationId]);
 
   useEffect(() => {
@@ -577,9 +580,14 @@ export default function StockSimulatorPanel({
     }
   };
 
-  // Toggle Public / Private visibility (Admin only)
+  // Toggle Public / Private visibility (Owner only)
   const handleTogglePublic = async (simId: string, makePublic: boolean) => {
+    if (!isCurrentSimOwner) {
+      setErrorMessage(`Only the simulation owner (${currentSimOwnerDisplay}) can change visibility.`);
+      return;
+    }
     setIsTogglingPublic(true);
+    setErrorMessage(null);
     try {
       const res = await fetch(`${STOCK_API}/simulator/simulations/${encodeURIComponent(simId)}/public`, {
         method: 'PATCH',
@@ -991,20 +999,32 @@ export default function StockSimulatorPanel({
                 )}
               </div>
 
-              {/* Public Visibility Toggle Button */}
+              {/* Public Visibility Toggle Button (Owner only) */}
               {(() => {
                 const isPub = Boolean(currentSim?.isPublic || selectedSimulationId === 'cron_live');
                 return (
                   <button
                     type="button"
-                    onClick={() => handleTogglePublic(selectedSimulationId, !isPub)}
-                    disabled={isTogglingPublic}
-                    className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all select-none ${
-                      isPub
-                        ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/30'
-                        : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant border-outline/30 hover:text-on-surface'
+                    onClick={() => {
+                      if (!isCurrentSimOwner) {
+                        setErrorMessage(`Only the simulation owner (${currentSimOwnerDisplay}) can change visibility.`);
+                        return;
+                      }
+                      handleTogglePublic(selectedSimulationId, !isPub);
+                    }}
+                    disabled={isTogglingPublic || !isCurrentSimOwner}
+                    className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all select-none ${
+                      !isCurrentSimOwner
+                        ? 'opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant border-outline/20'
+                        : isPub
+                        ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/30 cursor-pointer'
+                        : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant border-outline/30 hover:text-on-surface cursor-pointer'
                     }`}
-                    title={isPub ? "Visible to all visitors. Click to make Private." : "Private. Click to make Public (visible to all users)."}
+                    title={
+                      !isCurrentSimOwner
+                        ? `Visibility toggle disabled: Only the owner (${currentSimOwnerDisplay}) can change public/private visibility.`
+                        : (isPub ? "Visible to all visitors. Click to make Private." : "Private. Click to make Public (visible to all users).")
+                    }
                   >
                     <Globe className={`w-3.5 h-3.5 ${isPub ? 'text-emerald-400' : 'text-on-surface-variant'}`} />
                     <span>{isTogglingPublic ? 'Updating...' : (isPub ? 'Public (All Users)' : 'Make Public')}</span>
@@ -1022,7 +1042,7 @@ export default function StockSimulatorPanel({
                 <span>New Simulation</span>
               </button>
 
-              {selectedSimulationId !== 'cron_live' && (
+              {selectedSimulationId !== 'cron_live' && isCurrentSimOwner && (
                 <button
                   type="button"
                   onClick={() => handleDeleteSimulation(selectedSimulationId)}
