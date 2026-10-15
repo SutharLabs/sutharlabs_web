@@ -811,6 +811,8 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     allocationPct: allocationPct,
     trailingStopPct: trailingStopPct,
     lastRunAt: nowIsoStart,
+    lastHeartbeatAt: nowIsoStart,
+    lastHeartbeatStatus: 'RUNNING',
     totalRuns: (existingEntry?.totalRuns ?? 0) + 1,
     totalTradeRuns: existingEntry?.totalTradeRuns ?? 0, // updated after we know if trades happened
     isPublic: isPublicResolved,
@@ -1269,6 +1271,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     const netTotalPnLPct = startingCapital > 0 ? (netTotalPnL / startingCapital) * 100 : 0;
     const replayTradesCount = closedTradesAll.length + openedTradesAll.length;
     const hadTrades = replayTradesCount > 0;
+    const hadActions = hadTrades || updatedTrailingStopsAll.length > 0;
 
     const digest = isIntraday
       ? `Historical Intraday Replay (${simId}) completed for ${validReplayDates[0]}${validReplayDates.length > 1 ? ` to ${lastReplayDate}` : ''} (${replaySteps.length} intraday bars from market open). Positions Closed: ${closedTradesAll.length}, New Positions Initiated: ${openedTradesAll.length}, Active Holding: ${store.positions.length}. Total Return: ${netTotalPnL >= 0 ? '+' : ''}${netTotalPnL.toFixed(2)} (${netTotalPnLPct.toFixed(2)}%). Ending Equity: ${endingCapital.toFixed(2)}.`
@@ -1294,17 +1297,20 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
       digest,
       replayMode: "HISTORICAL_REPLAY",
       replayedDaysCount: validReplayDates.length,
-      hadTrades
+      hadTrades,
+      hadActions
     };
 
-    if (hadTrades) {
+    if (hadActions) {
       await appendHistoryReport(report, simId);
       const reg = readRegistry();
       const cur = reg.find(r => r.id === simId);
       if (cur) {
         upsertRegistry(simId, {
-          totalTradeRuns: (cur.totalTradeRuns ?? 0) + 1,
-          lastTradeAt: new Date().toISOString()
+          totalTradeRuns: (cur.totalTradeRuns ?? 0) + (hadTrades ? 1 : 0),
+          lastTradeAt: hadTrades ? new Date().toISOString() : cur.lastTradeAt,
+          lastHeartbeatAt: new Date().toISOString(),
+          lastHeartbeatStatus: 'REPLAY_COMPLETED'
         });
       }
     } else {
@@ -1633,7 +1639,9 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   const netDailyPnL = endingCapital - startingCapital;
   const netDailyPnLPct = startingCapital > 0 ? (netDailyPnL / startingCapital) * 100 : 0;
   const tradesCount = closedTrades.length + openedTrades.length;
+  const trailingStopsCount = updatedTrailingStops.length;
   const hadTrades = tradesCount > 0;
+  const hadActions = hadTrades || trailingStopsCount > 0;
 
   let sessionNote = '';
   if (!sessionStatus.isOpen) {
@@ -1662,25 +1670,36 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     digest,
     replayMode: "SINGLE_STEP",
     hadTrades,
+    hadActions,
     isHoliday: sessionStatus.isHoliday,
     holidayName: sessionStatus.holidayName,
     marketSessionType: sessionStatus.sessionType
   };
 
-  // Only append a new log entry when trades were actually executed!
-  // If no trades occurred, only update the existing latest equity snapshot to prevent log bloat on 1-minute crons.
-  if (hadTrades) {
+  // Only append a new log entry when actionable events (trades executed or trailing stops raised) occurred!
+  // If no trades or stops changed, only update the existing latest equity snapshot in-place to prevent log bloat on 1-minute crons.
+  if (hadActions) {
     await appendHistoryReport(report, simId);
     const reg = readRegistry();
     const cur = reg.find(r => r.id === simId);
     if (cur) {
       upsertRegistry(simId, {
-        totalTradeRuns: (cur.totalTradeRuns ?? 0) + 1,
-        lastTradeAt: nowIso
+        totalTradeRuns: (cur.totalTradeRuns ?? 0) + (hadTrades ? 1 : 0),
+        lastTradeAt: hadTrades ? nowIso : cur.lastTradeAt,
+        lastHeartbeatAt: nowIso,
+        lastHeartbeatStatus: sessionStatus.isOpen ? 'ACTIVE_MARKET_OPEN' : `IDLE_${sessionStatus.sessionType || 'MARKET_CLOSED'}`
       });
     }
   } else {
     await updateHistoryPortfolioSnapshot(report, simId);
+    const reg = readRegistry();
+    const cur = reg.find(r => r.id === simId);
+    if (cur) {
+      upsertRegistry(simId, {
+        lastHeartbeatAt: nowIso,
+        lastHeartbeatStatus: sessionStatus.isOpen ? 'ACTIVE_MARKET_OPEN' : `IDLE_${sessionStatus.sessionType || 'MARKET_CLOSED'}`
+      });
+    }
   }
 
   return report;

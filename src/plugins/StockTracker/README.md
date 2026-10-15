@@ -67,14 +67,17 @@ The plugin spans 6 full implementation stages covering the entire quantitative t
 - **Lifecycle Management**: Strategy deletion controls with core preset immutability protection, and modal-based algorithm renaming.
 - **Glassmorphic Hover Window UI**: Expansive centered floating modal utilizing ~96%–98% viewport width with backdrop blur and keyboard navigation.
 
-### Stage 6: Multi-Market Screener, Automated EOD Trade Simulator & Webhook Alerts
+### Stage 6: Multi-Market Screener, Automated EOD & Intraday Trade Simulator & Webhook Alerts
 - **Global Screener & Scanner Hub**: Parallel multi-symbol screener scanning entire exchange universes or custom watchlists in 4-symbol concurrency chunks.
 - **Volume Surge & Breakout Detection**: Rolling 20-day volume baseline computing real-time `volumeSpikeRatio` (e.g. `🔥 2.4x Vol`).
 - **Webhook Alert Dispatcher**: 1-click dispatch of trade signals with rich formatted markdown embeds to **Discord**, **Telegram**, or generic endpoints.
-- **Automated End-of-Day (EOD) Batch Trade Simulator**:
-  - Daily closing candle paper trading execution with Stop Loss, Take Profit, and dynamic Trailing Stop management.
-  - Capital allocation sizing with realistic fee deductions.
-  - Persistent portfolio ledger stored in `data/eod_portfolio.json` and simulation audit logs in `data/eod_simulation_history.json`.
+- **Multi-Instance Trade Simulator Engine (`cron_live`, custom instances)**:
+  - **Multi-Timeframe Execution**: Supports intraday candle intervals (`1m`, `5m`, `15m`, `1h`, `4h`) as well as end-of-day daily (`1d`) candles.
+  - **Dynamic Risk & Stop Management**: Ratchets trailing stops upwards as assets reach session highs; automatically executes Take Profit and Stop Loss limits.
+  - **Tenant Ownership & Access Control**: Per-user simulation instances with email ownership verification, Admin override, and Public/Private catalog visibility.
+  - **Stateless Serverless Cron Integration**: Seamless background triggers via Vercel Crons or external 1-minute schedulers (e.g. `cron-job.org`) using secure HMAC key validation.
+  - **Intelligent Event Compaction**: Differentiates between non-actionable heartbeat pings (updates latest equity snapshot in-place) and actionable events (appends to immutable audit trail), eliminating log spam.
+  - **Adaptive Frontend Polling**: Tab visibility-aware client auto-sync with live cron heartbeat pulse pills and stream filters.
 
 ---
 
@@ -149,12 +152,20 @@ All routes are available under `/api/workspace/stock-analyzer/*` and `/api/plugi
 | `POST` | `/scanner/scan` | Run multi-symbol market scan across universe or watchlist |
 | `POST` | `/scanner/alert-webhook` | Dispatch trade alert to Discord, Telegram, or webhook |
 
-### Automated EOD Batch Trade Simulator
+### Automated Trade Simulator & Background Execution
 | Method | Endpoint | Description |
 | :--- | :--- | :--- |
-| `POST` | `/simulator/run-eod` | Execute automated daily EOD trade simulation session |
-| `GET` | `/simulator/portfolio` | Retrieve current paper trading portfolio snapshot |
-| `GET` | `/simulator/history` | Retrieve historical daily simulation audit sessions |
+| `GET`/`POST` | `/simulator/run-eod` | Execute trade simulation step or intraday bar (cron authorization via `cronSecret` param or `X-Cron-Secret` header) |
+| `GET` | `/simulator/simulations` | List simulation instances accessible to the user (own + public instances; Admins see all) |
+| `POST` | `/simulator/simulations` | Create a new isolated simulation instance with independent cash and strategy config |
+| `PATCH` | `/simulator/simulations/:simId/config` | Update active strategy, timeframe (`1m`–`1d`), allocation %, and trailing stop % |
+| `PATCH` | `/simulator/simulations/:simId/public` | Toggle public/private visibility (owner or Admin only) |
+| `DELETE`| `/simulator/simulations/:simId` | Delete a simulation instance and its portfolio state (owner or Admin only; protected `cron_live`) |
+| `GET` | `/simulator/portfolio?simulationId=:id` | Retrieve live portfolio store (cash, open positions, unrealized PnL, win/loss stats) |
+| `GET` | `/simulator/history?simulationId=:id` | Retrieve execution audit log and historical run reports |
+| `POST` | `/simulator/close-position` | Manually liquidate an open position at current market price |
+| `POST` | `/simulator/reset` | Reset simulation portfolio cash, clear positions, and wipe history (owner or Admin only) |
+| `GET` | `/simulator/cron-config` | Retrieve system cron authorization key for setting up background schedulers |
 
 ---
 
@@ -164,7 +175,71 @@ The frontend experience is constructed using clean, decoupled React 19 component
 
 1. **[`StockTrackerView.tsx`](file:///d:/Code/SutharLabs/website/src/components/StockTrackerView.tsx)**: Main workspace view hosting the interactive TradingView canvas, resizable right split-pane, market ticker strip, and expansive floating modal window.
 2. **[`StockScannerPanel.tsx`](file:///d:/Code/SutharLabs/website/src/components/StockScannerPanel.tsx)**: Multi-market screener hub with filter controls, candidate grid, volume surge badges, and 1-click inspection.
-3. **[`StockSimulatorPanel.tsx`](file:///d:/Code/SutharLabs/website/src/components/StockSimulatorPanel.tsx)**: Virtual paper trading portfolio tracker with open positions, historical simulation runs ledger, and execution audit log.
+3. **[`StockSimulatorPanel.tsx`](file:///d:/Code/SutharLabs/website/src/components/StockSimulatorPanel.tsx)**: Virtual paper trading portfolio tracker with multi-instance selector, live heartbeat status pills, stream filters (`Actionable Events Only` vs `All Snapshots`), trailing stop audit, and dynamic cron link generator.
 4. **[`StockStrategyMarketplace.tsx`](file:///d:/Code/SutharLabs/website/src/components/StockStrategyMarketplace.tsx)**: Community marketplace with ratings, reviews, cloning, and cryptographic performance verification modals.
 5. **[`StockBacktestPanel.tsx`](file:///d:/Code/SutharLabs/website/src/components/StockBacktestPanel.tsx)**: Point-in-time historical backtester with SVG equity curve, friction breakdowns, and institutional KPI suite.
 6. **[`StockTrackerAlertModal.tsx`](file:///d:/Code/SutharLabs/website/src/components/StockTrackerAlertModal.tsx)**: Custom branded glassmorphic confirmation and feedback modal dialog.
+
+---
+
+## 6. Background Cron Automation & Continuity Architecture
+
+The Trade Simulator is architected to run autonomously in serverless environments (such as Vercel) where long-running daemon processes are not supported:
+
+```
+               [ Cron-Job.org / Vercel Cron ]
+                             │
+                             │ (Every 1 minute HTTP Ping)
+                             ▼
+     ┌──────────────────────────────────────────────────┐
+     │  Vercel Serverless Function (Node.js API)        │
+     │  POST/GET /simulator/run-eod?simId=cron_live     │
+     │                                                  │
+     │  1. Loads portfolio from Neon PostgreSQL DB      │
+     │  2. Evaluates live prices & strategy signals     │
+     │  3. Fills BUY/SELL orders & raises trailing stops│
+     │  4. Saves updated portfolio & ledger to DB       │
+     └──────────────────────┬───────────────────────────┘
+                            │ (Atomic DB Commit)
+                            ▼
+     ┌──────────────────────────────────────────────────┐
+     │  Neon PostgreSQL (simulation_stores table)       │
+     │  - Cash, Positions, Closed Trades Ledger         │
+     └──────────────────────▲───────────────────────────┘
+                            │
+               (Every 30s GET /simulator/portfolio)
+                            │
+     ┌──────────────────────────────────────────────────┐
+     │  Browser Client (StockSimulatorPanel.tsx)        │
+     │  - If tab is active: Polls & updates UI live     │
+     │  - If tab was closed/hidden: Refreshes instantly │
+     │    the moment you open or click into the tab     │
+     └──────────────────────────────────────────────────┘
+```
+
+### Key Continuity Principles:
+1. **Decoupled Execution**: Cron pings run server-side and commit directly to the database. They execute regardless of whether the user has the browser open or computer on.
+2. **Actionable Event Compaction**: To prevent log bloat from 1-minute crons (1,440 pings/day), non-actionable heartbeat pings update the latest equity snapshot in-place. A new immutable history card is appended only when an actionable event occurs (order filled or trailing stop raised).
+3. **Adaptive Polling with Page Visibility API**: The frontend polls every 30 seconds when the tab is visible. When hidden or minimized, polling pauses to save bandwidth, and immediately refreshes when the user focuses the tab.
+
+---
+
+## 7. Live Broker Execution Bridge Architecture
+
+The simulator's state machine, position sizing, risk engine, and cron-driven loop serve as the production-ready foundation for routing live orders to real brokerage accounts:
+
+```
+[Cron Trigger] ──> [Strategy Engine] ──> [Risk & Trailing Stop Gatekeeper]
+                                                         │
+                                   ┌─────────────────────┴─────────────────────┐
+                                   ▼                                           ▼
+                      [PAPER MODE (Current)]                     [LIVE_BROKER MODE]
+                      store.positions.push(...)                  brokerClient.placeOrder(...)
+                      store.cash -= cost                         (Zerodha / Angel / Upstox / IBKR)
+```
+
+To switch an instance to live trading:
+1. Add broker API credentials to environment variables (`KITE_API_KEY`, `KITE_ACCESS_TOKEN`, etc.).
+2. Set `EXECUTION_MODE=LIVE_BROKER` in configuration.
+3. Hook `brokerClient.placeOrder()` into the BUY and SELL fill points inside [`tradeSimulator.ts`](file:///d:/Code/SutharLabs/website/src/plugins/StockTracker/simulator/tradeSimulator.ts). All risk checks, trailing stop ratcheting, and exchange session hours gatekeeping remain identical.
+

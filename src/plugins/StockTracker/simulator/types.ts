@@ -76,6 +76,7 @@ export interface EODSimulationReport {
   replayMode?: 'SINGLE_STEP' | 'HISTORICAL_REPLAY';
   replayedDaysCount?: number;
   hadTrades: boolean;             // true = trades occurred; false = no-trade portfolio update
+  hadActions?: boolean;            // true = trade executions or trailing stop ratchets occurred
   isHoliday?: boolean;
   holidayName?: string;
   marketSessionType?: string;
@@ -127,6 +128,8 @@ export interface SimulationRegistryEntry {
   createdAt: string;             // ISO timestamp
   lastRunAt?: string;            // ISO timestamp of most recent run
   lastTradeAt?: string;          // ISO timestamp of most recent run with actual trades
+  lastHeartbeatAt?: string;      // ISO timestamp of most recent cron/manual heartbeat ping
+  lastHeartbeatStatus?: string;  // e.g. 'ACTIVE_MARKET_OPEN', 'IDLE_CLOSED', etc.
   totalRuns: number;
   totalTradeRuns: number;        // runs that produced at least one trade
   isPublic?: boolean;            // Flag indicating if visible to all platform users

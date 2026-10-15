@@ -227,12 +227,21 @@ export default function StockSimulatorPanel({
   const [historyRuns, setHistoryRuns] = useState<EODSimulationReport[]>([]);
   const [latestReport, setLatestReport] = useState<EODSimulationReport | null>(null);
   const [isLoadingPortfolio, setIsLoadingPortfolio] = useState<boolean>(false);
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<number>(Date.now());
+  const [nowTick, setNowTick] = useState<number>(Date.now());
+  const [historyLedgerFilter, setHistoryLedgerFilter] = useState<'ACTIONABLE' | 'ALL'>('ACTIONABLE');
   const [isRunningSim, setIsRunningSim] = useState<boolean>(false);
   const [isResettingSim, setIsResettingSim] = useState<boolean>(false);
   const [closingPositionId, setClosingPositionId] = useState<string | null>(null);
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+
+  // Periodic UI clock tick (every 5s) to update relative timestamps (e.g. '12s ago') without polling network
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 5000);
+    return () => clearInterval(t);
+  }, []);
 
   // Fetch all registered simulations from the backend
   const fetchSimulationsList = useCallback(async () => {
@@ -370,6 +379,7 @@ export default function StockSimulatorPanel({
     } catch (err: any) {
       console.warn('[Trade Simulator] Error loading portfolio/history:', err);
     } finally {
+      setLastSyncTimestamp(Date.now());
       if (!silent) setIsLoadingPortfolio(false);
     }
   }, [userEmail, selectedSimulationId]);
@@ -378,14 +388,34 @@ export default function StockSimulatorPanel({
     fetchPortfolioAndHistory(selectedSimulationId);
   }, [fetchPortfolioAndHistory, selectedSimulationId]);
 
-  // Periodic Auto-Sync: Automatically polls in the background every 30 seconds
-  // so external Cron-Job.org trade executions reflect on the screen without needing manual clicks!
+  // Adaptive Auto-Sync: Polls in background every 30 seconds when tab is active; pauses when tab is hidden; immediately syncs on tab refocus!
   useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        fetchPortfolioAndHistory(selectedSimulationId, true);
+        fetchSimulationsList();
+      }
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
     const interval = setInterval(() => {
+      // If tab is in background, skip polling to conserve server bandwidth & browser CPU
+      if (typeof document !== 'undefined' && document.hidden) {
+        return;
+      }
       fetchPortfolioAndHistory(selectedSimulationId, true);
     }, 30000);
-    return () => clearInterval(interval);
-  }, [fetchPortfolioAndHistory, selectedSimulationId]);
+
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+      clearInterval(interval);
+    };
+  }, [fetchPortfolioAndHistory, fetchSimulationsList, selectedSimulationId]);
 
   const handleSelectSimulation = (simId: string) => {
     setSelectedSimulationId(simId);
@@ -974,6 +1004,28 @@ export default function StockSimulatorPanel({
     return allLedgerTrades;
   }, [allLedgerTrades, tradeLedgerFilter]);
 
+  const isActionableRun = useCallback((run: EODSimulationReport) => {
+    return Boolean(
+      run.hadTrades ||
+      run.hadActions ||
+      (run.closedPositions && run.closedPositions.length > 0) ||
+      (run.openedPositions && run.openedPositions.length > 0) ||
+      (run.updatedTrailingStops && run.updatedTrailingStops.length > 0)
+    );
+  }, []);
+
+  const actionableRunsCount = useMemo(() => {
+    return (historyRuns || []).filter(isActionableRun).length;
+  }, [historyRuns, isActionableRun]);
+
+  const filteredHistoryRuns = useMemo(() => {
+    if (historyLedgerFilter === 'ACTIONABLE') {
+      const actionable = (historyRuns || []).filter(isActionableRun);
+      return actionable.length > 0 ? actionable : (historyRuns || []);
+    }
+    return historyRuns || [];
+  }, [historyRuns, historyLedgerFilter, isActionableRun]);
+
   return (
     <div className="flex flex-col gap-6 text-xs font-mono">
       {/* ── Top Control & Setup Card ── */}
@@ -985,10 +1037,46 @@ export default function StockSimulatorPanel({
                 <Zap className="w-5 h-5 text-[#00e476]" />
                 Trade Simulator & Portfolio Engine
               </h2>
-              <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#00e476]/10 text-[#00e476] text-[10px] font-bold border border-[#00e476]/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#00e476] animate-pulse"></span>
-                Live Auto-Sync (30s)
+              {/* Live Polling Sync Status Pill */}
+              <span
+                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#00e476]/10 text-[#00e476] text-[10px] font-bold border border-[#00e476]/20 transition-all cursor-pointer"
+                onClick={() => fetchPortfolioAndHistory(selectedSimulationId, false)}
+                title="Click to sync simulator state immediately"
+              >
+                <span className={`w-1.5 h-1.5 rounded-full ${isLoadingPortfolio ? 'bg-[#00e476] animate-spin' : 'bg-[#00e476] animate-pulse'}`}></span>
+                {isLoadingPortfolio ? 'Syncing...' : `Live Sync (${Math.max(0, Math.floor((nowTick - lastSyncTimestamp) / 1000))}s ago)`}
               </span>
+
+              {/* Background Cron Heartbeat Status Pill */}
+              {(() => {
+                const lastHeartbeat = (currentSim as any)?.lastHeartbeatAt || currentSim?.lastRunAt;
+                if (!lastHeartbeat) {
+                  return (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] border border-outline/20">
+                      <Clock className="w-3 h-3 opacity-60" />
+                      Cron: Awaiting Run
+                    </span>
+                  );
+                }
+                const secAgo = Math.max(0, Math.floor((nowTick - new Date(lastHeartbeat).getTime()) / 1000));
+                const isFresh = secAgo < 180; // Within 3 minutes
+                const timeText = secAgo < 60 ? `${secAgo}s ago` : `${Math.floor(secAgo / 60)}m ago`;
+
+                return (
+                  <span
+                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
+                      isFresh
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                        : 'bg-surface-container-high text-on-surface-variant border-outline/20'
+                    }`}
+                    title={`Last cron heartbeat executed at: ${new Date(lastHeartbeat).toLocaleString()}`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${isFresh ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`}></span>
+                    Cron: {isFresh ? `Active (${timeText})` : `Idle (${timeText})`}
+                  </span>
+                );
+              })()}
+
               <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
                 marketSession.isOpen
                   ? 'bg-[#00e476]/10 text-[#00e476] border-[#00e476]/30'
@@ -2146,8 +2234,49 @@ export default function StockSimulatorPanel({
 
         {/* ── TAB 3: SIMULATION EXECUTION LOG & HISTORY ── */}
         {simulatorTab === 'LEDGER' && (
-          <div>
-            {historyRuns.length === 0 ? (
+          <div className="flex flex-col">
+            {/* History Stream Filter Toolbar */}
+            <div className="p-3 bg-surface-container/60 border-b border-outline/10 flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1">
+                  <Sliders className="w-3.5 h-3.5 text-[#00e476]" />
+                  Filter Stream:
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setHistoryLedgerFilter('ACTIONABLE')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
+                    historyLedgerFilter === 'ACTIONABLE'
+                      ? 'bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30 shadow-sm'
+                      : 'bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-outline/20'
+                  }`}
+                  title="Show only runs with executed trades or raised trailing stops"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Actionable Events Only ({actionableRunsCount})</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setHistoryLedgerFilter('ALL')}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all flex items-center gap-1.5 ${
+                    historyLedgerFilter === 'ALL'
+                      ? 'bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30 shadow-sm'
+                      : 'bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-outline/20'
+                  }`}
+                  title="Show all execution snapshots including idle market checks"
+                >
+                  <History className="w-3.5 h-3.5" />
+                  <span>All Snapshots ({historyRuns.length})</span>
+                </button>
+              </div>
+
+              <div className="text-[10px] text-on-surface-variant flex items-center gap-1.5 select-none font-sans">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00e476] animate-pulse"></span>
+                <span>Auto-compacted: Non-trade cron ticks update equity in-place without log spam</span>
+              </div>
+            </div>
+
+            {filteredHistoryRuns.length === 0 ? (
               <div className="p-10 text-center text-on-surface-variant flex flex-col items-center justify-center gap-2">
                 <Clock className="w-8 h-8 opacity-40 text-amber-400" />
                 <p className="font-sans font-bold text-sm">No historical simulation runs recorded yet.</p>
@@ -2157,7 +2286,7 @@ export default function StockSimulatorPanel({
               </div>
             ) : (
               <div className="divide-y divide-outline/10">
-                {historyRuns.map(run => {
+                {filteredHistoryRuns.map(run => {
                   const isExpanded = expandedRunId === run.id;
                   const isPositive = run.netDailyPnL >= 0;
                   const runSign = ((run as any).market === 'US' || (run as any).marketRegion === 'US')
@@ -2165,6 +2294,8 @@ export default function StockSimulatorPanel({
                     : ((run as any).market === 'EU' || (run as any).marketRegion === 'EU')
                     ? '€'
                     : currencySign;
+
+                  const hasTrailingStops = run.updatedTrailingStops && run.updatedTrailingStops.length > 0;
 
                   return (
                     <div key={run.id} className="flex flex-col">
@@ -2187,6 +2318,11 @@ export default function StockSimulatorPanel({
                                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#00e476]/15 text-[#00e476] font-bold">
                                   Trade Executed ({run.totalTradesExecuted})
                                 </span>
+                              ) : hasTrailingStops ? (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/15 text-amber-300 font-bold flex items-center gap-1">
+                                  <Shield className="w-3 h-3 text-amber-400" />
+                                  Stop Raised ({run.updatedTrailingStops.length})
+                                </span>
                               ) : (
                                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-surface-container-highest text-on-surface-variant font-medium">
                                   Equity Snapshot
@@ -2207,7 +2343,7 @@ export default function StockSimulatorPanel({
                               </span>
                             </div>
                             <div className="text-[10px] text-on-surface-variant mt-0.5">
-                              Open: {run.totalOpenPositions} positions • Closed: {run.closedPositions?.length || 0} • New Entries: {run.openedPositions?.length || 0}
+                              Open: {run.totalOpenPositions} positions • Closed: {run.closedPositions?.length || 0} • New Entries: {run.openedPositions?.length || 0} • Stops Raised: {run.updatedTrailingStops?.length || 0}
                             </div>
                           </div>
                         </div>
@@ -2306,6 +2442,37 @@ export default function StockSimulatorPanel({
                                         <span className="text-[10px] font-bold text-on-surface">
                                           Total Cost: {tradeSign}{(t.shares * t.price).toFixed(2)}
                                         </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Trailing Stop Updates in this run */}
+                          {hasTrailingStops && (
+                            <div className="flex flex-col gap-1.5">
+                              <span className="text-[10px] font-bold uppercase text-on-surface-variant flex items-center gap-1">
+                                <Shield className="w-3.5 h-3.5 text-amber-400" />
+                                Trailing Stops Ratcheted ({run.updatedTrailingStops.length}):
+                              </span>
+                              <div className="space-y-1.5">
+                                {run.updatedTrailingStops.map((ts, idx) => {
+                                  const tsSign = getAssetCurrencySymbol(ts.symbol);
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className="p-2.5 rounded-xl bg-surface-container-low border border-amber-500/20 flex items-center justify-between flex-wrap gap-2"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-amber-300">{ts.symbol}</span>
+                                        <span className="text-[10px] text-on-surface-variant">
+                                          Stop Raised: {tsSign}{ts.oldStop.toFixed(2)} → <strong className="text-amber-300">{tsSign}{ts.newStop.toFixed(2)}</strong>
+                                        </span>
+                                      </div>
+                                      <div className="text-right text-[10px] text-amber-300/80 font-mono">
+                                        Peak High: {tsSign}{ts.highPrice.toFixed(2)}
                                       </div>
                                     </div>
                                   );
