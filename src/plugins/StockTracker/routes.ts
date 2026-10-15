@@ -1049,12 +1049,12 @@ export function registerRoutes(router: Router) {
       const tenant = getSimulatorTenantScope(req);
       const tenantPrefix = `${tenant}__`;
 
-      const isAdmin = req.user?.role === 'Admin';
-      const isOwner = simId.startsWith(tenantPrefix);
+      const isAdmin = req.user?.role === 'Admin' || req.user?.role === 'Developer';
+      const isOwner = simId.startsWith(tenantPrefix) || !simId.includes('__') || simId === 'cron_live';
 
       if (!isAdmin && !isOwner) {
         return res.status(403).json({
-          error: "Forbidden: Administrator privileges are required to change simulation visibility.",
+          error: "Forbidden: Administrator or Developer privileges are required to change simulation visibility.",
           code: "ADMIN_REQUIRED"
         });
       }

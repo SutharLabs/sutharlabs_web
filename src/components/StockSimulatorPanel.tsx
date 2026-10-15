@@ -938,36 +938,27 @@ export default function StockSimulatorPanel({
                 ))}
               </select>
 
-              {/* Admin Public Visibility Toggle */}
+              {/* Public Visibility Toggle Button */}
               {(() => {
                 const currentSim = simulationsList.find(s => s.id === selectedSimulationId);
                 const isPub = Boolean(currentSim?.isPublic || selectedSimulationId === 'cron_live');
-                if (userRole === 'Admin') {
-                  return (
-                    <button
-                      type="button"
-                      onClick={() => handleTogglePublic(selectedSimulationId, !isPub)}
-                      disabled={isTogglingPublic || selectedSimulationId === 'default'}
-                      className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all ${
-                        isPub
-                          ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border-amber-500/30'
-                          : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/30'
-                      }`}
-                      title={isPub ? "Visible to all visitors. Click to make private to tenant." : "Private. Click to make publicly visible to all users."}
-                    >
-                      <Globe className="w-3.5 h-3.5" />
-                      <span>{isTogglingPublic ? 'Updating...' : (isPub ? 'Public (All Users)' : 'Make Public')}</span>
-                    </button>
-                  );
-                } else if (isPub) {
-                  return (
-                    <span className="px-2 py-1 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1">
-                      <Globe className="w-3 h-3" />
-                      <span>Public Live Run</span>
-                    </span>
-                  );
-                }
-                return null;
+                const isDefault = selectedSimulationId === 'default';
+                return (
+                  <button
+                    type="button"
+                    onClick={() => handleTogglePublic(selectedSimulationId, !isPub)}
+                    disabled={isTogglingPublic || isDefault}
+                    className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all select-none ${
+                      isPub
+                        ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/30'
+                        : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant border-outline/30 hover:text-on-surface'
+                    } ${isDefault ? 'opacity-40 cursor-not-allowed' : ''}`}
+                    title={isDefault ? "Default simulation cannot be altered" : (isPub ? "Visible to all visitors. Click to make Private." : "Private. Click to make Public (visible to all users).")}
+                  >
+                    <Globe className={`w-3.5 h-3.5 ${isPub ? 'text-emerald-400' : 'text-on-surface-variant'}`} />
+                    <span>{isTogglingPublic ? 'Updating...' : (isPub ? 'Public (All Users)' : 'Make Public')}</span>
+                  </button>
+                );
               })()}
 
               <button
@@ -1090,7 +1081,6 @@ export default function StockSimulatorPanel({
               </div>
             </div>
 
-            {userRole === 'Admin' && (
               <div className="pt-2 border-t border-outline/10 flex items-center gap-2">
                 <label className="flex items-center gap-2 cursor-pointer text-xs text-on-surface">
                   <input
@@ -1103,7 +1093,6 @@ export default function StockSimulatorPanel({
                   <span>Make Public (visible to all visitors as a live showcase run)</span>
                 </label>
               </div>
-            )}
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-outline/10">
               <button
                 type="button"

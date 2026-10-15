@@ -18,6 +18,7 @@ export interface WorkspacePluginViewProps {
   userEmail?: string;
   userToken: string;
   theme?: 'dark' | 'light';
+  userRole?: string;
 }
 
 export interface WorkspacePluginModule {

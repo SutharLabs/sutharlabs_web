@@ -598,6 +598,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                       userEmail={user.email} 
                       userToken={user.token || ''} 
                       theme={theme}
+                      userRole={user.role}
                     />
                   );
                 }
