@@ -55,6 +55,8 @@ export interface StockSimulatorPanelProps {
   currencyCode?: string;
   userEmail?: string;
   userToken?: string;
+  userRole?: string;
+  onAddLog?: (log: any) => void;
   onSelectSymbol: (symbol: string) => void;
   isDark?: boolean;
 }
@@ -69,6 +71,8 @@ export default function StockSimulatorPanel({
   currencyCode,
   userEmail,
   userToken,
+  userRole,
+  onAddLog,
   onSelectSymbol,
   isDark = true
 }: StockSimulatorPanelProps) {
@@ -206,8 +210,11 @@ export default function StockSimulatorPanel({
   const [newSimMarket, setNewSimMarket] = useState<string>('IN');
   const [newSimInitialCash, setNewSimInitialCash] = useState<number>(100000);
   const [newSimAllocation, setNewSimAllocation] = useState<number>(0.20);
+  const [newSimIsPublic, setNewSimIsPublic] = useState<boolean>(false);
   const [isCreatingSim, setIsCreatingSim] = useState<boolean>(false);
   const [copiedCronUrl, setCopiedCronUrl] = useState<boolean>(false);
+  const [cronSecret, setCronSecret] = useState<string>('sutharlabs-eod-cron-key-2026');
+  const [isTogglingPublic, setIsTogglingPublic] = useState<boolean>(false);
 
   // Live Portfolio & History State
   const [portfolio, setPortfolio] = useState<EODPortfolioStore | null>(null);
@@ -238,7 +245,8 @@ export default function StockSimulatorPanel({
               market: 'IN',
               createdAt: new Date().toISOString(),
               totalRuns: 0,
-              totalTradeRuns: 0
+              totalTradeRuns: 0,
+              isPublic: true
             });
           }
           setSimulationsList(list);
@@ -252,6 +260,20 @@ export default function StockSimulatorPanel({
   useEffect(() => {
     fetchSimulationsList();
   }, [fetchSimulationsList]);
+
+  // Load configured cron secret from server for authorized runners
+  useEffect(() => {
+    fetch(`${STOCK_API}/simulator/cron-config`, {
+      headers: getAuthHeaders()
+    })
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (data?.cronSecret) {
+          setCronSecret(data.cronSecret);
+        }
+      })
+      .catch(() => {});
+  }, [getAuthHeaders]);
 
   // Fetch Current Portfolio & Simulation History from server for selectedSimulationId
   const fetchPortfolioAndHistory = useCallback(async (targetSimId?: string, silent: boolean = false) => {
@@ -483,11 +505,12 @@ export default function StockSimulatorPanel({
         market: newSimMarket,
         forcedCapital: newSimInitialCash || 100000,
         capitalAllocationPct: newSimAllocation || 0.20,
+        isPublic: newSimIsPublic,
         userEmail
       };
       const res = await fetch(`${STOCK_API}/simulator/run-eod`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(payload)
       });
       if (!res.ok) {
@@ -501,6 +524,7 @@ export default function StockSimulatorPanel({
       setShowNewSimModal(false);
       setNewSimId('');
       setNewSimLabel('');
+      setNewSimIsPublic(false);
       await fetchSimulationsList();
       await fetchPortfolioAndHistory(cleanId);
     } catch (err: any) {
@@ -512,7 +536,7 @@ export default function StockSimulatorPanel({
 
   // Delete custom simulation
   const handleDeleteSimulation = async (simId: string) => {
-    if (simId === 'default') return;
+    if (simId === 'default' || simId === 'cron_live') return;
     if (!window.confirm(`Delete simulation instance "${simId}"? This will remove its registry entry.`)) return;
     try {
       const res = await fetch(`${STOCK_API}/simulator/simulations/${simId}`, {
@@ -528,13 +552,44 @@ export default function StockSimulatorPanel({
     }
   };
 
-  // Copy full Cron-Job.org URL
+  // Toggle Public / Private visibility (Admin only)
+  const handleTogglePublic = async (simId: string, makePublic: boolean) => {
+    setIsTogglingPublic(true);
+    try {
+      const res = await fetch(`${STOCK_API}/simulator/simulations/${encodeURIComponent(simId)}/public`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ isPublic: makePublic })
+      });
+      if (res.ok) {
+        await fetchSimulationsList();
+        if (onAddLog) {
+          onAddLog({
+            type: 'system',
+            message: `Simulation "${simId}" visibility set to ${makePublic ? 'PUBLIC (all users can view)' : 'PRIVATE'}.`,
+            timestamp: new Date().toLocaleTimeString()
+          });
+        }
+      } else {
+        const err = await res.json().catch(() => ({}));
+        setErrorMessage(err.error || 'Failed to update simulation visibility.');
+      }
+    } catch (err: any) {
+      console.warn('Failed to toggle public status:', err);
+      setErrorMessage(err.message || 'Network error updating simulation visibility.');
+    } finally {
+      setIsTogglingPublic(false);
+    }
+  };
+
+  // Copy full Cron-Job.org URL with authenticated cronSecret
   const handleCopyCronUrl = (simId: string) => {
     let origin = typeof window !== 'undefined' ? window.location.origin : 'https://www.sutharlabs.com';
     if (origin.includes('sutharlabs.com') && !origin.includes('www.')) {
       origin = origin.replace('sutharlabs.com', 'www.sutharlabs.com');
     }
-    const cronUrl = `${origin}${STOCK_API}/simulator/run-eod?simulationId=${encodeURIComponent(simId)}&market=${encodeURIComponent(effectiveMarket)}`;
+    const secretKey = cronSecret || 'sutharlabs-eod-cron-key-2026';
+    const cronUrl = `${origin}${STOCK_API}/simulator/run-eod?simulationId=${encodeURIComponent(simId)}&market=${encodeURIComponent(effectiveMarket)}&cronSecret=${encodeURIComponent(secretKey)}`;
     if (navigator?.clipboard?.writeText) {
       navigator.clipboard.writeText(cronUrl).then(() => {
         setCopiedCronUrl(true);
@@ -878,10 +933,42 @@ export default function StockSimulatorPanel({
               >
                 {simulationsList.map((sim) => (
                   <option key={sim.id} value={sim.id}>
-                    {sim.label} [{sim.id}] • {sim.market || 'IN'} ({sim.totalRuns ?? 0} runs)
+                    {sim.isPublic ? '🌐 [Public] ' : '🔒 '}{sim.label} [{sim.id}] • {sim.market || 'IN'} ({sim.totalRuns ?? 0} runs)
                   </option>
                 ))}
               </select>
+
+              {/* Admin Public Visibility Toggle */}
+              {(() => {
+                const currentSim = simulationsList.find(s => s.id === selectedSimulationId);
+                const isPub = Boolean(currentSim?.isPublic || selectedSimulationId === 'cron_live');
+                if (userRole === 'Admin') {
+                  return (
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePublic(selectedSimulationId, !isPub)}
+                      disabled={isTogglingPublic || selectedSimulationId === 'default'}
+                      className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all ${
+                        isPub
+                          ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-400 border-amber-500/30'
+                          : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/30'
+                      }`}
+                      title={isPub ? "Visible to all visitors. Click to make private to tenant." : "Private. Click to make publicly visible to all users."}
+                    >
+                      <Globe className="w-3.5 h-3.5" />
+                      <span>{isTogglingPublic ? 'Updating...' : (isPub ? 'Public (All Users)' : 'Make Public')}</span>
+                    </button>
+                  );
+                } else if (isPub) {
+                  return (
+                    <span className="px-2 py-1 rounded-md bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[11px] font-bold flex items-center gap-1">
+                      <Globe className="w-3 h-3" />
+                      <span>Public Live Run</span>
+                    </span>
+                  );
+                }
+                return null;
+              })()}
 
               <button
                 type="button"
@@ -893,7 +980,7 @@ export default function StockSimulatorPanel({
                 <span>New Simulation</span>
               </button>
 
-              {selectedSimulationId !== 'default' && (
+              {selectedSimulationId !== 'default' && selectedSimulationId !== 'cron_live' && (
                 <button
                   type="button"
                   onClick={() => handleDeleteSimulation(selectedSimulationId)}
@@ -911,10 +998,10 @@ export default function StockSimulatorPanel({
                 type="button"
                 onClick={() => handleCopyCronUrl(selectedSimulationId)}
                 className="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs font-mono text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1.5 transition-all"
-                title="Copy the exact URL to paste into Cron-Job.org to ping this specific simulation every minute"
+                title="Copy the authenticated URL (with authorized cronSecret) to paste into Cron-Job.org to ping this simulation"
               >
                 {copiedCronUrl ? <CheckCheck className="w-3.5 h-3.5 text-[#00e476]" /> : <Copy className="w-3.5 h-3.5 text-[#00dbe7]" />}
-                <span>{copiedCronUrl ? 'Cron URL Copied!' : 'Copy Cron-Job URL'}</span>
+                <span>{copiedCronUrl ? 'Cron URL Copied! (Authenticated)' : 'Copy Cron-Job URL'}</span>
               </button>
             </div>
           </div>
@@ -1002,6 +1089,21 @@ export default function StockSimulatorPanel({
                 />
               </div>
             </div>
+
+            {userRole === 'Admin' && (
+              <div className="pt-2 border-t border-outline/10 flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer text-xs text-on-surface">
+                  <input
+                    type="checkbox"
+                    checked={newSimIsPublic}
+                    onChange={(e) => setNewSimIsPublic(e.target.checked)}
+                    className="rounded border-outline text-[#00e476] focus:ring-[#00e476]"
+                  />
+                  <Globe className="w-3.5 h-3.5 text-[#00dbe7]" />
+                  <span>Make Public (visible to all visitors as a live showcase run)</span>
+                </label>
+              </div>
+            )}
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-outline/10">
               <button
                 type="button"

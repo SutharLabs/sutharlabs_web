@@ -206,7 +206,8 @@ function readRegistry(): SimulationRegistryEntry[] {
       createdAt: nowIso,
       lastRunAt: nowIso,
       totalRuns: 0,
-      totalTradeRuns: 0
+      totalTradeRuns: 0,
+      isPublic: true
     });
     modified = true;
   }
@@ -219,9 +220,18 @@ function readRegistry(): SimulationRegistryEntry[] {
       createdAt: nowIso,
       lastRunAt: nowIso,
       totalRuns: 0,
-      totalTradeRuns: 0
+      totalTradeRuns: 0,
+      isPublic: true
     });
     modified = true;
+  }
+
+  // Ensure default and cron_live entries are explicitly public
+  for (const item of reg) {
+    if ((item.id === "default" || item.id === "cron_live") && item.isPublic === undefined) {
+      item.isPublic = true;
+      modified = true;
+    }
   }
 
   if (modified) {
@@ -255,6 +265,17 @@ function upsertRegistry(
 
 export function listSimulations(): SimulationRegistryEntry[] {
   return readRegistry();
+}
+
+export function setSimulationPublicStatus(simId: string, isPublic: boolean): SimulationRegistryEntry {
+  const reg = readRegistry();
+  const idx = reg.findIndex(r => r.id === simId);
+  if (idx < 0) {
+    throw new Error(`Simulation "${simId}" not found in registry.`);
+  }
+  reg[idx] = { ...reg[idx], isPublic };
+  writeJsonData(SIM_REGISTRY_KEY, reg);
+  return reg[idx];
 }
 
 export async function deleteSimulation(simId: string): Promise<void> {
@@ -719,6 +740,10 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   // Register / update this simulation in the shared registry (upsert)
   const reg = readRegistry();
   const existingEntry = reg.find(r => r.id === simId);
+  const isPublicResolved = options.isPublic !== undefined
+    ? options.isPublic
+    : (existingEntry?.isPublic ?? (simId === "default" || simId === "cron_live"));
+
   upsertRegistry(simId, {
     label: options.simulationLabel || existingEntry?.label || simId,
     strategyId: strategy.id,
@@ -727,7 +752,8 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     initialCash: options.forcedCapital || existingEntry?.initialCash || store.initialCash,
     lastRunAt: nowIsoStart,
     totalRuns: (existingEntry?.totalRuns ?? 0) + 1,
-    totalTradeRuns: existingEntry?.totalTradeRuns ?? 0 // updated after we know if trades happened
+    totalTradeRuns: existingEntry?.totalTradeRuns ?? 0, // updated after we know if trades happened
+    isPublic: isPublicResolved
   });
 
   // 2. Resolve tracked assets for Simulation based on selected market

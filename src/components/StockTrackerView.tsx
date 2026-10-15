@@ -73,6 +73,7 @@ interface StockTrackerViewProps {
   userEmail: string;
   userToken: string;
   theme?: 'dark' | 'light';
+  userRole?: string;
 }
 
 const STOCK_API = '/api/workspace/stock-analyzer';
@@ -588,7 +589,7 @@ function calculateEMA(data: Candle[], period: number): { time: UTCTimestamp; val
   return result;
 }
 
-export default function StockTrackerView({ logs, onAddLog, userEmail, userToken, theme }: StockTrackerViewProps) {
+export default function StockTrackerView({ logs, onAddLog, userEmail, userToken, theme, userRole }: StockTrackerViewProps) {
   // Global Market Universes
   const [universes, setUniverses] = useState<Record<string, MarketUniverse>>(DEFAULT_UNIVERSES);
   const [activeMarketKey, setActiveMarketKey] = useState<string>('IN');
@@ -5550,6 +5551,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   currencyCode={activeUniverse?.currencyCode || (activeMarketKey === 'IN' ? 'INR' : 'USD')}
                   userEmail={userEmail}
                   userToken={userToken}
+                  userRole={userRole}
+                  onAddLog={onAddLog}
                   onSelectSymbol={(sym) => {
                     const fmt = formatTickerDisplay(sym);
                     setSymbol(sym);

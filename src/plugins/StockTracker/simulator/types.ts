@@ -107,6 +107,7 @@ export interface EODSimulationOptions {
   endDate?: string; // 'YYYY-MM-DD'
   replayDays?: number; // e.g. 30, 60, 90, 180
   allowAfterHours?: boolean;
+  isPublic?: boolean;
 }
 
 /** Registry entry tracking every active simulation instance. */
@@ -122,6 +123,7 @@ export interface SimulationRegistryEntry {
   lastTradeAt?: string;          // ISO timestamp of most recent run with actual trades
   totalRuns: number;
   totalTradeRuns: number;        // runs that produced at least one trade
+  isPublic?: boolean;            // Flag indicating if visible to all platform users
 }
 
 export interface EODPortfolioStore {

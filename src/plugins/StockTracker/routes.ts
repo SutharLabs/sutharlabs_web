@@ -44,7 +44,8 @@ import {
   resetSimulator,
   closeEODPosition,
   listSimulations,
-  deleteSimulation
+  deleteSimulation,
+  setSimulationPublicStatus
 } from "./simulator/index.js";
 import { readJsonData, writeJsonData } from "./storageUtils.js";
 
@@ -975,24 +976,101 @@ export function registerRoutes(router: Router) {
     );
   };
 
-  // List simulations accessible to the requesting user
+  // Helper to resolve simulation ID across public instances and user tenant namespaces
+  const resolveSimulationTargetId = (rawSimId: string, tenant: string): string => {
+    if (!rawSimId) return 'default';
+    const all = listSimulations();
+    const exactMatch = all.find(s => s.id === rawSimId);
+    if (exactMatch) {
+      // If marked public, default, cron_live, or a system instance, access directly
+      if (exactMatch.isPublic || exactMatch.id === 'default' || exactMatch.id === 'cron_live' || exactMatch.id.startsWith('system__')) {
+        return exactMatch.id;
+      }
+      if (tenant !== 'guest' && exactMatch.id.startsWith(`${tenant}__`)) {
+        return exactMatch.id;
+      }
+    }
+
+    if (rawSimId === 'default' || rawSimId === 'cron_live') {
+      return rawSimId;
+    }
+
+    if (tenant !== 'guest') {
+      if (rawSimId.startsWith(`${tenant}__`)) return rawSimId;
+      const tenantScoped = `${tenant}__${rawSimId}`;
+      if (all.some(s => s.id === tenantScoped)) {
+        return tenantScoped;
+      }
+      return tenantScoped;
+    }
+
+    return rawSimId;
+  };
+
+  // Retrieve Cron Runner Configuration & Secrets for authorized users
+  router.get("/simulator/cron-config", optionalAuth, (req: any, res: any) => {
+    const cronSecret = process.env.CRON_SECRET || 'sutharlabs-eod-cron-key-2026';
+    res.json({
+      cronSecret,
+      endpoint: '/api/workspace/stock-analyzer/simulator/run-eod',
+      note: 'Include cronSecret as query param ?cronSecret=... or header X-Cron-Secret'
+    });
+  });
+
+  // List simulations accessible to the requesting user (Admins see all; users see public + own)
   router.get("/simulator/simulations", optionalAuth, (req: any, res: any) => {
     try {
       const all = listSimulations();
       const tenant = getSimulatorTenantScope(req);
+      const isAdmin = req.user?.role === 'Admin';
+
+      if (isAdmin) {
+        return res.json(all);
+      }
+
       if (tenant === 'guest') {
-        const publicOnly = all.filter(s => s.id === 'default' || s.id === 'cron_live' || !s.id.includes('__'));
+        const publicOnly = all.filter(s => s.isPublic || s.id === 'default' || s.id === 'cron_live' || !s.id.includes('__'));
         return res.json(publicOnly);
       }
+
       const tenantPrefix = `${tenant}__`;
-      const accessible = all.filter(s => s.id.startsWith(tenantPrefix) || s.id === 'default' || s.id === 'cron_live');
+      const accessible = all.filter(s => s.isPublic || s.id === 'default' || s.id === 'cron_live' || s.id.startsWith(tenantPrefix));
       res.json(accessible);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  // Delete a simulation from registry (Owner-verified only)
+  // Toggle or set public visibility for a simulation (Admin or owner only)
+  router.patch("/simulator/simulations/:simId/public", authenticateToken, (req: any, res: any) => {
+    try {
+      const { simId } = req.params;
+      const { isPublic } = req.body;
+      const tenant = getSimulatorTenantScope(req);
+      const tenantPrefix = `${tenant}__`;
+
+      const isAdmin = req.user?.role === 'Admin';
+      const isOwner = simId.startsWith(tenantPrefix);
+
+      if (!isAdmin && !isOwner) {
+        return res.status(403).json({
+          error: "Forbidden: Administrator privileges are required to change simulation visibility.",
+          code: "ADMIN_REQUIRED"
+        });
+      }
+
+      const updated = setSimulationPublicStatus(simId, Boolean(isPublic));
+      res.json({
+        success: true,
+        simulation: updated,
+        message: `Simulation "${simId}" visibility set to ${isPublic ? 'Public' : 'Private'}.`
+      });
+    } catch (e: any) {
+      res.status(400).json({ error: e.message });
+    }
+  });
+
+  // Delete a simulation from registry (Owner-verified only, or Admin)
   router.delete("/simulator/simulations/:simId", authenticateToken, (req: any, res: any) => {
     try {
       const { simId } = req.params;
@@ -1019,13 +1097,27 @@ export function registerRoutes(router: Router) {
       let targetSimId: string;
 
       if (isCron) {
-        targetSimId = rawSimId === "default" ? "system_eod_cron" : `system__${rawSimId}`;
+        const all = listSimulations();
+        const existing = all.find(s => s.id === rawSimId);
+        if (rawSimId === "cron_live" || (existing && existing.isPublic)) {
+          targetSimId = rawSimId;
+        } else if (rawSimId === "default") {
+          targetSimId = "system_eod_cron";
+        } else {
+          targetSimId = rawSimId.startsWith("system__") ? rawSimId : `system__${rawSimId}`;
+        }
       } else if (req.user?.email) {
         const tenant = getSimulatorTenantScope(req);
-        targetSimId = `${tenant}__${rawSimId}`;
+        const all = listSimulations();
+        const existing = all.find(s => s.id === rawSimId);
+        if (req.user?.role === 'Admin' && existing && (existing.isPublic || rawSimId === 'cron_live')) {
+          targetSimId = rawSimId;
+        } else {
+          targetSimId = resolveSimulationTargetId(rawSimId, tenant);
+        }
       } else {
         return res.status(401).json({
-          error: "Unauthorized: Execution requires authenticated user session or verified CRON_SECRET header.",
+          error: "Unauthorized: Execution requires authenticated user session or verified CRON_SECRET header / cronSecret parameter.",
           code: "SIMULATOR_AUTH_REQUIRED"
         });
       }
@@ -1042,7 +1134,7 @@ export function registerRoutes(router: Router) {
     try {
       const rawSimId = (req.query.simulationId || req.query.simId || "default") as string;
       const tenant = getSimulatorTenantScope(req);
-      const targetSimId = `${tenant}__${rawSimId}`;
+      const targetSimId = resolveSimulationTargetId(rawSimId, tenant);
       const history = await getEODHistory(targetSimId);
       res.json(history);
     } catch (e: any) {
@@ -1054,7 +1146,7 @@ export function registerRoutes(router: Router) {
     try {
       const rawSimId = (req.query.simulationId || req.query.simId || "default") as string;
       const tenant = getSimulatorTenantScope(req);
-      const targetSimId = `${tenant}__${rawSimId}`;
+      const targetSimId = resolveSimulationTargetId(rawSimId, tenant);
       const portfolio = await getEODPortfolio(targetSimId);
       res.json(portfolio);
     } catch (e: any) {
@@ -1070,7 +1162,15 @@ export function registerRoutes(router: Router) {
       }
       const rawSimId = simulationId || simId || "default";
       const tenant = getSimulatorTenantScope(req);
-      const targetSimId = `${tenant}__${rawSimId}`;
+      const all = listSimulations();
+      const existing = all.find(s => s.id === rawSimId);
+
+      // Prevent non-admins from closing positions in public simulations
+      if (existing && existing.isPublic && req.user?.role !== 'Admin') {
+        return res.status(403).json({ error: "Forbidden: Public live simulations can only be managed by Administrators." });
+      }
+
+      const targetSimId = resolveSimulationTargetId(rawSimId, tenant);
       const result = await closeEODPosition(positionId, targetSimId);
       if (!result.success) {
         return res.status(404).json({ error: "Position not found in portfolio" });
@@ -1087,7 +1187,15 @@ export function registerRoutes(router: Router) {
       const { initialCapital, marketRegion, simId, simulationId } = req.body || req.query || {};
       const rawSimId = simulationId || simId || "default";
       const tenant = getSimulatorTenantScope(req);
-      const targetSimId = `${tenant}__${rawSimId}`;
+      const all = listSimulations();
+      const existing = all.find(s => s.id === rawSimId);
+
+      // Prevent non-admins from resetting public simulations
+      if (existing && existing.isPublic && req.user?.role !== 'Admin') {
+        return res.status(403).json({ error: "Forbidden: Public live simulations can only be reset by Administrators." });
+      }
+
+      const targetSimId = (req.user?.role === 'Admin' && existing?.isPublic) ? rawSimId : resolveSimulationTargetId(rawSimId, tenant);
       const resetState = await resetSimulator(Number(initialCapital) || 100000, marketRegion || "IN", targetSimId);
       res.json({ success: true, message: `Trade Simulator (${targetSimId}) reset successfully.`, portfolio: resetState });
     } catch (e: any) {

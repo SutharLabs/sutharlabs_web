@@ -681,6 +681,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                   onAddLog={addLog} 
                   userEmail={user.email}
                   userToken={user.token || ''}
+                  userRole={user.role}
                 />
               )}
             </ErrorBoundary>
