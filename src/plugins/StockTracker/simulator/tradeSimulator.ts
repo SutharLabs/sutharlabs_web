@@ -223,6 +223,38 @@ export async function updateSimulationConfig(
   const safeSimId = simId.replace(/[^a-zA-Z0-9_-]/g, "_");
   let existing = reg.find(r => r.id === simId || r.id === safeSimId);
   if (!existing) {
+    try {
+      const prisma = getPrismaClient();
+      const row = await prisma.simulationStore.findFirst({
+        where: {
+          OR: [
+            { simId: simId },
+            { simId: safeSimId }
+          ]
+        }
+      });
+      if (row) {
+        existing = {
+          id: row.simId,
+          label: row.label || (row.simId.includes("__") ? row.simId.split("__").pop()!.replace(/_/g, " ") : row.simId.replace(/_/g, " ")),
+          owner: row.owner || undefined,
+          market: row.market || "IN",
+          strategyId: row.strategyId || "strat-ema-cross",
+          strategyName: row.strategyName || "EMA 9/21 Dynamic Trend Cross",
+          timeframe: (row.timeframe || "1d") as any,
+          interval: (row.timeframe || "1d"),
+          productType: (row.productType || "CNC") as any,
+          capitalAllocationPct: row.capitalAllocationPct ?? 0.20,
+          trailingStopPct: row.trailingStopPct ?? 3.0,
+          isPublic: Boolean(row.isPublic),
+          createdAt: row.updatedAt?.toISOString() || new Date().toISOString(),
+          totalRuns: (row.winCount || 0) + (row.lossCount || 0),
+          totalTradeRuns: (row.winCount || 0) + (row.lossCount || 0)
+        };
+      }
+    } catch {}
+  }
+  if (!existing) {
     const rawLabel = simId.includes("__") ? simId.split("__").pop() : simId;
     existing = {
       id: simId,

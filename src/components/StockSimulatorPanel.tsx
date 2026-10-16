@@ -790,6 +790,7 @@ export default function StockSimulatorPanel({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
+          label: currentSim?.label || simId,
           timeframe: selectedTimeframe,
           interval: selectedTimeframe,
           productType: selectedProductType,
@@ -830,6 +831,7 @@ export default function StockSimulatorPanel({
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify({
+          label: currentSim?.label || simId,
           timeframe: selectedTimeframe,
           interval: selectedTimeframe,
           productType: selectedProductType,

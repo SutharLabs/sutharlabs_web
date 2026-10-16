@@ -979,30 +979,44 @@ export function registerRoutes(router: Router) {
     );
   };
 
-  // Helper to resolve simulation ID across public instances and user tenant namespaces
-  const resolveSimulationTargetId = (rawSimId: string, tenant: string): string => {
-    const all = listSimulations();
-    if (!rawSimId) return all[0]?.id || 'simulation_1';
-    const exactMatch = all.find(s => s.id === rawSimId);
-    if (exactMatch) {
-      if (exactMatch.isPublic || exactMatch.id.startsWith('system__')) {
-        return exactMatch.id;
-      }
-      if (tenant !== 'guest' && exactMatch.id.startsWith(`${tenant}__`)) {
-        return exactMatch.id;
-      }
+  // Helper to resolve simulation ID across database instances without mangling or creating clones
+  const resolveSimulationTargetId = async (rawSimId: string, tenant: string): Promise<string> => {
+    if (!rawSimId) {
+      try {
+        const prisma = getPrismaClient();
+        const first = await prisma.simulationStore.findFirst({
+          where: { simId: { not: 'default' } },
+          orderBy: { updatedAt: 'desc' },
+          select: { simId: true }
+        });
+        if (first?.simId) return first.simId;
+      } catch {}
+      return 'cron_live';
     }
 
-    if (tenant !== 'guest') {
-      if (rawSimId.startsWith(`${tenant}__`)) return rawSimId;
-      const tenantScoped = `${tenant}__${rawSimId}`;
-      if (all.some(s => s.id === tenantScoped)) {
-        return tenantScoped;
-      }
-      return tenantScoped;
-    }
+    const clean = rawSimId.trim();
 
-    return rawSimId;
+    try {
+      const prisma = getPrismaClient();
+      // 1. Direct exact match in Neon database
+      const direct = await prisma.simulationStore.findUnique({
+        where: { simId: clean },
+        select: { simId: true }
+      });
+      if (direct?.simId) return direct.simId;
+
+      // 2. Legacy tenant-scoped match (if client sent short slug for an existing legacy prefixed row)
+      if (tenant !== 'guest') {
+        const tenantScoped = `${tenant}__${clean}`;
+        const legacyRow = await prisma.simulationStore.findUnique({
+          where: { simId: tenantScoped },
+          select: { simId: true }
+        });
+        if (legacyRow?.simId) return legacyRow.simId;
+      }
+    } catch {}
+
+    return clean;
   };
 
   // Retrieve Cron Runner Configuration & Secrets for authorized users
@@ -1108,16 +1122,8 @@ export function registerRoutes(router: Router) {
       const tenant = getSimulatorTenantScope(req);
       const userEmail = req.user?.email || payload.userEmail;
 
-      // Ensure tenant prefix for non-public simulations created by logged-in users
-      let targetId = cleanSlug;
-      if (tenant !== 'guest' && !payload.isPublic && req.user?.role !== 'Admin') {
-        if (!cleanSlug.startsWith(`${tenant}__`)) {
-          targetId = `${tenant}__${cleanSlug}`;
-        }
-      }
-
       const instance = await createSimulationInstance({
-        id: targetId,
+        id: cleanSlug,
         label: payload.label || payload.simulationLabel || cleanSlug,
         owner: userEmail || (tenant !== 'guest' ? tenant : undefined),
         strategyId: payload.strategyId,
@@ -1384,7 +1390,7 @@ export function registerRoutes(router: Router) {
         if (req.user?.role === 'Admin' && existing && existing.isPublic) {
           targetSimId = rawSimId;
         } else {
-          targetSimId = resolveSimulationTargetId(rawSimId, tenant);
+          targetSimId = await resolveSimulationTargetId(rawSimId, tenant);
         }
       } else {
         return res.status(401).json({
@@ -1412,7 +1418,7 @@ export function registerRoutes(router: Router) {
     try {
       const rawSimId = (req.query.simulationId || req.query.simId || "") as string;
       const tenant = getSimulatorTenantScope(req);
-      const targetSimId = resolveSimulationTargetId(rawSimId, tenant);
+      const targetSimId = await resolveSimulationTargetId(rawSimId, tenant);
       const history = await getEODHistory(targetSimId);
       res.json(history);
     } catch (e: any) {
@@ -1424,7 +1430,7 @@ export function registerRoutes(router: Router) {
     try {
       const rawSimId = (req.query.simulationId || req.query.simId || "") as string;
       const tenant = getSimulatorTenantScope(req);
-      const targetSimId = resolveSimulationTargetId(rawSimId, tenant);
+      const targetSimId = await resolveSimulationTargetId(rawSimId, tenant);
       const portfolio = await getEODPortfolio(targetSimId);
       res.json(portfolio);
     } catch (e: any) {
@@ -1448,7 +1454,7 @@ export function registerRoutes(router: Router) {
         return res.status(403).json({ error: "Forbidden: Public live simulations can only be managed by Administrators." });
       }
 
-      const targetSimId = resolveSimulationTargetId(rawSimId, tenant);
+      const targetSimId = await resolveSimulationTargetId(rawSimId, tenant);
       const result = await closeEODPosition(positionId, targetSimId);
       if (!result.success) {
         return res.status(404).json({ error: "Position not found in portfolio" });
@@ -1469,7 +1475,7 @@ export function registerRoutes(router: Router) {
       const all = listSimulations();
       const existing = all.find(s => s.id === rawSimId);
 
-      const targetSimId = (isAdmin && existing?.isPublic) ? rawSimId : resolveSimulationTargetId(rawSimId, tenant);
+      const targetSimId = (isAdmin && existing?.isPublic) ? rawSimId : await resolveSimulationTargetId(rawSimId, tenant);
 
       const userEmail = (req.user?.email || '').toLowerCase().trim();
       const cleanTenant = tenant.replace(/[^a-z0-9_-]/g, '_');
