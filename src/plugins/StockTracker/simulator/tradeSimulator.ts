@@ -275,6 +275,72 @@ export function updateSimulationConfig(
   return updatedReg.find(r => r.id === simId) || { ...existing, ...patch };
 }
 
+export async function createSimulationInstance(options: {
+  id: string;
+  label?: string;
+  owner?: string;
+  strategyId?: string;
+  strategyName?: string;
+  market?: string;
+  productType?: 'CNC' | 'MIS';
+  timeframe?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
+  initialCash?: number;
+  capitalAllocationPct?: number;
+  trailingStopPct?: number;
+  isPublic?: boolean;
+}): Promise<SimulationRegistryEntry> {
+  const safeSimId = (options.id || 'default').replace(/[^a-zA-Z0-9_-]/g, '_');
+  const nowIso = new Date().toISOString();
+
+  let stratName = options.strategyName;
+  if (options.strategyId && !stratName) {
+    const s = getStrategyById(options.strategyId);
+    if (s) stratName = s.name;
+  }
+  if (!stratName) {
+    const defaultStrat = PRESET_STRATEGIES[0];
+    options.strategyId = defaultStrat.id;
+    stratName = defaultStrat.name;
+  }
+
+  const initialCash = options.initialCash && options.initialCash > 0 ? options.initialCash : 100000;
+  const productType: 'CNC' | 'MIS' = ((options.productType || 'MIS') as string).toUpperCase() === 'CNC' ? 'CNC' : 'MIS';
+  const timeframe = (options.timeframe || (productType === 'MIS' ? '1m' : '1d')) as any;
+  const allocation = options.capitalAllocationPct || 0.20;
+  const trailingStop = options.trailingStopPct !== undefined ? options.trailingStopPct : 3.0;
+
+  const entry: SimulationRegistryEntry = {
+    id: safeSimId,
+    label: options.label?.trim() || safeSimId,
+    owner: options.owner,
+    strategyId: options.strategyId,
+    strategyName: stratName,
+    market: (options.market || 'IN').toUpperCase(),
+    productType,
+    timeframe,
+    interval: timeframe,
+    initialCash,
+    capitalAllocationPct: allocation,
+    allocationPct: allocation,
+    trailingStopPct: trailingStop,
+    createdAt: nowIso,
+    lastRunAt: nowIso,
+    lastHeartbeatAt: nowIso,
+    lastHeartbeatStatus: 'INITIALIZED',
+    totalRuns: 0,
+    totalTradeRuns: 0,
+    isPublic: Boolean(options.isPublic)
+  };
+
+  upsertRegistry(safeSimId, entry);
+
+  // Initialize Portfolio Store in Database & Cache
+  const initialStore = createInitialSimulatorState(initialCash);
+  await saveSimulatorStore(initialStore, safeSimId, options.owner);
+
+  return entry;
+}
+
 export async function deleteSimulation(simId: string): Promise<void> {
   if (simId === "cron_live") {
     throw new Error(`Cannot delete protected simulation "${simId}".`);

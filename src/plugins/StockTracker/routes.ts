@@ -45,6 +45,7 @@ import {
   resetSimulator,
   closeEODPosition,
   listSimulations,
+  createSimulationInstance,
   deleteSimulation,
   setSimulationPublicStatus,
   updateSimulationConfig
@@ -1026,17 +1027,36 @@ export function registerRoutes(router: Router) {
       const tenant = getSimulatorTenantScope(req);
       const isAdmin = req.user?.role === 'Admin';
 
-      // Load simulation owners dynamically from database table simulation_stores
+      // Load simulation owners and instances dynamically from database table simulation_stores
       const dbOwnerMap = new Map<string, string>();
       const dbUpdatedAtMap = new Map<string, string>();
       try {
         const prisma = getPrismaClient();
         const dbStores = await prisma.simulationStore.findMany({
-          select: { simId: true, owner: true, updatedAt: true }
+          select: { simId: true, owner: true, updatedAt: true, initialCash: true }
         });
         dbStores.forEach(s => {
           if (s.owner) dbOwnerMap.set(s.simId, s.owner);
           if (s.updatedAt) dbUpdatedAtMap.set(s.simId, s.updatedAt.toISOString());
+          // If a simulation exists in the database but not in the in-memory/JSON registry, restore it!
+          if (!all.some(a => a.id === s.simId)) {
+            const rawLabel = s.simId.includes('__') ? s.simId.split('__').slice(1).join('__') : s.simId;
+            all.push({
+              id: s.simId,
+              label: rawLabel.replace(/_/g, ' '),
+              owner: s.owner || undefined,
+              initialCash: s.initialCash || 100000,
+              productType: 'CNC',
+              timeframe: '1d',
+              interval: '1d',
+              market: 'IN',
+              createdAt: s.updatedAt?.toISOString() || new Date().toISOString(),
+              lastRunAt: s.updatedAt?.toISOString() || new Date().toISOString(),
+              totalRuns: 0,
+              totalTradeRuns: 0,
+              isPublic: s.simId === 'cron_live'
+            });
+          }
         });
       } catch (dbErr) {
         console.warn("[Simulator] Could not load DB owners:", dbErr);
@@ -1061,10 +1081,61 @@ export function registerRoutes(router: Router) {
       }
 
       const tenantPrefix = `${tenant}__`;
-      const accessible = all.filter(s => s.isPublic || s.id === 'cron_live' || s.id.startsWith(tenantPrefix));
+      const accessible = all.filter(s =>
+        s.isPublic ||
+        s.id === 'cron_live' ||
+        s.id.startsWith(tenantPrefix) ||
+        (req.user?.email && (s.owner === req.user.email || dbOwnerMap.get(s.id) === req.user.email))
+      );
       res.json(formatEntries(accessible));
     } catch (e: any) {
       res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Create a brand new isolated simulation instance
+  router.post("/simulator/simulations", optionalAuth, async (req: any, res: any) => {
+    try {
+      const payload = req.body || {};
+      const rawId = (payload.id || payload.simulationId || '').trim();
+      if (!rawId) {
+        return res.status(400).json({ error: "Simulation ID is required." });
+      }
+      const cleanSlug = rawId.toLowerCase().replace(/[^a-z0-9_-]/g, '_');
+      const tenant = getSimulatorTenantScope(req);
+      const userEmail = req.user?.email || payload.userEmail;
+
+      // Ensure tenant prefix for non-public simulations created by logged-in users
+      let targetId = cleanSlug;
+      if (tenant !== 'guest' && !payload.isPublic && req.user?.role !== 'Admin') {
+        if (!cleanSlug.startsWith(`${tenant}__`)) {
+          targetId = `${tenant}__${cleanSlug}`;
+        }
+      }
+
+      const instance = await createSimulationInstance({
+        id: targetId,
+        label: payload.label || payload.simulationLabel || cleanSlug,
+        owner: userEmail || (tenant !== 'guest' ? tenant : undefined),
+        strategyId: payload.strategyId,
+        strategyName: payload.strategyName,
+        market: payload.market,
+        productType: payload.productType,
+        timeframe: payload.timeframe || payload.interval,
+        initialCash: payload.initialCash || payload.forcedCapital,
+        capitalAllocationPct: payload.capitalAllocationPct || payload.allocationPct,
+        trailingStopPct: payload.trailingStopPct,
+        isPublic: Boolean(payload.isPublic)
+      });
+
+      res.status(201).json({
+        success: true,
+        simulation: instance,
+        message: `Simulation "${instance.label}" created successfully.`
+      });
+    } catch (e: any) {
+      console.error("[Simulator] Error creating simulation instance:", e);
+      res.status(500).json({ error: e.message || "Failed to create simulation instance." });
     }
   });
 

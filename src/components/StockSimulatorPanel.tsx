@@ -214,8 +214,12 @@ export default function StockSimulatorPanel({
   const [newSimLabel, setNewSimLabel] = useState<string>('');
   const [newSimStrategyId, setNewSimStrategyId] = useState<string>('strat-ema-cross');
   const [newSimMarket, setNewSimMarket] = useState<string>('IN');
+  const [newSimProductType, setNewSimProductType] = useState<'CNC' | 'MIS'>('MIS');
+  const [newSimTimeframe, setNewSimTimeframe] = useState<'1m' | '5m' | '15m' | '1h' | '4h' | '1d'>('1m');
   const [newSimInitialCash, setNewSimInitialCash] = useState<number>(100000);
   const [newSimAllocation, setNewSimAllocation] = useState<number>(0.20);
+  const [newSimEnableTrailingStop, setNewSimEnableTrailingStop] = useState<boolean>(true);
+  const [newSimTrailingStopPct, setNewSimTrailingStopPct] = useState<number>(3.0);
   const [newSimIsPublic, setNewSimIsPublic] = useState<boolean>(false);
   const [isCreatingSim, setIsCreatingSim] = useState<boolean>(false);
   const [copiedCronUrl, setCopiedCronUrl] = useState<boolean>(false);
@@ -261,13 +265,13 @@ export default function StockSimulatorPanel({
           // Update active simulation selection if current selection is invalid or stale
           setSelectedSimulationId(prev => {
             let next = prev;
-            if (!prev || prev !== 'default' || !list.some(s => s.id === prev)) {
-              if (prev && prev !== 'default' && list.some(s => s.id === prev)) {
-                next = prev;
-              } else {
-                next = list[0]?.id || 'cron_live';
-                try { localStorage.setItem('sutharlabs_active_simulation_id', next); } catch {}
-              }
+            // Match exact ID or tenant-scoped alias (e.g. prev="my_sim" matches "user__my_sim")
+            const matching = list.find(s => s.id === prev || (prev && prev !== 'default' && (s.id.endsWith(`__${prev}`) || s.id === prev)));
+            if (matching) {
+              next = matching.id;
+            } else if (!list.some(s => s.id === prev)) {
+              next = list[0]?.id || 'cron_live';
+              try { localStorage.setItem('sutharlabs_active_simulation_id', next); } catch {}
             }
             const activeEntry = list.find(s => s.id === next);
             if (activeEntry) {
@@ -606,17 +610,27 @@ export default function StockSimulatorPanel({
     setIsCreatingSim(true);
     setErrorMessage(null);
     try {
+      const activeStrategy = allStrategies.find(s => s.id === newSimStrategyId);
       const payload = {
+        id: cleanId,
         simulationId: cleanId,
+        label: newSimLabel.trim() || cleanId,
         simulationLabel: newSimLabel.trim() || cleanId,
         strategyId: newSimStrategyId,
+        strategyName: activeStrategy?.name,
         market: newSimMarket,
+        productType: newSimProductType,
+        timeframe: newSimTimeframe,
+        interval: newSimTimeframe,
+        initialCash: newSimInitialCash || 100000,
         forcedCapital: newSimInitialCash || 100000,
         capitalAllocationPct: newSimAllocation || 0.20,
+        allocationPct: newSimAllocation || 0.20,
+        trailingStopPct: newSimEnableTrailingStop ? newSimTrailingStopPct : 0,
         isPublic: newSimIsPublic,
         userEmail
       };
-      const res = await fetch(`${STOCK_API}/simulator/run-eod`, {
+      const res = await fetch(`${STOCK_API}/simulator/simulations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
         body: JSON.stringify(payload)
@@ -625,16 +639,18 @@ export default function StockSimulatorPanel({
         const d = await res.json().catch(() => ({}));
         throw new Error(d.error || 'Failed to initialize simulation instance');
       }
-      setSelectedSimulationId(cleanId);
+      const data = await res.json().catch(() => ({}));
+      const createdId = data?.simulation?.id || cleanId;
+      setSelectedSimulationId(createdId);
       try {
-        localStorage.setItem('sutharlabs_active_simulation_id', cleanId);
+        localStorage.setItem('sutharlabs_active_simulation_id', createdId);
       } catch {}
       setShowNewSimModal(false);
       setNewSimId('');
       setNewSimLabel('');
       setNewSimIsPublic(false);
       await fetchSimulationsList();
-      await fetchPortfolioAndHistory(cleanId);
+      await fetchPortfolioAndHistory(createdId);
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to create simulation.');
     } finally {
@@ -1247,11 +1263,16 @@ export default function StockSimulatorPanel({
                 disabled={isRunningSim || isLoadingPortfolio}
                 className="bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs font-bold font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
               >
-                {simulationsList.map((sim) => (
-                  <option key={sim.id} value={sim.id}>
-                    {sim.isPublic ? '🌐 [Public] ' : '🔒 '}{sim.label} [{sim.id}] • {sim.market || 'IN'} ({sim.totalRuns ?? 0} runs)
-                  </option>
-                ))}
+                {simulationsList.map((sim) => {
+                  const displayId = sim.id.includes('__') ? sim.id.split('__').slice(1).join('__') : sim.id;
+                  const prod = sim.productType || 'CNC';
+                  const tf = sim.timeframe || (sim as any).interval || '1d';
+                  return (
+                    <option key={sim.id} value={sim.id}>
+                      {sim.isPublic ? '🌐 [Public] ' : '🔒 '}{sim.label || displayId} [{displayId}] • {prod} ({tf}) • {sim.market || 'IN'} ({sim.totalRuns ?? 0} runs)
+                    </option>
+                  );
+                })}
               </select>
 
               {/* Simulation Owner Indicator */}
@@ -1445,27 +1466,88 @@ export default function StockSimulatorPanel({
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. breakout_us_fast"
+                  placeholder="e.g. nifty_1m_scalp"
                   required
                   value={newSimId}
                   onChange={(e) => setNewSimId(e.target.value)}
                   className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 font-mono text-on-surface focus:outline-none focus:border-[#00e476]"
                 />
               </div>
+
               <div>
                 <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">
                   Display Label
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. US Tech Breakout"
+                  placeholder="e.g. Nifty 1m Scalp Bot"
                   value={newSimLabel}
                   onChange={(e) => setNewSimLabel(e.target.value)}
                   className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 text-on-surface focus:outline-none focus:border-[#00e476]"
                 />
               </div>
+
+              {/* Trade Product Type (MIS vs CNC) */}
               <div>
-                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">
+                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
+                  <Layers className="w-3 h-3 text-purple-400" />
+                  Product Type
+                </label>
+                <select
+                  value={newSimProductType}
+                  onChange={(e) => setNewSimProductType(e.target.value as any)}
+                  className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 font-sans text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
+                >
+                  <option value="MIS">Intraday (MIS • 3:20 PM Auto-Square-off)</option>
+                  <option value="CNC">Delivery / Positional (CNC)</option>
+                </select>
+              </div>
+
+              {/* Candle Size / Timeframe */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
+                  <Clock className="w-3 h-3 text-[#00e476]" />
+                  Candle Size (Timeframe)
+                </label>
+                <select
+                  value={newSimTimeframe}
+                  onChange={(e) => setNewSimTimeframe(e.target.value as any)}
+                  className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
+                >
+                  <option value="1m">1 Minute (Ultra Fast Live)</option>
+                  <option value="5m">5 Minutes (Intraday Scalp)</option>
+                  <option value="15m">15 Minutes (Intraday Momentum)</option>
+                  <option value="1h">1 Hour (Intraday Trend)</option>
+                  <option value="4h">4 Hours (Swing)</option>
+                  <option value="1d">1 Day (EOD Daily)</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs pt-2 border-t border-outline/10">
+              {/* Algorithmic Strategy Selection */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
+                  <Sliders className="w-3 h-3 text-[#00dbe7]" />
+                  Algorithmic Strategy
+                </label>
+                <select
+                  value={newSimStrategyId}
+                  onChange={(e) => setNewSimStrategyId(e.target.value)}
+                  className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 font-mono text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer"
+                >
+                  {allStrategies.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.market || 'GLOBAL'})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Market Universe */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
+                  <Globe className="w-3 h-3 text-[#00e476]" />
                   Market Universe
                 </label>
                 <select
@@ -1473,13 +1555,16 @@ export default function StockSimulatorPanel({
                   onChange={(e) => setNewSimMarket(e.target.value)}
                   className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
                 >
-                  <option value="IN">Indian Equities (NSE ₹)</option>
-                  <option value="US">US Equities ($)</option>
-                  <option value="EU">European Equities (€)</option>
+                  <option value="IN">Indian Equities (NSE NIFTY 50 • ₹)</option>
+                  <option value="US">US Equities (NYSE / NASDAQ • $)</option>
+                  <option value="EU">European Equities (Euronext • €)</option>
                 </select>
               </div>
+
+              {/* Initial Cash */}
               <div>
-                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1">
+                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
+                  <DollarSign className="w-3 h-3 text-emerald-400" />
                   Initial Cash
                 </label>
                 <input
@@ -1491,9 +1576,59 @@ export default function StockSimulatorPanel({
                   className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 font-mono text-on-surface focus:outline-none focus:border-[#00e476]"
                 />
               </div>
+
+              {/* Position Sizing / Capital Allocation */}
+              <div>
+                <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1">
+                    <Scale className="w-3 h-3 text-[#00e476]" />
+                    Capital / Trade
+                  </span>
+                  <span className="text-[#00e476] font-bold">{(newSimAllocation * 100).toFixed(0)}%</span>
+                </label>
+                <input
+                  type="range"
+                  min="0.05"
+                  max="0.40"
+                  step="0.05"
+                  value={newSimAllocation}
+                  onChange={(e) => setNewSimAllocation(parseFloat(e.target.value) || 0.20)}
+                  className="w-full accent-[#00e476] cursor-pointer mt-1"
+                />
+              </div>
             </div>
 
-              <div className="pt-2 border-t border-outline/10 flex items-center gap-2">
+            <div className="pt-2 border-t border-outline/10 flex items-center justify-between gap-3 flex-wrap text-xs">
+              {/* Trailing Stop Setting */}
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 cursor-pointer text-on-surface">
+                  <input
+                    type="checkbox"
+                    checked={newSimEnableTrailingStop}
+                    onChange={(e) => setNewSimEnableTrailingStop(e.target.checked)}
+                    className="rounded border-outline text-[#00e476] focus:ring-[#00e476]"
+                  />
+                  <Shield className="w-3.5 h-3.5 text-[#00dbe7]" />
+                  <span>Enable Trailing Stop:</span>
+                </label>
+                {newSimEnableTrailingStop && (
+                  <div className="flex items-center gap-1 font-mono">
+                    <input
+                      type="number"
+                      min="1.0"
+                      max="10.0"
+                      step="0.5"
+                      value={newSimTrailingStopPct}
+                      onChange={(e) => setNewSimTrailingStopPct(parseFloat(e.target.value) || 3.0)}
+                      className="w-16 bg-surface-container-lowest border border-outline/30 rounded px-2 py-0.5 text-xs text-on-surface"
+                    />
+                    <span className="text-[10px] text-on-surface-variant">% below peak</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Public Visibility Toggle */}
+              <div>
                 <label className="flex items-center gap-2 cursor-pointer text-xs text-on-surface">
                   <input
                     type="checkbox"
@@ -1505,6 +1640,7 @@ export default function StockSimulatorPanel({
                   <span>Make Public (visible to all visitors as a live showcase run)</span>
                 </label>
               </div>
+            </div>
             <div className="flex items-center justify-end gap-2 pt-2 border-t border-outline/10">
               <button
                 type="button"
