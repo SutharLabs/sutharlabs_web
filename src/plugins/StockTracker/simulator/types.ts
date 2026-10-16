@@ -21,13 +21,15 @@ export interface EODPosition {
   daysHeld?: number;
   atr?: number;
   potentialSplitDetected?: boolean;
+  productType?: 'CNC' | 'MIS';  // CNC = Delivery/Positional; MIS = Intraday Auto-Square-off
   status: 'OPEN' | 'CLOSED';
 }
 
 export interface EODTradeExecution {
   id: string;
   simulationId?: string;         // instance identifier that produced this trade execution
-  type: 'BUY_ENTRY' | 'TAKE_PROFIT' | 'STOP_LOSS' | 'TRAILING_STOP_EXIT' | 'MANUAL_CLOSE';
+  type: 'BUY_ENTRY' | 'TAKE_PROFIT' | 'STOP_LOSS' | 'TRAILING_STOP_EXIT' | 'MANUAL_CLOSE' | 'INTRADAY_SQUARE_OFF';
+  productType?: 'CNC' | 'MIS';   // CNC = Delivery/Positional; MIS = Intraday Auto-Square-off
   symbol: string;
   companyName: string;
   shares: number;
@@ -102,8 +104,10 @@ export interface EODSimulationOptions {
   trailingStopPct?: number; // default 3.0%
   forcedCapital?: number;
   mode?: 'SINGLE_STEP' | 'HISTORICAL_REPLAY';
-  timeframe?: '1m' | '5m' | '15m' | '1h' | '1d'; // candle interval
-  interval?: '1m' | '5m' | '15m' | '1h' | '1d';  // alias
+  productType?: 'CNC' | 'MIS'; // CNC = Delivery/Positional; MIS = Intraday Auto-Square-off
+  tradeType?: 'CNC' | 'MIS';   // alias
+  timeframe?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d'; // candle interval
+  interval?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d';  // alias
   startDate?: string; // 'YYYY-MM-DD'
   endDate?: string; // 'YYYY-MM-DD'
   replayDays?: number; // e.g. 30, 60, 90, 180
@@ -120,6 +124,7 @@ export interface SimulationRegistryEntry {
   strategyName?: string;
   market?: string;
   initialCash?: number;
+  productType?: 'CNC' | 'MIS';   // CNC = Delivery/Positional; MIS = Intraday Auto-Square-off
   timeframe?: '1m' | '5m' | '15m' | '1h' | '4h' | '1d';
   interval?: string;
   capitalAllocationPct?: number;
@@ -141,6 +146,7 @@ export interface EODPortfolioStore {
   positions: EODPosition[];
   closedTrades?: EODTradeExecution[];
   lastRunDate?: string;
+  productType?: 'CNC' | 'MIS';
   totalRealizedPnL: number;
   totalFrictionPaid?: number;
   winCount?: number;

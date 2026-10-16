@@ -123,6 +123,7 @@ export default function StockSimulatorPanel({
   const [trailingStopPct, setTrailingStopPct] = useState<number>(3.0);
   const [enableTrailingStop, setEnableTrailingStop] = useState<boolean>(true);
   const [selectedTimeframe, setSelectedTimeframe] = useState<'1m' | '5m' | '15m' | '1h' | '4h' | '1d'>('1d');
+  const [selectedProductType, setSelectedProductType] = useState<'CNC' | 'MIS'>('CNC');
   const [tradeLedgerFilter, setTradeLedgerFilter] = useState<'ALL' | 'EXITS' | 'ENTRIES'>('ALL');
 
   // Simulation Replay Controls (Point 5: Historical Replay from an old date)
@@ -437,6 +438,7 @@ export default function StockSimulatorPanel({
       if (target.strategyId) setSelectedStrategyId(target.strategyId);
       if (target.timeframe) setSelectedTimeframe(target.timeframe as any);
       else if ((target as any).interval) setSelectedTimeframe((target as any).interval as any);
+      if (target.productType) setSelectedProductType(target.productType);
       if (target.capitalAllocationPct) setAllocationPct(target.capitalAllocationPct);
       else if ((target as any).allocationPct) setAllocationPct((target as any).allocationPct);
       if (target.trailingStopPct !== undefined) {
@@ -460,6 +462,7 @@ export default function StockSimulatorPanel({
         simulationId: selectedSimulationId,
         simulationLabel: activeEntry?.label || selectedSimulationId,
         strategyId: selectedStrategyId,
+        productType: selectedProductType,
         capitalAllocationPct: allocationPct,
         trailingStopPct: enableTrailingStop ? trailingStopPct : undefined,
         market: effectiveMarket,
@@ -704,6 +707,7 @@ export default function StockSimulatorPanel({
         body: JSON.stringify({
           timeframe: selectedTimeframe,
           interval: selectedTimeframe,
+          productType: selectedProductType,
           strategyId: selectedStrategyId,
           strategyName: activeStrategy?.name,
           market: effectiveMarket,
@@ -743,6 +747,7 @@ export default function StockSimulatorPanel({
         body: JSON.stringify({
           timeframe: selectedTimeframe,
           interval: selectedTimeframe,
+          productType: selectedProductType,
           strategyId: selectedStrategyId,
           strategyName: activeStrategy?.name,
           market: effectiveMarket,
@@ -757,6 +762,7 @@ export default function StockSimulatorPanel({
     const params = new URLSearchParams({
       simulationId: simId,
       market: effectiveMarket,
+      productType: selectedProductType,
       timeframe: selectedTimeframe,
       interval: selectedTimeframe,
       strategyId: selectedStrategyId,
@@ -963,6 +969,7 @@ export default function StockSimulatorPanel({
         buyEntriesMap.set(pos.symbol, {
           id: `entry-${pos.id}`,
           type: 'BUY_ENTRY',
+          productType: pos.productType || 'CNC',
           symbol: pos.symbol,
           companyName: pos.name,
           shares: pos.shares,
@@ -1311,6 +1318,10 @@ export default function StockSimulatorPanel({
               Candle: <strong className="text-on-surface">{selectedTimeframe}</strong>
             </span>
             <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
+              <Layers className="w-3 h-3 text-purple-400" />
+              Product: <strong className="text-on-surface">{selectedProductType}</strong>
+            </span>
+            <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
               <Zap className="w-3 h-3 text-[#00e476]" />
               Strategy: <strong className="text-on-surface">{allStrategies.find(s => s.id === selectedStrategyId)?.name || selectedStrategyId}</strong>
             </span>
@@ -1503,7 +1514,7 @@ export default function StockSimulatorPanel({
         )}
 
         {/* Configuration Options Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-outline/10">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3 pt-3 border-t border-outline/10">
           {/* Target Market Universe Selector */}
           <div>
             <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
@@ -1560,6 +1571,23 @@ export default function StockSimulatorPanel({
               <option value="15m">15 Minutes (Momentum)</option>
               <option value="5m">5 Minutes (Intraday Scalp)</option>
               <option value="1m">1 Minute (Ultra Fast Live)</option>
+            </select>
+          </div>
+
+          {/* Trade Product Type (CNC vs MIS) */}
+          <div>
+            <label className="text-[10px] uppercase font-bold text-on-surface-variant block mb-1 flex items-center gap-1">
+              <Layers className="w-3 h-3 text-purple-400" />
+              Product Type
+            </label>
+            <select
+              value={selectedProductType}
+              onChange={e => setSelectedProductType(e.target.value as any)}
+              disabled={isRunningSim}
+              className="w-full bg-surface-container-lowest border border-outline/30 rounded-xl px-3 py-2 text-xs font-sans text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
+            >
+              <option value="CNC">Delivery / Swing (CNC)</option>
+              <option value="MIS">Intraday (MIS • 3:15 PM EOD)</option>
             </select>
           </div>
 
@@ -1970,6 +1998,9 @@ export default function StockSimulatorPanel({
                               <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-surface-container-high text-on-surface-variant">
                                 {pos.market || 'EQ'}
                               </span>
+                              <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${pos.productType === 'MIS' ? 'bg-amber-500/20 text-amber-300' : 'bg-surface-container-highest text-on-surface-variant'}`}>
+                                {pos.productType || 'CNC'}
+                              </span>
                             </div>
                             <div className="text-[10px] text-on-surface-variant truncate max-w-[130px]">
                               {pos.name}
@@ -2147,7 +2178,12 @@ export default function StockSimulatorPanel({
                       return (
                         <tr key={trade.id} className="hover:bg-surface-container/40 transition-colors">
                           <td className="py-3 px-4">
-                            <span className="font-bold text-on-surface">{trade.symbol}</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-on-surface">{trade.symbol}</span>
+                              <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${trade.productType === 'MIS' ? 'bg-amber-500/20 text-amber-300' : 'bg-surface-container-high text-on-surface-variant'}`}>
+                                {trade.productType || 'CNC'}
+                              </span>
+                            </div>
                             <div className="text-[10px] text-on-surface-variant truncate max-w-[130px]">
                               {trade.companyName || trade.symbol}
                             </div>
@@ -2164,11 +2200,13 @@ export default function StockSimulatorPanel({
                                   ? 'bg-rose-500/15 text-rose-400'
                                   : trade.type === 'TRAILING_STOP_EXIT'
                                   ? 'bg-amber-400/15 text-amber-300'
+                                  : trade.type === 'INTRADAY_SQUARE_OFF'
+                                  ? 'bg-orange-500/15 text-orange-400'
                                   : 'bg-purple-500/15 text-purple-400'
                               }`}
                               title={trade.reason}
                             >
-                              {trade.type === 'BUY_ENTRY' ? 'BUY ORDER FILL' : trade.type.replace(/_/g, ' ')}
+                              {trade.type === 'BUY_ENTRY' ? 'BUY ORDER FILL' : trade.type === 'INTRADAY_SQUARE_OFF' ? 'MIS SQUARE OFF' : trade.type.replace(/_/g, ' ')}
                             </span>
                           </td>
 

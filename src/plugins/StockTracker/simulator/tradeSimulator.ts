@@ -262,6 +262,7 @@ export function updateSimulationConfig(
     strategyId: config.strategyId || existing.strategyId,
     strategyName: stratName || existing.strategyName,
     market: config.market ? config.market.toUpperCase() : existing.market,
+    productType: (config.productType || (config as any).tradeType || existing.productType || 'CNC').toUpperCase() as any,
     timeframe: (config.timeframe || (config as any).interval || existing.timeframe || "1d") as any,
     interval: (config.timeframe || (config as any).interval || existing.interval || existing.timeframe || "1d") as string,
     capitalAllocationPct: config.capitalAllocationPct !== undefined ? config.capitalAllocationPct : (config.allocationPct !== undefined ? config.allocationPct : existing.capitalAllocationPct),
@@ -752,6 +753,10 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   // Resolve timeframe interval ('1m' | '5m' | '15m' | '1h' | '4h' | '1d')
   const resolvedTimeframe = options.timeframe || (options as any).interval || existingEntry?.timeframe || existingEntry?.interval || (options.mode === "HISTORICAL_REPLAY" ? "15m" : (simId === "cron_live" ? "1m" : "1d"));
 
+  // Resolve product type: 'CNC' (Delivery / Positional) vs 'MIS' (Intraday with Auto-Square-off)
+  const resolvedProductType: 'CNC' | 'MIS' = ((options.productType || (options as any).tradeType || existingEntry?.productType || store.productType || 'CNC') as string).toUpperCase() === 'MIS' ? 'MIS' : 'CNC';
+  store.productType = resolvedProductType;
+
   const isPublicResolved = options.isPublic !== undefined
     ? options.isPublic
     : (existingEntry?.isPublic ?? (simId === "cron_live"));
@@ -762,6 +767,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     strategyName: strategy.name,
     market: (options.market || options.marketRegion || existingEntry?.market || "IN").toUpperCase(),
     initialCash: options.forcedCapital || existingEntry?.initialCash || store.initialCash,
+    productType: resolvedProductType,
     timeframe: resolvedTimeframe as any,
     interval: resolvedTimeframe,
     capitalAllocationPct: allocationPct,
@@ -952,9 +958,12 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     const updatedTrailingStopsAll: EODTrailingStopUpdate[] = [];
 
     // Chronologically step through each bar / trading session
-    for (const step of replaySteps) {
+    for (let stepIdx = 0; stepIdx < replaySteps.length; stepIdx++) {
+      const step = replaySteps[stepIdx];
       const { stepIso, dateStr } = step;
       const simDate = dateStr;
+      const nextStep = replaySteps[stepIdx + 1];
+      const isLastStepOfDay = !nextStep || nextStep.dateStr !== dateStr;
       // Step A: Evaluate Open Positions against this day's candle
       const remainingPositions: EODPosition[] = [];
 
@@ -994,6 +1003,11 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             exitType = "STOP_LOSS";
             exitReason = `Stop-Loss triggered at ${exitPrice.toFixed(2)} (Low: ${low.toFixed(2)})`;
           }
+        } else if ((pos.productType === 'MIS' || resolvedProductType === 'MIS') && isLastStepOfDay) {
+          closed = true;
+          exitPrice = close;
+          exitType = "INTRADAY_SQUARE_OFF";
+          exitReason = `Intraday MIS Auto-Square-off at ${exitPrice.toFixed(2)} (EOD Replay Session Close)`;
         }
 
         if (closed) {
@@ -1044,6 +1058,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
             id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
             simulationId: simId,
             type: exitType,
+            productType: pos.productType || resolvedProductType,
             symbol: pos.symbol,
             companyName: pos.name,
             shares: pos.shares,
@@ -1171,6 +1186,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
                 id: `pos-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
                 simulationId: simId,
                 symbol: item.symbol,
+                productType: resolvedProductType,
                 name: quote?.name || formatTickerDisplay(item.symbol).cleanSymbol,
                 market: item.market,
                 currency: posCurr,
@@ -1197,6 +1213,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
                 id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
                 simulationId: simId,
                 type: "BUY_ENTRY",
+                productType: resolvedProductType,
                 symbol: item.symbol,
                 companyName: newPos.name,
                 shares,
@@ -1285,6 +1302,13 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   const nowIso = new Date().toISOString();
   const simDate = nowIso.slice(0, 10);
   const sessionStatus = getMarketSessionStatus(targetMarket);
+  const now = new Date();
+  const isIndianMarket = targetMarket === 'IN';
+  const totalUtcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
+  // In India: 15:15 IST = 09:45 UTC = 585 mins; session close is 15:30 IST = 10:00 UTC = 600 mins.
+  const isIndianSquareOffTime = isIndianMarket && (totalUtcMinutes >= 585 || !sessionStatus.isOpen);
+  const isUsSquareOffTime = (targetMarket === 'US') && (!sessionStatus.isOpen);
+  const isEodSquareOffTime = isIndianSquareOffTime || isUsSquareOffTime;
 
   // 3. Step A: Manage Existing Open Positions against Daily Candle High/Low
   const remainingPositions: EODPosition[] = [];
@@ -1345,6 +1369,13 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
           exitReason = `Stop-Loss triggered at ${exitPrice.toFixed(2)} (Low: ${low.toFixed(2)}, Current: ${pos.currentPrice.toFixed(2)})`;
         }
       }
+      // Check Intraday MIS Auto-Square-off (before market close or after session closure)
+      else if ((pos.productType === 'MIS' || resolvedProductType === 'MIS') && isEodSquareOffTime) {
+        closed = true;
+        exitPrice = pos.currentPrice;
+        exitType = "INTRADAY_SQUARE_OFF";
+        exitReason = `Intraday MIS Auto-Square-off at ${exitPrice.toFixed(2)} (EOD Session Risk Clearance before market close)`;
+      }
 
       if (closed) {
         const region = detectMarketRegion(pos.symbol);
@@ -1379,6 +1410,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
           id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
           simulationId: simId,
           type: exitType,
+          productType: pos.productType || resolvedProductType,
           symbol: pos.symbol,
           companyName: pos.name,
           shares: pos.shares,
@@ -1431,10 +1463,13 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   store.positions = remainingPositions;
 
   // 4. Step B: Scan Tracked Watchlist Assets for New Entries
-  // Market Session Gatekeeper: If market is closed, new trade entries are strictly blocked.
-  const allowNewEntries = sessionStatus.isOpen || Boolean((options as any).allowAfterHours);
+  // Market Session Gatekeeper: If market is closed or in MIS square-off window, new trade entries are strictly blocked.
+  const isMisSquareOffBlocking = (resolvedProductType === 'MIS' && isEodSquareOffTime);
+  const allowNewEntries = (sessionStatus.isOpen || Boolean((options as any).allowAfterHours)) && !isMisSquareOffBlocking;
 
-  if (!allowNewEntries) {
+  if (isMisSquareOffBlocking) {
+    console.log(`[Simulator] Intraday MIS session in auto-square-off window for ${targetMarket}. New trade entries are blocked.`);
+  } else if (!allowNewEntries) {
     console.log(`[Simulator] Market is closed for ${targetMarket} (${sessionStatus.reason}). New trade entries are paused.`);
   } else {
     for (const item of trackedSymbols) {
@@ -1513,6 +1548,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
                 id: `pos-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
                 simulationId: simId,
                 symbol: normSym,
+                productType: resolvedProductType,
                 name: quote?.name || formatTickerDisplay(normSym).cleanSymbol,
                 market: item.market,
                 currency: posCurr,
@@ -1539,6 +1575,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
                 id: `eod-trade-${Date.now()}-${crypto.randomBytes(2).toString("hex")}`,
                 simulationId: simId,
                 type: "BUY_ENTRY",
+                productType: resolvedProductType,
                 symbol: normSym,
                 companyName: newPos.name,
                 shares,
