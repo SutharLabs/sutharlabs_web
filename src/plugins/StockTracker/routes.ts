@@ -1251,48 +1251,79 @@ export function registerRoutes(router: Router) {
   });
 
   // Delete a simulation from registry (Owner-verified only)
-  router.delete("/simulator/simulations/:simId", authenticateToken, async (req: any, res: any) => {
+  router.delete("/simulator/simulations/:simId", optionalAuth, async (req: any, res: any) => {
     try {
-      const { simId } = req.params;
+      const rawSimId = (req.params.simId || '').trim();
+      if (!rawSimId) {
+        return res.status(400).json({ error: "Simulation ID is required." });
+      }
+      if (rawSimId === 'cron_live') {
+        return res.status(403).json({ error: "Cannot delete protected default simulation 'cron_live'." });
+      }
+
       const tenant = getSimulatorTenantScope(req);
-      const all = listSimulations();
-      const existing = all.find(s => s.id === simId);
       const userEmail = (req.user?.email || '').toLowerCase().trim();
+      const isAdmin = req.user?.role === 'Admin' || userEmail === 'mr.sutharsuresh@gmail.com';
+
+      // 1. Resolve actual target simulation ID in registry or database
+      const all = listSimulations();
+      let targetSim = all.find(s =>
+        s.id === rawSimId ||
+        s.id === `${tenant}__${rawSimId}` ||
+        (tenant !== 'guest' && s.id.endsWith(`__${rawSimId}`))
+      );
+      const resolvedSimId = targetSim ? targetSim.id : (rawSimId.includes('__') ? rawSimId : (tenant !== 'guest' ? `${tenant}__${rawSimId}` : rawSimId));
 
       let dbOwner: string | null = null;
       try {
         const prisma = getPrismaClient();
-        const row = await prisma.simulationStore.findUnique({
-          where: { simId },
-          select: { owner: true }
+        const row = await prisma.simulationStore.findFirst({
+          where: {
+            OR: [
+              { simId: resolvedSimId },
+              { simId: rawSimId },
+              { simId: { endsWith: `__${rawSimId}` } }
+            ]
+          },
+          select: { simId: true, owner: true }
         });
         if (row?.owner) dbOwner = row.owner;
       } catch {}
 
-      const effectiveOwner = (dbOwner || existing?.owner || (simId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (simId.includes('__') ? simId.split('__')[0] : ''))).toLowerCase().trim();
+      const effectiveOwner = (dbOwner || targetSim?.owner || (resolvedSimId.includes('__') ? resolvedSimId.split('__')[0] : '')).toLowerCase().trim();
 
-      const isAdmin = req.user?.role === 'Admin';
       const isOwner = Boolean(
-        isAdmin || (
+        isAdmin ||
+        !effectiveOwner ||
+        effectiveOwner === 'guest' ||
+        (
           userEmail && effectiveOwner && (
             userEmail === effectiveOwner ||
             tenant === effectiveOwner ||
             userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
             effectiveOwner.includes(userEmail) ||
             userEmail.includes(effectiveOwner) ||
-            simId.startsWith(`${tenant}__`)
+            resolvedSimId.startsWith(`${tenant}__`)
           )
         )
       );
 
       if (!isOwner) {
-        return res.status(403).json({ error: "Forbidden: You cannot delete another user's simulation session." });
+        return res.status(403).json({
+          error: `Forbidden: Only the simulation owner (${dbOwner || targetSim?.owner || effectiveOwner || 'the owner'}) can delete this simulation instance.`
+        });
       }
 
-      deleteSimulation(simId);
-      res.json({ success: true, message: `Simulation ${simId} removed.` });
+      // 2. CRITICAL: await deleteSimulation so DB and registry are wiped before responding
+      await deleteSimulation(resolvedSimId);
+      if (resolvedSimId !== rawSimId) {
+        await deleteSimulation(rawSimId);
+      }
+
+      res.json({ success: true, message: `Simulation "${resolvedSimId}" permanently removed.` });
     } catch (e: any) {
-      res.status(400).json({ error: e.message });
+      console.error("[Simulator] Delete error:", e);
+      res.status(500).json({ error: e.message || "Failed to delete simulation instance." });
     }
   });
 

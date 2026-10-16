@@ -222,6 +222,7 @@ export default function StockSimulatorPanel({
   const [newSimTrailingStopPct, setNewSimTrailingStopPct] = useState<number>(3.0);
   const [newSimIsPublic, setNewSimIsPublic] = useState<boolean>(false);
   const [isCreatingSim, setIsCreatingSim] = useState<boolean>(false);
+  const [isDeletingSim, setIsDeletingSim] = useState<boolean>(false);
   const [copiedCronUrl, setCopiedCronUrl] = useState<boolean>(false);
   const [cronSecret, setCronSecret] = useState<string>('sutharlabs-eod-cron-key-2026');
   const [isTogglingPublic, setIsTogglingPublic] = useState<boolean>(false);
@@ -302,25 +303,26 @@ export default function StockSimulatorPanel({
 
   const isCurrentSimOwner = useMemo(() => {
     if (userRole === 'Admin') return true;
-    if (!userEmail) return false;
+    if (selectedSimulationId === 'cron_live') return false;
+    if (!userEmail) {
+      // Unauthenticated / local visitor can manage unowned simulations
+      return !currentSim?.owner || currentSim.owner === 'guest';
+    }
     const cleanEmail = userEmail.toLowerCase().trim();
     const cleanTenant = cleanEmail.replace(/[^a-z0-9_-]/g, '_');
-    const simOwner = (currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : ''))).toLowerCase().trim();
+    const simOwner = (currentSim?.owner || (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : '')).toLowerCase().trim();
+
+    if (!simOwner || simOwner === 'guest') return true;
 
     return Boolean(
-      (userRole === 'Admin') ||
       cleanEmail === 'mr.sutharsuresh@gmail.com' ||
       cleanTenant === 'mr_sutharsuresh_gmail_com' ||
-      (
-        simOwner && (
-          cleanEmail === simOwner ||
-          cleanTenant === simOwner ||
-          cleanEmail.replace(/[^a-z0-9_-]/g, '_') === simOwner ||
-          simOwner.includes(cleanEmail) ||
-          cleanEmail.includes(simOwner) ||
-          selectedSimulationId.startsWith(`${cleanTenant}__`)
-        )
-      )
+      cleanEmail === simOwner ||
+      cleanTenant === simOwner ||
+      cleanEmail.replace(/[^a-z0-9_-]/g, '_') === simOwner ||
+      simOwner.includes(cleanEmail) ||
+      cleanEmail.includes(simOwner) ||
+      selectedSimulationId.startsWith(`${cleanTenant}__`)
     );
   }, [userEmail, userRole, currentSim, selectedSimulationId]);
 
@@ -661,19 +663,40 @@ export default function StockSimulatorPanel({
   // Delete custom simulation
   const handleDeleteSimulation = async (simId: string) => {
     if (simId === 'cron_live') return;
-    if (!window.confirm(`Delete simulation instance "${simId}"? This will remove its registry entry.`)) return;
+    const cleanDisplay = currentSim?.label || simId;
+    if (!window.confirm(`Permanently delete simulation instance "${cleanDisplay}" and wipe its portfolio records?`)) return;
+    setIsDeletingSim(true);
+    setErrorMessage(null);
     try {
-      const res = await fetch(`${STOCK_API}/simulator/simulations/${simId}`, {
+      const res = await fetch(`${STOCK_API}/simulator/simulations/${encodeURIComponent(simId)}`, {
         method: 'DELETE',
         headers: getAuthHeaders()
       });
-      if (res.ok) {
-        const remaining = simulationsList.filter(s => s.id !== simId);
-        handleSelectSimulation(remaining[0]?.id || 'cron_live');
-        await fetchSimulationsList();
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Failed to delete simulation (${res.status})`);
       }
-    } catch (err) {
+
+      // Immediately purge from local state
+      const remaining = simulationsList.filter(s => s.id !== simId && !s.id.endsWith(`__${simId}`));
+      setSimulationsList(remaining);
+      const nextId = remaining[0]?.id || 'cron_live';
+      handleSelectSimulation(nextId);
+      await fetchPortfolioAndHistory(nextId, false);
+      await fetchSimulationsList();
+
+      if (onAddLog) {
+        onAddLog({
+          type: 'system',
+          message: `Simulation instance "${cleanDisplay}" permanently deleted.`,
+          timestamp: new Date().toLocaleTimeString()
+        });
+      }
+    } catch (err: any) {
       console.warn('Failed to delete simulation:', err);
+      setErrorMessage(err.message || 'Error attempting to delete simulation.');
+    } finally {
+      setIsDeletingSim(false);
     }
   };
 
@@ -1338,11 +1361,12 @@ export default function StockSimulatorPanel({
                 <button
                   type="button"
                   onClick={() => handleDeleteSimulation(selectedSimulationId)}
-                  className="px-2 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
-                  title="Delete this simulation from tracking"
+                  disabled={isDeletingSim}
+                  className="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Permanently delete this simulation from database and registry"
                 >
-                  <Trash2 className="w-3 h-3" />
-                  <span>Delete</span>
+                  <Trash2 className={`w-3 h-3 ${isDeletingSim ? 'animate-spin' : ''}`} />
+                  <span>{isDeletingSim ? 'Deleting...' : 'Delete'}</span>
                 </button>
               )}
             </div>

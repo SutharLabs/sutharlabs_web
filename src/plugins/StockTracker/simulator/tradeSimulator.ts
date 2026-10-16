@@ -346,28 +346,55 @@ export async function deleteSimulation(simId: string): Promise<void> {
     throw new Error(`Cannot delete protected simulation "${simId}".`);
   }
   const safeSimId = simId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const reg = readRegistry().filter(r => r.id !== simId);
+
+  // 1. Evict from in-memory / JSON registry
+  let reg = readRegistry();
+  reg = reg.filter(r =>
+    r.id !== simId &&
+    r.id !== safeSimId &&
+    !r.id.endsWith(`__${safeSimId}`) &&
+    !r.id.endsWith(`__${simId}`)
+  );
   writeJsonData(SIM_REGISTRY_KEY, reg);
 
-  // Evict from memoryCache and disk
+  // 2. Evict from memoryCache and disk
+  deleteJsonData(portfolioKey(simId));
   deleteJsonData(portfolioKey(safeSimId));
+  deleteJsonData(historyKey(simId));
   deleteJsonData(historyKey(safeSimId));
   try {
     const pPath = localPortfolioPath(safeSimId);
     if (fs.existsSync(pPath)) fs.unlinkSync(pPath);
   } catch {}
   try {
+    const pPathRaw = localPortfolioPath(simId);
+    if (fs.existsSync(pPathRaw)) fs.unlinkSync(pPathRaw);
+  } catch {}
+  try {
     const hPath = localHistoryPath(safeSimId);
     if (fs.existsSync(hPath)) fs.unlinkSync(hPath);
   } catch {}
+  try {
+    const hPathRaw = localHistoryPath(simId);
+    if (fs.existsSync(hPathRaw)) fs.unlinkSync(hPathRaw);
+  } catch {}
 
-  // Delete from Neon PostgreSQL database
+  // 3. Delete from Neon PostgreSQL database
   try {
     const prisma = getPrismaClient();
-    await prisma.simulationStore.delete({
-      where: { simId: safeSimId }
+    await prisma.simulationStore.deleteMany({
+      where: {
+        OR: [
+          { simId: simId },
+          { simId: safeSimId },
+          { simId: { endsWith: `__${safeSimId}` } },
+          { simId: { endsWith: `__${simId}` } }
+        ]
+      }
     });
-  } catch {}
+  } catch (dbErr) {
+    console.error(`[Simulator DB] Error deleting simulation ${safeSimId} from DB:`, dbErr);
+  }
 }
 
 export interface PersistedEODState {
