@@ -913,30 +913,16 @@ export default function StockSimulatorPanel({
     }
   };
 
-  const formatTimeWithSeconds = (isoString?: string, tradeType?: string) => {
+  const formatTimeWithSeconds = (isoString?: string, _tradeType?: string) => {
     if (!isoString) return '—';
     try {
       const d = new Date(isoString);
-      const timeStr = d.toLocaleTimeString(undefined, {
+      if (isNaN(d.getTime())) return isoString;
+      return d.toLocaleTimeString(undefined, {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit'
       });
-      // Fallback safeguard: if legacy stored records or raw ticks reflect the 09:15:00 opening bell,
-      // map to realistic market session execution windows so the user never sees inaccurate 9:15 AM
-      const isOpeningTime = timeStr.toLowerCase().startsWith('09:15') || 
-                            timeStr.toLowerCase().startsWith('9:15') ||
-                            timeStr.toLowerCase().startsWith('09:30') ||
-                            timeStr.toLowerCase().startsWith('9:30');
-      if (isOpeningTime) {
-        const typeUpper = (tradeType || '').toUpperCase();
-        if (typeUpper.includes('TAKE_PROFIT') || typeUpper.includes('PROFIT')) return '11:15:00 AM';
-        if (typeUpper.includes('STOP_LOSS') || typeUpper.includes('LOSS')) return '12:45:00 PM';
-        if (typeUpper.includes('TRAILING')) return '02:20:00 PM';
-        if (typeUpper.includes('BUY') || typeUpper.includes('ENTRY')) return '03:20:00 PM';
-        return '03:15:00 PM';
-      }
-      return timeStr;
     } catch {
       return isoString;
     }

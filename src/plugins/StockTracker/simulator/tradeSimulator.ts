@@ -80,15 +80,19 @@ export function resolveAccurateTradeTimestamp({
 }): string {
   const normMarket = (market || 'IN').toUpperCase();
 
-  // If existing ISO is already a valid intraday timestamp (not opening bell 09:15 / 09:30 or 00:00:00 midnight)
-  if (existingIso && !isDaily) {
+  // If existing ISO is already a valid timestamp with real time (not midnight 00:00:00)
+  if (existingIso) {
     const timePart = existingIso.slice(11, 19);
-    const isOpeningBell = (normMarket === 'IN' && timePart === '03:45:00') ||
-                          (normMarket === 'US' && (timePart === '13:30:00' || timePart === '14:30:00')) ||
-                          (normMarket === 'EU' && timePart === '08:00:00') ||
-                          timePart === '00:00:00';
-    if (!isOpeningBell) {
-      return existingIso;
+    if (timePart && timePart !== '00:00:00') {
+      // Only synthetic historical daily candle timestamps (exact round opening times with 0 ms) need synthetic mapping
+      const isSyntheticEodCandle = isDaily && (
+        existingIso.endsWith('T00:00:00.000Z') || 
+        existingIso.endsWith('T03:45:00.000Z') || 
+        existingIso.endsWith('T13:30:00.000Z')
+      );
+      if (!isSyntheticEodCandle) {
+        return existingIso;
+      }
     }
   }
 
@@ -1425,7 +1429,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
               isDaily: true
             });
 
-        const accurateEntryIso = resolveAccurateTradeTimestamp({
+        const accurateEntryIso = pos.entryTimestamp || resolveAccurateTradeTimestamp({
           dateStr: pos.entryDate,
           market: region,
           type: "BUY_ENTRY",
