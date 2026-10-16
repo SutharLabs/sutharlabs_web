@@ -981,21 +981,16 @@ export function registerRoutes(router: Router) {
 
   // Helper to resolve simulation ID across public instances and user tenant namespaces
   const resolveSimulationTargetId = (rawSimId: string, tenant: string): string => {
-    if (!rawSimId) return 'cron_live';
     const all = listSimulations();
+    if (!rawSimId) return all[0]?.id || 'simulation_1';
     const exactMatch = all.find(s => s.id === rawSimId);
     if (exactMatch) {
-      // If marked public, cron_live, or a system instance, access directly
-      if (exactMatch.isPublic || exactMatch.id === 'cron_live' || exactMatch.id.startsWith('system__')) {
+      if (exactMatch.isPublic || exactMatch.id.startsWith('system__')) {
         return exactMatch.id;
       }
       if (tenant !== 'guest' && exactMatch.id.startsWith(`${tenant}__`)) {
         return exactMatch.id;
       }
-    }
-
-    if (rawSimId === 'cron_live') {
-      return rawSimId;
     }
 
     if (tenant !== 'guest') {
@@ -1021,79 +1016,87 @@ export function registerRoutes(router: Router) {
   });
 
   // List simulations accessible to the requesting user (Admins see all; users see public + own)
+  // Backed 100% by Neon DB simulation_stores table
   router.get("/simulator/simulations", optionalAuth, async (req: any, res: any) => {
     try {
-      const all = listSimulations();
       const tenant = getSimulatorTenantScope(req);
+      const cleanTenant = tenant.replace(/[^a-z0-9_-]/g, '_');
+      const userEmail = (req.user?.email || '').toLowerCase().trim();
       const isAdmin = req.user?.role === 'Admin';
 
-      // Load simulation owners and instances dynamically from database table simulation_stores
-      const dbOwnerMap = new Map<string, string>();
-      const dbUpdatedAtMap = new Map<string, string>();
+      let simulations: SimulationRegistryEntry[] = [];
+
       try {
         const prisma = getPrismaClient();
         const dbStores = await prisma.simulationStore.findMany({
-          select: { simId: true, owner: true, updatedAt: true, initialCash: true }
+          where: { simId: { not: 'default' } },
+          orderBy: { updatedAt: 'desc' }
         });
-        dbStores.forEach(s => {
-          if (s.owner) dbOwnerMap.set(s.simId, s.owner);
-          if (s.updatedAt) dbUpdatedAtMap.set(s.simId, s.updatedAt.toISOString());
-          // If a simulation exists in the database but not in the in-memory/JSON registry, restore it!
-          if (!all.some(a => a.id === s.simId)) {
-            const rawLabel = s.simId.includes('__') ? s.simId.split('__').slice(1).join('__') : s.simId;
-            all.push({
-              id: s.simId,
-              label: rawLabel.replace(/_/g, ' '),
-              owner: s.owner || undefined,
-              initialCash: s.initialCash || 100000,
-              productType: 'CNC',
-              timeframe: '1d',
-              interval: '1d',
-              market: 'IN',
-              createdAt: s.updatedAt?.toISOString() || new Date().toISOString(),
-              lastRunAt: s.updatedAt?.toISOString() || new Date().toISOString(),
-              totalRuns: 0,
-              totalTradeRuns: 0,
-              isPublic: s.simId === 'cron_live'
-            });
-          }
-        });
+
+        for (const s of dbStores) {
+          const rawLabel = s.label || (s.simId.includes('__') ? s.simId.split('__').slice(1).join(' ').replace(/_/g, ' ') : s.simId.replace(/_/g, ' '));
+          simulations.push({
+            id: s.simId,
+            label: rawLabel,
+            owner: s.owner || undefined,
+            strategyId: s.strategyId || 'strat-ema-cross',
+            strategyName: s.strategyName || 'EMA 9/21 Dynamic Trend Cross',
+            market: (s.market || 'IN').toUpperCase(),
+            productType: ((s.productType || 'CNC').toUpperCase() as any),
+            timeframe: (s.timeframe || '1d') as any,
+            interval: (s.timeframe || '1d'),
+            capitalAllocationPct: s.capitalAllocationPct ?? 0.20,
+            allocationPct: s.capitalAllocationPct ?? 0.20,
+            trailingStopPct: s.trailingStopPct ?? 3.0,
+            initialCash: s.initialCash || 100000,
+            createdAt: s.updatedAt?.toISOString() || new Date().toISOString(),
+            lastRunAt: s.lastRunDate || s.lastUpdated || s.updatedAt?.toISOString() || new Date().toISOString(),
+            lastHeartbeatAt: s.lastUpdated || s.updatedAt?.toISOString() || new Date().toISOString(),
+            lastHeartbeatStatus: 'READY',
+            totalRuns: (s.winCount || 0) + (s.lossCount || 0),
+            totalTradeRuns: (s.winCount || 0) + (s.lossCount || 0),
+            isPublic: Boolean(s.isPublic)
+          });
+        }
       } catch (dbErr) {
-        console.warn("[Simulator] Could not load DB owners:", dbErr);
+        console.warn("[Simulator] Error reading simulationStore DB:", dbErr);
+        simulations = listSimulations().filter(s => s.id !== 'default');
       }
 
-      const formatEntries = (entries: any[]) => entries.map(s => {
-        const dbOwner = dbOwnerMap.get(s.id);
-        const owner = dbOwner || s.owner || (s.id === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (s.id.includes('__') ? s.id.split('__')[0] : 'mr.sutharsuresh@gmail.com'));
-        const dbUpdated = dbUpdatedAtMap.get(s.id);
-        const lastHeartbeatAt = dbUpdated || s.lastHeartbeatAt || s.lastRunAt;
-        const lastRunAt = dbUpdated || s.lastRunAt;
-        return { ...s, owner, lastHeartbeatAt, lastRunAt };
-      });
+      if (simulations.length === 0) {
+        simulations = listSimulations().filter(s => s.id !== 'default');
+      }
 
       if (isAdmin) {
-        return res.json(formatEntries(all));
+        return res.json(simulations);
       }
 
       if (tenant === 'guest') {
-        const publicOnly = all.filter(s => s.isPublic || s.id === 'cron_live' || !s.id.includes('__'));
-        return res.json(formatEntries(publicOnly));
+        const publicOnly = simulations.filter(s => s.isPublic || !s.owner || s.owner === 'guest' || !s.id.includes('__'));
+        return res.json(publicOnly);
       }
 
       const tenantPrefix = `${tenant}__`;
-      const accessible = all.filter(s =>
-        s.isPublic ||
-        s.id === 'cron_live' ||
-        s.id.startsWith(tenantPrefix) ||
-        (req.user?.email && (s.owner === req.user.email || dbOwnerMap.get(s.id) === req.user.email))
-      );
-      res.json(formatEntries(accessible));
+      const accessible = simulations.filter(s => {
+        if (s.isPublic) return true;
+        if (!s.owner || s.owner === 'guest') return true;
+        const ownerLower = (s.owner || '').toLowerCase().trim();
+        if (userEmail && (ownerLower === userEmail || ownerLower === cleanTenant || ownerLower.includes(userEmail) || userEmail.includes(ownerLower))) {
+          return true;
+        }
+        if (s.id.startsWith(tenantPrefix) || s.id.startsWith(`${cleanTenant}__`)) {
+          return true;
+        }
+        return false;
+      });
+
+      res.json(accessible);
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }
   });
 
-  // Create a brand new isolated simulation instance
+  // Create a brand new isolated simulation instance backed by database
   router.post("/simulator/simulations", optionalAuth, async (req: any, res: any) => {
     try {
       const payload = req.body || {};
@@ -1145,6 +1148,7 @@ export function registerRoutes(router: Router) {
       const { simId } = req.params;
       const { isPublic } = req.body;
       const tenant = getSimulatorTenantScope(req);
+      const cleanTenant = tenant.replace(/[^a-z0-9_-]/g, '_');
       const all = listSimulations();
       const existing = all.find(s => s.id === simId);
       const userEmail = (req.user?.email || '').toLowerCase().trim();
@@ -1160,7 +1164,7 @@ export function registerRoutes(router: Router) {
         if (row?.owner) dbOwner = row.owner;
       } catch {}
 
-      const effectiveOwner = (dbOwner || existing?.owner || (simId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (simId.includes('__') ? simId.split('__')[0] : ''))).toLowerCase().trim();
+      const effectiveOwner = (dbOwner || existing?.owner || (simId.includes('__') ? simId.split('__')[0] : '')).toLowerCase().trim();
 
       const isAdmin = req.user?.role === 'Admin';
       const isOwner = Boolean(
@@ -1168,10 +1172,11 @@ export function registerRoutes(router: Router) {
           userEmail && effectiveOwner && (
             userEmail === effectiveOwner ||
             tenant === effectiveOwner ||
-            userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
+            cleanTenant === effectiveOwner ||
             effectiveOwner.includes(userEmail) ||
             userEmail.includes(effectiveOwner) ||
-            simId.startsWith(`${tenant}__`)
+            simId.startsWith(`${tenant}__`) ||
+            simId.startsWith(`${cleanTenant}__`)
           )
         )
       );
@@ -1183,7 +1188,7 @@ export function registerRoutes(router: Router) {
         });
       }
 
-      const updated = setSimulationPublicStatus(simId, Boolean(isPublic));
+      const updated = await setSimulationPublicStatus(simId, Boolean(isPublic));
       res.json({
         success: true,
         simulation: updated,
@@ -1200,6 +1205,7 @@ export function registerRoutes(router: Router) {
       const { simId } = req.params;
       const config = req.body || {};
       const tenant = getSimulatorTenantScope(req);
+      const cleanTenant = tenant.replace(/[^a-z0-9_-]/g, '_');
       const isAdmin = req.user?.role === 'Admin';
       const all = listSimulations();
       const existing = all.find(s => s.id === simId);
@@ -1215,19 +1221,21 @@ export function registerRoutes(router: Router) {
         if (row?.owner) dbOwner = row.owner;
       } catch {}
 
-      const effectiveOwner = (dbOwner || existing?.owner || (simId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (simId.includes('__') ? simId.split('__')[0] : ''))).toLowerCase().trim();
+      const effectiveOwner = (dbOwner || existing?.owner || (simId.includes('__') ? simId.split('__')[0] : '')).toLowerCase().trim();
 
       const isOwner = Boolean(
         isAdmin ||
-        userEmail === 'mr.sutharsuresh@gmail.com' ||
+        !effectiveOwner ||
+        effectiveOwner === 'guest' ||
         (
-          userEmail && effectiveOwner && (
+          userEmail && (
             userEmail === effectiveOwner ||
             tenant === effectiveOwner ||
-            userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
+            cleanTenant === effectiveOwner ||
             effectiveOwner.includes(userEmail) ||
             userEmail.includes(effectiveOwner) ||
-            simId.startsWith(`${tenant}__`)
+            simId.includes(tenant) ||
+            simId.includes(cleanTenant)
           )
         )
       );
@@ -1239,7 +1247,7 @@ export function registerRoutes(router: Router) {
         });
       }
 
-      const updated = updateSimulationConfig(simId, config);
+      const updated = await updateSimulationConfig(simId, config);
       res.json({
         success: true,
         simulation: updated,
@@ -1250,20 +1258,18 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // Delete a simulation from registry (Owner-verified only)
+  // Delete a simulation from database and registry (Owner-verified only)
   router.delete("/simulator/simulations/:simId", optionalAuth, async (req: any, res: any) => {
     try {
       const rawSimId = (req.params.simId || '').trim();
       if (!rawSimId) {
         return res.status(400).json({ error: "Simulation ID is required." });
       }
-      if (rawSimId === 'cron_live') {
-        return res.status(403).json({ error: "Cannot delete protected default simulation 'cron_live'." });
-      }
 
       const tenant = getSimulatorTenantScope(req);
+      const cleanTenant = tenant.replace(/[^a-z0-9_-]/g, '_');
       const userEmail = (req.user?.email || '').toLowerCase().trim();
-      const isAdmin = req.user?.role === 'Admin' || userEmail === 'mr.sutharsuresh@gmail.com';
+      const isAdmin = req.user?.role === 'Admin';
 
       // 1. Resolve actual target simulation ID in registry or database
       const all = listSimulations();
@@ -1297,13 +1303,16 @@ export function registerRoutes(router: Router) {
         !effectiveOwner ||
         effectiveOwner === 'guest' ||
         (
-          userEmail && effectiveOwner && (
+          userEmail && (
             userEmail === effectiveOwner ||
             tenant === effectiveOwner ||
-            userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
+            cleanTenant === effectiveOwner ||
             effectiveOwner.includes(userEmail) ||
             userEmail.includes(effectiveOwner) ||
-            resolvedSimId.startsWith(`${tenant}__`)
+            resolvedSimId.includes(tenant) ||
+            resolvedSimId.includes(cleanTenant) ||
+            rawSimId.includes(tenant) ||
+            rawSimId.includes(cleanTenant)
           )
         )
       );
@@ -1314,13 +1323,36 @@ export function registerRoutes(router: Router) {
         });
       }
 
-      // 2. CRITICAL: await deleteSimulation so DB and registry are wiped before responding
+      // 2. CRITICAL: Delete permanently from Neon PostgreSQL database table simulation_stores
+      try {
+        const prisma = getPrismaClient();
+        await prisma.simulationStore.deleteMany({
+          where: {
+            OR: [
+              { simId: resolvedSimId },
+              { simId: rawSimId },
+              { simId: { contains: rawSimId } },
+              { simId: { contains: resolvedSimId } }
+            ]
+          }
+        });
+      } catch (dbErr) {
+        console.warn("[Simulator DB] Error during deleteMany:", dbErr);
+      }
+
+      // 3. Delete from registry, memory cache, and local files
       await deleteSimulation(resolvedSimId);
       if (resolvedSimId !== rawSimId) {
         await deleteSimulation(rawSimId);
       }
+      if (!rawSimId.startsWith('system__')) {
+        await deleteSimulation(`system__${rawSimId}`);
+      }
+      if (!resolvedSimId.startsWith('system__')) {
+        await deleteSimulation(`system__${resolvedSimId}`);
+      }
 
-      res.json({ success: true, message: `Simulation "${resolvedSimId}" permanently removed.` });
+      res.json({ success: true, message: `Simulation "${resolvedSimId}" permanently removed from database and registry.` });
     } catch (e: any) {
       console.error("[Simulator] Delete error:", e);
       res.status(500).json({ error: e.message || "Failed to delete simulation instance." });
@@ -1332,24 +1364,24 @@ export function registerRoutes(router: Router) {
     try {
       const payload = req.method === "GET" ? req.query : (req.body || {});
       const isCron = isAuthorizedSystemCron(req);
-      const rawSimId = (payload.simulationId || payload.simId || "default") as string;
+      const rawSimId = (payload.simulationId || payload.simId || "") as string;
       let targetSimId: string;
 
       if (isCron) {
         const all = listSimulations();
-        const existing = all.find(s => s.id === rawSimId);
-        if (rawSimId === "cron_live" || (existing && existing.isPublic)) {
+        const existing = all.find(s => s.id === rawSimId || s.id.endsWith(`__${rawSimId}`));
+        if (existing) {
+          targetSimId = existing.id;
+        } else if (rawSimId && rawSimId !== "default") {
           targetSimId = rawSimId;
-        } else if (rawSimId === "default") {
-          targetSimId = "system_eod_cron";
         } else {
-          targetSimId = rawSimId.startsWith("system__") ? rawSimId : `system__${rawSimId}`;
+          targetSimId = all[0]?.id || "live";
         }
       } else if (req.user?.email) {
         const tenant = getSimulatorTenantScope(req);
         const all = listSimulations();
         const existing = all.find(s => s.id === rawSimId);
-        if (req.user?.role === 'Admin' && existing && (existing.isPublic || rawSimId === 'cron_live')) {
+        if (req.user?.role === 'Admin' && existing && existing.isPublic) {
           targetSimId = rawSimId;
         } else {
           targetSimId = resolveSimulationTargetId(rawSimId, tenant);
@@ -1378,7 +1410,7 @@ export function registerRoutes(router: Router) {
 
   router.get("/simulator/history", optionalAuth, async (req: any, res: any) => {
     try {
-      const rawSimId = (req.query.simulationId || req.query.simId || "default") as string;
+      const rawSimId = (req.query.simulationId || req.query.simId || "") as string;
       const tenant = getSimulatorTenantScope(req);
       const targetSimId = resolveSimulationTargetId(rawSimId, tenant);
       const history = await getEODHistory(targetSimId);
@@ -1390,7 +1422,7 @@ export function registerRoutes(router: Router) {
 
   router.get("/simulator/portfolio", optionalAuth, async (req: any, res: any) => {
     try {
-      const rawSimId = (req.query.simulationId || req.query.simId || "default") as string;
+      const rawSimId = (req.query.simulationId || req.query.simId || "") as string;
       const tenant = getSimulatorTenantScope(req);
       const targetSimId = resolveSimulationTargetId(rawSimId, tenant);
       const portfolio = await getEODPortfolio(targetSimId);
@@ -1406,7 +1438,7 @@ export function registerRoutes(router: Router) {
       if (!positionId) {
         return res.status(400).json({ error: "positionId is required" });
       }
-      const rawSimId = simulationId || simId || "default";
+      const rawSimId = simulationId || simId || "";
       const tenant = getSimulatorTenantScope(req);
       const all = listSimulations();
       const existing = all.find(s => s.id === rawSimId);
@@ -1431,7 +1463,7 @@ export function registerRoutes(router: Router) {
   router.all(["/simulator/reset", "/simulator/reset/"], optionalAuth, async (req: any, res: any) => {
     try {
       const { initialCapital, marketRegion, simId, simulationId } = req.body || req.query || {};
-      const rawSimId = (simulationId || simId || "default") as string;
+      const rawSimId = (simulationId || simId || "") as string;
       const tenant = getSimulatorTenantScope(req);
       const isAdmin = req.user?.role === 'Admin';
       const all = listSimulations();
@@ -1440,6 +1472,7 @@ export function registerRoutes(router: Router) {
       const targetSimId = (isAdmin && existing?.isPublic) ? rawSimId : resolveSimulationTargetId(rawSimId, tenant);
 
       const userEmail = (req.user?.email || '').toLowerCase().trim();
+      const cleanTenant = tenant.replace(/[^a-z0-9_-]/g, '_');
 
       let dbOwner: string | null = null;
       try {
@@ -1451,17 +1484,18 @@ export function registerRoutes(router: Router) {
         if (row?.owner) dbOwner = row.owner;
       } catch {}
 
-      const effectiveOwner = (dbOwner || existing?.owner || (targetSimId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (targetSimId.includes('__') ? targetSimId.split('__')[0] : ''))).toLowerCase().trim();
+      const effectiveOwner = (dbOwner || existing?.owner || (targetSimId.includes('__') ? targetSimId.split('__')[0] : '')).toLowerCase().trim();
 
       const isOwner = Boolean(
         isAdmin || (
           userEmail && effectiveOwner && (
             userEmail === effectiveOwner ||
             tenant === effectiveOwner ||
-            userEmail.replace(/[^a-z0-9_-]/g, '_') === effectiveOwner ||
+            cleanTenant === effectiveOwner ||
             effectiveOwner.includes(userEmail) ||
             userEmail.includes(effectiveOwner) ||
-            targetSimId.startsWith(`${tenant}__`)
+            targetSimId.startsWith(`${tenant}__`) ||
+            targetSimId.startsWith(`${cleanTenant}__`)
           )
         )
       );

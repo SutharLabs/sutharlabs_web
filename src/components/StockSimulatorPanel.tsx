@@ -36,7 +36,8 @@ import {
   Trash2,
   CheckCheck,
   UserCheck,
-  Sparkles
+  Sparkles,
+  Edit3
 } from 'lucide-react';
 import { IStrategy } from '../plugins/StockTracker/strategies/types';
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
@@ -204,9 +205,9 @@ export default function StockSimulatorPanel({
     try {
       const stored = localStorage.getItem('sutharlabs_active_simulation_id');
       if (stored && stored !== 'default') return stored;
-      return 'cron_live';
+      return '';
     } catch {
-      return 'cron_live';
+      return '';
     }
   });
   const [showNewSimModal, setShowNewSimModal] = useState<boolean>(false);
@@ -223,6 +224,9 @@ export default function StockSimulatorPanel({
   const [newSimIsPublic, setNewSimIsPublic] = useState<boolean>(false);
   const [isCreatingSim, setIsCreatingSim] = useState<boolean>(false);
   const [isDeletingSim, setIsDeletingSim] = useState<boolean>(false);
+  const [showRenameModal, setShowRenameModal] = useState<boolean>(false);
+  const [renameInput, setRenameInput] = useState<string>('');
+  const [isRenamingSim, setIsRenamingSim] = useState<boolean>(false);
   const [copiedCronUrl, setCopiedCronUrl] = useState<boolean>(false);
   const [cronSecret, setCronSecret] = useState<string>('sutharlabs-eod-cron-key-2026');
   const [isTogglingPublic, setIsTogglingPublic] = useState<boolean>(false);
@@ -271,8 +275,10 @@ export default function StockSimulatorPanel({
             if (matching) {
               next = matching.id;
             } else if (!list.some(s => s.id === prev)) {
-              next = list[0]?.id || 'cron_live';
-              try { localStorage.setItem('sutharlabs_active_simulation_id', next); } catch {}
+              next = list[0]?.id || '';
+              if (next) {
+                try { localStorage.setItem('sutharlabs_active_simulation_id', next); } catch {}
+              }
             }
             const activeEntry = list.find(s => s.id === next);
             if (activeEntry) {
@@ -303,31 +309,30 @@ export default function StockSimulatorPanel({
 
   const isCurrentSimOwner = useMemo(() => {
     if (userRole === 'Admin') return true;
-    if (selectedSimulationId === 'cron_live') return false;
+    const cleanEmail = (userEmail || '').toLowerCase().trim();
+    const cleanTenant = cleanEmail.replace(/[^a-z0-9_-]/g, '_');
+
     if (!userEmail) {
       // Unauthenticated / local visitor can manage unowned simulations
       return !currentSim?.owner || currentSim.owner === 'guest';
     }
-    const cleanEmail = userEmail.toLowerCase().trim();
-    const cleanTenant = cleanEmail.replace(/[^a-z0-9_-]/g, '_');
-    const simOwner = (currentSim?.owner || (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : '')).toLowerCase().trim();
 
+    const simOwner = (currentSim?.owner || (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : '')).toLowerCase().trim();
     if (!simOwner || simOwner === 'guest') return true;
 
     return Boolean(
-      cleanEmail === 'mr.sutharsuresh@gmail.com' ||
-      cleanTenant === 'mr_sutharsuresh_gmail_com' ||
-      cleanEmail === simOwner ||
-      cleanTenant === simOwner ||
+      simOwner === cleanEmail ||
+      simOwner === cleanTenant ||
       cleanEmail.replace(/[^a-z0-9_-]/g, '_') === simOwner ||
       simOwner.includes(cleanEmail) ||
       cleanEmail.includes(simOwner) ||
-      selectedSimulationId.startsWith(`${cleanTenant}__`)
+      selectedSimulationId.includes(cleanTenant) ||
+      selectedSimulationId.includes(cleanEmail)
     );
   }, [userEmail, userRole, currentSim, selectedSimulationId]);
 
   const currentSimOwnerDisplay = useMemo(() => {
-    return currentSim?.owner || (selectedSimulationId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'mr.sutharsuresh@gmail.com'));
+    return currentSim?.owner || (selectedSimulationId.includes('__') ? selectedSimulationId.split('__')[0] : 'Public');
   }, [currentSim, selectedSimulationId]);
 
   useEffect(() => {
@@ -350,7 +355,7 @@ export default function StockSimulatorPanel({
 
   // Fetch Current Portfolio & Simulation History from server for selectedSimulationId
   const fetchPortfolioAndHistory = useCallback(async (targetSimId?: string, silent: boolean = false) => {
-    const simIdToFetch = targetSimId || selectedSimulationId || 'cron_live';
+    const simIdToFetch = targetSimId || selectedSimulationId || (simulationsList[0]?.id || '');
     if (!silent) setIsLoadingPortfolio(true);
     try {
       const headers = getAuthHeaders();
@@ -662,7 +667,7 @@ export default function StockSimulatorPanel({
 
   // Delete custom simulation
   const handleDeleteSimulation = async (simId: string) => {
-    if (simId === 'cron_live') return;
+    if (!simId) return;
     const cleanDisplay = currentSim?.label || simId;
     if (!window.confirm(`Permanently delete simulation instance "${cleanDisplay}" and wipe its portfolio records?`)) return;
     setIsDeletingSim(true);
@@ -680,7 +685,7 @@ export default function StockSimulatorPanel({
       // Immediately purge from local state
       const remaining = simulationsList.filter(s => s.id !== simId && !s.id.endsWith(`__${simId}`));
       setSimulationsList(remaining);
-      const nextId = remaining[0]?.id || 'cron_live';
+      const nextId = remaining[0]?.id || '';
       handleSelectSimulation(nextId);
       await fetchPortfolioAndHistory(nextId, false);
       await fetchSimulationsList();
@@ -697,6 +702,46 @@ export default function StockSimulatorPanel({
       setErrorMessage(err.message || 'Error attempting to delete simulation.');
     } finally {
       setIsDeletingSim(false);
+    }
+  };
+
+  // Rename simulation instance display label
+  const handleRenameSimulation = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!renameInput.trim()) return;
+    const newName = renameInput.trim();
+    setIsRenamingSim(true);
+    setErrorMessage(null);
+    try {
+      const res = await fetch(`${STOCK_API}/simulator/simulations/${encodeURIComponent(selectedSimulationId)}/config`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', ...getAuthHeaders() },
+        body: JSON.stringify({ label: newName })
+      });
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || `Failed to rename simulation (${res.status})`);
+      }
+      setSimulationsList(prev => prev.map(s => {
+        if (s.id === selectedSimulationId) {
+          return { ...s, label: newName };
+        }
+        return s;
+      }));
+      setShowRenameModal(false);
+      await fetchSimulationsList();
+      if (onAddLog) {
+        onAddLog({
+          type: 'system',
+          message: `Simulation "${selectedSimulationId}" renamed to "${newName}".`,
+          timestamp: new Date().toLocaleTimeString()
+        });
+      }
+    } catch (err: any) {
+      console.warn('Failed to rename simulation:', err);
+      setErrorMessage(err.message || 'Error attempting to rename simulation.');
+    } finally {
+      setIsRenamingSim(false);
     }
   };
 
@@ -1287,16 +1332,39 @@ export default function StockSimulatorPanel({
                 className="bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs font-bold font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
               >
                 {simulationsList.map((sim) => {
-                  const displayId = sim.id.includes('__') ? sim.id.split('__').slice(1).join('__') : sim.id;
+                  let displayLabel = sim.label;
+                  if (!displayLabel || displayLabel === sim.id) {
+                    let clean = sim.id;
+                    if (clean.startsWith('system__')) clean = clean.replace('system__', '');
+                    if (clean.includes('__')) clean = clean.split('__').slice(1).join('__');
+                    displayLabel = clean.replace(/_/g, ' ');
+                  }
+                  const displayId = sim.id.includes('__') ? sim.id.split('__').pop() : sim.id;
                   const prod = sim.productType || 'CNC';
                   const tf = sim.timeframe || (sim as any).interval || '1d';
                   return (
                     <option key={sim.id} value={sim.id}>
-                      {sim.isPublic ? '🌐 [Public] ' : '🔒 '}{sim.label || displayId} [{displayId}] • {prod} ({tf}) • {sim.market || 'IN'} ({sim.totalRuns ?? 0} runs)
+                      {sim.isPublic ? '🌐 [Public] ' : '🔒 '}{displayLabel} [{displayId}] • {prod} ({tf}) • {sim.market || 'IN'} ({sim.totalRuns ?? 0} runs)
                     </option>
                   );
                 })}
               </select>
+
+              {/* Rename Simulation Display Label Button */}
+              {isCurrentSimOwner && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setRenameInput(currentSim?.label || selectedSimulationId);
+                    setShowRenameModal(true);
+                  }}
+                  className="px-2 py-1.5 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1 transition-all"
+                  title="Rename the display label shown for this simulation in the dropdown"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-[#00dbe7]" />
+                  <span>Rename</span>
+                </button>
+              )}
 
               {/* Simulation Owner Indicator */}
               <div
@@ -1316,7 +1384,7 @@ export default function StockSimulatorPanel({
 
               {/* Public Visibility Toggle Button (Owner only) */}
               {(() => {
-                const isPub = currentSim?.isPublic !== undefined ? currentSim.isPublic : (selectedSimulationId === 'cron_live');
+                const isPub = Boolean(currentSim?.isPublic);
                 return (
                   <button
                     type="button"
@@ -1357,7 +1425,7 @@ export default function StockSimulatorPanel({
                 <span>New Simulation</span>
               </button>
 
-              {selectedSimulationId !== 'cron_live' && isCurrentSimOwner && (
+              {isCurrentSimOwner && (
                 <button
                   type="button"
                   onClick={() => handleDeleteSimulation(selectedSimulationId)}
@@ -1443,13 +1511,13 @@ export default function StockSimulatorPanel({
             </div>
           )}
 
-          {/* Onboarding Callout: When only cron_live is present, invite user to create their first personalized simulation */}
-          {simulationsList.length > 0 && !simulationsList.some(s => s.id !== 'cron_live') && !showNewSimModal && (
+          {/* Onboarding Callout: When 1 or 0 simulation is present, invite user to create their first personalized simulation */}
+          {simulationsList.length <= 1 && !showNewSimModal && (
             <div className="mt-1 p-3 rounded-xl bg-[#00e476]/10 border border-[#00e476]/30 flex items-center justify-between gap-3 flex-wrap">
               <div className="flex items-center gap-2 text-xs text-on-surface">
                 <Sparkles className="w-4 h-4 text-[#00e476] shrink-0" />
                 <span>
-                  Currently monitoring the <strong>Cloud Cron Live Trading</strong> instance. Create your own private simulation to test custom strategies and capital allocations.
+                  Ready to test custom strategies? Create your own private simulation instance to test custom strategies, timeframes (1m/5m/1d), and capital allocations.
                 </span>
               </div>
               <button
@@ -1463,6 +1531,58 @@ export default function StockSimulatorPanel({
             </div>
           )}
         </div>
+
+        {/* ── Inline Rename Panel for Selected Simulation ── */}
+        {showRenameModal && (
+          <form
+            onSubmit={handleRenameSimulation}
+            className="p-4 rounded-xl bg-surface-container-high border border-[#00dbe7]/40 flex flex-col gap-3 shadow-lg"
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-xs text-[#00dbe7] flex items-center gap-1.5">
+                <Edit3 className="w-3.5 h-3.5" />
+                Rename Simulation Instance Display Label
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowRenameModal(false)}
+                className="text-on-surface-variant hover:text-on-surface cursor-pointer text-xs"
+              >
+                Cancel
+              </button>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-2">
+              <input
+                type="text"
+                value={renameInput}
+                onChange={e => setRenameInput(e.target.value)}
+                placeholder="e.g. My Intraday Strategy 1m"
+                className="flex-1 w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-2 text-xs text-on-surface focus:outline-none focus:border-[#00dbe7]"
+                autoFocus
+              />
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <button
+                  type="submit"
+                  disabled={isRenamingSim || !renameInput.trim()}
+                  className="px-4 py-2 rounded-lg bg-[#00dbe7] text-[#002022] font-bold text-xs hover:brightness-110 cursor-pointer flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>{isRenamingSim ? 'Saving...' : 'Save Name'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowRenameModal(false)}
+                  className="px-3 py-2 rounded-lg bg-surface-container hover:bg-surface-container-highest text-on-surface-variant text-xs cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+            <p className="text-[11px] text-on-surface-variant">
+              Changing this display label updates the name shown in the simulation switcher dropdown and persists directly to the database.
+            </p>
+          </form>
+        )}
 
         {/* ── Inline Creation Panel for New Simulation ── */}
         {showNewSimModal && (

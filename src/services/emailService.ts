@@ -21,7 +21,7 @@ export interface DispatchResult {
   error?: string;
 }
 
-const DEFAULT_ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'mr.sutharsuresh@gmail.com';
+const DEFAULT_ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@sutharlabs.com';
 
 /**
  * Dispatches an automated email notification to the platform administrator

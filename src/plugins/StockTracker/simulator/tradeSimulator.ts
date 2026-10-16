@@ -153,52 +153,12 @@ function readRegistry(): SimulationRegistryEntry[] {
   let reg = readJsonData<SimulationRegistryEntry[]>(SIM_REGISTRY_KEY, []);
   if (!Array.isArray(reg)) reg = [];
 
-  const nowIso = new Date().toISOString();
-  let modified = false;
-
-  // Remove previously seeded hardcoded 'default' simulation from registry if present
+  // Remove obsolete 'default' simulation from registry if present
   if (reg.some(r => r.id === "default")) {
     reg = reg.filter(r => r.id !== "default");
-    modified = true;
-  }
-
-  if (!reg.some(r => r.id === "cron_live")) {
-    reg.push({
-      id: "cron_live",
-      label: "Cloud Cron Live Trading (1m)",
-      market: "IN",
-      strategyId: "strat-ema-cross",
-      strategyName: "EMA 9/21 Dynamic Trend Cross",
-      timeframe: "1m",
-      interval: "1m",
-      capitalAllocationPct: 0.20,
-      trailingStopPct: 3.0,
-      createdAt: nowIso,
-      lastRunAt: nowIso,
-      totalRuns: 0,
-      totalTradeRuns: 0,
-      isPublic: true,
-      owner: "mr.sutharsuresh@gmail.com"
-    });
-    modified = true;
-  }
-
-  // Ensure cron_live entry is explicitly public and assigned owner mr.sutharsuresh@gmail.com
-  for (const item of reg) {
-    if (item.id === "cron_live") {
-      if (item.isPublic === undefined) { item.isPublic = true; modified = true; }
-      if (!item.owner) { item.owner = "mr.sutharsuresh@gmail.com"; modified = true; }
-    } else if (!item.owner) {
-      if (item.id.includes("__")) {
-        item.owner = item.id.split("__")[0];
-        modified = true;
-      }
-    }
-  }
-
-  if (modified) {
     writeJsonData(SIM_REGISTRY_KEY, reg);
   }
+
   return reg;
 }
 
@@ -229,25 +189,54 @@ export function listSimulations(): SimulationRegistryEntry[] {
   return readRegistry();
 }
 
-export function setSimulationPublicStatus(simId: string, isPublic: boolean): SimulationRegistryEntry {
+export async function setSimulationPublicStatus(simId: string, isPublic: boolean): Promise<SimulationRegistryEntry> {
   const reg = readRegistry();
-  const idx = reg.findIndex(r => r.id === simId);
-  if (idx < 0) {
-    throw new Error(`Simulation "${simId}" not found in registry.`);
+  const safeSimId = simId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const idx = reg.findIndex(r => r.id === simId || r.id === safeSimId);
+  if (idx >= 0) {
+    reg[idx] = { ...reg[idx], isPublic };
+    writeJsonData(SIM_REGISTRY_KEY, reg);
   }
-  reg[idx] = { ...reg[idx], isPublic };
-  writeJsonData(SIM_REGISTRY_KEY, reg);
-  return reg[idx];
+  try {
+    const prisma = getPrismaClient();
+    await prisma.simulationStore.updateMany({
+      where: {
+        OR: [
+          { simId: simId },
+          { simId: safeSimId }
+        ]
+      },
+      data: { isPublic }
+    });
+  } catch (dbErr) {
+    console.warn('[Simulator DB] Failed to update public status in DB:', dbErr);
+  }
+  const updatedReg = readRegistry();
+  return updatedReg.find(r => r.id === simId || r.id === safeSimId) || (idx >= 0 ? reg[idx] : { id: simId, isPublic } as any);
 }
 
-export function updateSimulationConfig(
+export async function updateSimulationConfig(
   simId: string,
   config: Partial<SimulationRegistryEntry>
-): SimulationRegistryEntry {
+): Promise<SimulationRegistryEntry> {
   const reg = readRegistry();
-  const existing = reg.find(r => r.id === simId);
+  const safeSimId = simId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  let existing = reg.find(r => r.id === simId || r.id === safeSimId);
   if (!existing) {
-    throw new Error(`Simulation "${simId}" not found in registry.`);
+    const rawLabel = simId.includes("__") ? simId.split("__").pop() : simId;
+    existing = {
+      id: simId,
+      label: config.label || (rawLabel ? rawLabel.replace(/_/g, " ") : simId),
+      market: "IN",
+      strategyId: "strat-ema-cross",
+      strategyName: "EMA 9/21 Dynamic Trend Cross",
+      timeframe: "1d",
+      interval: "1d",
+      productType: "CNC",
+      createdAt: new Date().toISOString(),
+      totalRuns: 0,
+      totalTradeRuns: 0
+    };
   }
 
   let stratName = config.strategyName;
@@ -258,7 +247,7 @@ export function updateSimulationConfig(
 
   const patch: Partial<SimulationRegistryEntry> = {
     ...config,
-    label: config.label || existing.label,
+    label: config.label !== undefined ? config.label : existing.label,
     strategyId: config.strategyId || existing.strategyId,
     strategyName: stratName || existing.strategyName,
     market: config.market ? config.market.toUpperCase() : existing.market,
@@ -267,12 +256,43 @@ export function updateSimulationConfig(
     interval: (config.timeframe || (config as any).interval || existing.interval || existing.timeframe || "1d") as string,
     capitalAllocationPct: config.capitalAllocationPct !== undefined ? config.capitalAllocationPct : (config.allocationPct !== undefined ? config.allocationPct : existing.capitalAllocationPct),
     allocationPct: config.capitalAllocationPct !== undefined ? config.capitalAllocationPct : (config.allocationPct !== undefined ? config.allocationPct : existing.capitalAllocationPct),
-    trailingStopPct: config.trailingStopPct !== undefined ? config.trailingStopPct : existing.trailingStopPct
+    trailingStopPct: config.trailingStopPct !== undefined ? config.trailingStopPct : existing.trailingStopPct,
+    isPublic: config.isPublic !== undefined ? Boolean(config.isPublic) : existing.isPublic
   };
 
   upsertRegistry(simId, patch);
+
+  // Persist directly to Neon DB
+  try {
+    const prisma = getPrismaClient();
+    const updatePayload: any = {};
+    if (patch.label !== undefined) updatePayload.label = patch.label;
+    if (patch.strategyId !== undefined) updatePayload.strategyId = patch.strategyId;
+    if (patch.strategyName !== undefined) updatePayload.strategyName = patch.strategyName;
+    if (patch.market !== undefined) updatePayload.market = patch.market;
+    if (patch.productType !== undefined) updatePayload.productType = patch.productType;
+    if (patch.timeframe !== undefined) updatePayload.timeframe = patch.timeframe;
+    if (patch.capitalAllocationPct !== undefined) updatePayload.capitalAllocationPct = patch.capitalAllocationPct;
+    if (patch.trailingStopPct !== undefined) updatePayload.trailingStopPct = patch.trailingStopPct;
+    if (patch.isPublic !== undefined) updatePayload.isPublic = patch.isPublic;
+
+    if (Object.keys(updatePayload).length > 0) {
+      await prisma.simulationStore.updateMany({
+        where: {
+          OR: [
+            { simId: simId },
+            { simId: safeSimId }
+          ]
+        },
+        data: updatePayload
+      });
+    }
+  } catch (dbErr) {
+    console.warn('[Simulator DB] Failed to update config in DB:', dbErr);
+  }
+
   const updatedReg = readRegistry();
-  return updatedReg.find(r => r.id === simId) || { ...existing, ...patch };
+  return updatedReg.find(r => r.id === simId || r.id === safeSimId) || { ...existing, ...patch };
 }
 
 export async function createSimulationInstance(options: {
@@ -338,13 +358,50 @@ export async function createSimulationInstance(options: {
   const initialStore = createInitialSimulatorState(initialCash);
   await saveSimulatorStore(initialStore, safeSimId, options.owner);
 
+  // Persist complete metadata in Neon DB table simulation_stores
+  try {
+    const prisma = getPrismaClient();
+    await prisma.simulationStore.upsert({
+      where: { simId: safeSimId },
+      update: {
+        label: entry.label,
+        owner: options.owner,
+        strategyId: entry.strategyId,
+        strategyName: entry.strategyName,
+        market: entry.market,
+        productType: entry.productType,
+        timeframe: entry.timeframe,
+        capitalAllocationPct: entry.capitalAllocationPct,
+        trailingStopPct: entry.trailingStopPct,
+        isPublic: entry.isPublic
+      },
+      create: {
+        simId: safeSimId,
+        label: entry.label,
+        owner: options.owner,
+        strategyId: entry.strategyId,
+        strategyName: entry.strategyName,
+        market: entry.market,
+        productType: entry.productType,
+        timeframe: entry.timeframe,
+        capitalAllocationPct: entry.capitalAllocationPct,
+        trailingStopPct: entry.trailingStopPct,
+        isPublic: entry.isPublic,
+        initialCash,
+        cash: initialCash,
+        positions: '[]',
+        closedTrades: '[]',
+        history: '[]'
+      }
+    });
+  } catch (dbErr) {
+    console.warn('[Simulator DB] Could not update simulation metadata in DB:', dbErr);
+  }
+
   return entry;
 }
 
 export async function deleteSimulation(simId: string): Promise<void> {
-  if (simId === "cron_live") {
-    throw new Error(`Cannot delete protected simulation "${simId}".`);
-  }
   const safeSimId = simId.replace(/[^a-zA-Z0-9_-]/g, "_");
 
   // 1. Evict from in-memory / JSON registry
@@ -379,7 +436,7 @@ export async function deleteSimulation(simId: string): Promise<void> {
     if (fs.existsSync(hPathRaw)) fs.unlinkSync(hPathRaw);
   } catch {}
 
-  // 3. Delete from Neon PostgreSQL database
+  // 3. Delete permanently from Neon PostgreSQL database
   try {
     const prisma = getPrismaClient();
     await prisma.simulationStore.deleteMany({
@@ -387,8 +444,8 @@ export async function deleteSimulation(simId: string): Promise<void> {
         OR: [
           { simId: simId },
           { simId: safeSimId },
-          { simId: { endsWith: `__${safeSimId}` } },
-          { simId: { endsWith: `__${simId}` } }
+          { simId: { contains: simId } },
+          { simId: { contains: safeSimId } }
         ]
       }
     });
@@ -575,7 +632,7 @@ export async function saveSimulatorStore(state: PersistedEODState, simId: string
 
     const createData: any = {
       simId: safeSimId,
-      owner: owner || (safeSimId === 'cron_live' ? 'mr.sutharsuresh@gmail.com' : (safeSimId.includes('__') ? safeSimId.split('__')[0] : null)),
+      owner: owner || (safeSimId.includes('__') ? safeSimId.split('__')[0] : null),
       initialCash: state.initialCash,
       cash: state.cash,
       positions: JSON.stringify(state.positions || []),
@@ -844,7 +901,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   }
 
   // Resolve timeframe interval ('1m' | '5m' | '15m' | '1h' | '4h' | '1d')
-  const resolvedTimeframe = options.timeframe || (options as any).interval || existingEntry?.timeframe || existingEntry?.interval || (options.mode === "HISTORICAL_REPLAY" ? "15m" : (simId === "cron_live" ? "1m" : "1d"));
+  const resolvedTimeframe = options.timeframe || (options as any).interval || existingEntry?.timeframe || existingEntry?.interval || (options.mode === "HISTORICAL_REPLAY" ? "15m" : "1d");
 
   // Resolve product type: 'CNC' (Delivery / Positional) vs 'MIS' (Intraday with Auto-Square-off)
   const resolvedProductType: 'CNC' | 'MIS' = ((options.productType || (options as any).tradeType || existingEntry?.productType || store.productType || 'CNC') as string).toUpperCase() === 'MIS' ? 'MIS' : 'CNC';
@@ -852,7 +909,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
   const isPublicResolved = options.isPublic !== undefined
     ? options.isPublic
-    : (existingEntry?.isPublic ?? (simId === "cron_live"));
+    : Boolean(existingEntry?.isPublic);
 
   upsertRegistry(simId, {
     label: options.simulationLabel || existingEntry?.label || simId,
@@ -872,7 +929,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     totalRuns: (existingEntry?.totalRuns ?? 0) + 1,
     totalTradeRuns: existingEntry?.totalTradeRuns ?? 0, // updated after we know if trades happened
     isPublic: isPublicResolved,
-    owner: options.userEmail || existingEntry?.owner || (simId === "cron_live" ? "mr.sutharsuresh@gmail.com" : (simId.includes("__") ? simId.split("__")[0] : undefined))
+    owner: options.userEmail || existingEntry?.owner || (simId.includes("__") ? simId.split("__")[0] : undefined)
   });
 
   // 2. Resolve tracked assets for Simulation based on selected market

@@ -189,7 +189,16 @@ model ContactInquiry {
 // 10. Automated Paper Trading & Quantitative Trade Simulations
 model SimulationStore {
   simId              String   @id @map("sim_id")
+  label              String?  @map("label")
   owner              String?  @map("owner")
+  strategyId         String?  @default("strat-ema-cross") @map("strategy_id")
+  strategyName       String?  @default("EMA 9/21 Dynamic Trend Cross") @map("strategy_name")
+  market             String   @default("IN")
+  productType        String   @default("CNC") @map("product_type")
+  timeframe          String   @default("1d")
+  capitalAllocationPct Float  @default(0.2) @map("capital_allocation_pct")
+  trailingStopPct    Float    @default(3.0) @map("trailing_stop_pct")
+  isPublic           Boolean  @default(false) @map("is_public")
   initialCash        Float    @default(100000.0) @map("initial_cash")
   cash               Float    @default(100000.0)
   positions          String   @default("[]")
