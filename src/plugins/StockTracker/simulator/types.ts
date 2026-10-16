@@ -64,6 +64,7 @@ export interface EODSimulationReport {
   executionTimestamp: string;
   strategyId: string;
   strategyName: string;
+  productType?: 'CNC' | 'MIS';
   startingCapital: number;
   endingCapital: number;
   netDailyPnL: number;

@@ -1258,6 +1258,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
       executionTimestamp: new Date().toISOString(),
       strategyId: strategy.id,
       strategyName: strategy.name,
+      productType: resolvedProductType,
       startingCapital: parseFloat(startingCapital.toFixed(2)),
       endingCapital: parseFloat(endingCapital.toFixed(2)),
       netDailyPnL: parseFloat(netTotalPnL.toFixed(2)),
@@ -1618,7 +1619,14 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     sessionNote = ` [Market Session: ${sessionStatus.reason} • New entries paused]`;
   }
 
-  const digest = `EOD Batch Simulation (${simId}) completed for ${simDate}.${sessionNote} Positions closed: ${closedTrades.length}, New positions: ${openedTrades.length}, Trailing stops raised: ${updatedTrailingStops.length}. Daily PnL: ${netDailyPnL >= 0 ? '+' : ''}${netDailyPnL.toFixed(2)} (${netDailyPnLPct.toFixed(2)}%). Total Equity: ${endingCapital.toFixed(2)}.`;
+  const isIntradaySession = resolvedProductType === 'MIS';
+  const intradayStatus = isEodSquareOffTime
+    ? 'Session Complete (All MIS positions squared off EOD)'
+    : 'Session Active';
+
+  const digest = isIntradaySession
+    ? `Intraday Live Trading (${simId}) — ${simDate} [${intradayStatus}]. Closed Exits: ${closedTrades.length}, New Entries: ${openedTrades.length}. Daily Realized PnL: ${netDailyPnL >= 0 ? '+' : ''}${netDailyPnL.toFixed(2)} (${netDailyPnLPct.toFixed(2)}%). Ending Equity: ${endingCapital.toFixed(2)}.`
+    : `EOD Batch Simulation (${simId}) completed for ${simDate}.${sessionNote} Positions closed: ${closedTrades.length}, New positions: ${openedTrades.length}, Trailing stops raised: ${updatedTrailingStops.length}. Daily PnL: ${netDailyPnL >= 0 ? '+' : ''}${netDailyPnL.toFixed(2)} (${netDailyPnLPct.toFixed(2)}%). Total Equity: ${endingCapital.toFixed(2)}.`;
 
   const report: EODSimulationReport = {
     id: `eod-run-${Date.now()}-${crypto.randomBytes(3).toString("hex")}`,
@@ -1627,6 +1635,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     executionTimestamp: nowIso,
     strategyId: strategy.id,
     strategyName: strategy.name,
+    productType: resolvedProductType,
     startingCapital: parseFloat(startingCapital.toFixed(2)),
     endingCapital: parseFloat(endingCapital.toFixed(2)),
     netDailyPnL: parseFloat(netDailyPnL.toFixed(2)),

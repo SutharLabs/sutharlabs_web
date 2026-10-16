@@ -125,6 +125,7 @@ export default function StockSimulatorPanel({
   const [selectedTimeframe, setSelectedTimeframe] = useState<'1m' | '5m' | '15m' | '1h' | '4h' | '1d'>('1d');
   const [selectedProductType, setSelectedProductType] = useState<'CNC' | 'MIS'>('CNC');
   const [tradeLedgerFilter, setTradeLedgerFilter] = useState<'ALL' | 'EXITS' | 'ENTRIES'>('ALL');
+  const [selectedLedgerDate, setSelectedLedgerDate] = useState<string>('ALL');
 
   // Simulation Replay Controls (Point 5: Historical Replay from an old date)
   const [simulationMode, setSimulationMode] = useState<'SINGLE_STEP' | 'HISTORICAL_REPLAY'>('SINGLE_STEP');
@@ -1001,15 +1002,62 @@ export default function StockSimulatorPanel({
     return list;
   }, [portfolio?.closedTrades, portfolio?.positions, historyRuns]);
 
+  const availableLedgerDates = useMemo(() => {
+    const dates = new Set<string>();
+    allLedgerTrades.forEach(t => {
+      const d = t.exitDate || t.entryDate || (t.executedAt ? t.executedAt.slice(0, 10) : null);
+      if (d) dates.add(d);
+    });
+    return Array.from(dates).sort().reverse();
+  }, [allLedgerTrades]);
+
   const filteredLedgerTrades = useMemo(() => {
+    let list = allLedgerTrades;
+    if (selectedLedgerDate !== 'ALL') {
+      list = list.filter(t => {
+        const d = t.exitDate || t.entryDate || (t.executedAt ? t.executedAt.slice(0, 10) : '');
+        return d === selectedLedgerDate;
+      });
+    }
     if (tradeLedgerFilter === 'EXITS') {
-      return allLedgerTrades.filter(t => t.type !== 'BUY_ENTRY');
+      return list.filter(t => t.type !== 'BUY_ENTRY');
     }
     if (tradeLedgerFilter === 'ENTRIES') {
-      return allLedgerTrades.filter(t => t.type === 'BUY_ENTRY');
+      return list.filter(t => t.type === 'BUY_ENTRY');
     }
-    return allLedgerTrades;
-  }, [allLedgerTrades, tradeLedgerFilter]);
+    return list;
+  }, [allLedgerTrades, tradeLedgerFilter, selectedLedgerDate]);
+
+  const dailyLedgerStats = useMemo(() => {
+    const targetDate = selectedLedgerDate !== 'ALL'
+      ? selectedLedgerDate
+      : (availableLedgerDates[0] || new Date().toISOString().slice(0, 10));
+
+    const dayTrades = allLedgerTrades.filter(t => {
+      const d = t.exitDate || t.entryDate || (t.executedAt ? t.executedAt.slice(0, 10) : '');
+      return d === targetDate;
+    });
+
+    const closedDayTrades = dayTrades.filter(t => t.type !== 'BUY_ENTRY');
+    const totalRealized = closedDayTrades.reduce((sum, t) => sum + (t.realizedPnL || 0), 0);
+    const totalFriction = closedDayTrades.reduce((sum, t) => sum + (t.friction || 0), 0);
+    const wins = closedDayTrades.filter(t => (t.realizedPnL || 0) >= 0).length;
+    const losses = closedDayTrades.filter(t => (t.realizedPnL || 0) < 0).length;
+    const winRate = closedDayTrades.length > 0 ? (wins / closedDayTrades.length) * 100 : 0;
+    const buyFills = dayTrades.filter(t => t.type === 'BUY_ENTRY').length;
+
+    return {
+      date: targetDate,
+      totalTrades: dayTrades.length,
+      closedTradesCount: closedDayTrades.length,
+      buyFillsCount: buyFills,
+      totalRealized,
+      totalFriction,
+      wins,
+      losses,
+      winRate
+    };
+  }, [allLedgerTrades, selectedLedgerDate, availableLedgerDates]);
 
   const isActionableRun = useCallback((run: EODSimulationReport) => {
     return Boolean(
@@ -2137,12 +2185,76 @@ export default function StockSimulatorPanel({
                 >
                   Buy Fills ({allLedgerTrades.filter(t => t.type === 'BUY_ENTRY').length})
                 </button>
+
+                {availableLedgerDates.length > 0 && (
+                  <div className="flex items-center gap-1.5 ml-2 pl-2 border-l border-outline/20">
+                    <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                    <select
+                      value={selectedLedgerDate}
+                      onChange={e => setSelectedLedgerDate(e.target.value)}
+                      className="bg-surface-container-high border border-outline/20 rounded-lg px-2 py-1 text-xs font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
+                    >
+                      <option value="ALL">All Session Dates ({allLedgerTrades.length})</option>
+                      {availableLedgerDates.map(d => (
+                        <option key={d} value={d}>
+                          {d} Session
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
 
               <span className="text-[11px] text-on-surface-variant">
                 Showing {filteredLedgerTrades.length} of {allLedgerTrades.length} trade records
               </span>
             </div>
+
+            {/* Daily Session Performance Summary Card */}
+            {allLedgerTrades.length > 0 && (
+              <div className="m-3 p-3.5 rounded-xl bg-surface-container-high/60 border border-outline/15 flex items-center justify-between flex-wrap gap-3">
+                <div className="flex items-center gap-3">
+                  <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm ${
+                    dailyLedgerStats.totalRealized >= 0 ? 'bg-[#00e476]/15 text-[#00e476]' : 'bg-rose-500/15 text-rose-400'
+                  }`}>
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-xs text-on-surface">
+                        {selectedLedgerDate === 'ALL' ? `Latest Session Summary (${dailyLedgerStats.date})` : `Daily Session Summary: ${dailyLedgerStats.date}`}
+                      </span>
+                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-[#00dbe7]/15 text-[#00dbe7]">
+                        {selectedProductType === 'MIS' ? 'INTRADAY MIS' : 'DELIVERY CNC'}
+                      </span>
+                      {selectedProductType === 'MIS' && (
+                        <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-500/15 text-amber-300">
+                          Auto-Squared Off EOD
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[11px] text-on-surface-variant font-mono mt-0.5">
+                      {dailyLedgerStats.closedTradesCount} Closed Exits • {dailyLedgerStats.buyFillsCount} Buy Fills • {dailyLedgerStats.wins}W / {dailyLedgerStats.losses}L ({dailyLedgerStats.winRate.toFixed(0)}% Win Rate)
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-4 text-right">
+                  <div>
+                    <div className="text-[10px] text-on-surface-variant uppercase font-bold">Session Realized PnL</div>
+                    <div className={`font-bold text-sm font-mono ${dailyLedgerStats.totalRealized >= 0 ? 'text-[#00e476]' : 'text-rose-400'}`}>
+                      {dailyLedgerStats.totalRealized >= 0 ? '+' : ''}{currencySign}{dailyLedgerStats.totalRealized.toFixed(2)}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-[10px] text-on-surface-variant uppercase font-bold">Est. Friction</div>
+                    <div className="text-xs font-mono text-on-surface-variant">
+                      {currencySign}{dailyLedgerStats.totalFriction.toFixed(2)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {filteredLedgerTrades.length === 0 ? (
               <div className="p-10 text-center text-on-surface-variant flex flex-col items-center justify-center gap-2">
@@ -2445,14 +2557,26 @@ export default function StockSimulatorPanel({
                                       <div>
                                         <div className="flex items-center gap-2">
                                           <span className="font-bold text-on-surface">{t.symbol}</span>
-                                          <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface-container font-bold text-on-surface-variant">
-                                            {t.type}
+                                          <span className={`text-[10px] px-1.5 py-0.2 rounded font-bold ${
+                                            t.type === 'INTRADAY_SQUARE_OFF'
+                                              ? 'bg-orange-500/15 text-orange-400'
+                                              : t.type === 'TAKE_PROFIT'
+                                              ? 'bg-[#00e476]/15 text-[#00e476]'
+                                              : 'bg-surface-container font-bold text-on-surface-variant'
+                                          }`}>
+                                            {t.type === 'INTRADAY_SQUARE_OFF' ? 'MIS SQUARE OFF' : t.type}
+                                          </span>
+                                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-surface-container-high font-mono text-on-surface-variant">
+                                            {t.productType || run.productType || 'CNC'}
                                           </span>
                                         </div>
-                                        <div className="text-[10px] text-on-surface-variant mt-0.5">
-                                          {t.shares} shares @ {tradeSign}{t.price} • {formatDateTime(t.executedAt)}
+                                        <div className="text-[11px] text-on-surface-variant mt-1 font-mono flex items-center gap-2 flex-wrap">
+                                          <span>Entry: <strong className="text-on-surface">{tradeSign}{t.entryPrice != null ? t.entryPrice.toFixed(2) : '—'}</strong> <span className="opacity-75">({formatTimeWithSeconds(t.entryTimestamp)})</span></span>
+                                          <span className="text-on-surface-variant/40">→</span>
+                                          <span>Exit: <strong className="text-on-surface">{tradeSign}{(t.exitPrice || t.price)?.toFixed(2)}</strong> <span className="opacity-75">({formatTimeWithSeconds(t.exitTimestamp || t.executedAt)})</span></span>
+                                          <span className="text-[10px] text-on-surface-variant">({t.shares} shares)</span>
                                         </div>
-                                        <div className="text-[10px] text-on-surface-variant/80 font-sans italic">
+                                        <div className="text-[10px] text-on-surface-variant/80 font-sans italic mt-0.5">
                                           {t.reason}
                                         </div>
                                       </div>
