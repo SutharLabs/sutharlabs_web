@@ -901,12 +901,14 @@ export default function StockSimulatorPanel({
     if (!isoString) return '—';
     try {
       const d = new Date(isoString);
-      return d.toLocaleDateString(undefined, {
+      if (isNaN(d.getTime())) return isoString;
+      return d.toLocaleString(undefined, {
         month: 'short',
         day: '2-digit',
         year: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
+        second: '2-digit'
       });
     } catch {
       return isoString;
@@ -916,6 +918,9 @@ export default function StockSimulatorPanel({
   const formatTimeWithSeconds = (isoString?: string, _tradeType?: string) => {
     if (!isoString) return '—';
     try {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(isoString.trim())) {
+        return 'Session Open';
+      }
       const d = new Date(isoString);
       if (isNaN(d.getTime())) return isoString;
       return d.toLocaleTimeString(undefined, {
