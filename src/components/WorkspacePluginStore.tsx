@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { TerminalLog } from '../types';
+import { CheckCircle2 } from 'lucide-react';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
 interface WorkspacePluginStoreProps {
@@ -667,7 +668,7 @@ export default function WorkspacePluginStore({
                         </button>
                       ) : (
                         <span className="h-9 px-3.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
-                          <span className="material-symbols-outlined text-[16px] leading-none text-[#00a854] dark:text-[#00fb83]">check_circle</span>
+                          <CheckCircle2 className="w-4 h-4 shrink-0 text-[#00a854] dark:text-[#00fb83]" />
                           <span>Installed</span>
                         </span>
                       )}
@@ -999,7 +1000,7 @@ export default function WorkspacePluginStore({
                         </button>
                       ) : (
                         <div className="flex-1 min-w-0 h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
-                          <span className="material-symbols-outlined text-[15px] leading-none text-[#00a854] dark:text-[#00fb83]">check_circle</span>
+                          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#00a854] dark:text-[#00fb83]" />
                           <span>Installed</span>
                         </div>
                       )}
@@ -1150,7 +1151,7 @@ export default function WorkspacePluginStore({
                         </button>
                       )}
                       <span className="h-9 px-3 rounded-xl bg-[#00e476]/10 text-[#008744] dark:text-[#00fb83] border border-[#00e476]/30 text-xs font-mono font-semibold flex items-center gap-1.5 select-none shadow-sm">
-                        <span className="material-symbols-outlined text-[15px] leading-none text-[#00a854] dark:text-[#00fb83]">check_circle</span>
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#00a854] dark:text-[#00fb83]" />
                         Installed {userInstalled?.installedVersion ? `(v${userInstalled.installedVersion})` : ''}
                       </span>
                       <button
