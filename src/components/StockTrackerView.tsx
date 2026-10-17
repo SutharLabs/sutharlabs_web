@@ -1114,6 +1114,22 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [isDraggingSidebar, setIsDraggingSidebar] = useState<boolean>(false);
   const splitWorkspaceRef = useRef<HTMLDivElement>(null);
 
+  // Dynamic viewport detection to ensure responsive, non-static widths on mobile/stacked viewports
+  const [isDesktopScreen, setIsDesktopScreen] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth >= 1024;
+    }
+    return true;
+  });
+
+  useEffect(() => {
+    const handleViewportResize = () => {
+      setIsDesktopScreen(window.innerWidth >= 1024);
+    };
+    window.addEventListener('resize', handleViewportResize);
+    return () => window.removeEventListener('resize', handleViewportResize);
+  }, []);
+
   // Tab Strip Carousel Navigation
   const tabsScrollRef = useRef<HTMLDivElement>(null);
   const [canScrollTabsLeft, setCanScrollTabsLeft] = useState<boolean>(false);
@@ -3124,9 +3140,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </div>
         )}
 
-        {/* SIDEBAR COLUMN: Resizable on desktop, stacks below when in full view */}
+        {/* SIDEBAR COLUMN: Dynamic fluid width across mobile & stacked screens, resizable on desktop */}
         <div 
-          style={!isChartExpanded ? { width: `${sidebarWidth}px` } : undefined}
+          style={isDesktopScreen && !isChartExpanded ? { width: `${sidebarWidth}px` } : undefined}
           className={`${
             isChartExpanded ? 'w-full mt-3' : 'w-full lg:shrink-0'
           } flex flex-col gap-3 transition-all duration-150`}
@@ -3343,9 +3359,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
 
               {/* Live Watchlist Table: All Selected Stocks with Full Detailed Summary */}
-              <div className="flex flex-col gap-1.5 max-h-[360px] overflow-y-auto custom-scrollbar pr-0.5">
+              <div className={`grid gap-2 max-h-[380px] overflow-y-auto custom-scrollbar pr-0.5 ${
+                isChartExpanded 
+                  ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4' 
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-1'
+              }`}>
                 {activeWatchlist.symbols.length === 0 ? (
-                  <div className="p-6 text-center text-xs font-mono text-on-surface-variant flex flex-col gap-2">
+                  <div className="p-6 text-center text-xs font-mono text-on-surface-variant flex flex-col gap-2 col-span-full">
                     <Bookmark className="w-8 h-8 opacity-30 mx-auto" />
                     <span>This watchlist is empty.</span>
                     <span className="text-[11px] opacity-70">Use the input below or search bar to bookmark stocks.</span>
@@ -3414,8 +3434,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                         >
                           {/* Row 1: Symbol, Exchange, Company Name & Live Price */}
                           <div className="flex justify-between items-start gap-2">
-                            <div className="flex flex-col min-w-0">
-                              <div className="flex items-center gap-1.5">
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
                                 <span className={`font-bold text-sm ${isCurrent ? 'text-[#00dbe7]' : 'text-on-surface group-hover:text-[#00dbe7]'} transition-colors`}>
                                   {fmt.cleanSymbol}
                                 </span>
@@ -3432,13 +3452,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                                   </span>
                                 )}
                               </div>
-                              <span className="text-[10px] text-on-surface-variant truncate max-w-[160px]">
+                              <span className="text-[10px] text-on-surface-variant truncate w-full" title={targetItem?.name || q?.name || fmt.cleanSymbol}>
                                 {targetItem?.name || q?.name || fmt.cleanSymbol}
                               </span>
                             </div>
 
                             {/* Price & Change Pill */}
-                            <div className="flex flex-col items-end">
+                            <div className="flex flex-col items-end shrink-0">
                               <span className="font-bold text-sm text-on-surface">
                                 {q?.current_price != null ? `${priceSym}${q.current_price.toFixed(2)}` : '—'}
                               </span>
@@ -3704,7 +3724,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   Technical Metrics
                 </span>
 
-                <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                <div className={`grid gap-2 text-xs font-mono ${
+                  isChartExpanded 
+                    ? 'grid-cols-2 sm:grid-cols-4 md:grid-cols-6' 
+                    : 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-2'
+                }`}>
                   <div className="bg-surface-container-low p-2 rounded-lg border border-outline/20">
                     <span className="block text-[9px] text-on-surface-variant uppercase">RSI ({rsiPeriod})</span>
                     <span className={`font-bold ${rsiColor}`}>
@@ -3927,9 +3951,13 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
 
               {/* Scrollable News Articles Stream */}
-              <div className="flex flex-col gap-2 max-h-[460px] overflow-y-auto custom-scrollbar pr-1">
+              <div className={`grid gap-2.5 max-h-[460px] overflow-y-auto custom-scrollbar pr-1 ${
+                isChartExpanded 
+                  ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
+                  : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-1'
+              }`}>
                 {newsArticles.length === 0 ? (
-                  <div className="p-6 text-center text-xs font-mono text-on-surface-variant/70 border border-dashed border-outline/20 rounded-xl">
+                  <div className="p-6 text-center text-xs font-mono text-on-surface-variant/70 border border-dashed border-outline/20 rounded-xl col-span-full">
                     {loadingNews ? 'Fetching live news...' : 'No news stories found for this symbol.'}
                   </div>
                 ) : (
@@ -3949,7 +3977,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                         <div className="flex items-center justify-between text-[10px] font-mono text-on-surface-variant">
                           <span className="font-semibold text-on-surface flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-[#00dbe7] shrink-0" />
-                            <span className="truncate max-w-[140px]">{art.publisher}</span>
+                            <span className="truncate max-w-[180px] sm:max-w-[240px]">{art.publisher}</span>
                           </span>
                           <div className="flex items-center gap-1 shrink-0 text-on-surface-variant/80">
                             <Clock className="w-2.5 h-2.5 opacity-70" />
