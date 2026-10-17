@@ -37,7 +37,8 @@ import {
   CheckCheck,
   UserCheck,
   Sparkles,
-  Edit3
+  Edit3,
+  Save
 } from 'lucide-react';
 import { IStrategy } from '../plugins/StockTracker/strategies/types';
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
@@ -1291,11 +1292,11 @@ export default function StockSimulatorPanel({
                 fetchPortfolioAndHistory(selectedSimulationId, false);
               }}
               disabled={isLoadingPortfolio}
-              className="px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline/30 rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all text-xs"
-              title="Refresh simulator data now"
+              className="px-2.5 sm:px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline/30 rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all text-xs"
+              title="Refresh simulator data now (Sync latest portfolio & execution records)"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPortfolio ? 'animate-spin text-[#00e476]' : 'text-on-surface-variant'}`} />
-              <span>{isLoadingPortfolio ? 'Syncing...' : 'Sync Now'}</span>
+              <span className="hidden sm:inline">{isLoadingPortfolio ? 'Syncing...' : 'Sync Now'}</span>
             </button>
 
             <button
@@ -1310,7 +1311,7 @@ export default function StockSimulatorPanel({
                 setShowResetConfirm(true);
               }}
               disabled={isRunningSim || isResettingSim || !isCurrentSimOwner}
-              className={`px-3.5 py-2 border rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all text-xs ${
+              className={`px-2.5 sm:px-3.5 py-2 border rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all text-xs ${
                 !isCurrentSimOwner
                   ? 'bg-surface-container opacity-40 cursor-not-allowed border-outline/20 text-on-surface-variant'
                   : 'bg-surface-container-high hover:bg-rose-500/20 text-on-surface hover:text-rose-400 border border-outline/30'
@@ -1322,7 +1323,7 @@ export default function StockSimulatorPanel({
               }
             >
               <RotateCcw className={`w-3.5 h-3.5 ${isResettingSim ? 'animate-spin' : ''}`} />
-              <span>{isResettingSim ? 'Resetting...' : 'Reset Simulator'}</span>
+              <span className="hidden sm:inline">{isResettingSim ? 'Resetting...' : 'Reset Simulator'}</span>
             </button>
 
             <button
@@ -1333,13 +1334,17 @@ export default function StockSimulatorPanel({
                 handleRunSimulation();
               }}
               disabled={isRunningSim || isResettingSim}
-              className="px-5 py-2 bg-[#00e476] text-[#002022] font-bold rounded-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap justify-center text-xs"
+              className="px-3.5 sm:px-5 py-2 bg-[#00e476] text-[#002022] font-bold rounded-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap justify-center text-xs"
+              title={simulationMode === 'HISTORICAL_REPLAY' ? 'Run historical bar-by-bar trade simulation replay' : 'Execute live strategy trade simulation step'}
             >
               <Play className={`w-4 h-4 fill-current ${isRunningSim ? 'animate-pulse' : ''}`} />
               <span>
                 {isRunningSim
-                  ? (simulationMode === 'HISTORICAL_REPLAY' ? 'Replaying Historical Days...' : 'Running Trade Simulation...')
-                  : (simulationMode === 'HISTORICAL_REPLAY' ? 'Run Historical Replay' : 'Run Trade Simulation')}
+                  ? (simulationMode === 'HISTORICAL_REPLAY' ? 'Replaying...' : 'Simulating...')
+                  : (simulationMode === 'HISTORICAL_REPLAY' ? 'Replay' : 'Run')}
+              </span>
+              <span className="hidden sm:inline">
+                {simulationMode === 'HISTORICAL_REPLAY' ? ' Historical Days' : ' Trade Simulation'}
               </span>
             </button>
           </div>
@@ -1388,7 +1393,7 @@ export default function StockSimulatorPanel({
                 title="Create a new simultaneous simulation instance with independent inputs and portfolio"
               >
                 <Plus className="w-3.5 h-3.5" />
-                <span>New</span>
+                <span className="hidden sm:inline">New</span>
               </button>
 
               {isCurrentSimOwner && (
@@ -1402,7 +1407,7 @@ export default function StockSimulatorPanel({
                   title="Rename the display label shown for this simulation in the dropdown"
                 >
                   <Edit3 className="w-3.5 h-3.5 text-[#00dbe7]" />
-                  <span>Rename</span>
+                  <span className="hidden sm:inline">Rename</span>
                 </button>
               )}
 
@@ -1415,13 +1420,13 @@ export default function StockSimulatorPanel({
                   title="Permanently delete this simulation from database and registry"
                 >
                   <Trash2 className={`w-3 h-3 ${isDeletingSim ? 'animate-spin' : ''}`} />
-                  <span>{isDeletingSim ? 'Deleting...' : 'Delete'}</span>
+                  <span className="hidden sm:inline">{isDeletingSim ? 'Deleting...' : 'Delete'}</span>
                 </button>
               )}
             </div>
           </div>
 
-          {/* Row 2: Ownership, Visibility, and Action Controls */}
+          {/* Row 2: Ownership, Visibility, Settings Preview on Hover, and Action Controls */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-1 border-t border-outline/10 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               {/* Simulation Owner Indicator */}
@@ -1430,7 +1435,7 @@ export default function StockSimulatorPanel({
                 title={`Simulation Instance Owner: ${currentSimOwnerDisplay}`}
               >
                 <UserCheck className="w-3.5 h-3.5 text-[#00e476]" />
-                <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                <span className="truncate max-w-[120px] sm:max-w-[200px]">
                   Owner: <strong className="text-on-surface">{currentSimOwnerDisplay}</strong>
                 </span>
                 {isCurrentSimOwner && (
@@ -1468,74 +1473,111 @@ export default function StockSimulatorPanel({
                     }
                   >
                     <Globe className={`w-3.5 h-3.5 ${isPub ? 'text-emerald-400' : 'text-on-surface-variant'}`} />
-                    <span>{isTogglingPublic ? 'Updating...' : (isPub ? 'Public' : 'Private')}</span>
+                    <span className="hidden sm:inline">{isTogglingPublic ? 'Updating...' : (isPub ? 'Public' : 'Private')}</span>
                   </button>
                 );
               })()}
+
+              {/* Interactive Settings Preview on Hover: Eliminates static duplicate row */}
+              <div className="relative group/settings">
+                <div
+                  className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-surface-container-highest border border-outline/20 text-xs font-mono text-on-surface-variant flex items-center gap-1.5 cursor-help hover:border-[#00dbe7]/40 hover:text-on-surface transition-all select-none"
+                  title="Hover to view captured strategy, timeframe, allocation & risk settings for this instance"
+                >
+                  <Sliders className="w-3.5 h-3.5 text-[#00dbe7]" />
+                  <span className="font-bold text-on-surface">Settings:</span>
+                  <span className="text-[10px] text-on-surface-variant font-mono">{selectedTimeframe} • {selectedProductType}</span>
+                </div>
+
+                {/* Popover revealing the captured settings summary on hover */}
+                <div className="absolute left-0 bottom-full mb-2 z-50 hidden group-hover/settings:flex flex-col gap-1.5 p-3 rounded-xl bg-surface-container-highest border border-outline/30 shadow-2xl min-w-[280px] sm:min-w-[340px] backdrop-blur-md animate-in fade-in duration-150">
+                  <div className="flex items-center justify-between pb-1 border-b border-outline/15 text-[10px] uppercase font-bold text-on-surface-variant">
+                    <span className="flex items-center gap-1 text-[#00dbe7]">
+                      <Sliders className="w-3 h-3" />
+                      Active Settings Snapshot
+                    </span>
+                    <span className="font-mono text-on-surface">{selectedTimeframe}</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-mono pt-0.5">
+                    <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                      <Clock className="w-3 h-3 text-[#00dbe7]" />
+                      Candle: <strong className="text-on-surface">{selectedTimeframe}</strong>
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                      <Layers className="w-3 h-3 text-purple-400" />
+                      Product: <strong className="text-on-surface">{selectedProductType}</strong>
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-[#00e476]" />
+                      Strategy: <strong className="text-on-surface truncate max-w-[140px]">{allStrategies.find(s => s.id === selectedStrategyId)?.name || selectedStrategyId}</strong>
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                      <Globe className="w-3 h-3 text-amber-400" />
+                      Market: <strong className="text-on-surface">{effectiveMarket}</strong>
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                      <DollarSign className="w-3 h-3 text-emerald-400" />
+                      Alloc: <strong className="text-on-surface">{(allocationPct * 100).toFixed(0)}%</strong>
+                    </span>
+                    {enableTrailingStop && (
+                      <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                        <Shield className="w-3 h-3 text-purple-400" />
+                        Trailing SL: <strong className="text-on-surface">{trailingStopPct}%</strong>
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-on-surface-variant font-sans pt-1">
+                    Editable in the Configuration Grid below.
+                  </span>
+                </div>
+              </div>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              {/* Save Config with Floppy Icon (Save) */}
               <button
                 type="button"
                 onClick={() => handleSaveConfig(selectedSimulationId)}
                 disabled={isSavingConfig || !isCurrentSimOwner}
-                className={`px-3 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-2.5 sm:px-3 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                   !isCurrentSimOwner
                     ? 'opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant border-outline/20'
                     : savedConfigSuccess
                     ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
                     : 'bg-surface-container-high hover:bg-[#00e476]/15 hover:text-[#00e476] border-outline/30 text-on-surface'
                 }`}
-                title="Save manual configuration (Timeframe, Strategy, Market, Capital Allocation, Trailing Stop) for this simulation"
+                title={
+                  !isCurrentSimOwner
+                    ? `Save disabled: Only the owner (${currentSimOwnerDisplay}) can save configuration.`
+                    : "Save configuration (Saves active Strategy, Timeframe, Product, Market, Allocation & Trailing Stop to this simulation instance in DB)"
+                }
               >
-                {savedConfigSuccess ? <Check className="w-3.5 h-3.5 text-[#00e476]" /> : <Sliders className="w-3.5 h-3.5 text-[#00e476]" />}
-                <span>{isSavingConfig ? 'Saving...' : (savedConfigSuccess ? 'Saved!' : 'Save Config')}</span>
+                {savedConfigSuccess ? <Check className="w-3.5 h-3.5 text-[#00e476]" /> : <Save className="w-3.5 h-3.5 text-[#00e476]" />}
+                <span className="hidden sm:inline">{isSavingConfig ? 'Saving...' : (savedConfigSuccess ? 'Saved!' : 'Save Config')}</span>
               </button>
 
+              {/* Copy Cron-Job URL with settings preview on hover and click */}
               <button
                 type="button"
                 onClick={() => handleCopyCronUrl(selectedSimulationId)}
-                className="px-3 py-1 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs font-mono text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1.5 transition-all"
-                title="Copy the authenticated URL (with authorized cronSecret and all active config params) to paste into Cron-Job.org to ping this simulation"
+                className="px-2.5 sm:px-3 py-1 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs font-mono text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1.5 transition-all"
+                title={`Copy authenticated Cron URL with active settings: [${selectedTimeframe} • ${selectedProductType} • ${(allocationPct * 100).toFixed(0)}% alloc • ${effectiveMarket}${enableTrailingStop ? ` • ${trailingStopPct}% SL` : ''}]`}
               >
                 {copiedCronUrl ? <CheckCheck className="w-3.5 h-3.5 text-[#00e476]" /> : <Copy className="w-3.5 h-3.5 text-[#00dbe7]" />}
-                <span>{copiedCronUrl ? 'Cron URL Copied!' : 'Copy Cron URL'}</span>
+                <span className="hidden sm:inline">{copiedCronUrl ? 'Cron URL Copied!' : 'Copy Cron URL'}</span>
               </button>
             </div>
           </div>
 
-          {/* Row 3: Captured Configuration Summary Tags */}
-          <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-mono text-on-surface-variant pt-1 border-t border-outline/10">
-            <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1 shrink-0">
-              Settings:
-            </span>
-            <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
-              <Clock className="w-3 h-3 text-[#00dbe7]" />
-              Candle: <strong className="text-on-surface">{selectedTimeframe}</strong>
-            </span>
-            <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
-              <Layers className="w-3 h-3 text-purple-400" />
-              Product: <strong className="text-on-surface">{selectedProductType}</strong>
-            </span>
-            <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
-              <Zap className="w-3 h-3 text-[#00e476]" />
-              Strategy: <strong className="text-on-surface truncate max-w-[120px] sm:max-w-xs">{allStrategies.find(s => s.id === selectedStrategyId)?.name || selectedStrategyId}</strong>
-            </span>
-            <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
-              <Globe className="w-3 h-3 text-amber-400" />
-              Market: <strong className="text-on-surface">{effectiveMarket}</strong>
-            </span>
-            <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
-              <DollarSign className="w-3 h-3 text-emerald-400" />
-              Alloc: <strong className="text-on-surface">{(allocationPct * 100).toFixed(0)}%</strong>
-            </span>
-            {enableTrailingStop && (
-              <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
-                <Shield className="w-3 h-3 text-purple-400" />
-                Trailing SL: <strong className="text-on-surface">{trailingStopPct}%</strong>
+          {/* Captured settings feedback shown when copying Cron URL */}
+          {copiedCronUrl && (
+            <div className="flex items-center gap-1.5 text-[11px] font-mono text-[#00e476] bg-[#00e476]/10 px-2.5 py-1 rounded-lg border border-[#00e476]/25 animate-in fade-in duration-150">
+              <CheckCheck className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                Cron URL copied with settings: Candle: <strong>{selectedTimeframe}</strong> • Product: <strong>{selectedProductType}</strong> • Market: <strong>{effectiveMarket}</strong> • Alloc: <strong>{(allocationPct * 100).toFixed(0)}%</strong>{enableTrailingStop ? ` • Trailing SL: ${trailingStopPct}%` : ''}
               </span>
-            )}
-          </div>
+            </div>
+          )}
 
           {/* Onboarding Callout: When 1 or 0 simulation is present, invite user to create their first personalized simulation */}
           {simulationsList.length <= 1 && !showNewSimModal && (
