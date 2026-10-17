@@ -1116,13 +1116,27 @@ export function registerRoutes(router: Router) {
         simulations = listSimulations().filter(s => s.id !== 'default');
       }
 
+      // Deduplicate by baseSlug so tenant-scoped and canonical variants never duplicate
+      const deduplicateSimulations = (list: SimulationRegistryEntry[]): SimulationRegistryEntry[] => {
+        const seenSlugs = new Set<string>();
+        const result: SimulationRegistryEntry[] = [];
+        for (const sim of list) {
+          const base = sim.id.includes('__') ? sim.id.split('__').pop()! : sim.id;
+          if (!seenSlugs.has(base)) {
+            seenSlugs.add(base);
+            result.push(sim);
+          }
+        }
+        return result;
+      };
+
       if (isAdmin) {
-        return res.json(simulations);
+        return res.json(deduplicateSimulations(simulations));
       }
 
       if (tenant === 'guest') {
         const publicOnly = simulations.filter(s => s.isPublic || !s.owner || s.owner === 'guest' || !s.id.includes('__'));
-        return res.json(publicOnly);
+        return res.json(deduplicateSimulations(publicOnly));
       }
 
       const tenantPrefix = `${tenant}__`;
@@ -1139,7 +1153,7 @@ export function registerRoutes(router: Router) {
         return false;
       });
 
-      res.json(accessible);
+      res.json(deduplicateSimulations(accessible));
     } catch (e: any) {
       res.status(500).json({ error: e.message });
     }

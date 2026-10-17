@@ -263,8 +263,16 @@ export default function StockSimulatorPanel({
       if (res.ok) {
         const data = await res.json();
         if (Array.isArray(data)) {
-          // Exclude any obsolete 'default' entries
-          const list = data.filter(s => s.id !== 'default');
+          // Exclude any obsolete 'default' entries and deduplicate by base slug
+          const seenSlugs = new Set<string>();
+          const list = data
+            .filter(s => s.id !== 'default')
+            .filter(s => {
+              const base = s.id.includes('__') ? s.id.split('__').pop()! : s.id;
+              if (seenSlugs.has(base)) return false;
+              seenSlugs.add(base);
+              return true;
+            });
           setSimulationsList(list);
 
           // Update active simulation selection if current selection is invalid or stale
