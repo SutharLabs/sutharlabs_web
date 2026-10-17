@@ -97,7 +97,13 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
     password: '',
     copied: false
   });
-  const [systemActive, setSystemActive] = useState(true);
+  const [systemActive, setSystemActive] = useState(() => {
+    try {
+      return localStorage.getItem('sutharlabs_admin_maintenance_mode') !== 'true';
+    } catch {
+      return true;
+    }
+  });
   const [isRefreshingTelemetry, setIsRefreshingTelemetry] = useState(false);
   const [telemetry, setTelemetry] = useState<SystemTelemetry>({
     cpu: { usagePercent: 14, model: 'Host Processor', cores: 4, speed: '' },
@@ -335,11 +341,15 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
 
   // Toggle Maintenance Mode
   const toggleMaintenance = () => {
-    setSystemActive(!systemActive);
+    const nextActive = !systemActive;
+    setSystemActive(nextActive);
+    try {
+      localStorage.setItem('sutharlabs_admin_maintenance_mode', nextActive ? 'false' : 'true');
+    } catch {}
     onAddLog({
       timestamp: new Date().toLocaleTimeString(),
       type: 'ALERT',
-      message: `ADMIN: Maintenance toggle activated. System-wide user portal state set to ${!systemActive ? 'ACTIVE' : 'MAINTENANCE_LOCKED'}.`
+      message: `ADMIN: Maintenance toggle activated. System-wide user portal state set to ${nextActive ? 'ACTIVE' : 'MAINTENANCE_LOCKED'}.`
     });
   };
 
@@ -523,9 +533,12 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       {/* View Title */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-outline/20 pb-4 gap-4">
         <div>
-          <h2 className="text-xl font-bold tracking-tight text-on-surface flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-[#ce5dff] animate-ping"></span>
-            Admin Command Center
+          <h2 className="text-xl font-bold tracking-tight text-on-surface flex items-center gap-2.5">
+            <span className="relative flex h-2.5 w-2.5 shrink-0" title="Admin Session Live • Real-time Telemetry Connected">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ce5dff] opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#ce5dff]"></span>
+            </span>
+            <span>Admin Command Center</span>
           </h2>
           <p className="text-xs text-on-surface-variant font-mono mt-1">
             System coordinates, server orchestration, and secure credentials management.
