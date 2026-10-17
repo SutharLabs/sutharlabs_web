@@ -233,6 +233,7 @@ export default function StockSimulatorPanel({
   const [isTogglingPublic, setIsTogglingPublic] = useState<boolean>(false);
   const [isSavingConfig, setIsSavingConfig] = useState<boolean>(false);
   const [savedConfigSuccess, setSavedConfigSuccess] = useState<boolean>(false);
+  const [showSettingsPopover, setShowSettingsPopover] = useState<boolean>(false);
 
   // Live Portfolio & History State
   const [portfolio, setPortfolio] = useState<EODPortfolioStore | null>(null);
@@ -1351,19 +1352,20 @@ export default function StockSimulatorPanel({
         </div>
 
         {/* ── Active Simulation Instance Switcher & Manager Bar ── */}
-        <div className="p-3 sm:p-3.5 rounded-xl bg-surface-container border border-outline/20 flex flex-col gap-2.5 shadow-sm">
+        {/* ── Active Simulation Instance Switcher & Manager Bar ── */}
+        <div className="p-2.5 sm:p-3.5 rounded-xl bg-surface-container border border-outline/20 flex flex-col gap-2 shadow-sm">
           {/* Row 1: Instance selector & simulation instance management */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 flex-1 min-w-0">
-              <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1.5 shrink-0">
-                <Layers className="w-3.5 h-3.5 text-[#00e476]" />
-                Instance:
-              </span>
+          <div className="flex items-center gap-1.5 sm:gap-2 w-full">
+            <span className="text-[10px] uppercase font-bold text-on-surface-variant hidden md:flex items-center gap-1.5 shrink-0 select-none">
+              <Layers className="w-3.5 h-3.5 text-[#00e476]" />
+              Instance:
+            </span>
+            <div className="relative flex-1 min-w-0">
               <select
                 value={selectedSimulationId}
                 onChange={(e) => handleSelectSimulation(e.target.value)}
                 disabled={isRunningSim || isLoadingPortfolio}
-                className="w-full sm:flex-1 sm:max-w-md bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 text-xs font-bold font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer truncate"
+                className="w-full bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 text-xs font-bold font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer truncate"
               >
                 {simulationsList.map((sim) => {
                   let displayLabel = sim.label;
@@ -1385,11 +1387,11 @@ export default function StockSimulatorPanel({
               </select>
             </div>
 
-            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={() => setShowNewSimModal(true)}
-                className="px-2.5 py-1.5 rounded-lg bg-[#00e476]/15 hover:bg-[#00e476]/25 text-[#00e476] border border-[#00e476]/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
+                className="px-2 sm:px-2.5 py-1.5 rounded-lg bg-[#00e476]/15 hover:bg-[#00e476]/25 text-[#00e476] border border-[#00e476]/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
                 title="Create a new simultaneous simulation instance with independent inputs and portfolio"
               >
                 <Plus className="w-3.5 h-3.5" />
@@ -1403,7 +1405,7 @@ export default function StockSimulatorPanel({
                     setRenameInput(currentSim?.label || selectedSimulationId);
                     setShowRenameModal(true);
                   }}
-                  className="px-2.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1 transition-all"
+                  className="px-2 sm:px-2.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1 transition-all"
                   title="Rename the display label shown for this simulation in the dropdown"
                 >
                   <Edit3 className="w-3.5 h-3.5 text-[#00dbe7]" />
@@ -1416,7 +1418,7 @@ export default function StockSimulatorPanel({
                   type="button"
                   onClick={() => handleDeleteSimulation(selectedSimulationId)}
                   disabled={isDeletingSim}
-                  className="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-2 sm:px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   title="Permanently delete this simulation from database and registry"
                 >
                   <Trash2 className={`w-3 h-3 ${isDeletingSim ? 'animate-spin' : ''}`} />
@@ -1426,147 +1428,158 @@ export default function StockSimulatorPanel({
             </div>
           </div>
 
-          {/* Row 2: Ownership, Visibility, Settings Preview on Hover, and Action Controls */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-1 border-t border-outline/10 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Simulation Owner Indicator */}
-              <div
-                className="px-2.5 py-1 rounded-lg bg-surface-container-high border border-outline/20 text-xs font-mono text-on-surface-variant flex items-center gap-1.5 select-none"
-                title={`Simulation Instance Owner: ${currentSimOwnerDisplay}`}
-              >
-                <UserCheck className="w-3.5 h-3.5 text-[#00e476]" />
-                <span className="truncate max-w-[120px] sm:max-w-[200px]">
-                  Owner: <strong className="text-on-surface">{currentSimOwnerDisplay}</strong>
+          {/* Row 2: Ownership, Visibility, Settings Preview on Hover / Tap, and Action Controls */}
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap pt-1 border-t border-outline/10">
+            {/* Simulation Owner Indicator */}
+            <div
+              className="px-2 sm:px-2.5 py-1 rounded-lg bg-surface-container-high border border-outline/20 text-xs font-mono text-on-surface-variant flex items-center gap-1.5 select-none shrink-0"
+              title={`Simulation Instance Owner: ${currentSimOwnerDisplay}`}
+            >
+              <UserCheck className="w-3.5 h-3.5 text-[#00e476] shrink-0" />
+              <span className="truncate max-w-[85px] sm:max-w-[180px]">
+                <span className="hidden sm:inline">Owner: </span>
+                <strong className="text-on-surface">{currentSimOwnerDisplay}</strong>
+              </span>
+              {isCurrentSimOwner && (
+                <span className="text-[10px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold">
+                  You
                 </span>
-                {isCurrentSimOwner && (
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold ml-0.5">
-                    You
-                  </span>
-                )}
-              </div>
+              )}
+            </div>
 
-              {/* Public Visibility Toggle Button (Owner only) */}
-              {(() => {
-                const isPub = Boolean(currentSim?.isPublic);
-                return (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!isCurrentSimOwner) {
-                        setErrorMessage(`Only the simulation owner (${currentSimOwnerDisplay}) can change visibility.`);
-                        return;
-                      }
-                      handleTogglePublic(selectedSimulationId, !isPub);
-                    }}
-                    disabled={isTogglingPublic || !isCurrentSimOwner}
-                    className={`px-2.5 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all select-none ${
-                      !isCurrentSimOwner
-                        ? 'opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant border-outline/20'
-                        : isPub
-                        ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/30 cursor-pointer'
-                        : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant border-outline/30 hover:text-on-surface cursor-pointer'
-                    }`}
-                    title={
-                      !isCurrentSimOwner
-                        ? `Visibility toggle disabled: Only the owner (${currentSimOwnerDisplay}) can change public/private visibility.`
-                        : (isPub ? "Visible to all visitors. Click to make Private." : "Private. Click to make Public (visible to all users).")
+            {/* Public Visibility Toggle Button (Owner only) */}
+            {(() => {
+              const isPub = Boolean(currentSim?.isPublic);
+              return (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!isCurrentSimOwner) {
+                      setErrorMessage(`Only the simulation owner (${currentSimOwnerDisplay}) can change visibility.`);
+                      return;
                     }
-                  >
-                    <Globe className={`w-3.5 h-3.5 ${isPub ? 'text-emerald-400' : 'text-on-surface-variant'}`} />
-                    <span className="hidden sm:inline">{isTogglingPublic ? 'Updating...' : (isPub ? 'Public' : 'Private')}</span>
-                  </button>
-                );
-              })()}
-
-              {/* Interactive Settings Preview on Hover: Eliminates static duplicate row */}
-              <div className="relative group/settings">
-                <div
-                  className="px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-surface-container-highest border border-outline/20 text-xs font-mono text-on-surface-variant flex items-center gap-1.5 cursor-help hover:border-[#00dbe7]/40 hover:text-on-surface transition-all select-none"
-                  title="Hover to view captured strategy, timeframe, allocation & risk settings for this instance"
+                    handleTogglePublic(selectedSimulationId, !isPub);
+                  }}
+                  disabled={isTogglingPublic || !isCurrentSimOwner}
+                  className={`px-2 sm:px-2.5 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all select-none shrink-0 ${
+                    !isCurrentSimOwner
+                      ? 'opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant border-outline/20'
+                      : isPub
+                      ? 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/30 cursor-pointer'
+                      : 'bg-surface-container-high hover:bg-surface-container-highest text-on-surface-variant border-outline/30 hover:text-on-surface cursor-pointer'
+                  }`}
+                  title={
+                    !isCurrentSimOwner
+                      ? `Visibility toggle disabled: Only the owner (${currentSimOwnerDisplay}) can change public/private visibility.`
+                      : (isPub ? "Visible to all visitors. Click to make Private." : "Private. Click to make Public (visible to all users).")
+                  }
                 >
-                  <Sliders className="w-3.5 h-3.5 text-[#00dbe7]" />
-                  <span className="font-bold text-on-surface">Settings:</span>
-                  <span className="text-[10px] text-on-surface-variant font-mono">{selectedTimeframe} • {selectedProductType}</span>
-                </div>
+                  <Globe className={`w-3.5 h-3.5 ${isPub ? 'text-emerald-400' : 'text-on-surface-variant'}`} />
+                  <span className="hidden sm:inline">{isTogglingPublic ? 'Updating...' : (isPub ? 'Public' : 'Private')}</span>
+                </button>
+              );
+            })()}
 
-                {/* Popover revealing the captured settings summary on hover */}
-                <div className="absolute left-0 bottom-full mb-2 z-50 hidden group-hover/settings:flex flex-col gap-1.5 p-3 rounded-xl bg-surface-container-highest border border-outline/30 shadow-2xl min-w-[280px] sm:min-w-[340px] backdrop-blur-md animate-in fade-in duration-150">
-                  <div className="flex items-center justify-between pb-1 border-b border-outline/15 text-[10px] uppercase font-bold text-on-surface-variant">
-                    <span className="flex items-center gap-1 text-[#00dbe7]">
-                      <Sliders className="w-3 h-3" />
-                      Active Settings Snapshot
-                    </span>
-                    <span className="font-mono text-on-surface">{selectedTimeframe}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-mono pt-0.5">
-                    <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
-                      <Clock className="w-3 h-3 text-[#00dbe7]" />
-                      Candle: <strong className="text-on-surface">{selectedTimeframe}</strong>
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
-                      <Layers className="w-3 h-3 text-purple-400" />
-                      Product: <strong className="text-on-surface">{selectedProductType}</strong>
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
-                      <Zap className="w-3 h-3 text-[#00e476]" />
-                      Strategy: <strong className="text-on-surface truncate max-w-[140px]">{allStrategies.find(s => s.id === selectedStrategyId)?.name || selectedStrategyId}</strong>
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
-                      <Globe className="w-3 h-3 text-amber-400" />
-                      Market: <strong className="text-on-surface">{effectiveMarket}</strong>
-                    </span>
-                    <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
-                      <DollarSign className="w-3 h-3 text-emerald-400" />
-                      Alloc: <strong className="text-on-surface">{(allocationPct * 100).toFixed(0)}%</strong>
-                    </span>
-                    {enableTrailingStop && (
-                      <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
-                        <Shield className="w-3 h-3 text-purple-400" />
-                        Trailing SL: <strong className="text-on-surface">{trailingStopPct}%</strong>
-                      </span>
-                    )}
-                  </div>
-                  <span className="text-[10px] text-on-surface-variant font-sans pt-1">
-                    Editable in the Configuration Grid below.
+            {/* Interactive Settings Preview on Hover / Tap: switches to icon only on small screens */}
+            <div className="relative group/settings shrink-0">
+              <button
+                type="button"
+                onClick={() => setShowSettingsPopover(prev => !prev)}
+                className="px-2 sm:px-2.5 py-1 rounded-lg bg-surface-container-high hover:bg-surface-container-highest border border-outline/20 text-xs font-mono text-on-surface-variant flex items-center gap-1.5 cursor-pointer hover:border-[#00dbe7]/40 hover:text-on-surface transition-all select-none"
+                title={`Settings: Candle: ${selectedTimeframe} • Product: ${selectedProductType} • Alloc: ${(allocationPct * 100).toFixed(0)}% • Market: ${effectiveMarket}${enableTrailingStop ? ` • Trailing SL: ${trailingStopPct}%` : ''}`}
+              >
+                <Sliders className="w-3.5 h-3.5 text-[#00dbe7]" />
+                <span className="hidden sm:inline font-bold text-on-surface">Settings:</span>
+                <span className="hidden sm:inline text-[10px] text-on-surface-variant font-mono">{selectedTimeframe} • {selectedProductType}</span>
+              </button>
+
+              {/* Backdrop for click outside on mobile */}
+              {showSettingsPopover && (
+                <div
+                  className="fixed inset-0 z-40 bg-transparent"
+                  onClick={() => setShowSettingsPopover(false)}
+                />
+              )}
+
+              {/* Popover revealing the captured settings summary on hover or tap */}
+              <div
+                className={`absolute left-0 sm:left-auto bottom-full mb-2 z-50 ${
+                  showSettingsPopover ? 'flex' : 'hidden'
+                } group-hover/settings:flex flex-col gap-1.5 p-3 rounded-xl bg-surface-container-highest border border-outline/30 shadow-2xl min-w-[260px] sm:min-w-[340px] max-w-[calc(100vw-40px)] backdrop-blur-md animate-in fade-in duration-150`}
+              >
+                <div className="flex items-center justify-between pb-1 border-b border-outline/15 text-[10px] uppercase font-bold text-on-surface-variant">
+                  <span className="flex items-center gap-1 text-[#00dbe7]">
+                    <Sliders className="w-3 h-3" />
+                    Active Settings Snapshot
                   </span>
+                  <span className="font-mono text-on-surface">{selectedTimeframe}</span>
                 </div>
+                <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-mono pt-0.5">
+                  <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                    <Clock className="w-3 h-3 text-[#00dbe7]" />
+                    Candle: <strong className="text-on-surface">{selectedTimeframe}</strong>
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                    <Layers className="w-3 h-3 text-purple-400" />
+                    Product: <strong className="text-on-surface">{selectedProductType}</strong>
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-[#00e476]" />
+                    Strategy: <strong className="text-on-surface truncate max-w-[140px]">{allStrategies.find(s => s.id === selectedStrategyId)?.name || selectedStrategyId}</strong>
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                    <Globe className="w-3 h-3 text-amber-400" />
+                    Market: <strong className="text-on-surface">{effectiveMarket}</strong>
+                  </span>
+                  <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                    <DollarSign className="w-3 h-3 text-emerald-400" />
+                    Alloc: <strong className="text-on-surface">{(allocationPct * 100).toFixed(0)}%</strong>
+                  </span>
+                  {enableTrailingStop && (
+                    <span className="px-2 py-0.5 rounded bg-surface-container border border-outline/20 flex items-center gap-1">
+                      <Shield className="w-3 h-3 text-purple-400" />
+                      Trailing SL: <strong className="text-on-surface">{trailingStopPct}%</strong>
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] text-on-surface-variant font-sans pt-1">
+                  Editable in the Configuration Grid below.
+                </span>
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
-              {/* Save Config with Floppy Icon (Save) */}
-              <button
-                type="button"
-                onClick={() => handleSaveConfig(selectedSimulationId)}
-                disabled={isSavingConfig || !isCurrentSimOwner}
-                className={`px-2.5 sm:px-3 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
-                  !isCurrentSimOwner
-                    ? 'opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant border-outline/20'
-                    : savedConfigSuccess
-                    ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                    : 'bg-surface-container-high hover:bg-[#00e476]/15 hover:text-[#00e476] border-outline/30 text-on-surface'
-                }`}
-                title={
-                  !isCurrentSimOwner
-                    ? `Save disabled: Only the owner (${currentSimOwnerDisplay}) can save configuration.`
-                    : "Save configuration (Saves active Strategy, Timeframe, Product, Market, Allocation & Trailing Stop to this simulation instance in DB)"
-                }
-              >
-                {savedConfigSuccess ? <Check className="w-3.5 h-3.5 text-[#00e476]" /> : <Save className="w-3.5 h-3.5 text-[#00e476]" />}
-                <span className="hidden sm:inline">{isSavingConfig ? 'Saving...' : (savedConfigSuccess ? 'Saved!' : 'Save Config')}</span>
-              </button>
+            {/* Save Config with Floppy Icon (Save) */}
+            <button
+              type="button"
+              onClick={() => handleSaveConfig(selectedSimulationId)}
+              disabled={isSavingConfig || !isCurrentSimOwner}
+              className={`sm:ml-auto px-2 sm:px-3 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shrink-0 ${
+                !isCurrentSimOwner
+                  ? 'opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant border-outline/20'
+                  : savedConfigSuccess
+                  ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                  : 'bg-surface-container-high hover:bg-[#00e476]/15 hover:text-[#00e476] border-outline/30 text-on-surface'
+              }`}
+              title={
+                !isCurrentSimOwner
+                  ? `Save disabled: Only the owner (${currentSimOwnerDisplay}) can save configuration.`
+                  : "Save configuration (Saves active Strategy, Timeframe, Product, Market, Allocation & Trailing Stop to this simulation instance in DB)"
+              }
+            >
+              {savedConfigSuccess ? <Check className="w-3.5 h-3.5 text-[#00e476]" /> : <Save className="w-3.5 h-3.5 text-[#00e476]" />}
+              <span className="hidden sm:inline">{isSavingConfig ? 'Saving...' : (savedConfigSuccess ? 'Saved!' : 'Save Config')}</span>
+            </button>
 
-              {/* Copy Cron-Job URL with settings preview on hover and click */}
-              <button
-                type="button"
-                onClick={() => handleCopyCronUrl(selectedSimulationId)}
-                className="px-2.5 sm:px-3 py-1 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs font-mono text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1.5 transition-all"
-                title={`Copy authenticated Cron URL with active settings: [${selectedTimeframe} • ${selectedProductType} • ${(allocationPct * 100).toFixed(0)}% alloc • ${effectiveMarket}${enableTrailingStop ? ` • ${trailingStopPct}% SL` : ''}]`}
-              >
-                {copiedCronUrl ? <CheckCheck className="w-3.5 h-3.5 text-[#00e476]" /> : <Copy className="w-3.5 h-3.5 text-[#00dbe7]" />}
-                <span className="hidden sm:inline">{copiedCronUrl ? 'Cron URL Copied!' : 'Copy Cron URL'}</span>
-              </button>
-            </div>
+            {/* Copy Cron-Job URL with settings preview on hover and click */}
+            <button
+              type="button"
+              onClick={() => handleCopyCronUrl(selectedSimulationId)}
+              className="px-2 sm:px-3 py-1 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs font-mono text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1.5 transition-all shrink-0"
+              title={`Copy authenticated Cron URL with active settings: [${selectedTimeframe} • ${selectedProductType} • ${(allocationPct * 100).toFixed(0)}% alloc • ${effectiveMarket}${enableTrailingStop ? ` • ${trailingStopPct}% SL` : ''}]`}
+            >
+              {copiedCronUrl ? <CheckCheck className="w-3.5 h-3.5 text-[#00e476]" /> : <Copy className="w-3.5 h-3.5 text-[#00dbe7]" />}
+              <span className="hidden sm:inline">{copiedCronUrl ? 'Cron URL Copied!' : 'Copy Cron URL'}</span>
+            </button>
           </div>
 
           {/* Captured settings feedback shown when copying Cron URL */}
