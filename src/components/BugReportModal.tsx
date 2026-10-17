@@ -219,7 +219,7 @@ export default function BugReportModal({
                   <span className={`text-[10px] block uppercase ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
                     Incident Tracking ID
                   </span>
-                  <span className={`text-base font-bold ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`}>
+                  <span className={`text-base font-bold font-mono ${isLight ? 'text-[#008b99]' : 'text-[#00dbe7]'}`}>
                     {submitSuccess}
                   </span>
                 </div>
@@ -242,7 +242,11 @@ export default function BugReportModal({
               <div className="pt-4 flex justify-center">
                 <button
                   onClick={onClose}
-                  className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-600 text-white font-medium text-xs shadow-md cursor-pointer hover:opacity-95 transition-all"
+                  className={`px-6 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-md active:scale-[0.98] ${
+                    isLight
+                      ? 'bg-gradient-to-r from-[#008b99] to-[#00adb5] text-white hover:brightness-105 shadow-[#00adb5]/25 border border-[#008b99]/40'
+                      : 'bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-[#00dbe7]/20 border border-[#00dbe7]/40'
+                  }`}
                 >
                   Done & Return to Workspace
                 </button>
@@ -272,7 +276,7 @@ export default function BugReportModal({
                     required
                     className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none transition-colors ${
                       isLight 
-                        ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500 focus:bg-white' 
+                        ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-[#008b99] focus:bg-white' 
                         : 'bg-white/5 border-white/10 text-white focus:border-cyan-400 focus:bg-white/[0.08]'
                     }`}
                   />
@@ -287,7 +291,7 @@ export default function BugReportModal({
                     onChange={e => setModule(e.target.value)}
                     className={`w-full px-3 py-2 rounded-xl text-xs border focus:outline-none transition-colors cursor-pointer ${
                       isLight 
-                        ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500' 
+                        ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-[#008b99]' 
                         : 'bg-[#15151c] border-white/10 text-white focus:border-cyan-400'
                     }`}
                   >
@@ -314,7 +318,7 @@ export default function BugReportModal({
                         className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                           isSelected
                             ? isLight
-                              ? 'border-indigo-600 bg-indigo-50/70 shadow-xs'
+                              ? 'border-[#008b99] bg-[#008b99]/10 shadow-xs'
                               : 'border-cyan-400 bg-cyan-500/15 text-white'
                             : isLight
                               ? 'border-slate-200 bg-slate-50/50 hover:bg-slate-100/60'
@@ -324,7 +328,7 @@ export default function BugReportModal({
                         <div className="flex items-center justify-between">
                           <span className={`font-mono text-xs font-bold ${
                             isSelected 
-                              ? isLight ? 'text-indigo-700' : 'text-cyan-300' 
+                              ? isLight ? 'text-[#008b99]' : 'text-cyan-300' 
                               : isLight ? 'text-slate-800' : 'text-slate-300'
                           }`}>
                             {lvl.label}
@@ -352,7 +356,7 @@ export default function BugReportModal({
                   required
                   className={`w-full p-3 rounded-xl text-xs border focus:outline-none transition-colors font-mono resize-none ${
                     isLight 
-                      ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-indigo-500 focus:bg-white' 
+                      ? 'bg-slate-50 border-slate-200 text-slate-900 focus:border-[#008b99] focus:bg-white' 
                       : 'bg-white/5 border-white/10 text-white focus:border-cyan-400 focus:bg-white/[0.08]'
                   }`}
                 />
@@ -401,7 +405,7 @@ export default function BugReportModal({
                       id="include_logs"
                       checked={includeLogs}
                       onChange={e => setIncludeLogs(e.target.checked)}
-                      className="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 cursor-pointer"
+                      className="rounded border-slate-300 text-[#008b99] focus:ring-[#008b99] cursor-pointer"
                     />
                     <label htmlFor="include_logs" className={`font-mono text-xs font-semibold cursor-pointer select-none flex items-center gap-1.5 ${
                       isLight ? 'text-slate-800' : 'text-slate-200'
@@ -421,7 +425,7 @@ export default function BugReportModal({
                       type="button"
                       onClick={() => setIsPreviewExpanded(!isPreviewExpanded)}
                       className={`text-[11px] font-mono flex items-center gap-1 cursor-pointer transition-colors ${
-                        isLight ? 'text-indigo-600 hover:text-indigo-800' : 'text-cyan-400 hover:text-cyan-300'
+                        isLight ? 'text-[#008b99] hover:text-[#006f7b]' : 'text-cyan-400 hover:text-cyan-300'
                       }`}
                     >
                       <span>{isPreviewExpanded ? 'Hide Details' : 'Inspect Captured Logs'}</span>
@@ -469,7 +473,7 @@ export default function BugReportModal({
                             }`}>
                               [{log.level}]
                             </span>
-                            <span className="text-indigo-300 shrink-0">[{log.scope}]</span>
+                            <span className="text-cyan-400 shrink-0">[{log.scope}]</span>
                             <span className="truncate">{log.message}</span>
                           </div>
                         ))
@@ -487,12 +491,14 @@ export default function BugReportModal({
                   Reporting as: <strong className={isLight ? 'text-slate-800' : 'text-white'}>{currentUser?.email || 'Anonymous'}</strong>
                 </span>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2.5">
                   <button
                     type="button"
                     onClick={onClose}
-                    className={`px-4 py-2 rounded-xl text-xs font-mono font-medium cursor-pointer transition-colors ${
-                      isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-white/10 text-slate-400'
+                    className={`px-4 py-2 rounded-xl text-xs font-mono font-semibold transition-all cursor-pointer border ${
+                      isLight
+                        ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 hover:border-slate-400 shadow-xs'
+                        : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border-white/10 hover:border-white/20'
                     }`}
                   >
                     Cancel
@@ -501,11 +507,17 @@ export default function BugReportModal({
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="px-5 py-2 rounded-xl text-xs font-medium bg-gradient-to-r from-rose-500 to-indigo-600 text-white shadow-md flex items-center gap-2 cursor-pointer hover:opacity-95 disabled:opacity-50 transition-all"
+                    className={`px-5 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-md disabled:opacity-50 active:scale-[0.98] ${
+                      isLight
+                        ? 'bg-gradient-to-r from-[#008b99] to-[#00adb5] text-white hover:brightness-105 shadow-[#00adb5]/25 border border-[#008b99]/40'
+                        : 'bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-[#00dbe7]/20 border border-[#00dbe7]/40'
+                    }`}
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className={`w-3.5 h-3.5 border-2 rounded-full animate-spin ${
+                          isLight ? 'border-white/30 border-t-white' : 'border-[#002022]/30 border-t-[#002022]'
+                        }`} />
                         <span>Transmitting Report...</span>
                       </>
                     ) : (
