@@ -1204,22 +1204,37 @@ export function registerRoutes(router: Router) {
       const { isPublic } = req.body;
       const tenant = getSimulatorTenantScope(req);
       const cleanTenant = tenant.replace(/[^a-z0-9_-]/g, '_');
+      const baseSlug = simId.includes('__') ? simId.split('__').pop()! : simId;
       const all = listSimulations();
-      const existing = all.find(s => s.id === simId);
+      const existing = all.find(s => {
+        const sBase = s.id.includes('__') ? s.id.split('__').pop()! : s.id;
+        return s.id === simId || s.id === baseSlug || sBase === baseSlug || s.id.endsWith(`__${baseSlug}`);
+      });
       const userEmail = (req.user?.email || '').toLowerCase().trim();
 
-      // Query owner dynamically from database
+      // Query owner and canonical simId dynamically from database across all alias formats
       let dbOwner: string | null = null;
+      let canonicalSimId = simId;
       try {
         const prisma = getPrismaClient();
-        const row = await prisma.simulationStore.findUnique({
-          where: { simId },
-          select: { owner: true }
+        const row = await prisma.simulationStore.findFirst({
+          where: {
+            OR: [
+              { simId: simId },
+              { simId: baseSlug },
+              { simId: { endsWith: `__${baseSlug}` } },
+              { simId: `${cleanTenant}__${baseSlug}` }
+            ]
+          },
+          select: { simId: true, owner: true, isPublic: true }
         });
-        if (row?.owner) dbOwner = row.owner;
+        if (row) {
+          if (row.owner) dbOwner = row.owner;
+          canonicalSimId = row.simId;
+        }
       } catch {}
 
-      const effectiveOwner = (dbOwner || existing?.owner || (simId.includes('__') ? simId.split('__')[0] : '')).toLowerCase().trim();
+      const effectiveOwner = (dbOwner || existing?.owner || (canonicalSimId.includes('__') ? canonicalSimId.split('__')[0] : '')).toLowerCase().trim();
 
       const isAdmin = req.user?.role === 'Admin';
       const isOwner = Boolean(
@@ -1230,8 +1245,12 @@ export function registerRoutes(router: Router) {
             cleanTenant === effectiveOwner ||
             effectiveOwner.includes(userEmail) ||
             userEmail.includes(effectiveOwner) ||
-            simId.startsWith(`${tenant}__`) ||
-            simId.startsWith(`${cleanTenant}__`)
+            canonicalSimId.startsWith(`${tenant}__`) ||
+            canonicalSimId.startsWith(`${cleanTenant}__`) ||
+            canonicalSimId.includes(tenant) ||
+            canonicalSimId.includes(cleanTenant) ||
+            simId.includes(tenant) ||
+            simId.includes(cleanTenant)
           )
         )
       );
@@ -1243,18 +1262,18 @@ export function registerRoutes(router: Router) {
         });
       }
 
-      const updated = await setSimulationPublicStatus(simId, Boolean(isPublic));
+      const updated = await setSimulationPublicStatus(canonicalSimId, Boolean(isPublic));
       res.json({
         success: true,
         simulation: updated,
-        message: `Simulation "${simId}" visibility set to ${isPublic ? 'Public' : 'Private'}.`
+        message: `Simulation "${canonicalSimId}" visibility set to ${isPublic ? 'Public' : 'Private'}.`
       });
     } catch (e: any) {
       res.status(400).json({ error: e.message });
     }
   });
 
-  // Update simulation configuration (Strategy, Timeframe, Allocation, Trailing Stop, Market, Label)
+  // Update simulation configuration (Strategy, Timeframe, Allocation, Trailing Stop, Market, Label, Visibility)
   router.patch(["/simulator/simulations/:simId/config", "/simulator/simulations/:simId/settings"], optionalAuth, async (req: any, res: any) => {
     try {
       const { simId } = req.params;
@@ -1262,21 +1281,36 @@ export function registerRoutes(router: Router) {
       const tenant = getSimulatorTenantScope(req);
       const cleanTenant = tenant.replace(/[^a-z0-9_-]/g, '_');
       const isAdmin = req.user?.role === 'Admin';
+      const baseSlug = simId.includes('__') ? simId.split('__').pop()! : simId;
       const all = listSimulations();
-      const existing = all.find(s => s.id === simId);
+      const existing = all.find(s => {
+        const sBase = s.id.includes('__') ? s.id.split('__').pop()! : s.id;
+        return s.id === simId || s.id === baseSlug || sBase === baseSlug || s.id.endsWith(`__${baseSlug}`);
+      });
       const userEmail = (req.user?.email || '').toLowerCase().trim();
 
       let dbOwner: string | null = null;
+      let canonicalSimId = simId;
       try {
         const prisma = getPrismaClient();
-        const row = await prisma.simulationStore.findUnique({
-          where: { simId },
-          select: { owner: true }
+        const row = await prisma.simulationStore.findFirst({
+          where: {
+            OR: [
+              { simId: simId },
+              { simId: baseSlug },
+              { simId: { endsWith: `__${baseSlug}` } },
+              { simId: `${cleanTenant}__${baseSlug}` }
+            ]
+          },
+          select: { simId: true, owner: true, isPublic: true }
         });
-        if (row?.owner) dbOwner = row.owner;
+        if (row) {
+          if (row.owner) dbOwner = row.owner;
+          canonicalSimId = row.simId;
+        }
       } catch {}
 
-      const effectiveOwner = (dbOwner || existing?.owner || (simId.includes('__') ? simId.split('__')[0] : '')).toLowerCase().trim();
+      const effectiveOwner = (dbOwner || existing?.owner || (canonicalSimId.includes('__') ? canonicalSimId.split('__')[0] : '')).toLowerCase().trim();
 
       const isOwner = Boolean(
         isAdmin ||
@@ -1289,6 +1323,8 @@ export function registerRoutes(router: Router) {
             cleanTenant === effectiveOwner ||
             effectiveOwner.includes(userEmail) ||
             userEmail.includes(effectiveOwner) ||
+            canonicalSimId.includes(tenant) ||
+            canonicalSimId.includes(cleanTenant) ||
             simId.includes(tenant) ||
             simId.includes(cleanTenant)
           )
@@ -1302,11 +1338,11 @@ export function registerRoutes(router: Router) {
         });
       }
 
-      const updated = await updateSimulationConfig(simId, config);
+      const updated = await updateSimulationConfig(canonicalSimId, config);
       res.json({
         success: true,
         simulation: updated,
-        message: `Simulation "${simId}" configuration saved successfully.`
+        message: `Simulation "${canonicalSimId}" configuration saved successfully.`
       });
     } catch (e: any) {
       res.status(400).json({ error: e.message });

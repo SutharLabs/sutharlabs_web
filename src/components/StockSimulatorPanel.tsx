@@ -777,6 +777,15 @@ export default function StockSimulatorPanel({
         body: JSON.stringify({ isPublic: makePublic })
       });
       if (res.ok) {
+        // Optimistically update in local state so the UI reflects immediately
+        setSimulationsList(prev => prev.map(s => {
+          const sBase = s.id.includes('__') ? s.id.split('__').pop()! : s.id;
+          const targetBase = simId.includes('__') ? simId.split('__').pop()! : simId;
+          if (s.id === simId || sBase === targetBase) {
+            return { ...s, isPublic: makePublic };
+          }
+          return s;
+        }));
         await fetchSimulationsList();
         if (onAddLog) {
           onAddLog({
@@ -816,7 +825,8 @@ export default function StockSimulatorPanel({
           market: effectiveMarket,
           capitalAllocationPct: allocationPct,
           allocationPct: allocationPct,
-          trailingStopPct: enableTrailingStop ? trailingStopPct : 0
+          trailingStopPct: enableTrailingStop ? trailingStopPct : 0,
+          isPublic: Boolean(currentSim?.isPublic)
         })
       });
       if (!res.ok) {

@@ -192,18 +192,26 @@ export function listSimulations(): SimulationRegistryEntry[] {
 export async function setSimulationPublicStatus(simId: string, isPublic: boolean): Promise<SimulationRegistryEntry> {
   const reg = readRegistry();
   const safeSimId = simId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  const idx = reg.findIndex(r => r.id === simId || r.id === safeSimId);
-  if (idx >= 0) {
-    reg[idx] = { ...reg[idx], isPublic };
-    writeJsonData(SIM_REGISTRY_KEY, reg);
+  const baseSlug = simId.includes("__") ? simId.split("__").pop()! : simId;
+
+  for (let i = 0; i < reg.length; i++) {
+    const r = reg[i];
+    const rBase = r.id.includes("__") ? r.id.split("__").pop()! : r.id;
+    if (r.id === simId || r.id === safeSimId || r.id === baseSlug || rBase === baseSlug || r.id.endsWith(`__${baseSlug}`)) {
+      reg[i] = { ...reg[i], isPublic };
+    }
   }
+  writeJsonData(SIM_REGISTRY_KEY, reg);
+
   try {
     const prisma = getPrismaClient();
     await prisma.simulationStore.updateMany({
       where: {
         OR: [
           { simId: simId },
-          { simId: safeSimId }
+          { simId: safeSimId },
+          { simId: baseSlug },
+          { simId: { endsWith: `__${baseSlug}` } }
         ]
       },
       data: { isPublic }
@@ -212,7 +220,7 @@ export async function setSimulationPublicStatus(simId: string, isPublic: boolean
     console.warn('[Simulator DB] Failed to update public status in DB:', dbErr);
   }
   const updatedReg = readRegistry();
-  return updatedReg.find(r => r.id === simId || r.id === safeSimId) || (idx >= 0 ? reg[idx] : { id: simId, isPublic } as any);
+  return updatedReg.find(r => r.id === simId || r.id === safeSimId || r.id.endsWith(`__${baseSlug}`)) || ({ id: simId, isPublic } as any);
 }
 
 export async function updateSimulationConfig(
@@ -221,19 +229,30 @@ export async function updateSimulationConfig(
 ): Promise<SimulationRegistryEntry> {
   const reg = readRegistry();
   const safeSimId = simId.replace(/[^a-zA-Z0-9_-]/g, "_");
-  let existing = reg.find(r => r.id === simId || r.id === safeSimId);
-  if (!existing) {
+  const baseSlug = simId.includes("__") ? simId.split("__").pop()! : simId;
+
+  let existing = reg.find(r => {
+    const rBase = r.id.includes("__") ? r.id.split("__").pop()! : r.id;
+    return r.id === simId || r.id === safeSimId || r.id === baseSlug || rBase === baseSlug || r.id.endsWith(`__${baseSlug}`);
+  });
+
+  let resolvedDbSimId = simId;
+
+  if (!existing || existing.isPublic === undefined) {
     try {
       const prisma = getPrismaClient();
       const row = await prisma.simulationStore.findFirst({
         where: {
           OR: [
             { simId: simId },
-            { simId: safeSimId }
+            { simId: safeSimId },
+            { simId: baseSlug },
+            { simId: { endsWith: `__${baseSlug}` } }
           ]
         }
       });
       if (row) {
+        resolvedDbSimId = row.simId;
         existing = {
           id: row.simId,
           label: row.label || (row.simId.includes("__") ? row.simId.split("__").pop()!.replace(/_/g, " ") : row.simId.replace(/_/g, " ")),
@@ -254,6 +273,7 @@ export async function updateSimulationConfig(
       }
     } catch {}
   }
+
   if (!existing) {
     const rawLabel = simId.includes("__") ? simId.split("__").pop() : simId;
     existing = {
@@ -265,6 +285,7 @@ export async function updateSimulationConfig(
       timeframe: "1d",
       interval: "1d",
       productType: "CNC",
+      isPublic: config.isPublic !== undefined ? Boolean(config.isPublic) : false,
       createdAt: new Date().toISOString(),
       totalRuns: 0,
       totalTradeRuns: 0
@@ -289,10 +310,13 @@ export async function updateSimulationConfig(
     capitalAllocationPct: config.capitalAllocationPct !== undefined ? config.capitalAllocationPct : (config.allocationPct !== undefined ? config.allocationPct : existing.capitalAllocationPct),
     allocationPct: config.capitalAllocationPct !== undefined ? config.capitalAllocationPct : (config.allocationPct !== undefined ? config.allocationPct : existing.capitalAllocationPct),
     trailingStopPct: config.trailingStopPct !== undefined ? config.trailingStopPct : existing.trailingStopPct,
-    isPublic: config.isPublic !== undefined ? Boolean(config.isPublic) : existing.isPublic
+    isPublic: config.isPublic !== undefined ? Boolean(config.isPublic) : Boolean(existing.isPublic)
   };
 
   upsertRegistry(simId, patch);
+  if (resolvedDbSimId !== simId) {
+    upsertRegistry(resolvedDbSimId, patch);
+  }
 
   // Persist directly to Neon DB
   try {
@@ -312,8 +336,11 @@ export async function updateSimulationConfig(
       await prisma.simulationStore.updateMany({
         where: {
           OR: [
+            { simId: resolvedDbSimId },
             { simId: simId },
-            { simId: safeSimId }
+            { simId: safeSimId },
+            { simId: baseSlug },
+            { simId: { endsWith: `__${baseSlug}` } }
           ]
         },
         data: updatePayload
@@ -324,7 +351,7 @@ export async function updateSimulationConfig(
   }
 
   const updatedReg = readRegistry();
-  return updatedReg.find(r => r.id === simId || r.id === safeSimId) || { ...existing, ...patch };
+  return updatedReg.find(r => r.id === simId || r.id === safeSimId || r.id === resolvedDbSimId) || { ...existing, ...patch };
 }
 
 export async function createSimulationInstance(options: {
