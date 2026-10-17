@@ -35,16 +35,19 @@
         vertical-align: middle;
         user-select: none;
       }
-      /* Suppress raw ligature words before webfont finishes loading */
+      /* Suppress raw ligature words before webfont finishes loading without layout shift */
       html:not(.fonts-ready) .material-symbols-outlined {
         color: transparent !important;
-        max-width: 1.5em;
-        max-height: 1.5em;
+        visibility: hidden;
       }
     </style>
     <script>
       if ('fonts' in document) {
-        document.fonts.ready.then(function() {
+        Promise.race([
+          document.fonts.load('24px "Material Symbols Outlined"'),
+          document.fonts.ready,
+          new Promise(function(resolve) { setTimeout(resolve, 800); })
+        ]).then(function() {
           document.documentElement.classList.add('fonts-ready');
         });
       } else {

@@ -22,61 +22,7 @@ import PrivacyPolicyView from './components/PrivacyPolicyView';
 import CopyrightView from './components/CopyrightView';
 import UserProfileView from './components/UserProfileView';
 import { getClientPluginByName } from './plugins/clientRegistry.js';
-import {
-  User,
-  Bug,
-  Moon,
-  Sun,
-  ChevronLeft,
-  ChevronRight,
-  ChevronDown,
-  ShoppingBag,
-  Puzzle,
-  ShieldCheck,
-  TrendingUp,
-  Workflow,
-  Calculator,
-  BookOpen,
-  Sliders,
-  Shield,
-  Mail,
-  Zap,
-  Grid,
-  Globe,
-  Settings as SettingsIcon,
-  Layers
-} from 'lucide-react';
 
-function WorkspaceTabIcon({ name, icon, className = "w-4 h-4 shrink-0" }: { name: string; icon?: string; className?: string }) {
-  switch (name) {
-    case 'Plugin Store': return <ShoppingBag className={className} />;
-    case 'Stock Tracker': return <TrendingUp className={className} />;
-    case 'Custom Flow': return <Workflow className={className} />;
-    case 'Accounting': return <Calculator className={className} />;
-    case 'Doc Nexus': return <BookOpen className={className} />;
-    case 'Profile & Settings': return <Sliders className={className} />;
-    case 'Admin Console': return <Shield className={className} />;
-    case 'Reported Bugs': return <Bug className={className} />;
-    case 'Contact Inquiries': return <Mail className={className} />;
-    case 'Manage Plugins': return <Zap className={className} />;
-    case 'Manage Apps': return <Grid className={className} />;
-    case 'Manage Portfolios': return <Globe className={className} />;
-    default:
-      if (icon === 'storefront') return <ShoppingBag className={className} />;
-      if (icon === 'monitoring') return <TrendingUp className={className} />;
-      if (icon === 'account_tree') return <Workflow className={className} />;
-      if (icon === 'currency_exchange') return <Calculator className={className} />;
-      if (icon === 'menu_book') return <BookOpen className={className} />;
-      if (icon === 'manage_accounts') return <Sliders className={className} />;
-      if (icon === 'security') return <Shield className={className} />;
-      if (icon === 'bug_report') return <Bug className={className} />;
-      if (icon === 'mark_email_unread') return <Mail className={className} />;
-      if (icon === 'bolt') return <Zap className={className} />;
-      if (icon === 'apps') return <Grid className={className} />;
-      if (icon === 'web') return <Globe className={className} />;
-      return <Puzzle className={className} />;
-  }
-}
 
 const STORE_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
   { name: 'Plugin Store', icon: 'storefront', size: '' }
@@ -393,7 +339,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             }`}
             title="Profile, Data Governance & Security Settings"
           >
-            <User className="w-3.5 h-3.5" />
+            <span className="material-symbols-outlined text-sm select-none leading-none">person</span>
             <span className="hidden sm:inline">Profile</span>
           </button>
 
@@ -404,7 +350,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             className="py-1 px-2.5 rounded border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/50 transition-all flex items-center gap-1.5 font-mono text-[10px] cursor-pointer"
             title="Report an issue or submit live telemetry diagnostics"
           >
-            <Bug className="w-3.5 h-3.5" />
+            <span className="material-symbols-outlined text-sm select-none leading-none">bug_report</span>
             <span className="hidden sm:inline">Report Issue</span>
           </button>
 
@@ -415,7 +361,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             className="py-1 px-2 bg-[#201f21] border border-[#3a494b]/30 rounded text-[#e5e1e4] hover:text-[#00dbe7] hover:border-[#00dbe7]/50 transition-all flex items-center justify-center cursor-pointer"
             title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
           >
-            {theme === 'light' ? <Moon className="w-3.5 h-3.5" /> : <Sun className="w-3.5 h-3.5" />}
+            <span className="material-symbols-outlined text-sm select-none leading-none">
+              {theme === 'light' ? 'dark_mode' : 'light_mode'}
+            </span>
           </button>
 
           <button 
@@ -446,11 +394,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               : 'bg-[#18181b] border border-[#3a494b]/50 text-[#b9cacb] hover:text-[#00dbe7] hover:border-[#00dbe7]/60 hover:bg-[#222228] shadow-black/80'
           }`}
         >
-          {isSidebarOpen ? (
-            <ChevronLeft className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
-          ) : (
-            <ChevronRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:scale-110" />
-          )}
+          <span className={`material-symbols-outlined text-sm transition-transform duration-300 ${isSidebarOpen ? '' : 'rotate-180'} group-hover:scale-110`}>
+            chevron_left
+          </span>
         </button>
 
         {/* Left Hand Sidebar Explorer directory tree */}
@@ -465,10 +411,10 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               onClick={() => setIsStoreOpen(!isStoreOpen)}
             >
               <div className="flex items-center gap-1.5">
-                {isStoreOpen ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
+                <span className={`material-symbols-outlined text-sm transition-transform duration-200 ${isStoreOpen ? 'rotate-90' : ''}`}>chevron_right</span>
                 <span>PLUGIN STORE</span>
               </div>
-              <ShoppingBag className="w-3.5 h-3.5 text-gray-500 group-hover:text-[#74f5ff]" />
+              <span className="material-symbols-outlined text-sm text-gray-500 group-hover:text-[#74f5ff]">storefront</span>
             </div>
             
             {isStoreOpen && (
@@ -487,7 +433,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <WorkspaceTabIcon name={file.name} icon={file.icon} className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#00dbe7]' : 'text-gray-500'}`} />
+                        <span className={`material-symbols-outlined text-base ${isSelected ? 'text-[#00dbe7]' : 'text-gray-500'}`}>
+                          {file.icon}
+                        </span>
                         <span className="truncate">{file.name}</span>
                       </div>
                       <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/20">
@@ -505,14 +453,14 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               onClick={() => setIsPluginsOpen(!isPluginsOpen)}
             >
               <div className="flex items-center gap-1.5">
-                {isPluginsOpen ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
+                <span className={`material-symbols-outlined text-sm transition-transform duration-200 ${isPluginsOpen ? 'rotate-90' : ''}`}>chevron_right</span>
                 <span>INSTALLED PLUGINS</span>
               </div>
               <div className="flex items-center gap-1.5">
                 <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-surface-container-low text-on-surface-variant border border-outline/30">
                   {activeInstalledPlugins.length}
                 </span>
-                <Puzzle className="w-3.5 h-3.5 text-gray-500 group-hover:text-[#74f5ff]" />
+                <span className="material-symbols-outlined text-sm text-gray-500 group-hover:text-[#74f5ff]">extension</span>
               </div>
             </div>
             
@@ -532,7 +480,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
-                        <WorkspaceTabIcon name={file.name} icon={file.icon} className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#00dbe7]' : 'text-gray-500'}`} />
+                        <span className={`material-symbols-outlined text-base ${isSelected ? 'text-[#00dbe7]' : 'text-gray-500'}`}>
+                          {file.icon}
+                        </span>
                         <span className="truncate">{file.name}</span>
                         {(file as any).isBeta && (
                           <span className="text-[8px] font-mono font-bold uppercase px-1 py-0.2 rounded bg-amber-400/15 text-amber-500 dark:text-amber-300 border border-amber-400/30">
@@ -554,10 +504,10 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                   onClick={() => setIsAdminOpen(!isAdminOpen)}
                 >
                   <div className="flex items-center gap-1.5">
-                    {isAdminOpen ? <ChevronDown className="w-3 h-3 text-gray-500" /> : <ChevronRight className="w-3 h-3 text-gray-500" />}
+                    <span className={`material-symbols-outlined text-sm transition-transform duration-200 ${isAdminOpen ? 'rotate-90' : ''}`}>chevron_right</span>
                     <span>ADMINISTRATION</span>
                   </div>
-                  <ShieldCheck className="w-3.5 h-3.5 text-[#ffb4ab]/80 group-hover:text-[#ffb4ab]" />
+                  <span className="material-symbols-outlined text-sm text-[#ffb4ab]/80 group-hover:text-[#ffb4ab]">admin_panel_settings</span>
                 </div>
 
                 {isAdminOpen && (
@@ -576,7 +526,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                           }`}
                         >
                           <div className="flex items-center gap-2.5">
-                            <WorkspaceTabIcon name={file.name} icon={file.icon} className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#ffb4ab]' : 'text-gray-500'}`} />
+                            <span className={`material-symbols-outlined text-base ${isSelected ? 'text-[#ffb4ab]' : 'text-gray-500'}`}>
+                              {file.icon}
+                            </span>
                             <span className="truncate">{file.name}</span>
                           </div>
                           {file.name === 'Manage Plugins' && (
@@ -610,9 +562,11 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               <span className="font-sans text-xs font-bold text-[#e5e1e4] block truncate">{user.name}</span>
               <span className="font-mono text-[9px] text-[#849495] block truncate">{user.email}</span>
             </div>
-            <SettingsIcon className={`w-3.5 h-3.5 shrink-0 transition-transform ${
+            <span className={`material-symbols-outlined text-sm transition-transform ${
               activeTab === 'Profile & Settings' ? 'text-[#00dbe7] rotate-45' : 'text-[#849495] hover:text-white'
-            }`} />
+            }`}>
+              settings
+            </span>
           </div>
         </div>
 
@@ -634,7 +588,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                     : 'bg-[#131315] text-[#b9cacb]'
                 }`}
               >
-                <WorkspaceTabIcon name={file.name} icon={file.icon} className="w-3.5 h-3.5 select-none shrink-0" />
+                <span className="material-symbols-outlined text-sm select-none leading-none">
+                  {file.icon}
+                </span>
                 <span>{file.name}</span>
               </button>
             ))}
