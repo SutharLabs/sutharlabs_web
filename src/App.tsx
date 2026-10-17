@@ -304,8 +304,8 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             </span>
           </div>
           <div className="h-4 w-[1px] bg-[#3a494b]/30"></div>
-          {/* WorkPath Breadcrumbs */}
-          <div className="hidden sm:flex items-center gap-1.5 font-mono text-[10px] text-[#b9cacb]/80">
+          {/* WorkPath Breadcrumbs (shown on tablet/desktop to preserve space for header controls) */}
+          <div className="hidden md:flex items-center gap-1.5 font-mono text-[10px] text-[#b9cacb]/80">
             <span className="hover:text-white transition-all cursor-pointer">sutharlabs-core</span>
             <span className="text-[#849495] select-none">/</span>
             <span className="hover:text-white transition-all cursor-pointer">app-workspace</span>
@@ -576,16 +576,16 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
         <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-[#050505] p-4 md:p-6 pb-12">
           
           {/* Top responsive filename tabs drawer for touch/mobile devices */}
-          <div className="flex md:hidden gap-1 mb-4 overflow-x-auto scrollbar-hide shrink-0">
+          <div className="flex md:hidden gap-1.5 mb-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden shrink-0 pb-1 px-1 -mx-1 pr-6">
             {ALL_TABS.map((file) => (
               <button
                 key={file.name}
                 type="button"
                 onClick={() => setActiveTab(file.name)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded font-mono text-xs shrink-0 cursor-pointer ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs shrink-0 cursor-pointer transition-all whitespace-nowrap shadow-sm ${
                   activeTab === file.name
-                    ? 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/30'
-                    : 'bg-[#131315] text-[#b9cacb]'
+                    ? 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.2)]'
+                    : 'bg-[#131315] text-[#b9cacb] border border-[#3a494b]/30 hover:text-white hover:border-[#00dbe7]/30'
                 }`}
               >
                 <span className="material-symbols-outlined text-sm select-none leading-none">

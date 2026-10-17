@@ -2380,8 +2380,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         </div>
       )}
 
-      {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (CLEAN, UNIFORM HEIGHT & DESIGN) ── */}
-      <div className="relative z-50 glass-panel rounded-xl p-2 sm:p-2.5 border border-outline/20 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 sm:gap-3 bg-surface-container-lowest/80 shadow-sm">
+      {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (RESPONSIVE UNIFIED LAYOUT) ── */}
+      <div className="relative z-50 glass-panel rounded-xl p-2 sm:p-2.5 border border-outline/20 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 bg-surface-container-lowest/80 shadow-sm">
         
         {/* Left Group: Continuous Active Market Selector, Session Pill, Search Box & Stock Price */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
@@ -2415,7 +2415,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           )}
 
           {/* Continuous Search & Ticker Input with Real-Time Suggestions (Fluid Width) */}
-          <div className="relative flex-1 min-w-[130px] max-w-sm sm:max-w-md h-8 z-50">
+          <div className="relative flex-1 min-w-[120px] max-w-sm sm:max-w-md h-8 z-50">
             <div className="relative flex items-center h-full">
               <input
                 value={symbolInput}
@@ -2541,7 +2541,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </div>
 
           {/* Continuous Live Stock Price Pill (In Same Group) */}
-          <div className="h-8 px-2 sm:px-2.5 rounded-lg bg-surface-container-low border border-outline/25 font-mono text-xs flex items-center gap-1.5 sm:gap-2 shrink-0 shadow-sm">
+          <div className="h-8 px-2 sm:px-2.5 rounded-lg bg-surface-container-low border border-outline/25 font-mono text-xs flex items-center gap-1.5 sm:gap-2 shrink-0 shadow-sm whitespace-nowrap ml-auto sm:ml-0">
             <span className="font-bold text-on-surface text-xs leading-none">
               {curSymbol}{quote?.current_price?.toFixed(2) ?? '—'}
             </span>
@@ -2555,7 +2555,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         </div>
 
         {/* Right Group: Action Tools with Horizontal Scroll Carousel Navigation */}
-        <div className="group/toptools relative flex items-center min-w-0 justify-end overflow-hidden shrink-0">
+        <div className="group/toptools relative flex items-center min-w-0 justify-start lg:justify-end overflow-hidden shrink-0 border-t lg:border-t-0 border-outline/10 pt-2 lg:pt-0">
           {/* Left Scroll Button (appears when scrollable) */}
           {canScrollTopToolsLeft && (
             <button
@@ -2588,7 +2588,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 topToolsScrollRef.current.scrollLeft += e.deltaY;
               }
             }}
-            className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth py-0.5 px-6 whitespace-nowrap"
+            className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth py-0.5 px-6 whitespace-nowrap w-full lg:w-auto"
           >
             {/* 1. Version Badge (v1.1.2 Bug Fix Release) */}
             <button
@@ -2658,22 +2658,22 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       </div>
 
       {/* ── QUICK WATCHLIST ASSET TICKER STRIP & WATCHLIST SWITCHER ── */}
-      <div className="relative z-20 flex items-center justify-between gap-2 p-1.5 rounded-xl bg-surface-container-lowest/80 border border-outline/20 shadow-sm">
+      <div className="relative z-20 flex items-center justify-between gap-1.5 sm:gap-2 p-1.5 rounded-xl bg-surface-container-lowest/80 border border-outline/20 shadow-sm">
         
         {/* Left: Unclipped Watchlist Switcher Dropdown */}
         <div className="relative z-30 shrink-0">
           <button
             type="button"
             onClick={() => setShowWatchlistDropdown(!showWatchlistDropdown)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-high border border-outline/30 hover:border-[#00dbe7] transition-all text-xs font-mono font-bold text-on-surface cursor-pointer shadow-sm group"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg bg-surface-container-high border border-outline/30 hover:border-[#00dbe7] transition-all text-xs font-mono font-bold text-on-surface cursor-pointer shadow-sm group"
             title="Click to access or switch between your watchlists"
           >
-            <Bookmark className="w-3.5 h-3.5 text-[#00dbe7]" />
-            <span className="max-w-[140px] truncate">{activeWatchlist.name}</span>
-            <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-mono">
+            <Bookmark className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+            <span className="max-w-[85px] sm:max-w-[140px] truncate">{activeWatchlist.name}</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-mono shrink-0">
               {activeWatchlist.symbols.length}
             </span>
-            <ChevronDown className="w-3 h-3 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors" />
+            <ChevronDown className="w-3 h-3 text-on-surface-variant group-hover:text-[#00dbe7] transition-colors shrink-0" />
           </button>
 
           {/* All Watchlists Dropdown Menu (Guaranteed Unclipped with z-40) */}
@@ -2742,16 +2742,16 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         </div>
 
         {/* Center: Scrollable symbol chips carousel with left & right chevrons */}
-        <div className="group/ticker relative flex-1 flex items-center min-w-0 overflow-hidden px-1">
+        <div className="group/ticker relative flex-1 flex items-center min-w-0 overflow-hidden px-0.5">
           {/* Left Scroll Button (appears when scrollable) */}
           {canScrollTickerLeft && (
             <button
               type="button"
               onClick={() => scrollTicker('left')}
-              className="absolute left-0 z-20 flex items-center justify-center w-6 h-7 rounded-md bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
+              className="absolute left-0 z-20 flex items-center justify-center w-5 h-7 rounded-md bg-surface-container-high/95 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
               title="Scroll watchlist left"
             >
-              <ChevronLeft className="w-3.5 h-3.5" />
+              <ChevronLeft className="w-3 h-3" />
             </button>
           )}
 
@@ -2760,10 +2760,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             <button
               type="button"
               onClick={() => scrollTicker('right')}
-              className="absolute right-0 z-20 flex items-center justify-center w-6 h-7 rounded-md bg-surface-container-high/90 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
+              className="absolute right-0 z-20 flex items-center justify-center w-5 h-7 rounded-md bg-surface-container-high/95 hover:bg-[#00dbe7] hover:text-[#002022] text-on-surface backdrop-blur-md shadow-md border border-outline/30 transition-all cursor-pointer"
               title="Scroll watchlist right"
             >
-              <ChevronRight className="w-3.5 h-3.5" />
+              <ChevronRight className="w-3 h-3" />
             </button>
           )}
 
@@ -2775,7 +2775,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 tickerScrollRef.current.scrollLeft += e.deltaY;
               }
             }}
-            className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth w-full py-0.5 px-6"
+            className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth w-full py-0.5 px-6 sm:px-7"
           >
             {activeWatchlist.symbols.map(symStr => {
               const targetItem = (activeWatchlist.items || []).find(
@@ -2883,12 +2883,12 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           <div className="glass-panel rounded-xl flex flex-col overflow-hidden border border-outline/20 bg-surface-container-lowest shadow-md h-full">
             
             {/* Chart Toolbar: Timeframe Selector + Indicator Overlays + Expand Button */}
-            <div className="flex flex-wrap justify-between items-center gap-2 p-2.5 border-b border-outline/10 bg-surface-container-low/60">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 p-2 sm:p-2.5 border-b border-outline/10 bg-surface-container-low/60">
               
               {/* Range & Interval Selectors */}
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 shrink-0">
                 {/* Professional Candle Size Dropdown (TradingView / Kite standard) */}
-                <div className="relative" ref={intervalMenuRef}>
+                <div className="relative shrink-0" ref={intervalMenuRef}>
                   <button
                     type="button"
                     onClick={() => setShowIntervalMenu(!showIntervalMenu)}
@@ -2952,7 +2952,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 </div>
 
                 {/* Graph Scale / Range Selector with Intelligent Default Candle Size */}
-                <div className="flex items-center bg-surface-container-lowest/80 p-0.5 rounded-lg border border-outline/20 shadow-inner">
+                <div className="flex items-center bg-surface-container-lowest/80 p-0.5 rounded-lg border border-outline/20 shadow-inner shrink-0">
                   {(['1D', '1W', '1M', '1Y', '5Y', 'ALL'] as const).map(p => {
                     const isPeriodActive = activePeriod === p;
                     const defaultCandle = DEFAULT_CANDLE_FOR_SCALE[p];
@@ -2975,7 +2975,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
 
               {/* Indicator Overlay Toggles & Fullscreen Toggle */}
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 justify-start sm:justify-end shrink-0">
                 <button
                   onClick={() => setShowEma20(!showEma20)}
                   className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
