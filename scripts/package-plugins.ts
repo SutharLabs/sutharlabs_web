@@ -15,6 +15,7 @@ interface PluginConfig {
   description: string;
   iconSymbol: string;
   minEngineVersion: string;
+  changelog?: string;
 }
 
 const IN_TREE_PLUGINS: PluginConfig[] = [
@@ -22,12 +23,25 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'StockTracker',
     id: 'wp_stock_analyzer',
     name: 'Stock Tracker',
-    version: '1.1.2',
+    version: '1.1.3',
     category: 'Finance',
     type: 'Native',
     description: 'Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.',
     iconSymbol: 'monitoring',
-    minEngineVersion: '0.1.0'
+    minEngineVersion: '0.1.0',
+    changelog: `### v1.1.3 Bug Fix Release & UI Polish
+- **Themed Candle Size Selector**: Custom dropdown popover adhering to dark & light themes, replacing native OS select, and resolving interval selection issues.
+- **Chart Toolbar Dynamic Layout**: Enabled dynamic wrapping on the chart toolbar header to prevent button cutoff/clipping when dragging the window splitter slider.
+- **Workspace Terminal / Execution Log Control**: Added toggle in Settings under the Trading tab to enable/disable terminal log window; hidden and disabled by default with persistent localStorage state.
+- **Fluid Dynamic Tile Widths & Spacing**: Made sidebar and market cards fluidly dynamic across all viewports with proper vertical spacing when stacked on smaller screens; resolved icon overlap.
+- **Trade Simulator Multi-Instance Persistence**:
+  - Fixed public/private instance state persistence across tenant prefixes and database refreshes.
+  - Eliminated duplicate cron_live entries and enforced base slug deduplication.
+  - Database-safe simulation target ID resolution preventing unintended instance creation.
+  - Dynamic responsive action buttons with compact mobile layout.
+  - Supported trade product types (CNC delivery vs MIS intraday) with automatic 3:15 PM EOD square-off.
+  - Restored authentic execution timestamps matching price points across live crons and historical replays.
+  - Verified live cron heartbeat tracking accurately reflecting Neon DB updatedAt timestamps.`
   },
 
   {
@@ -140,7 +154,8 @@ async function packageAllPlugins() {
       archiveFileName,
       packageUrl,
       sizeBytes: fileStats.size,
-      checksumSha256
+      checksumSha256,
+      changelog: plugin.changelog || plugin.description
     });
   }
 
@@ -162,12 +177,12 @@ async function packageAllPlugins() {
           update: {
             packageUrl: item.packageUrl,
             checksumSha256: item.checksumSha256,
-            changelog: item.description
+            changelog: item.changelog || item.description
           },
           create: {
             pluginId: item.id,
             version: item.version,
-            changelog: item.description,
+            changelog: item.changelog || item.description,
             packageUrl: item.packageUrl,
             checksumSha256: item.checksumSha256,
             minEngineVersion: item.minEngineVersion,

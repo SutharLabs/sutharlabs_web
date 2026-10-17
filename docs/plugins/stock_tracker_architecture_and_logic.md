@@ -1,7 +1,7 @@
 # SutharLabs Stock Tracker & Quantitative Trading Engine: Master Specification
 
 > **Plugin ID:** `wp_stock_analyzer`  
-> **Version:** `v1.1.2` (Production)  
+> **Version:** `v1.1.3` (Production)  
 > **Route:** `/workspace/stock-tracker`  
 > **Original Master Specification:** See [Stock Tracker Algo Review & Quant Roadmap](../stock_tracker_algo_review_and_roadmap.md)  
 > **Local Plugin Reference:** See [Stock Tracker README](../../src/plugins/StockTracker/README.md)

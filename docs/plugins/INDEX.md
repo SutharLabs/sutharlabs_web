@@ -19,7 +19,7 @@ docs/
     ├── INDEX.md                           # This Master Index (Current Document)
     ├── docnexus_studio_architecture_and_logic.md # DocNexus Studio (v0.2.0) Full Spec
     ├── accounting_architecture_and_logic.md      # Accounting ERP & GST (v0.2.3) Full Spec
-    ├── stock_tracker_architecture_and_logic.md   # Stock Tracker & Quant (v1.1.2) Full Spec
+    ├── stock_tracker_architecture_and_logic.md   # Stock Tracker & Quant (v1.1.3) Full Spec
     └── flow_designer_architecture_and_logic.md   # Custom Flow Designer (v0.1.0) Spec
 
 src/plugins/<PluginName>/
@@ -39,7 +39,7 @@ src/plugins/<PluginName>/
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
 | **Doc Nexus** | `wp_doc_nexus` | `v0.3.0` | Creativity & Docs | `/workspace/docnexus` | [README.md](../../src/plugins/DocNexus/README.md) | [DocNexus Studio Architecture & Logic](./docnexus_studio_architecture_and_logic.md) |
 | **Accounting** | `wp_accounting` | `v0.2.3` | Operations | `/workspace/accounting` | [README.md](../../src/plugins/Accounting/README.md) | [Accounting Architecture & GST Logic](./accounting_architecture_and_logic.md) |
-| **Stock Tracker** | `wp_stock_analyzer`| `v1.1.2` | Finance | `/workspace/stock-tracker` | [README.md](../../src/plugins/StockTracker/README.md) | [Stock Tracker Algo Review & Quant Roadmap](./stock_tracker_architecture_and_logic.md) |
+| **Stock Tracker** | `wp_stock_analyzer`| `v1.1.3` | Finance | `/workspace/stock-tracker` | [README.md](../../src/plugins/StockTracker/README.md) | [Stock Tracker Algo Review & Quant Roadmap](./stock_tracker_architecture_and_logic.md) |
 | **Custom Flow** | `wp_flow_designer` | `v0.1.0` | Architecture | `/workspace/flow` | In-Tree Module | [Flow Designer Architecture Spec](./flow_designer_architecture_and_logic.md) |
 
 ---
@@ -58,7 +58,7 @@ src/plugins/<PluginName>/
 * **Storage:** Multi-tenant PostgreSQL store (`AccountingTenantStore`) with local disk fallback cache.
 * **Endpoints:** `/api/plugins/wp_accounting/invoices`, `/company`, `/parties`, `/reports/gstr-1`.
 
-### C. Stock Tracker (`wp_stock_analyzer` • v1.1.2)
+### C. Stock Tracker (`wp_stock_analyzer` • v1.1.3)
 * **Scope:** Enterprise quantitative trading and market analytics platform (TradingView & QuantConnect parity).
 * **Engines:** Live WebSocket price streaming, Bollinger Bands, RSI indicators, automated deterministic order simulation, and institutional strategy backtesting.
 * **Storage:** Neon PostgreSQL `Portfolio` and `SimulationStore` tables.
