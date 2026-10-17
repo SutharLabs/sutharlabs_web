@@ -55,9 +55,20 @@ import {
   LineSeries,
   ColorType,
   CrosshairMode,
+  LineStyle,
   IChartApi,
   UTCTimestamp
 } from 'lightweight-charts';
+import {
+  calculateIndicatorData,
+  createIndicatorInstance,
+  IndicatorsModal,
+  ChartLegend,
+  IndicatorSettingsModal,
+  type IndicatorInstance,
+  type IndicatorType,
+  type MultiSeriesIndicatorData,
+} from '../plugins/StockTracker/indicators/index.js';
 import { TerminalLog, UserPortfolio } from '../types';
 import { IStrategy, StrategySignal, StrategyRuleCondition, StrategyParameter } from '../plugins/StockTracker/strategies/types';
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';
@@ -639,10 +650,23 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     }
   }, []);
 
-  // Chart Overlay & Fullscreen View Controls
-  const [showEma20, setShowEma20] = useState<boolean>(true);
-  const [showEma50, setShowEma50] = useState<boolean>(true);
-  const [showVolume, setShowVolume] = useState<boolean>(true);
+  // Active Plottable Indicators on Graph (Managed like TradingView / top plotters)
+  const [activeIndicators, setActiveIndicators] = useState<IndicatorInstance[]>(() => {
+    try {
+      const saved = localStorage.getItem('sutharlabs_active_indicators');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [
+      createIndicatorInstance('EMA', { id: 'ema-20', name: 'EMA 20', color: '#00dbe7', params: { period: 20 } }),
+      createIndicatorInstance('EMA', { id: 'ema-50', name: 'EMA 50', color: '#f59e0b', params: { period: 50 } }),
+      createIndicatorInstance('VOLUME', { id: 'volume-main', name: 'Volume', visible: true })
+    ];
+  });
+  const [isIndicatorsModalOpen, setIsIndicatorsModalOpen] = useState(false);
+  const [settingsIndicator, setSettingsIndicator] = useState<IndicatorInstance | null>(null);
   const [isChartExpanded, setIsChartExpanded] = useState<boolean>(false);
 
   // User Custom Watchlists (Database-persisted with LocalStorage cache)
@@ -1455,7 +1479,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [actionQuantity, setActionQuantity] = useState<number>(1);
   const [notification, setNotification] = useState('');
 
-  // Hovered Bar Info for Tooltip
+  // Hovered Bar Info for Tooltip & Top Legend
   const [hoveredBar, setHoveredBar] = useState<{
     time: string;
     open: number;
@@ -1463,7 +1487,19 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     low: number;
     close: number;
     volume: number;
+    timeEpoch?: number;
   } | null>(null);
+
+  const latestCandle = candles.length > 0 ? candles[candles.length - 1] : null;
+  const effectiveHoveredBar = hoveredBar || (latestCandle ? {
+    time: typeof latestCandle.time === 'number' ? new Date(latestCandle.time * 1000).toLocaleString() : String(latestCandle.time),
+    timeEpoch: latestCandle.time,
+    open: latestCandle.open,
+    high: latestCandle.high,
+    low: latestCandle.low,
+    close: latestCandle.close,
+    volume: latestCandle.volume
+  } : null);
 
   // Detect dark vs light theme
   const [isDark, setIsDark] = useState<boolean>(() => {
@@ -1639,9 +1675,67 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     return map;
   }, [candles]);
 
-  // Continuous full-length EMA series calculated with customizable periods
-  const continuousEma20 = useMemo(() => calculateEMA(candles, ema20Period), [candles, ema20Period]);
-  const continuousEma50 = useMemo(() => calculateEMA(candles, ema50Period), [candles, ema50Period]);
+  // Continuous indicator series calculated dynamically for all active indicators
+  const indicatorDataMap = useMemo(() => {
+    const map = new Map<string, MultiSeriesIndicatorData>();
+    for (const ind of activeIndicators) {
+      if (ind.visible) {
+        map.set(ind.id, calculateIndicatorData(ind, candles));
+      }
+    }
+    return map;
+  }, [activeIndicators, candles]);
+
+  const handleToggleIndicatorVisibility = (id: string) => {
+    setActiveIndicators(prev => {
+      const updated = prev.map(ind => ind.id === id ? { ...ind, visible: !ind.visible } : ind);
+      try { localStorage.setItem('sutharlabs_active_indicators', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  };
+
+  const handleAddIndicator = (type: IndicatorType) => {
+    const newInst = createIndicatorInstance(type);
+    setActiveIndicators(prev => {
+      const updated = [...prev, newInst];
+      try { localStorage.setItem('sutharlabs_active_indicators', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+    onAddLog({
+      timestamp: new Date().toLocaleTimeString(),
+      type: 'SUCCESS',
+      message: `INDICATOR ADDED: Plotted ${newInst.name} on graph`
+    });
+  };
+
+  const handleRemoveIndicator = (id: string) => {
+    setActiveIndicators(prev => {
+      const target = prev.find(i => i.id === id);
+      const updated = prev.filter(ind => ind.id !== id);
+      try { localStorage.setItem('sutharlabs_active_indicators', JSON.stringify(updated)); } catch {}
+      if (target) {
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'INFO',
+          message: `INDICATOR REMOVED: Unplotted ${target.name} from graph`
+        });
+      }
+      return updated;
+    });
+  };
+
+  const handleUpdateIndicator = (updated: IndicatorInstance) => {
+    setActiveIndicators(prev => {
+      const list = prev.map(ind => ind.id === updated.id ? updated : ind);
+      try { localStorage.setItem('sutharlabs_active_indicators', JSON.stringify(list)); } catch {}
+      return list;
+    });
+    onAddLog({
+      timestamp: new Date().toLocaleTimeString(),
+      type: 'INFO',
+      message: `INDICATOR UPDATED: Reconfigured parameters for ${updated.name}`
+    });
+  };
 
   // ── 1. Fetch Global Market Universes ───────────────────────────────────────
   useEffect(() => {
@@ -2008,7 +2102,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       },
       rightPriceScale: {
         borderColor: borderColor,
-        scaleMargins: { top: 0.08, bottom: showVolume ? 0.22 : 0.08 },
+        scaleMargins: { top: 0.08, bottom: activeIndicators.some(i => i.visible && i.category === 'oscillator') ? 0.28 : 0.08 },
       },
       timeScale: {
         borderColor: borderColor,
@@ -2043,46 +2137,168 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     }));
     candleSeries.setData(candleData);
 
-    // 2. Volume Histogram Overlay
-    if (showVolume) {
-      const volumeSeries = chart.addSeries(HistogramSeries, {
-        priceFormat: { type: 'volume' },
-        priceScaleId: 'volume_scale',
-      });
+    // 2. Dynamic Technical Indicators Plotting (Top-rated Plotter Engine)
+    activeIndicators.forEach(ind => {
+      if (!ind.visible) return;
+      const data = indicatorDataMap.get(ind.id);
+      if (!data || !data.primary || data.primary.length === 0) return;
 
-      chart.priceScale('volume_scale').applyOptions({
-        scaleMargins: { top: 0.78, bottom: 0 },
-      });
+      if (ind.type === 'VOLUME') {
+        const volumeSeries = chart.addSeries(HistogramSeries, {
+          priceFormat: { type: 'volume' },
+          priceScaleId: `scale_${ind.id}`,
+        });
+        chart.priceScale(`scale_${ind.id}`).applyOptions({
+          scaleMargins: { top: 0.80, bottom: 0 },
+        });
+        volumeSeries.setData(data.primary);
+        return;
+      }
 
-      const volumeData = candles.map(c => ({
-        time: c.time as UTCTimestamp,
-        value: c.volume,
-        color: c.close >= c.open ? 'rgba(0, 228, 118, 0.28)' : 'rgba(255, 107, 107, 0.28)',
-      }));
-      volumeSeries.setData(volumeData);
-    }
+      if (ind.type === 'BOLLINGER' || ind.type === 'DONCHIAN' || ind.type === 'KELTNER') {
+        const upper = chart.addSeries(LineSeries, {
+          color: ind.color,
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          priceLineVisible: false,
+          crosshairMarkerVisible: false,
+        });
+        upper.setData(data.primary);
 
-    // 3. Continuous Full-Length EMA 20 Overlay (Cyan)
-    if (showEma20 && continuousEma20.length > 0) {
-      const ema20Line = chart.addSeries(LineSeries, {
-        color: '#00dbe7',
-        lineWidth: 2,
+        if (data.secondary && data.secondary.length > 0) {
+          const lower = chart.addSeries(LineSeries, {
+            color: ind.color2 || ind.color,
+            lineWidth: 1,
+            lineStyle: LineStyle.Dotted,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false,
+          });
+          lower.setData(data.secondary);
+        }
+
+        if (data.tertiary && data.tertiary.length > 0) {
+          const mid = chart.addSeries(LineSeries, {
+            color: ind.color3 || '#f59e0b',
+            lineWidth: 1,
+            priceLineVisible: false,
+            crosshairMarkerVisible: false,
+          });
+          mid.setData(data.tertiary);
+        }
+        return;
+      }
+
+      if (ind.type === 'MACD') {
+        const macdScaleId = `scale_${ind.id}`;
+        chart.priceScale(macdScaleId).applyOptions({
+          scaleMargins: { top: 0.74, bottom: 0.02 },
+        });
+
+        if (data.histogram && data.histogram.length > 0) {
+          const hist = chart.addSeries(HistogramSeries, {
+            priceScaleId: macdScaleId,
+            priceLineVisible: false,
+          });
+          hist.setData(data.histogram);
+        }
+
+        const macdLine = chart.addSeries(LineSeries, {
+          color: ind.color,
+          lineWidth: 2,
+          priceScaleId: macdScaleId,
+          priceLineVisible: false,
+        });
+        macdLine.setData(data.primary);
+
+        if (data.secondary && data.secondary.length > 0) {
+          const sigLine = chart.addSeries(LineSeries, {
+            color: ind.color2 || '#f59e0b',
+            lineWidth: 1,
+            priceScaleId: macdScaleId,
+            priceLineVisible: false,
+          });
+          sigLine.setData(data.secondary);
+        }
+        return;
+      }
+
+      if (ind.type === 'STOCHASTIC') {
+        const stochScaleId = `scale_${ind.id}`;
+        chart.priceScale(stochScaleId).applyOptions({
+          scaleMargins: { top: 0.74, bottom: 0.02 },
+        });
+        const kLine = chart.addSeries(LineSeries, {
+          color: ind.color,
+          lineWidth: 2,
+          priceScaleId: stochScaleId,
+          priceLineVisible: false,
+        });
+        kLine.setData(data.primary);
+
+        if (data.secondary && data.secondary.length > 0) {
+          const dLine = chart.addSeries(LineSeries, {
+            color: ind.color2 || '#f59e0b',
+            lineWidth: 1,
+            priceScaleId: stochScaleId,
+            priceLineVisible: false,
+          });
+          dLine.setData(data.secondary);
+        }
+
+        kLine.createPriceLine({ price: 80, color: 'rgba(239, 68, 68, 0.4)', lineWidth: 1, lineStyle: LineStyle.Dotted });
+        kLine.createPriceLine({ price: 20, color: 'rgba(34, 197, 94, 0.4)', lineWidth: 1, lineStyle: LineStyle.Dotted });
+        return;
+      }
+
+      if (ind.category === 'oscillator') {
+        const oscScaleId = `scale_${ind.id}`;
+        chart.priceScale(oscScaleId).applyOptions({
+          scaleMargins: { top: 0.74, bottom: 0.02 },
+        });
+        const oscLine = chart.addSeries(LineSeries, {
+          color: ind.color,
+          lineWidth: (ind.lineWidth as any) || 2,
+          priceScaleId: oscScaleId,
+          priceLineVisible: false,
+        });
+        oscLine.setData(data.primary);
+
+        if (ind.type === 'RSI') {
+          oscLine.createPriceLine({
+            price: Number(ind.params.overbought) || 70,
+            color: 'rgba(239, 68, 68, 0.4)',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dotted,
+            title: 'OB'
+          });
+          oscLine.createPriceLine({
+            price: Number(ind.params.oversold) || 30,
+            color: 'rgba(34, 197, 94, 0.4)',
+            lineWidth: 1,
+            lineStyle: LineStyle.Dotted,
+            title: 'OS'
+          });
+        } else if (ind.type === 'CCI') {
+          oscLine.createPriceLine({ price: 100, color: 'rgba(239, 68, 68, 0.4)', lineWidth: 1, lineStyle: LineStyle.Dotted });
+          oscLine.createPriceLine({ price: -100, color: 'rgba(34, 197, 94, 0.4)', lineWidth: 1, lineStyle: LineStyle.Dotted });
+        } else if (ind.type === 'WILLIAMS_R') {
+          oscLine.createPriceLine({ price: -20, color: 'rgba(239, 68, 68, 0.4)', lineWidth: 1, lineStyle: LineStyle.Dotted });
+          oscLine.createPriceLine({ price: -80, color: 'rgba(34, 197, 94, 0.4)', lineWidth: 1, lineStyle: LineStyle.Dotted });
+        } else if (ind.type === 'ADX') {
+          oscLine.createPriceLine({ price: 25, color: 'rgba(245, 158, 11, 0.4)', lineWidth: 1, lineStyle: LineStyle.Dotted, title: '25' });
+        }
+        return;
+      }
+
+      // Default: Price Overlay Line Series (EMA, SMA, WMA, VWAP, SUPERTREND, PSAR)
+      const lineSeries = chart.addSeries(LineSeries, {
+        color: ind.color,
+        lineWidth: (ind.lineWidth as any) || 2,
         priceLineVisible: false,
         crosshairMarkerVisible: true,
       });
-      ema20Line.setData(continuousEma20);
-    }
-
-    // 4. Continuous Full-Length EMA 50 Overlay (Amber)
-    if (showEma50 && continuousEma50.length > 0) {
-      const ema50Line = chart.addSeries(LineSeries, {
-        color: '#f59e0b',
-        lineWidth: 2,
-        priceLineVisible: false,
-        crosshairMarkerVisible: true,
-      });
-      ema50Line.setData(continuousEma50);
-    }
+      lineSeries.setData(data.primary);
+    });
 
     // Crosshair hover inspection - uses candleLookup map for 100% accurate volume
     chart.subscribeCrosshairMove((param) => {
@@ -2102,6 +2318,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
         setHoveredBar({
           time: dateStr,
+          timeEpoch: typeof param.time === 'number' ? param.time : undefined,
           open: data.open,
           high: data.high,
           low: data.low,
@@ -2134,7 +2351,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       chart.remove();
       chartInstanceRef.current = null;
     };
-  }, [candles, showVolume, showEma20, showEma50, continuousEma20, continuousEma50, activePeriod, activeInterval, isDark, candleLookup, isChartExpanded]);
+  }, [candles, activeIndicators, indicatorDataMap, activePeriod, activeInterval, isDark, candleLookup, isChartExpanded]);
 
   // ── 5. Terminal Internal Auto-Scroll ──────────────────────────────────────
   useEffect(() => {
@@ -3145,43 +3362,45 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 </div>
               </div>
 
-              {/* Indicator Overlay Toggles & Fullscreen Toggle */}
+              {/* Indicator Manager & Fullscreen Toggle */}
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap py-0.5 justify-start sm:justify-end shrink-0 pr-1 ml-auto sm:ml-0">
+                {/* Indicators & Strategies Modal Button (TradingView Style) */}
                 <button
-                  onClick={() => setShowEma20(!showEma20)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
-                    showEma20
-                      ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold'
-                      : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
-                  }`}
+                  type="button"
+                  onClick={() => setIsIndicatorsModalOpen(true)}
+                  className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/35 hover:bg-[#00dbe7]/25 hover:border-[#00dbe7]/60 transition-all cursor-pointer shadow-sm shrink-0"
+                  title="Open Indicators & Strategies (Top-rated plotter manager)"
                 >
-                  {showEma20 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                  <span>EMA {ema20Period}</span>
+                  <Layers className="w-3.5 h-3.5" />
+                  <span>Indicators</span>
+                  <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-[#00dbe7]/25 border border-[#00dbe7]/40">
+                    {activeIndicators.length}
+                  </span>
                 </button>
 
-                <button
-                  onClick={() => setShowEma50(!showEma50)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
-                    showEma50
-                      ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 font-bold'
-                      : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
-                  }`}
-                >
-                  {showEma50 ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                  <span>EMA {ema50Period}</span>
-                </button>
-
-                <button
-                  onClick={() => setShowVolume(!showVolume)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
-                    showVolume
-                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40 font-bold'
-                      : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
-                  }`}
-                >
-                  {showVolume ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3" />}
-                  <span>Volume</span>
-                </button>
+                {/* Quick Toggle Chips for Active Indicators */}
+                <div className="hidden sm:flex items-center gap-1">
+                  {activeIndicators.slice(0, 3).map(ind => (
+                    <button
+                      key={ind.id}
+                      type="button"
+                      onClick={() => handleToggleIndicatorVisibility(ind.id)}
+                      className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
+                        ind.visible
+                          ? 'bg-surface-container border font-semibold text-on-surface'
+                          : 'bg-surface-container/40 text-on-surface-variant/60 border border-transparent'
+                      }`}
+                      style={{
+                        borderColor: ind.visible ? `${ind.color}50` : 'transparent',
+                        color: ind.visible ? ind.color : undefined
+                      }}
+                      title={`${ind.visible ? 'Hide' : 'Show'} ${ind.name}`}
+                    >
+                      {ind.visible ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
+                      <span>{ind.type}</span>
+                    </button>
+                  ))}
+                </div>
 
                 {/* GRAPH FULL VIEW EXPAND TOGGLE */}
                 <button
@@ -3261,6 +3480,21 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   Initializing TradingView Candlestick Engine...
                 </div>
               )}
+
+              {/* TOP-LEFT TRADINGVIEW-STYLE CHART LEGEND OVERLAY */}
+              <ChartLegend
+                symbolDisplay={quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
+                interval={activeInterval}
+                currencySymbol={curSymbol}
+                hoveredBar={effectiveHoveredBar}
+                activeIndicators={activeIndicators}
+                indicatorDataMap={indicatorDataMap}
+                onToggleVisibility={handleToggleIndicatorVisibility}
+                onOpenSettings={ind => setSettingsIndicator(ind)}
+                onRemoveIndicator={handleRemoveIndicator}
+                onOpenIndicatorsModal={() => setIsIndicatorsModalOpen(true)}
+              />
+
               <div ref={chartContainerRef} className="w-full h-full min-h-[360px] sm:min-h-[440px] [&_a[href*='tradingview']]:!hidden [&_a[title*='TradingView']]:!hidden" />
             </div>
 
@@ -6618,6 +6852,23 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </div>
         </div>
       )}
+
+      {/* ── Top-Rated Indicators & Strategies Explorer Modal ── */}
+      <IndicatorsModal
+        isOpen={isIndicatorsModalOpen}
+        onClose={() => setIsIndicatorsModalOpen(false)}
+        activeIndicators={activeIndicators}
+        onAddIndicator={handleAddIndicator}
+        onRemoveIndicator={handleRemoveIndicator}
+      />
+
+      {/* ── Indicator Settings & Fine-Tuning Modal ── */}
+      <IndicatorSettingsModal
+        indicator={settingsIndicator}
+        isOpen={Boolean(settingsIndicator)}
+        onClose={() => setSettingsIndicator(null)}
+        onSave={handleUpdateIndicator}
+      />
 
       {/* ── Branded Custom Feedback & Confirmation Modal ── */}
       <StockTrackerAlertModal
