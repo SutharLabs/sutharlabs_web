@@ -1047,8 +1047,43 @@ export function registerRoutes(router: Router) {
           orderBy: { updatedAt: 'desc' }
         });
 
+        const memRegistry = listSimulations();
         for (const s of dbStores) {
           const rawLabel = s.label || (s.simId.includes('__') ? s.simId.split('__').slice(1).join(' ').replace(/_/g, ' ') : s.simId.replace(/_/g, ' '));
+          const baseSlug = s.simId.includes('__') ? s.simId.split('__').pop()! : s.simId;
+          const mem = memRegistry.find(r => r.id === s.simId || r.id === baseSlug || r.id.endsWith(`__${baseSlug}`) || s.simId.endsWith(`__${r.id}`));
+
+          let parsedHistCount = 0;
+          let latestRunCount = 0;
+          try {
+            const h = JSON.parse(s.history || '[]');
+            if (Array.isArray(h)) {
+              parsedHistCount = h.length;
+              if (h[0] && typeof (h[0] as any).runCount === 'number') {
+                latestRunCount = (h[0] as any).runCount;
+              }
+            }
+          } catch {}
+
+          let parsedTradesCount = 0;
+          try {
+            const ct = JSON.parse(s.closedTrades || '[]');
+            if (Array.isArray(ct)) parsedTradesCount = ct.length;
+          } catch {}
+
+          const effectiveTotalRuns = Math.max(
+            mem?.totalRuns ?? 0,
+            latestRunCount,
+            parsedHistCount,
+            (s.winCount || 0) + (s.lossCount || 0)
+          );
+
+          const effectiveTradeRuns = Math.max(
+            mem?.totalTradeRuns ?? 0,
+            parsedTradesCount,
+            (s.winCount || 0) + (s.lossCount || 0)
+          );
+
           simulations.push({
             id: s.simId,
             label: rawLabel,
@@ -1067,8 +1102,8 @@ export function registerRoutes(router: Router) {
             lastRunAt: s.lastRunDate || s.lastUpdated || s.updatedAt?.toISOString() || new Date().toISOString(),
             lastHeartbeatAt: s.lastUpdated || s.updatedAt?.toISOString() || new Date().toISOString(),
             lastHeartbeatStatus: 'READY',
-            totalRuns: (s.winCount || 0) + (s.lossCount || 0),
-            totalTradeRuns: (s.winCount || 0) + (s.lossCount || 0),
+            totalRuns: effectiveTotalRuns,
+            totalTradeRuns: effectiveTradeRuns,
             isPublic: Boolean(s.isPublic)
           });
         }
@@ -1329,6 +1364,9 @@ export function registerRoutes(router: Router) {
         });
       }
 
+      const baseSlug = rawSimId.includes('__') ? rawSimId.split('__').pop()! : rawSimId;
+      const safeBase = baseSlug.replace(/[^a-zA-Z0-9_-]/g, '_');
+
       // 2. CRITICAL: Delete permanently from Neon PostgreSQL database table simulation_stores
       try {
         const prisma = getPrismaClient();
@@ -1337,6 +1375,10 @@ export function registerRoutes(router: Router) {
             OR: [
               { simId: resolvedSimId },
               { simId: rawSimId },
+              { simId: baseSlug },
+              { simId: safeBase },
+              { simId: { endsWith: `__${baseSlug}` } },
+              { simId: { endsWith: `__${safeBase}` } },
               { simId: { contains: rawSimId } },
               { simId: { contains: resolvedSimId } }
             ]
@@ -1351,12 +1393,10 @@ export function registerRoutes(router: Router) {
       if (resolvedSimId !== rawSimId) {
         await deleteSimulation(rawSimId);
       }
-      if (!rawSimId.startsWith('system__')) {
-        await deleteSimulation(`system__${rawSimId}`);
-      }
-      if (!resolvedSimId.startsWith('system__')) {
-        await deleteSimulation(`system__${resolvedSimId}`);
-      }
+      await deleteSimulation(baseSlug);
+      await deleteSimulation(safeBase);
+      await deleteSimulation(`system__${baseSlug}`);
+      await deleteSimulation(`system__${safeBase}`);
 
       res.json({ success: true, message: `Simulation "${resolvedSimId}" permanently removed from database and registry.` });
     } catch (e: any) {

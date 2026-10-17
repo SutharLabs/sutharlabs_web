@@ -83,6 +83,7 @@ export interface EODSimulationReport {
   isHoliday?: boolean;
   holidayName?: string;
   marketSessionType?: string;
+  runCount?: number;
   calmarRatio?: number;
   winRatePct?: number;
   profitFactor?: number;

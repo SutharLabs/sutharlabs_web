@@ -435,38 +435,43 @@ export async function createSimulationInstance(options: {
 
 export async function deleteSimulation(simId: string): Promise<void> {
   const safeSimId = simId.replace(/[^a-zA-Z0-9_-]/g, "_");
+  const baseSlug = simId.includes("__") ? simId.split("__").pop()! : simId;
+  const safeBase = baseSlug.replace(/[^a-zA-Z0-9_-]/g, "_");
 
-  // 1. Evict from in-memory / JSON registry
+  // 1. Evict all variants from in-memory / JSON registry
   let reg = readRegistry();
-  reg = reg.filter(r =>
-    r.id !== simId &&
-    r.id !== safeSimId &&
-    !r.id.endsWith(`__${safeSimId}`) &&
-    !r.id.endsWith(`__${simId}`)
-  );
+  reg = reg.filter(r => {
+    const rBase = r.id.includes("__") ? r.id.split("__").pop()! : r.id;
+    if (r.id === simId || r.id === safeSimId || r.id === baseSlug || r.id === safeBase) return false;
+    if (rBase === baseSlug || rBase === safeBase) return false;
+    if (r.id.endsWith(`__${safeSimId}`) || r.id.endsWith(`__${simId}`)) return false;
+    if (r.id.endsWith(`__${safeBase}`) || r.id.endsWith(`__${baseSlug}`)) return false;
+    return true;
+  });
   writeJsonData(SIM_REGISTRY_KEY, reg);
 
-  // 2. Evict from memoryCache and disk
-  deleteJsonData(portfolioKey(simId));
-  deleteJsonData(portfolioKey(safeSimId));
-  deleteJsonData(historyKey(simId));
-  deleteJsonData(historyKey(safeSimId));
-  try {
-    const pPath = localPortfolioPath(safeSimId);
-    if (fs.existsSync(pPath)) fs.unlinkSync(pPath);
-  } catch {}
-  try {
-    const pPathRaw = localPortfolioPath(simId);
-    if (fs.existsSync(pPathRaw)) fs.unlinkSync(pPathRaw);
-  } catch {}
-  try {
-    const hPath = localHistoryPath(safeSimId);
-    if (fs.existsSync(hPath)) fs.unlinkSync(hPath);
-  } catch {}
-  try {
-    const hPathRaw = localHistoryPath(simId);
-    if (fs.existsSync(hPathRaw)) fs.unlinkSync(hPathRaw);
-  } catch {}
+  // 2. Evict all matching IDs from memoryCache and disk
+  const idsToWipe = Array.from(new Set([
+    simId,
+    safeSimId,
+    baseSlug,
+    safeBase,
+    `system__${baseSlug}`,
+    `system__${safeBase}`
+  ]));
+
+  for (const id of idsToWipe) {
+    deleteJsonData(portfolioKey(id));
+    deleteJsonData(historyKey(id));
+    try {
+      const pPath = localPortfolioPath(id);
+      if (fs.existsSync(pPath)) fs.unlinkSync(pPath);
+    } catch {}
+    try {
+      const hPath = localHistoryPath(id);
+      if (fs.existsSync(hPath)) fs.unlinkSync(hPath);
+    } catch {}
+  }
 
   // 3. Delete permanently from Neon PostgreSQL database
   try {
@@ -476,6 +481,10 @@ export async function deleteSimulation(simId: string): Promise<void> {
         OR: [
           { simId: simId },
           { simId: safeSimId },
+          { simId: baseSlug },
+          { simId: safeBase },
+          { simId: { endsWith: `__${baseSlug}` } },
+          { simId: { endsWith: `__${safeBase}` } },
           { simId: { contains: simId } },
           { simId: { contains: safeSimId } }
         ]
@@ -767,7 +776,7 @@ async function updateHistoryPortfolioSnapshot(
   if (!Array.isArray(history)) history = [];
 
   if (history.length > 0) {
-    // Patch the most-recent entry's equity snapshot
+    const currentRunCount = report.runCount || ((history[0] as any)?.runCount ? (history[0] as any).runCount + 1 : 1);
     history[0] = {
       ...history[0],
       endingCapital: report.endingCapital,
@@ -777,7 +786,8 @@ async function updateHistoryPortfolioSnapshot(
       activePositions: report.activePositions,
       updatedTrailingStops: report.updatedTrailingStops,
       executionTimestamp: report.executionTimestamp,
-      digest: report.digest
+      digest: report.digest,
+      runCount: currentRunCount
     };
     writeJsonData(historyKey(safeSimId), history);
     try {
@@ -1837,30 +1847,33 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
     marketSessionType: sessionStatus.sessionType
   };
 
+  // 6. Record run count and heartbeat in registry & simulation store
+  const currentReg = readRegistry();
+  const cur = currentReg.find(r => r.id === simId || r.id === safeSimId || r.id.endsWith(`__${simId}`));
+  const updatedTotalRuns = (cur?.totalRuns ?? 0) + 1;
+  const updatedTradeRuns = (cur?.totalTradeRuns ?? 0) + (hadTrades ? 1 : 0);
+  report.runCount = updatedTotalRuns;
+
   // Only append a new log entry when actionable events (trades executed or trailing stops raised) occurred!
   // If no trades or stops changed, only update the existing latest equity snapshot in-place to prevent log bloat on 1-minute crons.
   if (hadActions) {
     await appendHistoryReport(report, simId);
-    const reg = readRegistry();
-    const cur = reg.find(r => r.id === simId);
-    if (cur) {
-      upsertRegistry(simId, {
-        totalTradeRuns: (cur.totalTradeRuns ?? 0) + (hadTrades ? 1 : 0),
-        lastTradeAt: hadTrades ? nowIso : cur.lastTradeAt,
-        lastHeartbeatAt: nowIso,
-        lastHeartbeatStatus: sessionStatus.isOpen ? 'ACTIVE_MARKET_OPEN' : `IDLE_${sessionStatus.sessionType || 'MARKET_CLOSED'}`
-      });
-    }
+    upsertRegistry(simId, {
+      totalRuns: updatedTotalRuns,
+      totalTradeRuns: updatedTradeRuns,
+      lastRunAt: nowIso,
+      lastTradeAt: hadTrades ? nowIso : cur?.lastTradeAt,
+      lastHeartbeatAt: nowIso,
+      lastHeartbeatStatus: sessionStatus.isOpen ? 'ACTIVE_MARKET_OPEN' : `IDLE_${sessionStatus.sessionType || 'MARKET_CLOSED'}`
+    });
   } else {
     await updateHistoryPortfolioSnapshot(report, simId);
-    const reg = readRegistry();
-    const cur = reg.find(r => r.id === simId);
-    if (cur) {
-      upsertRegistry(simId, {
-        lastHeartbeatAt: nowIso,
-        lastHeartbeatStatus: sessionStatus.isOpen ? 'ACTIVE_MARKET_OPEN' : `IDLE_${sessionStatus.sessionType || 'MARKET_CLOSED'}`
-      });
-    }
+    upsertRegistry(simId, {
+      totalRuns: updatedTotalRuns,
+      lastRunAt: nowIso,
+      lastHeartbeatAt: nowIso,
+      lastHeartbeatStatus: sessionStatus.isOpen ? 'ACTIVE_MARKET_OPEN' : `IDLE_${sessionStatus.sessionType || 'MARKET_CLOSED'}`
+    });
   }
 
   return report;

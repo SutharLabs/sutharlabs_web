@@ -270,11 +270,12 @@ export default function StockSimulatorPanel({
           // Update active simulation selection if current selection is invalid or stale
           setSelectedSimulationId(prev => {
             let next = prev;
+            const basePrev = prev.includes('__') ? prev.split('__').pop()! : prev;
             // Match exact ID or tenant-scoped alias (e.g. prev="my_sim" matches "user__my_sim")
-            const matching = list.find(s => s.id === prev || (prev && prev !== 'default' && (s.id.endsWith(`__${prev}`) || s.id === prev)));
+            const matching = list.find(s => s.id === prev || (prev && prev !== 'default' && (s.id.endsWith(`__${prev}`) || s.id === prev || s.id === basePrev || s.id.endsWith(`__${basePrev}`))));
             if (matching) {
               next = matching.id;
-            } else if (!list.some(s => s.id === prev)) {
+            } else {
               next = list[0]?.id || '';
               if (next) {
                 try { localStorage.setItem('sutharlabs_active_simulation_id', next); } catch {}
@@ -683,12 +684,18 @@ export default function StockSimulatorPanel({
       }
 
       // Immediately purge from local state
-      const remaining = simulationsList.filter(s => s.id !== simId && !s.id.endsWith(`__${simId}`));
+      const baseDeleted = simId.includes('__') ? simId.split('__').pop()! : simId;
+      const remaining = simulationsList.filter(s => {
+        const sBase = s.id.includes('__') ? s.id.split('__').pop()! : s.id;
+        return s.id !== simId && s.id !== baseDeleted && sBase !== baseDeleted && !s.id.endsWith(`__${simId}`) && !s.id.endsWith(`__${baseDeleted}`);
+      });
       setSimulationsList(remaining);
       const nextId = remaining[0]?.id || '';
       handleSelectSimulation(nextId);
-      await fetchPortfolioAndHistory(nextId, false);
+
+      // Re-evaluate drop-down entries directly against updated database
       await fetchSimulationsList();
+      await fetchPortfolioAndHistory(nextId, false);
 
       if (onAddLog) {
         onAddLog({
@@ -1242,12 +1249,23 @@ export default function StockSimulatorPanel({
                 );
               })()}
 
-              <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
-                marketSession.isOpen
-                  ? 'bg-[#00e476]/10 text-[#00e476] border-[#00e476]/30'
-                  : 'bg-amber-400/10 text-amber-400 border-amber-400/30'
-              }`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${marketSession.isOpen ? 'bg-[#00e476] animate-pulse' : 'bg-amber-400'}`}></span>
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors cursor-help select-none ${
+                  marketSession.isOpen
+                    ? 'bg-[#00e476]/10 text-[#00e476] border-[#00e476]/30'
+                    : 'bg-amber-400/10 text-amber-400 border-amber-400/30'
+                }`}
+                title={
+                  !marketSession.isOpen
+                    ? `Market Closed (${marketSession.timeStr || marketSession.hours}): Live positions and trailing stops are actively tracked & retained in database. Algorithmic entries are strictly paused until market open (${marketSession.hours}).`
+                    : `Market Open (${marketSession.hours}): Active algorithmic scanning and order execution enabled.`
+                }
+              >
+                {!marketSession.isOpen ? (
+                  <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+                ) : (
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00e476] animate-pulse"></span>
+                )}
                 {marketSession.name}: {marketSession.status}
               </span>
             </div>
@@ -1320,18 +1338,19 @@ export default function StockSimulatorPanel({
         </div>
 
         {/* ── Active Simulation Instance Switcher & Manager Bar ── */}
-        <div className="p-3.5 rounded-xl bg-surface-container border border-outline/20 flex flex-col gap-2.5">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center gap-2.5 flex-wrap">
-              <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1.5">
+        <div className="p-3 sm:p-3.5 rounded-xl bg-surface-container border border-outline/20 flex flex-col gap-2.5 shadow-sm">
+          {/* Row 1: Instance selector & simulation instance management */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 flex-1 min-w-0">
+              <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1.5 shrink-0">
                 <Layers className="w-3.5 h-3.5 text-[#00e476]" />
-                Simulation Instance:
+                Instance:
               </span>
               <select
                 value={selectedSimulationId}
                 onChange={(e) => handleSelectSimulation(e.target.value)}
                 disabled={isRunningSim || isLoadingPortfolio}
-                className="bg-surface-container-lowest border border-outline/30 rounded-lg px-3 py-1.5 text-xs font-bold font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer"
+                className="w-full sm:flex-1 sm:max-w-md bg-surface-container-lowest border border-outline/30 rounded-lg px-2.5 py-1.5 text-xs font-bold font-mono text-on-surface focus:outline-none focus:border-[#00e476] cursor-pointer truncate"
               >
                 {simulationsList.map((sim) => {
                   let displayLabel = sim.label;
@@ -1346,13 +1365,24 @@ export default function StockSimulatorPanel({
                   const tf = sim.timeframe || (sim as any).interval || '1d';
                   return (
                     <option key={sim.id} value={sim.id}>
-                      {sim.isPublic ? '🌐 [Public] ' : '🔒 '}{displayLabel} [{displayId}] • {prod} ({tf}) • {sim.market || 'IN'} ({sim.totalRuns ?? 0} runs)
+                      {sim.isPublic ? '🌐 ' : '🔒 '}{displayLabel} [{displayId}] • {prod} ({tf}) • {sim.market || 'IN'} ({sim.totalRuns ?? 0} runs)
                     </option>
                   );
                 })}
               </select>
+            </div>
 
-              {/* Rename Simulation Display Label Button */}
+            <div className="flex items-center gap-1.5 shrink-0 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setShowNewSimModal(true)}
+                className="px-2.5 py-1.5 rounded-lg bg-[#00e476]/15 hover:bg-[#00e476]/25 text-[#00e476] border border-[#00e476]/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
+                title="Create a new simultaneous simulation instance with independent inputs and portfolio"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New</span>
+              </button>
+
               {isCurrentSimOwner && (
                 <button
                   type="button"
@@ -1360,7 +1390,7 @@ export default function StockSimulatorPanel({
                     setRenameInput(currentSim?.label || selectedSimulationId);
                     setShowRenameModal(true);
                   }}
-                  className="px-2 py-1.5 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1 transition-all"
+                  className="px-2.5 py-1.5 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1 transition-all"
                   title="Rename the display label shown for this simulation in the dropdown"
                 >
                   <Edit3 className="w-3.5 h-3.5 text-[#00dbe7]" />
@@ -1368,17 +1398,35 @@ export default function StockSimulatorPanel({
                 </button>
               )}
 
+              {isCurrentSimOwner && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteSimulation(selectedSimulationId)}
+                  disabled={isDeletingSim}
+                  className="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  title="Permanently delete this simulation from database and registry"
+                >
+                  <Trash2 className={`w-3 h-3 ${isDeletingSim ? 'animate-spin' : ''}`} />
+                  <span>{isDeletingSim ? 'Deleting...' : 'Delete'}</span>
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Row 2: Ownership, Visibility, and Action Controls */}
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 pt-1 border-t border-outline/10 flex-wrap">
+            <div className="flex items-center gap-2 flex-wrap">
               {/* Simulation Owner Indicator */}
               <div
-                className="px-2.5 py-1.5 rounded-lg bg-surface-container-high border border-outline/20 text-xs font-mono text-on-surface-variant flex items-center gap-1.5 select-none"
+                className="px-2.5 py-1 rounded-lg bg-surface-container-high border border-outline/20 text-xs font-mono text-on-surface-variant flex items-center gap-1.5 select-none"
                 title={`Simulation Instance Owner: ${currentSimOwnerDisplay}`}
               >
                 <UserCheck className="w-3.5 h-3.5 text-[#00e476]" />
-                <span>
+                <span className="truncate max-w-[150px] sm:max-w-[200px]">
                   Owner: <strong className="text-on-surface">{currentSimOwnerDisplay}</strong>
                 </span>
                 {isCurrentSimOwner && (
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 font-bold ml-0.5">
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 font-bold ml-0.5">
                     You
                   </span>
                 )}
@@ -1398,7 +1446,7 @@ export default function StockSimulatorPanel({
                       handleTogglePublic(selectedSimulationId, !isPub);
                     }}
                     disabled={isTogglingPublic || !isCurrentSimOwner}
-                    className={`px-2.5 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all select-none ${
+                    className={`px-2.5 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all select-none ${
                       !isCurrentSimOwner
                         ? 'opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant border-outline/20'
                         : isPub
@@ -1412,33 +1460,10 @@ export default function StockSimulatorPanel({
                     }
                   >
                     <Globe className={`w-3.5 h-3.5 ${isPub ? 'text-emerald-400' : 'text-on-surface-variant'}`} />
-                    <span>{isTogglingPublic ? 'Updating...' : (isPub ? 'Public (All Users)' : 'Make Public')}</span>
+                    <span>{isTogglingPublic ? 'Updating...' : (isPub ? 'Public' : 'Private')}</span>
                   </button>
                 );
               })()}
-
-              <button
-                type="button"
-                onClick={() => setShowNewSimModal(true)}
-                className="px-2.5 py-1.5 rounded-lg bg-[#00e476]/15 hover:bg-[#00e476]/25 text-[#00e476] border border-[#00e476]/30 text-xs font-bold cursor-pointer flex items-center gap-1 transition-all"
-                title="Create a new simultaneous simulation instance with independent inputs and portfolio"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>New Simulation</span>
-              </button>
-
-              {isCurrentSimOwner && (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteSimulation(selectedSimulationId)}
-                  disabled={isDeletingSim}
-                  className="px-2.5 py-1.5 rounded-lg bg-rose-500/15 hover:bg-rose-500/25 text-rose-400 border border-rose-500/30 text-xs font-bold cursor-pointer flex items-center gap-1.5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  title="Permanently delete this simulation from database and registry"
-                >
-                  <Trash2 className={`w-3 h-3 ${isDeletingSim ? 'animate-spin' : ''}`} />
-                  <span>{isDeletingSim ? 'Deleting...' : 'Delete'}</span>
-                </button>
-              )}
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
@@ -1446,7 +1471,7 @@ export default function StockSimulatorPanel({
                 type="button"
                 onClick={() => handleSaveConfig(selectedSimulationId)}
                 disabled={isSavingConfig || !isCurrentSimOwner}
-                className={`px-3 py-1.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                className={`px-3 py-1 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
                   !isCurrentSimOwner
                     ? 'opacity-40 cursor-not-allowed bg-surface-container text-on-surface-variant border-outline/20'
                     : savedConfigSuccess
@@ -1456,25 +1481,25 @@ export default function StockSimulatorPanel({
                 title="Save manual configuration (Timeframe, Strategy, Market, Capital Allocation, Trailing Stop) for this simulation"
               >
                 {savedConfigSuccess ? <Check className="w-3.5 h-3.5 text-[#00e476]" /> : <Sliders className="w-3.5 h-3.5 text-[#00e476]" />}
-                <span>{isSavingConfig ? 'Saving...' : (savedConfigSuccess ? 'Config Saved!' : 'Save Config')}</span>
+                <span>{isSavingConfig ? 'Saving...' : (savedConfigSuccess ? 'Saved!' : 'Save Config')}</span>
               </button>
 
               <button
                 type="button"
                 onClick={() => handleCopyCronUrl(selectedSimulationId)}
-                className="px-3 py-1.5 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs font-mono text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1.5 transition-all"
+                className="px-3 py-1 rounded-lg bg-surface-container-high hover:bg-[#00dbe7]/20 border border-outline/30 text-xs font-mono text-on-surface hover:text-[#00dbe7] cursor-pointer flex items-center gap-1.5 transition-all"
                 title="Copy the authenticated URL (with authorized cronSecret and all active config params) to paste into Cron-Job.org to ping this simulation"
               >
                 {copiedCronUrl ? <CheckCheck className="w-3.5 h-3.5 text-[#00e476]" /> : <Copy className="w-3.5 h-3.5 text-[#00dbe7]" />}
-                <span>{copiedCronUrl ? 'Cron URL Copied! (Config Included)' : 'Copy Cron-Job URL'}</span>
+                <span>{copiedCronUrl ? 'Cron URL Copied!' : 'Copy Cron URL'}</span>
               </button>
             </div>
           </div>
 
-          {/* Captured Configuration Summary */}
-          <div className="flex items-center gap-2 flex-wrap text-[11px] font-mono text-on-surface-variant pt-1 border-t border-outline/10">
-            <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1">
-              Captured Settings:
+          {/* Row 3: Captured Configuration Summary Tags */}
+          <div className="flex items-center gap-1.5 flex-wrap text-[11px] font-mono text-on-surface-variant pt-1 border-t border-outline/10">
+            <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1 shrink-0">
+              Settings:
             </span>
             <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
               <Clock className="w-3 h-3 text-[#00dbe7]" />
@@ -1486,7 +1511,7 @@ export default function StockSimulatorPanel({
             </span>
             <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
               <Zap className="w-3 h-3 text-[#00e476]" />
-              Strategy: <strong className="text-on-surface">{allStrategies.find(s => s.id === selectedStrategyId)?.name || selectedStrategyId}</strong>
+              Strategy: <strong className="text-on-surface truncate max-w-[120px] sm:max-w-xs">{allStrategies.find(s => s.id === selectedStrategyId)?.name || selectedStrategyId}</strong>
             </span>
             <span className="px-2 py-0.5 rounded bg-surface-container-high border border-outline/20 flex items-center gap-1">
               <Globe className="w-3 h-3 text-amber-400" />
@@ -1503,15 +1528,6 @@ export default function StockSimulatorPanel({
               </span>
             )}
           </div>
-
-          {!marketSession.isOpen && simulationMode === 'SINGLE_STEP' && (
-            <div className="mt-1 px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/25 text-amber-400 text-[11px] flex items-center gap-2 font-sans">
-              <Clock className="w-3.5 h-3.5 flex-shrink-0 text-amber-400" />
-              <span>
-                <strong>Market Closed ({marketSession.timeStr || marketSession.hours}):</strong> Live positions and trailing stops are actively tracked & retained in database. Algorithmic entries are strictly paused until market open ({marketSession.hours}).
-              </span>
-            </div>
-          )}
 
           {/* Onboarding Callout: When 1 or 0 simulation is present, invite user to create their first personalized simulation */}
           {simulationsList.length <= 1 && !showNewSimModal && (
@@ -2186,31 +2202,7 @@ export default function StockSimulatorPanel({
         </div>
       </div>
 
-      {/* ── Latest Simulation Digest Banner (If available) ── */}
-      {latestReport && (
-        <div className="p-4 rounded-2xl bg-surface-container-low border border-[#00e476]/30 flex flex-col gap-2 shadow-sm">
-          <div className="flex justify-between items-center flex-wrap gap-2">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#00e476]" />
-              <span className="font-bold text-on-surface text-xs font-sans">
-                {latestReport.replayMode === 'HISTORICAL_REPLAY' ? 'Historical Replay Completed' : 'Session Completed'}:{' '}
-                {latestReport.simulatedDate} ({latestReport.strategyName})
-              </span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="text-[10px] text-on-surface-variant">
-                Executed: {formatDateTime(latestReport.executionTimestamp)}
-              </span>
-              <span className={`text-xs font-bold ${latestReport.netDailyPnL >= 0 ? 'text-[#00e476]' : 'text-rose-400'}`}>
-                Net PnL: {latestReport.netDailyPnL >= 0 ? '+' : ''}{currencySign}{latestReport.netDailyPnL.toFixed(2)} ({latestReport.netDailyPnLPct.toFixed(2)}%)
-              </span>
-            </div>
-          </div>
-          <p className="text-xs text-on-surface-variant font-sans leading-relaxed">
-            {latestReport.digest}
-          </p>
-        </div>
-      )}
+
 
       {/* ── Tabbed View: Open Positions, Closed Trades, Ledger, Analytics ── */}
       <div className="bg-surface-container-low rounded-2xl border border-outline/20 overflow-hidden shadow-md flex flex-col">
