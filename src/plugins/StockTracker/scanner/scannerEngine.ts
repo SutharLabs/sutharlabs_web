@@ -195,6 +195,7 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
           emaTrend,
           atr,
           atrPercent,
+          indicators: signal.metrics as Record<string, number>,
           scannedAt: new Date().toISOString()
         };
 
@@ -232,6 +233,21 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
   }
   if (options.breakoutTodayOnly) {
     filtered = filtered.filter(c => c.is52wBreakoutToday === true);
+  }
+  if (options.aboveVwapOnly) {
+    filtered = filtered.filter(c => c.indicators?.vwap !== undefined && c.currentPrice >= c.indicators.vwap);
+  }
+  if (options.supertrendBullishOnly) {
+    filtered = filtered.filter(c => c.indicators?.supertrend !== undefined && c.currentPrice >= c.indicators.supertrend);
+  }
+  if (options.aboveSma50Only) {
+    filtered = filtered.filter(c => c.indicators?.sma !== undefined && c.currentPrice >= c.indicators.sma);
+  }
+  if (options.rsiOversoldOnly) {
+    filtered = filtered.filter(c => (c.indicators?.rsi !== undefined && c.indicators.rsi <= 35) || (c.rsi !== undefined && c.rsi <= 35));
+  }
+  if (options.rsiMomentumOnly) {
+    filtered = filtered.filter(c => (c.indicators?.rsi !== undefined && c.indicators.rsi >= 50) || (c.rsi !== undefined && c.rsi >= 50));
   }
 
   // Sort by Signal Priority (BUY > SELL > HOLD), then Confidence (descending), then 24h change %

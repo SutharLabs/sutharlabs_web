@@ -65,6 +65,7 @@ import {
   IndicatorsModal,
   ChartLegend,
   IndicatorSettingsModal,
+  formatLegendValue,
   type IndicatorInstance,
   type IndicatorType,
   type MultiSeriesIndicatorData,
@@ -3378,30 +3379,6 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   </span>
                 </button>
 
-                {/* Quick Toggle Chips for Active Indicators */}
-                <div className="hidden sm:flex items-center gap-1">
-                  {activeIndicators.slice(0, 3).map(ind => (
-                    <button
-                      key={ind.id}
-                      type="button"
-                      onClick={() => handleToggleIndicatorVisibility(ind.id)}
-                      className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
-                        ind.visible
-                          ? 'bg-surface-container border font-semibold text-on-surface'
-                          : 'bg-surface-container/40 text-on-surface-variant/60 border border-transparent'
-                      }`}
-                      style={{
-                        borderColor: ind.visible ? `${ind.color}50` : 'transparent',
-                        color: ind.visible ? ind.color : undefined
-                      }}
-                      title={`${ind.visible ? 'Hide' : 'Show'} ${ind.name}`}
-                    >
-                      {ind.visible ? <Eye className="w-2.5 h-2.5" /> : <EyeOff className="w-2.5 h-2.5" />}
-                      <span>{ind.type}</span>
-                    </button>
-                  ))}
-                </div>
-
                 {/* GRAPH FULL VIEW EXPAND TOGGLE */}
                 <button
                   onClick={() => setIsChartExpanded(prev => !prev)}
@@ -3473,6 +3450,105 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               )}
             </div>
 
+            {/* Dedicated Indicator Studies & Live Telemetry Strip Above Graph */}
+            <div className="px-3 py-1.5 bg-surface-container-low/70 border-b border-outline/10 font-mono text-[11px] flex items-center justify-between gap-2 overflow-x-auto select-none no-scrollbar">
+              <div className="flex items-center gap-2 overflow-x-auto py-0.5">
+                <span className="text-[10px] uppercase font-bold text-on-surface-variant/70 tracking-wider shrink-0 flex items-center gap-1">
+                  <Layers className="w-3 h-3 text-[#00dbe7]" />
+                  <span>Active Studies ({activeIndicators.length})</span>
+                </span>
+
+                {activeIndicators.length === 0 ? (
+                  <button
+                    type="button"
+                    onClick={() => setIsIndicatorsModalOpen(true)}
+                    className="text-[11px] text-[#00dbe7]/80 hover:text-[#00dbe7] flex items-center gap-1 cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3 h-3" />
+                    <span>Add Indicator (EMA, VWAP, Supertrend, RSI, MACD...)</span>
+                  </button>
+                ) : (
+                  activeIndicators.map(ind => {
+                    const data = indicatorDataMap.get(ind.id);
+                    const valStr = data ? formatLegendValue(ind, data, effectiveHoveredBar?.timeEpoch) : '—';
+                    const paramSummary = Object.entries(ind.params)
+                      .map(([_, v]) => v)
+                      .join(', ');
+
+                    return (
+                      <div
+                        key={ind.id}
+                        className={`group flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg border text-[11px] transition-all shrink-0 ${
+                          ind.visible
+                            ? 'bg-surface-container border-outline/25 text-on-surface shadow-sm'
+                            : 'bg-surface-container/30 border-transparent text-on-surface-variant/50'
+                        }`}
+                        style={{
+                          borderLeftColor: ind.color,
+                          borderLeftWidth: '3px'
+                        }}
+                      >
+                        {/* Indicator Label & Params */}
+                        <span className={`font-semibold shrink-0 ${!ind.visible ? 'line-through opacity-50' : ''}`}>
+                          {ind.type}{paramSummary ? ` (${paramSummary})` : ''}
+                        </span>
+
+                        {/* Live calculated telemetry value */}
+                        {ind.visible && (
+                          <span
+                            className="font-bold shrink-0 max-w-[180px] truncate"
+                            style={{ color: ind.color }}
+                            title={valStr}
+                          >
+                            {valStr}
+                          </span>
+                        )}
+
+                        {/* Action buttons: visibility eye, settings gear, remove x */}
+                        <div className="flex items-center gap-0.5 ml-1">
+                          <button
+                            type="button"
+                            onClick={() => handleToggleIndicatorVisibility(ind.id)}
+                            className="p-0.5 hover:text-[#00dbe7] text-on-surface-variant rounded transition-colors cursor-pointer"
+                            title={ind.visible ? 'Hide indicator' : 'Show indicator'}
+                          >
+                            {ind.visible ? <Eye className="w-3 h-3" /> : <EyeOff className="w-3 h-3 text-on-surface-variant/50" />}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setSettingsIndicator(ind)}
+                            className="p-0.5 hover:text-[#00dbe7] text-on-surface-variant rounded transition-colors cursor-pointer"
+                            title={`Configure ${ind.name}`}
+                          >
+                            <Settings2 className="w-3 h-3" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveIndicator(ind.id)}
+                            className="p-0.5 hover:text-[#ff6b6b] text-on-surface-variant rounded transition-colors cursor-pointer"
+                            title="Remove indicator"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Add Study Quick Button on the right */}
+              <button
+                type="button"
+                onClick={() => setIsIndicatorsModalOpen(true)}
+                className="px-2.5 py-0.5 rounded-lg text-[10px] font-mono font-bold flex items-center gap-1 bg-[#00dbe7]/10 text-[#00dbe7] hover:bg-[#00dbe7]/20 border border-[#00dbe7]/30 transition-all cursor-pointer shrink-0 ml-auto"
+                title="Add More Indicators & Strategies"
+              >
+                <Plus className="w-3 h-3" />
+                <span>+ Study</span>
+              </button>
+            </div>
+
             {/* Chart Canvas: Expands to 640px height in Full View */}
             <div className={`relative flex-1 ${isChartExpanded ? 'min-h-[500px] sm:min-h-[640px] h-[calc(100vh-210px)]' : 'min-h-[360px] sm:min-h-[440px]'} p-1.5 sm:p-2 bg-surface-container-lowest transition-all duration-300`}>
               {loading && candles.length === 0 && (
@@ -3480,20 +3556,6 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   Initializing TradingView Candlestick Engine...
                 </div>
               )}
-
-              {/* TOP-LEFT TRADINGVIEW-STYLE CHART LEGEND OVERLAY */}
-              <ChartLegend
-                symbolDisplay={quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
-                interval={activeInterval}
-                currencySymbol={curSymbol}
-                hoveredBar={effectiveHoveredBar}
-                activeIndicators={activeIndicators}
-                indicatorDataMap={indicatorDataMap}
-                onToggleVisibility={handleToggleIndicatorVisibility}
-                onOpenSettings={ind => setSettingsIndicator(ind)}
-                onRemoveIndicator={handleRemoveIndicator}
-                onOpenIndicatorsModal={() => setIsIndicatorsModalOpen(true)}
-              />
 
               <div ref={chartContainerRef} className="w-full h-full min-h-[360px] sm:min-h-[440px] [&_a[href*='tradingview']]:!hidden [&_a[title*='TradingView']]:!hidden" />
             </div>
@@ -5692,22 +5754,47 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                               }}
                               className="bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer"
                             >
-                              <option value="rsi">RSI - 14 (Relative Strength)</option>
-                              <option value="rsi_2">RSI - 2 (Connors Pullback)</option>
-                              <option value="macd">MACD Line</option>
-                              <option value="macd_signal">MACD Signal Line</option>
-                              <option value="macd_hist">MACD Histogram</option>
-                              <option value="ema_fast">Fast EMA (20)</option>
-                              <option value="ema_slow">Slow EMA (50)</option>
-                              <option value="ema_200">200 EMA (Trend Benchmark)</option>
-                              <option value="price">Current Close Price</option>
-                              <option value="bb_upper">Bollinger Band Upper</option>
-                              <option value="bb_middle">Bollinger Middle (20 SMA)</option>
-                              <option value="bb_lower">Bollinger Band Lower</option>
-                              <option value="supertrend">Supertrend Trendline</option>
-                              <option value="volume">Trading Volume</option>
-                              <option value="volume_ma">Volume 20-period MA</option>
-                              <option value="volume_ratio">Relative Volume Ratio</option>
+                              <optgroup label="Trend & Moving Averages">
+                                <option value="price">Current Close Price</option>
+                                <option value="ema_fast">Fast EMA (20)</option>
+                                <option value="ema_slow">Slow EMA (50)</option>
+                                <option value="ema_200">200 EMA (Trend Benchmark)</option>
+                                <option value="sma_50">50 SMA (Simple Moving Average)</option>
+                                <option value="wma_20">20 WMA (Weighted Moving Average)</option>
+                                <option value="vwap">VWAP (Volume Weighted Avg Price)</option>
+                                <option value="supertrend">Supertrend Trendline</option>
+                                <option value="psar">Parabolic SAR</option>
+                              </optgroup>
+                              <optgroup label="Channels & Volatility Bands">
+                                <option value="bb_upper">Bollinger Band Upper</option>
+                                <option value="bb_middle">Bollinger Middle (20 SMA)</option>
+                                <option value="bb_lower">Bollinger Band Lower</option>
+                                <option value="keltner_upper">Keltner Channel Upper</option>
+                                <option value="keltner_middle">Keltner Channel Middle</option>
+                                <option value="keltner_lower">Keltner Channel Lower</option>
+                                <option value="donchian_upper">Donchian Channel Upper (20)</option>
+                                <option value="donchian_middle">Donchian Channel Middle</option>
+                                <option value="donchian_lower">Donchian Channel Lower (20)</option>
+                                <option value="atr">ATR (Average True Range)</option>
+                              </optgroup>
+                              <optgroup label="Oscillators & Momentum">
+                                <option value="rsi">RSI - 14 (Relative Strength)</option>
+                                <option value="rsi_2">RSI - 2 (Connors Pullback)</option>
+                                <option value="macd">MACD Line (12, 26)</option>
+                                <option value="macd_signal">MACD Signal Line (9)</option>
+                                <option value="macd_hist">MACD Histogram</option>
+                                <option value="stoch_k">Stochastic %K (14)</option>
+                                <option value="stoch_d">Stochastic %D (3)</option>
+                                <option value="adx">ADX (Trend Strength)</option>
+                                <option value="cci">CCI - 20 (Commodity Channel)</option>
+                                <option value="williams_r">Williams %R (14)</option>
+                              </optgroup>
+                              <optgroup label="Volume & Liquidity">
+                                <option value="volume">Trading Volume</option>
+                                <option value="volume_ma">Volume 20-period MA</option>
+                                <option value="volume_ratio">Relative Volume Ratio</option>
+                                <option value="obv">On-Balance Volume (OBV)</option>
+                              </optgroup>
                             </select>
 
                             {/* Operator */}
@@ -5789,22 +5876,47 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                               }}
                               className="bg-surface-container border border-outline/20 rounded px-2.5 py-1 text-xs text-on-surface focus:outline-none focus:border-[#00dbe7] cursor-pointer"
                             >
-                              <option value="rsi">RSI - 14 (Relative Strength)</option>
-                              <option value="rsi_2">RSI - 2 (Connors Pullback)</option>
-                              <option value="macd">MACD Line</option>
-                              <option value="macd_signal">MACD Signal Line</option>
-                              <option value="macd_hist">MACD Histogram</option>
-                              <option value="ema_fast">Fast EMA (20)</option>
-                              <option value="ema_slow">Slow EMA (50)</option>
-                              <option value="ema_200">200 EMA (Trend Benchmark)</option>
-                              <option value="price">Current Close Price</option>
-                              <option value="bb_upper">Bollinger Band Upper</option>
-                              <option value="bb_middle">Bollinger Middle (20 SMA)</option>
-                              <option value="bb_lower">Bollinger Band Lower</option>
-                              <option value="supertrend">Supertrend Line</option>
-                              <option value="volume">Trading Volume</option>
-                              <option value="volume_ma">Volume 20-period MA</option>
-                              <option value="volume_ratio">Relative Volume Ratio</option>
+                              <optgroup label="Trend & Moving Averages">
+                                <option value="price">Current Close Price</option>
+                                <option value="ema_fast">Fast EMA (20)</option>
+                                <option value="ema_slow">Slow EMA (50)</option>
+                                <option value="ema_200">200 EMA (Trend Benchmark)</option>
+                                <option value="sma_50">50 SMA (Simple Moving Average)</option>
+                                <option value="wma_20">20 WMA (Weighted Moving Average)</option>
+                                <option value="vwap">VWAP (Volume Weighted Avg Price)</option>
+                                <option value="supertrend">Supertrend Line</option>
+                                <option value="psar">Parabolic SAR</option>
+                              </optgroup>
+                              <optgroup label="Channels & Volatility Bands">
+                                <option value="bb_upper">Bollinger Band Upper</option>
+                                <option value="bb_middle">Bollinger Middle (20 SMA)</option>
+                                <option value="bb_lower">Bollinger Band Lower</option>
+                                <option value="keltner_upper">Keltner Channel Upper</option>
+                                <option value="keltner_middle">Keltner Channel Middle</option>
+                                <option value="keltner_lower">Keltner Channel Lower</option>
+                                <option value="donchian_upper">Donchian Channel Upper (20)</option>
+                                <option value="donchian_middle">Donchian Channel Middle</option>
+                                <option value="donchian_lower">Donchian Channel Lower (20)</option>
+                                <option value="atr">ATR (Average True Range)</option>
+                              </optgroup>
+                              <optgroup label="Oscillators & Momentum">
+                                <option value="rsi">RSI - 14 (Relative Strength)</option>
+                                <option value="rsi_2">RSI - 2 (Connors Pullback)</option>
+                                <option value="macd">MACD Line (12, 26)</option>
+                                <option value="macd_signal">MACD Signal Line (9)</option>
+                                <option value="macd_hist">MACD Histogram</option>
+                                <option value="stoch_k">Stochastic %K (14)</option>
+                                <option value="stoch_d">Stochastic %D (3)</option>
+                                <option value="adx">ADX (Trend Strength)</option>
+                                <option value="cci">CCI - 20 (Commodity Channel)</option>
+                                <option value="williams_r">Williams %R (14)</option>
+                              </optgroup>
+                              <optgroup label="Volume & Liquidity">
+                                <option value="volume">Trading Volume</option>
+                                <option value="volume_ma">Volume 20-period MA</option>
+                                <option value="volume_ratio">Relative Volume Ratio</option>
+                                <option value="obv">On-Balance Volume (OBV)</option>
+                              </optgroup>
                             </select>
 
                             {/* Operator */}

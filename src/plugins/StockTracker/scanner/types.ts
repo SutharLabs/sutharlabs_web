@@ -33,6 +33,7 @@ export interface ScannerCandidate {
   is52wBreakoutToday?: boolean;
   is52wBreakdownToday?: boolean;
   volBreakout?: number;
+  indicators?: Record<string, number>;
   scannedAt: string;
 }
 
@@ -47,6 +48,11 @@ export interface ScannerFilterOptions {
   minVolumeSpike?: number;
   near52wHighOnly?: boolean;
   breakoutTodayOnly?: boolean;
+  aboveVwapOnly?: boolean;
+  supertrendBullishOnly?: boolean;
+  rsiOversoldOnly?: boolean;
+  rsiMomentumOnly?: boolean;
+  aboveSma50Only?: boolean;
   paramOverrides?: Record<string, any>;
 }
 

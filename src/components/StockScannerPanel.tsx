@@ -67,6 +67,10 @@ export default function StockScannerPanel({
   const [signalFilter, setSignalFilter] = useState<'ALL' | 'BUY' | 'SELL' | 'HIGH_CONVICTION'>('ALL');
   const [near52wHigh, setNear52wHigh] = useState<boolean>(false);
   const [breakoutToday, setBreakoutToday] = useState<boolean>(false);
+  const [aboveVwap, setAboveVwap] = useState<boolean>(false);
+  const [supertrendBull, setSupertrendBull] = useState<boolean>(false);
+  const [rsiOversold, setRsiOversold] = useState<boolean>(false);
+  const [rsiMomentum, setRsiMomentum] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Complete Catalog of Strategies (Presets + Custom + Community)
@@ -167,7 +171,11 @@ export default function StockScannerPanel({
         minVolumeSpike,
         signalFilter,
         near52wHighOnly: near52wHigh,
-        breakoutTodayOnly: breakoutToday
+        breakoutTodayOnly: breakoutToday,
+        aboveVwapOnly: aboveVwap,
+        supertrendBullishOnly: supertrendBull,
+        rsiOversoldOnly: rsiOversold,
+        rsiMomentumOnly: rsiMomentum
       };
 
       if (selectedUniverse === 'WATCHLIST') {
@@ -468,7 +476,59 @@ export default function StockScannerPanel({
               }`}
             >
               <Flame className="w-3 h-3 text-amber-400" />
-              <span>52W Breakout Today</span>
+              <span>52W Breakout</span>
+            </button>
+
+            <button
+              onClick={() => setAboveVwap(!aboveVwap)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer flex items-center gap-1 ${
+                aboveVwap
+                  ? 'bg-purple-500/20 border border-purple-400 text-purple-300 font-bold'
+                  : 'bg-surface-container-lowest border border-outline/20 text-on-surface-variant hover:text-on-surface'
+              }`}
+              title="Filter stocks trading strictly above Volume-Weighted Average Price"
+            >
+              <Layers className="w-3 h-3 text-purple-400" />
+              <span>Above VWAP</span>
+            </button>
+
+            <button
+              onClick={() => setSupertrendBull(!supertrendBull)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer flex items-center gap-1 ${
+                supertrendBull
+                  ? 'bg-[#00e476]/20 border border-[#00e476] text-[#00e476] font-bold'
+                  : 'bg-surface-container-lowest border border-outline/20 text-on-surface-variant hover:text-on-surface'
+              }`}
+              title="Filter stocks in confirmed Bullish Supertrend regime"
+            >
+              <Shield className="w-3 h-3 text-[#00e476]" />
+              <span>Supertrend Bull</span>
+            </button>
+
+            <button
+              onClick={() => setRsiOversold(!rsiOversold)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer flex items-center gap-1 ${
+                rsiOversold
+                  ? 'bg-rose-500/20 border border-rose-400 text-rose-300 font-bold'
+                  : 'bg-surface-container-lowest border border-outline/20 text-on-surface-variant hover:text-on-surface'
+              }`}
+              title="Filter oversold pullback bargains (RSI ≤ 35)"
+            >
+              <Activity className="w-3 h-3 text-rose-400" />
+              <span>RSI ≤ 35</span>
+            </button>
+
+            <button
+              onClick={() => setRsiMomentum(!rsiMomentum)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer flex items-center gap-1 ${
+                rsiMomentum
+                  ? 'bg-emerald-500/20 border border-emerald-400 text-emerald-300 font-bold'
+                  : 'bg-surface-container-lowest border border-outline/20 text-on-surface-variant hover:text-on-surface'
+              }`}
+              title="Filter bullish expansion momentum (RSI ≥ 50)"
+            >
+              <TrendingUp className="w-3 h-3 text-emerald-400" />
+              <span>RSI ≥ 50</span>
             </button>
           </div>
 

@@ -1,4 +1,4 @@
-import { RSI, MACD, BollingerBands, ATR, EMA, SMA } from 'technicalindicators';
+import { RSI, MACD, BollingerBands, ATR, EMA, SMA, WMA, PSAR, Stochastic, ADX, CCI, WilliamsR, OBV } from 'technicalindicators';
 import { IStrategy, StrategySignal, StrategyRuleCondition } from './types.js';
 import { StockSentimentReport } from '../news/types.js';
 import { calculateSentimentConfluence } from '../news/sentimentEngine.js';
@@ -137,6 +137,63 @@ export function evaluateStrategy(
   const latestVol = Number(validCandles[validCandles.length - 1]?.volume || 0);
   const volumeRatio = volumeMa > 0 ? Number((latestVol / volumeMa).toFixed(2)) : 1.0;
 
+  // Additional Technical Studies
+  const sma50Series = SMA.calculate({ values: closes, period: Math.min(50, closes.length) });
+  const latestSma50 = sma50Series[sma50Series.length - 1] ?? currentPrice;
+
+  const wma20Series = WMA.calculate({ values: closes, period: Math.min(20, closes.length) });
+  const latestWma20 = wma20Series[wma20Series.length - 1] ?? currentPrice;
+
+  // VWAP
+  let cumTypVol = 0;
+  let cumVol = 0;
+  for (const c of validCandles) {
+    const tp = (c.high + c.low + c.close) / 3;
+    const v = c.volume > 0 ? c.volume : 1;
+    cumTypVol += tp * v;
+    cumVol += v;
+  }
+  const latestVwap = cumVol > 0 ? Number((cumTypVol / cumVol).toFixed(2)) : currentPrice;
+
+  // Parabolic SAR
+  const psarSeries = PSAR.calculate({ step: 0.02, max: 0.2, high: highs, low: lows });
+  const latestPsar = psarSeries[psarSeries.length - 1] ?? currentPrice;
+
+  // Donchian Channels (20-period)
+  const donchianPeriod = Math.min(20, validCandles.length);
+  const donchianSlice = validCandles.slice(-donchianPeriod);
+  const donchianHigh = Math.max(...donchianSlice.map(c => c.high));
+  const donchianLow = Math.min(...donchianSlice.map(c => c.low));
+  const donchianMid = Number(((donchianHigh + donchianLow) / 2).toFixed(2));
+
+  // Keltner Channels (20-period EMA +/- 2 * ATR)
+  const keltnerUpper = Number((latestEmaFast + 2 * latestAtr).toFixed(2));
+  const keltnerLower = Number((latestEmaFast - 2 * latestAtr).toFixed(2));
+  const keltnerMiddle = Number(latestEmaFast.toFixed(2));
+
+  // Stochastic (14, 3)
+  const stochSeries = closes.length >= 15 ? Stochastic.calculate({ period: Math.min(14, closes.length - 1), signalPeriod: 3, high: highs, low: lows, close: closes }) : [];
+  const latestStoch = stochSeries[stochSeries.length - 1];
+  const latestStochK = latestStoch?.k !== undefined ? Number(latestStoch.k.toFixed(2)) : 50;
+  const latestStochD = latestStoch?.d !== undefined ? Number(latestStoch.d.toFixed(2)) : 50;
+
+  // ADX (14)
+  const adxSeries = closes.length >= 16 ? ADX.calculate({ period: Math.min(14, closes.length - 2), high: highs, low: lows, close: closes }) : [];
+  const latestAdx = adxSeries[adxSeries.length - 1]?.adx !== undefined ? Number(adxSeries[adxSeries.length - 1].adx.toFixed(2)) : 25;
+
+  // CCI (20)
+  const cciSeries = closes.length >= 21 ? CCI.calculate({ period: Math.min(20, closes.length - 1), high: highs, low: lows, close: closes }) : [];
+  const latestCci = cciSeries[cciSeries.length - 1] !== undefined ? Number(cciSeries[cciSeries.length - 1].toFixed(2)) : 0;
+
+  // Williams %R (14)
+  const williamsSeries = closes.length >= 15 ? WilliamsR.calculate({ period: Math.min(14, closes.length - 1), high: highs, low: lows, close: closes }) : [];
+  const latestWilliamsR = williamsSeries[williamsSeries.length - 1] !== undefined ? Number(williamsSeries[williamsSeries.length - 1].toFixed(2)) : -50;
+
+  // OBV
+  const volumes = validCandles.map(c => c.volume);
+  const obvSeries = OBV.calculate({ close: closes, volume: volumes });
+  const latestObv = obvSeries[obvSeries.length - 1] ?? 0;
+
   const indicatorsMap: Record<string, number> = {
     price: currentPrice,
     rsi: Number(latestRsi.toFixed(2)),
@@ -144,6 +201,9 @@ export function evaluateStrategy(
     ema_fast: Number(latestEmaFast.toFixed(2)),
     ema_slow: Number(latestEmaSlow.toFixed(2)),
     ema_200: Number(latestEma200.toFixed(2)),
+    sma: Number(latestSma50.toFixed(2)),
+    wma: Number(latestWma20.toFixed(2)),
+    vwap: latestVwap,
     macd: latestMacd?.MACD ? Number(latestMacd.MACD.toFixed(2)) : 0,
     macd_signal: latestMacd?.signal ? Number(latestMacd.signal.toFixed(2)) : 0,
     macd_hist: latestMacdHist,
@@ -151,6 +211,20 @@ export function evaluateStrategy(
     bb_middle: latestBb?.middle ? Number(latestBb.middle.toFixed(2)) : currentPrice,
     bb_lower: latestBb?.lower ? Number(latestBb.lower.toFixed(2)) : currentPrice * 0.95,
     supertrend: Number(supertrendResult.supertrend.toFixed(2)),
+    psar: Number(latestPsar.toFixed(2)),
+    donchian_upper: Number(donchianHigh.toFixed(2)),
+    donchian_middle: donchianMid,
+    donchian_lower: Number(donchianLow.toFixed(2)),
+    keltner_upper: keltnerUpper,
+    keltner_middle: keltnerMiddle,
+    keltner_lower: keltnerLower,
+    stoch_k: latestStochK,
+    stoch_d: latestStochD,
+    atr: Number(latestAtr.toFixed(2)),
+    adx: latestAdx,
+    cci: latestCci,
+    williams_r: latestWilliamsR,
+    obv: Math.round(latestObv),
     volume: latestVol,
     volume_ma: Math.round(volumeMa),
     volume_ratio: volumeRatio
