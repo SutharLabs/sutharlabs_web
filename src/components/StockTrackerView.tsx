@@ -2791,7 +2791,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 tickerScrollRef.current.scrollLeft += e.deltaY;
               }
             }}
-            className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth w-full py-0.5 px-6 sm:px-7"
+            className="flex items-center gap-1.5 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden scroll-smooth w-full py-1.5 px-6 sm:px-7"
           >
             {activeWatchlist.symbols.map(symStr => {
               const targetItem = (activeWatchlist.items || []).find(
@@ -2886,7 +2886,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         ref={splitWorkspaceRef}
         className={`${
           isChartExpanded 
-            ? 'flex flex-col gap-3' 
+            ? 'flex flex-col gap-4' 
             : 'flex flex-col lg:flex-row items-stretch gap-0 w-full'
         } relative`}
       >
@@ -2899,72 +2899,30 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           <div className="glass-panel rounded-xl flex flex-col overflow-hidden border border-outline/20 bg-surface-container-lowest shadow-md h-full">
             
             {/* Chart Toolbar: Timeframe Selector + Indicator Overlays + Expand Button */}
-            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 p-2 sm:p-2.5 border-b border-outline/10 bg-surface-container-low/60">
+            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 p-2 sm:p-2.5 pr-3 sm:pr-4 md:pr-5 border-b border-outline/10 bg-surface-container-low/60">
               
               {/* Range & Interval Selectors */}
               <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 shrink-0">
                 {/* Professional Candle Size Dropdown (TradingView / Kite standard) */}
-                <div className="relative shrink-0" ref={intervalMenuRef}>
-                  <button
-                    type="button"
-                    onClick={() => setShowIntervalMenu(!showIntervalMenu)}
-                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer border ${
-                      showIntervalMenu 
-                        ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_10px_rgba(16,185,129,0.25)]' 
-                        : 'bg-surface-container-lowest/90 text-on-surface hover:bg-surface-container border-outline/20'
-                    }`}
-                    title="Select Candlestick Interval"
-                  >
-                    <Clock className="w-3.5 h-3.5 text-emerald-400" />
+                <div className="relative shrink-0 flex items-center group">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all border bg-surface-container-lowest/90 text-on-surface border-outline/20 group-hover:border-emerald-500/50 pointer-events-none shadow-sm">
+                    <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span className="text-[11px] text-on-surface-variant uppercase font-medium">Bar:</span>
                     <span className="text-emerald-400 font-bold uppercase">{activeInterval}</span>
-                    <ChevronDown className={`w-3.5 h-3.5 text-on-surface-variant transition-transform duration-200 ${showIntervalMenu ? 'rotate-180 text-emerald-400' : ''}`} />
-                  </button>
-
-                  {/* Dropdown Menu */}
-                  {showIntervalMenu && (
-                    <div className="absolute left-0 top-full mt-1.5 w-60 rounded-xl bg-surface-container-lowest/95 backdrop-blur-xl border border-outline/25 shadow-2xl py-2 z-50 animate-in fade-in zoom-in-95 duration-150">
-                      <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-on-surface-variant/70 border-b border-outline/10 flex items-center justify-between">
-                        <span>Candle Resolution</span>
-                        <span className="text-emerald-400/80 font-mono text-[9px]">Live OHLCV</span>
-                      </div>
-                      <div className="py-1">
-                        {CANDLE_INTERVAL_OPTIONS.map((opt) => {
-                          const isSelected = activeInterval === opt.value;
-                          return (
-                            <button
-                              key={opt.value}
-                              type="button"
-                              onClick={() => {
-                                setActiveInterval(opt.value);
-                                setShowIntervalMenu(false);
-                              }}
-                              className={`w-full px-3 py-1.5 flex items-center justify-between text-left transition-colors cursor-pointer text-xs ${
-                                isSelected
-                                  ? 'bg-emerald-500/15 text-emerald-400 font-bold'
-                                  : 'text-on-surface hover:bg-surface-container/70'
-                              }`}
-                            >
-                              <div className="flex items-center gap-2 font-mono">
-                                <span className={`w-7 text-center font-bold px-1 py-0.5 rounded text-[11px] ${
-                                  isSelected ? 'bg-emerald-500/25 text-emerald-300' : 'bg-surface-container text-on-surface-variant'
-                                }`}>
-                                  {opt.label}
-                                </span>
-                                <span className="text-[11px] font-sans text-on-surface-variant font-normal">
-                                  {opt.description}
-                                </span>
-                              </div>
-                              {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400 ml-1.5 shrink-0" />}
-                            </button>
-                          );
-                        })}
-                      </div>
-                      <div className="px-3 pt-1.5 pb-0.5 border-t border-outline/10 text-[10px] text-on-surface-variant/60 font-sans">
-                        Tip: Scale selection sets optimal candle size automatically.
-                      </div>
-                    </div>
-                  )}
+                    <ChevronDown className="w-3.5 h-3.5 text-on-surface-variant shrink-0" />
+                  </div>
+                  <select
+                    value={activeInterval}
+                    onChange={(e) => setActiveInterval(e.target.value as CandleInterval)}
+                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
+                    title="Select Candlestick Interval"
+                  >
+                    {CANDLE_INTERVAL_OPTIONS.map((opt) => (
+                      <option key={opt.value} value={opt.value} className="bg-[#18181b] text-white py-1">
+                        {opt.label} — {opt.description}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Graph Scale / Range Selector with Intelligent Default Candle Size */}
@@ -2991,10 +2949,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
 
               {/* Indicator Overlay Toggles & Fullscreen Toggle */}
-              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 justify-start sm:justify-end shrink-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap py-0.5 justify-start sm:justify-end shrink-0 pr-1">
                 <button
                   onClick={() => setShowEma20(!showEma20)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
                     showEma20
                       ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 font-bold'
                       : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
@@ -3006,7 +2964,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
                 <button
                   onClick={() => setShowEma50(!showEma50)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
                     showEma50
                       ? 'bg-amber-500/20 text-[#f59e0b] border border-amber-500/40 font-bold'
                       : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
@@ -3018,7 +2976,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
                 <button
                   onClick={() => setShowVolume(!showVolume)}
-                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer ${
+                  className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
                     showVolume
                       ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40 font-bold'
                       : 'bg-surface-container text-on-surface-variant border border-transparent hover:text-on-surface'
@@ -3031,14 +2989,14 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 {/* GRAPH FULL VIEW EXPAND TOGGLE */}
                 <button
                   onClick={() => setIsChartExpanded(prev => !prev)}
-                  className={`px-2.5 py-1 rounded-md text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer ml-1 ${
+                  className={`shrink-0 whitespace-nowrap px-3 py-1 rounded-md text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer z-10 ${
                     isChartExpanded
                       ? 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/50 font-bold shadow-[0_0_8px_rgba(0,219,231,0.3)]'
                       : 'bg-surface-container text-on-surface-variant border border-outline/20 hover:text-on-surface hover:border-outline/40'
                   }`}
                   title={isChartExpanded ? "Exit Full View (Show Sidebar)" : "Expand Graph to Full View"}
                 >
-                  {isChartExpanded ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+                  {isChartExpanded ? <Minimize2 className="w-3.5 h-3.5 shrink-0" /> : <Maximize2 className="w-3.5 h-3.5 shrink-0" />}
                   <span>{isChartExpanded ? 'Collapse' : 'Full View'}</span>
                 </button>
               </div>
@@ -3144,7 +3102,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         <div 
           style={isDesktopScreen && !isChartExpanded ? { width: `${sidebarWidth}px` } : undefined}
           className={`${
-            isChartExpanded ? 'w-full mt-3' : 'w-full lg:shrink-0'
+            isChartExpanded ? 'w-full mt-4' : 'w-full mt-4 lg:mt-0 lg:shrink-0'
           } flex flex-col gap-3 transition-all duration-150`}
         >
           
@@ -3359,7 +3317,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
 
               {/* Live Watchlist Table: All Selected Stocks with Full Detailed Summary */}
-              <div className={`grid gap-2 max-h-[380px] overflow-y-auto custom-scrollbar pr-0.5 ${
+              <div className={`grid gap-3 sm:gap-3.5 max-h-[440px] overflow-y-auto custom-scrollbar p-1 pr-1.5 ${
                 isChartExpanded 
                   ? 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4' 
                   : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-1'
@@ -3426,7 +3384,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                               setActiveMarketKey(targetItem.market);
                             }
                           }}
-                          className={`group p-2.5 rounded-xl border text-xs font-mono transition-all cursor-pointer flex flex-col gap-1.5 ${
+                          className={`group p-3 sm:p-3.5 rounded-xl border text-xs font-mono transition-all cursor-pointer flex flex-col gap-2 ${
                             isCurrent
                               ? 'bg-[#00dbe7]/15 border-[#00dbe7] shadow-[0_0_12px_rgba(0,219,231,0.25)]'
                               : 'bg-surface-container-low/70 border-outline/20 hover:border-outline/50 hover:bg-surface-container'
@@ -3724,7 +3682,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   Technical Metrics
                 </span>
 
-                <div className={`grid gap-2 text-xs font-mono ${
+                <div className={`grid gap-3 text-xs font-mono ${
                   isChartExpanded 
                     ? 'grid-cols-2 sm:grid-cols-4 md:grid-cols-6' 
                     : 'grid-cols-2 sm:grid-cols-4 lg:grid-cols-2'
@@ -3951,7 +3909,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
 
               {/* Scrollable News Articles Stream */}
-              <div className={`grid gap-2.5 max-h-[460px] overflow-y-auto custom-scrollbar pr-1 ${
+              <div className={`grid gap-3.5 max-h-[480px] overflow-y-auto custom-scrollbar p-1 pr-1.5 ${
                 isChartExpanded 
                   ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3' 
                   : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-1'
