@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TerminalLog } from '../types';
 import { Database, Terminal, ChevronDown } from 'lucide-react';
 
@@ -14,6 +14,31 @@ export default function CollapsibleLogDrawer({
   defaultExpanded = false
 }: CollapsibleLogDrawerProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
+  const [isEnabled, setIsEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sutharlabs_enable_logs') === 'true' || localStorage.getItem('sutharlabs_enable_terminal') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const handleUpdate = () => {
+      try {
+        setIsEnabled(localStorage.getItem('sutharlabs_enable_logs') === 'true' || localStorage.getItem('sutharlabs_enable_terminal') === 'true');
+      } catch {}
+    };
+    window.addEventListener('storage', handleUpdate);
+    window.addEventListener('sutharlabs_logs_preference_changed', handleUpdate);
+    return () => {
+      window.removeEventListener('storage', handleUpdate);
+      window.removeEventListener('sutharlabs_logs_preference_changed', handleUpdate);
+    };
+  }, []);
+
+  if (!isEnabled) {
+    return null;
+  }
 
   return (
     <div className={`mt-4 rounded-xl border border-outline/20 bg-surface-container-low/80 backdrop-blur-sm transition-all duration-300 overflow-hidden flex flex-col shrink-0 ${

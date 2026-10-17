@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { UserProfile, TerminalLog } from '../types';
 import { openCookiePreferencesModal, getStoredCookiePreferences } from './CookieConsentBanner';
 import BugReportModal from './BugReportModal';
+import { Terminal, Sliders, User as UserIcon, Lock, Database, CheckCircle2, Shield, Eye, EyeOff, Sparkles, Moon, Sun, Monitor, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface UserProfileViewProps {
   user: UserProfile;
@@ -67,6 +68,45 @@ export default function UserProfileView({
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
   const [isBugModalOpen, setIsBugModalOpen] = useState(false);
   const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null);
+
+  // Settings tab and workspace log console preferences
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'preferences' | 'profile' | 'security' | 'data' | 'all'>('preferences');
+  const [isLogsEnabled, setIsLogsEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sutharlabs_enable_logs') === 'true' || localStorage.getItem('sutharlabs_enable_terminal') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const handleLogPref = () => {
+      try {
+        setIsLogsEnabled(localStorage.getItem('sutharlabs_enable_logs') === 'true' || localStorage.getItem('sutharlabs_enable_terminal') === 'true');
+      } catch {}
+    };
+    window.addEventListener('storage', handleLogPref);
+    window.addEventListener('sutharlabs_logs_preference_changed', handleLogPref);
+    return () => {
+      window.removeEventListener('storage', handleLogPref);
+      window.removeEventListener('sutharlabs_logs_preference_changed', handleLogPref);
+    };
+  }, []);
+
+  const handleToggleLogs = (enabled: boolean) => {
+    setIsLogsEnabled(enabled);
+    try {
+      localStorage.setItem('sutharlabs_enable_logs', enabled ? 'true' : 'false');
+      localStorage.setItem('sutharlabs_enable_terminal', enabled ? 'true' : 'false');
+      window.dispatchEvent(new Event('sutharlabs_logs_preference_changed'));
+    } catch {}
+    notify(enabled ? 'Workspace log console enabled in workspace' : 'Workspace log console disabled (hidden by default)', 'success');
+    onAddLog({
+      timestamp: new Date().toLocaleTimeString(),
+      type: enabled ? 'SUCCESS' : 'INFO',
+      message: `SETTINGS: Workspace log console ${enabled ? 'ENABLED' : 'DISABLED'}`
+    });
+  };
 
   const notify = (text: string, type: 'success' | 'alert' | 'error' = 'success') => {
     setNotification({ text, type });
@@ -441,342 +481,589 @@ export default function UserProfileView({
         </div>
       </div>
 
-      {/* Grid: Profile Settings + Data Management */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Left Column: Profile Info & Password */}
-        <div className="lg:col-span-7 space-y-6">
-          
-          {/* Identity & Details Form */}
-          <div className="rounded-3xl border border-outline/20 bg-surface-container-lowest/80 backdrop-blur-xl p-6 space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-outline/10">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-lg text-[#00dbe7]">badge</span>
-                <h2 className="text-sm font-mono font-bold uppercase text-on-surface tracking-wider">
-                  Profile Information
-                </h2>
-              </div>
-              <span className="text-[10px] font-mono text-on-surface-variant/70">Public within workspace</span>
-            </div>
+      {/* Settings Navigation Tabs Bar */}
+      <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-surface-container-lowest/80 border border-outline/20 backdrop-blur-xl overflow-x-auto [scrollbar-width:none]">
+        <button
+          type="button"
+          onClick={() => setActiveSettingsTab('preferences')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+            activeSettingsTab === 'preferences'
+              ? 'bg-gradient-to-r from-[#00dbe7]/20 to-[#00f2fe]/10 text-primary dark:text-[#00dbe7] border border-[#00dbe7]/40 shadow-sm'
+              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 border border-transparent'
+          }`}
+        >
+          <Terminal className="w-3.5 h-3.5 text-[#00dbe7]" />
+          <span>Workspace &amp; Logs</span>
+          <span className={`text-[9px] px-1.5 py-0.2 rounded-full font-mono ${
+            isLogsEnabled 
+              ? 'bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30 font-bold' 
+              : 'bg-surface-container-high text-on-surface-variant/80 border border-outline/20'
+          }`}>
+            {isLogsEnabled ? 'Enabled' : 'Disabled (Default)'}
+          </span>
+        </button>
 
-            <form onSubmit={handleUpdateProfile} className="space-y-4">
-              <div>
-                <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
-                  Display Name
-                </label>
-                <input
-                  type="text"
-                  value={displayName}
-                  onChange={e => setDisplayName(e.target.value)}
-                  required
-                  placeholder="e.g. Suthar Suresh"
-                  className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
-                />
-              </div>
+        <button
+          type="button"
+          onClick={() => setActiveSettingsTab('profile')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+            activeSettingsTab === 'profile'
+              ? 'bg-gradient-to-r from-[#00dbe7]/20 to-[#00f2fe]/10 text-primary dark:text-[#00dbe7] border border-[#00dbe7]/40 shadow-sm'
+              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 border border-transparent'
+          }`}
+        >
+          <UserIcon className="w-3.5 h-3.5" />
+          <span>Profile Information</span>
+        </button>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
-                    Company / Organization
-                  </label>
-                  <input
-                    type="text"
-                    value={company}
-                    onChange={e => setCompany(e.target.value)}
-                    placeholder="e.g. SutharLabs"
-                    className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
-                    GitHub Username
-                  </label>
-                  <input
-                    type="text"
-                    value={githubHandle}
-                    onChange={e => setGithubHandle(e.target.value)}
-                    placeholder="e.g. sutharsuresh"
-                    className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
-                  />
-                </div>
-              </div>
+        <button
+          type="button"
+          onClick={() => setActiveSettingsTab('security')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+            activeSettingsTab === 'security'
+              ? 'bg-gradient-to-r from-[#00dbe7]/20 to-[#00f2fe]/10 text-primary dark:text-[#00dbe7] border border-[#00dbe7]/40 shadow-sm'
+              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 border border-transparent'
+          }`}
+        >
+          <Lock className="w-3.5 h-3.5 text-[#ce5dff]" />
+          <span>Security &amp; Password</span>
+        </button>
 
-              <div>
-                <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
-                  Developer Bio
-                </label>
-                <textarea
-                  rows={3}
-                  value={bio}
-                  onChange={e => setBio(e.target.value)}
-                  placeholder="Tell your team about your architectural focus or algorithmic strategies..."
-                  className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-sans text-on-surface outline-none transition-colors resize-none"
-                />
-              </div>
+        <button
+          type="button"
+          onClick={() => setActiveSettingsTab('data')}
+          className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-mono font-bold transition-all whitespace-nowrap cursor-pointer ${
+            activeSettingsTab === 'data'
+              ? 'bg-gradient-to-r from-[#00dbe7]/20 to-[#00f2fe]/10 text-primary dark:text-[#00dbe7] border border-[#00dbe7]/40 shadow-sm'
+              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container/40 border border-transparent'
+          }`}
+        >
+          <Database className="w-3.5 h-3.5 text-[#00e476]" />
+          <span>Data Governance &amp; Privacy</span>
+        </button>
 
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  disabled={isSavingProfile}
-                  className="px-5 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {isSavingProfile ? (
-                    <>
-                      <span className="material-symbols-outlined text-xs animate-spin">progress_activity</span>
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Profile'
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-
-          {/* Security & Password Form */}
-          <div className="rounded-3xl border border-outline/20 bg-surface-container-lowest/80 backdrop-blur-xl p-6 space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-outline/10">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-lg text-[#ce5dff]">lock_reset</span>
-                <h2 className="text-sm font-mono font-bold uppercase text-on-surface tracking-wider">
-                  Security &amp; Password
-                </h2>
-              </div>
-              <span className="text-[10px] font-mono text-on-surface-variant/70">Encrypted with SHA-256</span>
-            </div>
-
-            <form onSubmit={handleChangePassword} className="space-y-4">
-              <div>
-                <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
-                  Current Password
-                </label>
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={e => setCurrentPassword(e.target.value)}
-                  placeholder="Enter current password"
-                  className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                    required
-                    placeholder="At least 5 characters"
-                    className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
-                  />
-                </div>
-                <div>
-                  <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    required
-                    placeholder="Re-enter new password"
-                    className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div className="flex justify-end pt-2">
-                <button
-                  type="submit"
-                  disabled={isChangingPassword}
-                  className="px-5 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-surface-container hover:bg-surface-container-high border border-outline/30 text-on-surface transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-                >
-                  {isChangingPassword ? 'Updating...' : 'Update Password'}
-                </button>
-              </div>
-            </form>
-          </div>
-
-        </div>
-
-        {/* Right Column: GDPR Data Governance & Self-Service Purge */}
-        <div className="lg:col-span-5 space-y-6">
-          
-          {/* Data Footprint Summary Card */}
-          <div className="rounded-3xl border border-outline/20 bg-surface-container-lowest/80 backdrop-blur-xl p-6 space-y-5">
-            <div className="flex items-center justify-between pb-3 border-b border-outline/10">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-lg text-[#00e476]">database</span>
-                <h2 className="text-sm font-mono font-bold uppercase text-on-surface tracking-wider">
-                  Stored Data Footprint
-                </h2>
-              </div>
-              <span className="px-2 py-0.2 rounded text-[9px] font-mono font-bold uppercase bg-[#00e476]/15 text-[#00e476] border border-[#00fb83]/30">
-                GDPR
-              </span>
-            </div>
-
-            <p className="text-xs text-on-surface-variant leading-relaxed">
-              Your personal data footprint persisted in Neon PostgreSQL. You have complete self-service dominion to inspect, export, or delete any category.
-            </p>
-
-            <div className="grid grid-cols-2 gap-3 font-mono">
-              <div className="p-3.5 rounded-2xl bg-surface-container/50 border border-outline/10">
-                <span className="text-[10px] text-on-surface-variant block">Paper Trades</span>
-                <span className="text-lg font-bold text-on-surface">
-                  {profile?.stats?.tradesCount ?? '—'}
-                </span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-surface-container/50 border border-outline/10">
-                <span className="text-[10px] text-on-surface-variant block">Plugin Reviews</span>
-                <span className="text-lg font-bold text-on-surface">
-                  {profile?.stats?.reviewsCount ?? '—'}
-                </span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-surface-container/50 border border-outline/10">
-                <span className="text-[10px] text-on-surface-variant block">Installed Plugins</span>
-                <span className="text-lg font-bold text-on-surface">
-                  {profile?.stats?.installedCount ?? '—'}
-                </span>
-              </div>
-              <div className="p-3.5 rounded-2xl bg-surface-container/50 border border-outline/10">
-                <span className="text-[10px] text-on-surface-variant block">Cash Balance</span>
-                <span className="text-lg font-bold text-[#00e476]">
-                  ${profile?.portfolio?.cash ? profile.portfolio.cash.toLocaleString() : '10,000'}
-                </span>
-              </div>
-            </div>
-
-            {/* Granular Deletion Controls */}
-            <div className="space-y-2.5 pt-2">
-              <h3 className="text-[10px] font-mono uppercase text-on-surface-variant tracking-wider font-bold">
-                Self-Service Data Purge
-              </h3>
-
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-container/40 border border-outline/10">
-                <div>
-                  <div className="text-xs font-semibold text-on-surface">Paper Trading Ledger</div>
-                  <div className="text-[10px] text-on-surface-variant font-mono">Purge all trades &amp; reset cash balance</div>
-                </div>
-                <button
-                  type="button"
-                  disabled={actionLoadingKey === 'trades'}
-                  onClick={handleClearTrades}
-                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold border border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-600 transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {actionLoadingKey === 'trades' ? 'Purging...' : 'Clear'}
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-container/40 border border-outline/10">
-                <div>
-                  <div className="text-xs font-semibold text-on-surface">Authored Reviews</div>
-                  <div className="text-[10px] text-on-surface-variant font-mono">Delete all submitted store reviews</div>
-                </div>
-                <button
-                  type="button"
-                  disabled={actionLoadingKey === 'reviews'}
-                  onClick={handleClearReviews}
-                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold border border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-600 transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {actionLoadingKey === 'reviews' ? 'Purging...' : 'Clear'}
-                </button>
-              </div>
-
-              <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-container/40 border border-outline/10">
-                <div>
-                  <div className="text-xs font-semibold text-on-surface">Installed Plugins</div>
-                  <div className="text-[10px] text-on-surface-variant font-mono">Reset to default 4 native tools</div>
-                </div>
-                <button
-                  type="button"
-                  disabled={actionLoadingKey === 'plugins'}
-                  onClick={handleResetPlugins}
-                  className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold border border-amber-600/40 dark:border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 hover:border-amber-600 transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  {actionLoadingKey === 'plugins' ? 'Resetting...' : 'Reset'}
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {/* Privacy & Cookies Status Card */}
-          <div className="rounded-3xl border border-outline/20 bg-surface-container-lowest/80 backdrop-blur-xl p-6 space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-outline/10">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-lg text-[#00dbe7]">cookie</span>
-                <h2 className="text-sm font-mono font-bold uppercase text-on-surface tracking-wider">
-                  Cookie Preferences
-                </h2>
-              </div>
-              <span className="material-symbols-outlined text-[#00e476] text-base">verified</span>
-            </div>
-
-            <div className="text-xs text-on-surface-variant space-y-2">
-              <div className="flex items-center justify-between font-mono">
-                <span>Essential Storage:</span>
-                <span className="text-emerald-600 dark:text-[#00e476] font-bold">Enabled</span>
-              </div>
-              <div className="flex items-center justify-between font-mono">
-                <span>Functional State:</span>
-                <span className={cookiePrefs?.functional ? 'text-primary dark:text-[#00dbe7] font-bold' : 'text-gray-500'}>
-                  {cookiePrefs?.functional ? 'Enabled' : 'Disabled'}
-                </span>
-              </div>
-              <div className="flex items-center justify-between font-mono">
-                <span>Performance Telemetry:</span>
-                <span className={cookiePrefs?.analytics ? 'text-primary dark:text-[#00dbe7] font-bold' : 'text-gray-500'}>
-                  {cookiePrefs?.analytics ? 'Enabled' : 'Disabled'}
-                </span>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={openCookiePreferencesModal}
-              className="w-full py-2.5 rounded-xl text-xs font-mono font-semibold border border-primary/30 dark:border-[#00dbe7]/30 text-primary dark:text-[#00dbe7] hover:bg-primary/10 transition-colors cursor-pointer flex items-center justify-center gap-2"
-            >
-              <span className="material-symbols-outlined text-sm">settings</span>
-              <span>Reconfigure Cookie Consent</span>
-            </button>
-          </div>
-
-          {/* Danger Zone: Account Erasure (High Visibility) */}
-          <div className="rounded-3xl border-2 border-red-500/40 bg-red-50/80 dark:bg-red-950/20 shadow-lg shadow-red-500/5 backdrop-blur-xl p-6 space-y-4">
-            <div className="flex items-center justify-between pb-2.5 border-b border-red-500/30 dark:border-red-500/20">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-red-500/15 dark:bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
-                  <span className="material-symbols-outlined text-lg">warning</span>
-                </div>
-                <h2 className="text-sm font-mono font-extrabold uppercase tracking-wider text-red-700 dark:text-red-400">
-                  Danger Zone
-                </h2>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-red-600/15 text-red-700 dark:text-red-300 border border-red-500/30">
-                Irreversible
-              </span>
-            </div>
-
-            <p className="text-xs text-red-900/85 dark:text-red-200/90 font-medium leading-relaxed">
-              Permanently erase your user account, portfolio records, authored reviews, and settings from our database. This action cannot be undone.
-            </p>
-
-            <button
-              type="button"
-              onClick={() => setShowDeleteAccountModal(true)}
-              className="w-full py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/25 hover:shadow-lg hover:shadow-red-600/35 transition-all flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <span className="material-symbols-outlined text-sm">delete_forever</span>
-              <span>Permanently Delete Account</span>
-            </button>
-          </div>
-
-        </div>
-
+        <button
+          type="button"
+          onClick={() => setActiveSettingsTab('all')}
+          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-mono font-bold transition-all whitespace-nowrap ml-auto cursor-pointer ${
+            activeSettingsTab === 'all'
+              ? 'bg-surface-container text-on-surface border border-outline/30'
+              : 'text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container/30 border border-transparent'
+          }`}
+          title="Display all settings sections on one page"
+        >
+          <Sliders className="w-3.5 h-3.5" />
+          <span>All Settings</span>
+        </button>
       </div>
+
+      {/* 1. Tab Content: Workspace & Logs Preferences */}
+      {(activeSettingsTab === 'preferences' || activeSettingsTab === 'all') && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Main Log Console Feature Card */}
+          <div className="relative overflow-hidden rounded-3xl border border-outline/25 bg-surface-container-lowest/90 backdrop-blur-xl p-6 sm:p-7 shadow-xl space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pb-4 border-b border-outline/10">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-cyan-500/15 border border-cyan-500/30 flex items-center justify-center text-[#00dbe7] shadow-sm shrink-0">
+                  <Terminal className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2.5 flex-wrap">
+                    <h2 className="text-base font-bold text-on-surface tracking-tight">
+                      Workspace Execution Logs &amp; Console Window
+                    </h2>
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider ${
+                      isLogsEnabled 
+                        ? 'bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30' 
+                        : 'bg-surface-container text-on-surface-variant border border-outline/20'
+                    }`}>
+                      {isLogsEnabled ? 'ACTIVE (VISIBLE IN WORKSPACE)' : 'DISABLED (HIDDEN BY DEFAULT)'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-0.5">
+                    Toggle visibility of the floating real-time telemetry audit drawer and terminal console at the bottom of workspace screens.
+                  </p>
+                </div>
+              </div>
+
+              {/* Interactive Sliding Toggle Switch */}
+              <button
+                type="button"
+                onClick={() => handleToggleLogs(!isLogsEnabled)}
+                className={`relative inline-flex h-8 w-14 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none shadow-inner ${
+                  isLogsEnabled ? 'bg-[#00e476]' : 'bg-surface-container-highest border-outline/30'
+                }`}
+                role="switch"
+                aria-checked={isLogsEnabled}
+                title={isLogsEnabled ? 'Click to disable and hide log console' : 'Click to enable log console'}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    isLogsEnabled ? 'translate-x-6' : 'translate-x-0'
+                  }`}
+                />
+              </button>
+            </div>
+
+            {/* Explanation & Architecture Breakdown */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="p-4 rounded-2xl bg-surface-container/30 border border-outline/10 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-on-surface">
+                  <CheckCircle2 className="w-4 h-4 text-[#00e476] shrink-0" />
+                  <span>Hidden by Default for Clean Canvas</span>
+                </div>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  By default, the log window stays completely hidden. This provides maximum vertical height for TradingView charts, canvas editors, financial ledgers, and spreadsheets without visual clutter.
+                </p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-surface-container/30 border border-outline/10 space-y-2">
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-on-surface">
+                  <CheckCircle2 className="w-4 h-4 text-[#00dbe7] shrink-0" />
+                  <span>Synchronized Across Entire Platform</span>
+                </div>
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Your preference is saved in local browser storage and instantly synchronizes across the Stock Tracker Terminal, Doc Nexus audit stream, and Plugin Store drawers without requiring a page reload.
+                </p>
+              </div>
+            </div>
+
+            {/* Direct Action Bar */}
+            <div className="flex items-center justify-between pt-2 flex-wrap gap-3">
+              <div className="text-xs font-mono text-on-surface-variant flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${isLogsEnabled ? 'bg-[#00e476] animate-pulse' : 'bg-outline/50'}`} />
+                <span>
+                  Current State:{' '}
+                  <strong className={isLogsEnabled ? 'text-[#00e476]' : 'text-on-surface-variant'}>
+                    {isLogsEnabled ? 'Console Visible at Bottom of Screen' : 'Console Disabled & Hidden'}
+                  </strong>
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleToggleLogs(!isLogsEnabled)}
+                className={`px-5 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-2 transition-all cursor-pointer shadow-sm ${
+                  isLogsEnabled
+                    ? 'bg-surface-container border border-outline/30 text-on-surface hover:bg-surface-container-high'
+                    : 'bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-[#00dbe7]/20'
+                }`}
+              >
+                <Terminal className="w-4 h-4" />
+                <span>{isLogsEnabled ? 'Disable & Hide Log Window' : 'Enable Log Window'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Shortcuts & Diagnostic Tools */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-5 rounded-3xl bg-surface-container-lowest/80 border border-outline/20 backdrop-blur-xl flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-on-surface uppercase tracking-wider">
+                  <Sliders className="w-4 h-4 text-[#00dbe7]" />
+                  <span>Cookie Preferences</span>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  Reconfigure functional state, analytics, or essential cookies.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={openCookiePreferencesModal}
+                className="w-full py-2 rounded-xl text-xs font-mono font-semibold border border-primary/30 text-primary dark:text-[#00dbe7] hover:bg-primary/10 transition-colors cursor-pointer text-center"
+              >
+                Configure Cookies
+              </button>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-surface-container-lowest/80 border border-outline/20 backdrop-blur-xl flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-on-surface uppercase tracking-wider">
+                  <Database className="w-4 h-4 text-[#00e476]" />
+                  <span>Personal Data Export</span>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  Download personal GDPR archive JSON (trades, portfolio, reviews).
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleExportData}
+                disabled={actionLoadingKey === 'export'}
+                className="w-full py-2 rounded-xl text-xs font-mono font-semibold border border-[#00e476]/30 text-[#00e476] hover:bg-[#00e476]/10 transition-colors cursor-pointer text-center disabled:opacity-50"
+              >
+                Export JSON Archive
+              </button>
+            </div>
+
+            <div className="p-5 rounded-3xl bg-surface-container-lowest/80 border border-outline/20 backdrop-blur-xl flex flex-col justify-between space-y-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs font-mono font-bold text-on-surface uppercase tracking-wider">
+                  <span className="material-symbols-outlined text-base text-rose-400">bug_report</span>
+                  <span>Bug &amp; Telemetry Reports</span>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-1">
+                  Submit feedback or diagnostic breadcrumbs to system administrators.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsBugModalOpen(true)}
+                className="w-full py-2 rounded-xl text-xs font-mono font-semibold border border-rose-500/30 text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer text-center"
+              >
+                Report an Issue
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Grid: Profile, Security & Data Management */}
+      {(activeSettingsTab !== 'preferences' || activeSettingsTab === 'all') && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
+          
+          {/* Left Column: Profile Info & Password */}
+          {(activeSettingsTab === 'profile' || activeSettingsTab === 'security' || activeSettingsTab === 'all') && (
+            <div className={`${activeSettingsTab === 'all' ? 'lg:col-span-7' : 'lg:col-span-12'} space-y-6`}>
+              
+              {/* Identity & Details Form */}
+              {(activeSettingsTab === 'profile' || activeSettingsTab === 'all') && (
+                <div className="rounded-3xl border border-outline/20 bg-surface-container-lowest/80 backdrop-blur-xl p-6 space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-outline/10">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-lg text-[#00dbe7]">badge</span>
+                      <h2 className="text-sm font-mono font-bold uppercase text-on-surface tracking-wider">
+                        Profile Information
+                      </h2>
+                    </div>
+                    <span className="text-[10px] font-mono text-on-surface-variant/70">Public within workspace</span>
+                  </div>
+
+                  <form onSubmit={handleUpdateProfile} className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
+                        Display Name
+                      </label>
+                      <input
+                        type="text"
+                        value={displayName}
+                        onChange={e => setDisplayName(e.target.value)}
+                        required
+                        placeholder="e.g. Suthar Suresh"
+                        className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
+                          Company / Organization
+                        </label>
+                        <input
+                          type="text"
+                          value={company}
+                          onChange={e => setCompany(e.target.value)}
+                          placeholder="e.g. SutharLabs"
+                          className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
+                          GitHub Username
+                        </label>
+                        <input
+                          type="text"
+                          value={githubHandle}
+                          onChange={e => setGithubHandle(e.target.value)}
+                          placeholder="e.g. sutharsuresh"
+                          className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
+                        Developer Bio
+                      </label>
+                      <textarea
+                        rows={3}
+                        value={bio}
+                        onChange={e => setBio(e.target.value)}
+                        placeholder="Tell your team about your architectural focus or algorithmic strategies..."
+                        className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-sans text-on-surface outline-none transition-colors resize-none"
+                      />
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        disabled={isSavingProfile}
+                        className="px-5 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-lg transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isSavingProfile ? (
+                          <>
+                            <span className="material-symbols-outlined text-xs animate-spin">progress_activity</span>
+                            Saving...
+                          </>
+                        ) : (
+                          'Save Profile'
+                        )}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+              {/* Security & Password Form */}
+              {(activeSettingsTab === 'security' || activeSettingsTab === 'all') && (
+                <div className="rounded-3xl border border-outline/20 bg-surface-container-lowest/80 backdrop-blur-xl p-6 space-y-5">
+                  <div className="flex items-center justify-between pb-3 border-b border-outline/10">
+                    <div className="flex items-center gap-2">
+                      <span className="material-symbols-outlined text-lg text-[#ce5dff]">lock_reset</span>
+                      <h2 className="text-sm font-mono font-bold uppercase text-on-surface tracking-wider">
+                        Security &amp; Password
+                      </h2>
+                    </div>
+                    <span className="text-[10px] font-mono text-on-surface-variant/70">Encrypted with SHA-256</span>
+                  </div>
+
+                  <form onSubmit={handleChangePassword} className="space-y-4">
+                    <div>
+                      <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
+                        Current Password
+                      </label>
+                      <input
+                        type="password"
+                        value={currentPassword}
+                        onChange={e => setCurrentPassword(e.target.value)}
+                        placeholder="Enter current password"
+                        className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
+                          New Password
+                        </label>
+                        <input
+                          type="password"
+                          value={newPassword}
+                          onChange={e => setNewPassword(e.target.value)}
+                          required
+                          placeholder="At least 5 characters"
+                          className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-mono uppercase text-on-surface-variant block mb-1">
+                          Confirm New Password
+                        </label>
+                        <input
+                          type="password"
+                          value={confirmPassword}
+                          onChange={e => setConfirmPassword(e.target.value)}
+                          required
+                          placeholder="Re-enter new password"
+                          className="w-full bg-surface-container-lowest border border-outline/30 focus:border-[#00dbe7] rounded-xl px-3.5 py-2 text-xs font-mono text-on-surface outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="flex justify-end pt-2">
+                      <button
+                        type="submit"
+                        disabled={isChangingPassword}
+                        className="px-5 py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-surface-container hover:bg-surface-container-high border border-outline/30 text-on-surface transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      >
+                        {isChangingPassword ? 'Updating...' : 'Update Password'}
+                      </button>
+                    </div>
+                  </form>
+                </div>
+              )}
+
+            </div>
+          )}
+
+          {/* Right Column: GDPR Data Governance & Self-Service Purge */}
+          {(activeSettingsTab === 'data' || activeSettingsTab === 'all') && (
+            <div className={`${activeSettingsTab === 'all' ? 'lg:col-span-5' : 'lg:col-span-12'} space-y-6`}>
+              
+              {/* Data Footprint Summary Card */}
+              <div className="rounded-3xl border border-outline/20 bg-surface-container-lowest/80 backdrop-blur-xl p-6 space-y-5">
+                <div className="flex items-center justify-between pb-3 border-b border-outline/10">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg text-[#00e476]">database</span>
+                    <h2 className="text-sm font-mono font-bold uppercase text-on-surface tracking-wider">
+                      Stored Data Footprint
+                    </h2>
+                  </div>
+                  <span className="px-2 py-0.2 rounded text-[9px] font-mono font-bold uppercase bg-[#00e476]/15 text-[#00e476] border border-[#00fb83]/30">
+                    GDPR
+                  </span>
+                </div>
+
+                <p className="text-xs text-on-surface-variant leading-relaxed">
+                  Your personal data footprint persisted in Neon PostgreSQL. You have complete self-service dominion to inspect, export, or delete any category.
+                </p>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-2 gap-3 font-mono">
+                  <div className="p-3.5 rounded-2xl bg-surface-container/50 border border-outline/10">
+                    <span className="text-[10px] text-on-surface-variant block">Paper Trades</span>
+                    <span className="text-lg font-bold text-on-surface">
+                      {profile?.stats?.tradesCount ?? '—'}
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-surface-container/50 border border-outline/10">
+                    <span className="text-[10px] text-on-surface-variant block">Plugin Reviews</span>
+                    <span className="text-lg font-bold text-on-surface">
+                      {profile?.stats?.reviewsCount ?? '—'}
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-surface-container/50 border border-outline/10">
+                    <span className="text-[10px] text-on-surface-variant block">Installed Plugins</span>
+                    <span className="text-lg font-bold text-on-surface">
+                      {profile?.stats?.installedCount ?? '—'}
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-2xl bg-surface-container/50 border border-outline/10">
+                    <span className="text-[10px] text-on-surface-variant block">Cash Balance</span>
+                    <span className="text-lg font-bold text-[#00e476]">
+                      ${profile?.portfolio?.cash ? profile.portfolio.cash.toLocaleString() : '10,000'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Granular Deletion Controls */}
+                <div className="space-y-2.5 pt-2">
+                  <h3 className="text-[10px] font-mono uppercase text-on-surface-variant tracking-wider font-bold">
+                    Self-Service Data Purge
+                  </h3>
+
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-container/40 border border-outline/10">
+                    <div>
+                      <div className="text-xs font-semibold text-on-surface">Paper Trading Ledger</div>
+                      <div className="text-[10px] text-on-surface-variant font-mono">Purge all trades &amp; reset cash balance</div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={actionLoadingKey === 'trades'}
+                      onClick={handleClearTrades}
+                      className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold border border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-600 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {actionLoadingKey === 'trades' ? 'Purging...' : 'Clear'}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-container/40 border border-outline/10">
+                    <div>
+                      <div className="text-xs font-semibold text-on-surface">Authored Reviews</div>
+                      <div className="text-[10px] text-on-surface-variant font-mono">Delete all submitted store reviews</div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={actionLoadingKey === 'reviews'}
+                      onClick={handleClearReviews}
+                      className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold border border-red-500/40 text-red-600 dark:text-red-400 hover:bg-red-500/10 hover:border-red-600 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {actionLoadingKey === 'reviews' ? 'Purging...' : 'Clear'}
+                    </button>
+                  </div>
+
+                  <div className="flex items-center justify-between p-3 rounded-2xl bg-surface-container/40 border border-outline/10">
+                    <div>
+                      <div className="text-xs font-semibold text-on-surface">Installed Plugins</div>
+                      <div className="text-[10px] text-on-surface-variant font-mono">Reset to default 4 native tools</div>
+                    </div>
+                    <button
+                      type="button"
+                      disabled={actionLoadingKey === 'plugins'}
+                      onClick={handleResetPlugins}
+                      className="px-3 py-1.5 rounded-xl text-xs font-mono font-bold border border-amber-600/40 dark:border-amber-500/40 text-amber-700 dark:text-amber-300 hover:bg-amber-500/10 hover:border-amber-600 transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {actionLoadingKey === 'plugins' ? 'Resetting...' : 'Reset'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Privacy & Cookies Status Card */}
+              <div className="rounded-3xl border border-outline/20 bg-surface-container-lowest/80 backdrop-blur-xl p-6 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-outline/10">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-lg text-[#00dbe7]">cookie</span>
+                    <h2 className="text-sm font-mono font-bold uppercase text-on-surface tracking-wider">
+                      Cookie Preferences
+                    </h2>
+                  </div>
+                  <span className="material-symbols-outlined text-[#00e476] text-base">verified</span>
+                </div>
+
+                <div className="text-xs text-on-surface-variant space-y-2">
+                  <div className="flex items-center justify-between font-mono">
+                    <span>Essential Storage:</span>
+                    <span className="text-emerald-600 dark:text-[#00e476] font-bold">Enabled</span>
+                  </div>
+                  <div className="flex items-center justify-between font-mono">
+                    <span>Functional State:</span>
+                    <span className={cookiePrefs?.functional ? 'text-primary dark:text-[#00dbe7] font-bold' : 'text-gray-500'}>
+                      {cookiePrefs?.functional ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between font-mono">
+                    <span>Performance Telemetry:</span>
+                    <span className={cookiePrefs?.analytics ? 'text-primary dark:text-[#00dbe7] font-bold' : 'text-gray-500'}>
+                      {cookiePrefs?.analytics ? 'Enabled' : 'Disabled'}
+                    </span>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={openCookiePreferencesModal}
+                  className="w-full py-2.5 rounded-xl text-xs font-mono font-semibold border border-primary/30 dark:border-[#00dbe7]/30 text-primary dark:text-[#00dbe7] hover:bg-primary/10 transition-colors cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <span className="material-symbols-outlined text-sm">settings</span>
+                  <span>Reconfigure Cookie Consent</span>
+                </button>
+              </div>
+
+              {/* Danger Zone: Account Erasure (High Visibility) */}
+              <div className="rounded-3xl border-2 border-red-500/40 bg-red-50/80 dark:bg-red-950/20 shadow-lg shadow-red-500/5 backdrop-blur-xl p-6 space-y-4">
+                <div className="flex items-center justify-between pb-2.5 border-b border-red-500/30 dark:border-red-500/20">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-red-500/15 dark:bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-600 dark:text-red-400 shrink-0">
+                      <span className="material-symbols-outlined text-lg">warning</span>
+                    </div>
+                    <h2 className="text-sm font-mono font-extrabold uppercase tracking-wider text-red-700 dark:text-red-400">
+                      Danger Zone
+                    </h2>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase bg-red-600/15 text-red-700 dark:text-red-300 border border-red-500/30">
+                    Irreversible
+                  </span>
+                </div>
+
+                <p className="text-xs text-red-900/85 dark:text-red-200/90 font-medium leading-relaxed">
+                  Permanently erase your user account, portfolio records, authored reviews, and settings from our database. This action cannot be undone.
+                </p>
+
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteAccountModal(true)}
+                  className="w-full py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/25 hover:shadow-lg hover:shadow-red-600/35 transition-all flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-sm">delete_forever</span>
+                  <span>Permanently Delete Account</span>
+                </button>
+              </div>
+
+            </div>
+          )}
+
+        </div>
+      )}
 
       {/* Account Deletion Confirmation Modal */}
       {showDeleteAccountModal && (

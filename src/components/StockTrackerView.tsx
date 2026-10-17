@@ -1413,16 +1413,32 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [isTerminalCollapsed, setIsTerminalCollapsed] = useState(false);
   const [isTerminalEnabled, setIsTerminalEnabled] = useState<boolean>(() => {
     try {
-      return localStorage.getItem('sutharlabs_enable_terminal') === 'true';
+      return localStorage.getItem('sutharlabs_enable_terminal') === 'true' || localStorage.getItem('sutharlabs_enable_logs') === 'true';
     } catch {
       return false;
     }
   });
 
+  useEffect(() => {
+    const handleLogPref = () => {
+      try {
+        setIsTerminalEnabled(localStorage.getItem('sutharlabs_enable_terminal') === 'true' || localStorage.getItem('sutharlabs_enable_logs') === 'true');
+      } catch {}
+    };
+    window.addEventListener('storage', handleLogPref);
+    window.addEventListener('sutharlabs_logs_preference_changed', handleLogPref);
+    return () => {
+      window.removeEventListener('storage', handleLogPref);
+      window.removeEventListener('sutharlabs_logs_preference_changed', handleLogPref);
+    };
+  }, []);
+
   const handleToggleTerminal = (enabled: boolean) => {
     setIsTerminalEnabled(enabled);
     try {
       localStorage.setItem('sutharlabs_enable_terminal', enabled ? 'true' : 'false');
+      localStorage.setItem('sutharlabs_enable_logs', enabled ? 'true' : 'false');
+      window.dispatchEvent(new Event('sutharlabs_logs_preference_changed'));
     } catch {}
     setNotification(enabled ? 'Terminal Console enabled in workspace' : 'Terminal Console hidden');
     setTimeout(() => setNotification(''), 3000);
