@@ -318,10 +318,11 @@ export async function duplicateDocument(userEmail: string, id: string): Promise<
 /**
  * Legacy API compatibility helpers for /api/docnexus/document
  */
-export async function getLegacyDocument(): Promise<{ title: string; content: string }> {
+export async function getLegacyDocument(userEmail?: string): Promise<{ title: string; content: string }> {
+  const docId = userEmail ? `doc_nexus_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : "doc_nexus_default";
   try {
     const doc = await prisma.document.findUnique({
-      where: { id: "doc_nexus_default" }
+      where: { id: docId }
     });
     if (doc) {
       return { title: doc.title, content: doc.content };
@@ -335,12 +336,13 @@ export async function getLegacyDocument(): Promise<{ title: string; content: str
   };
 }
 
-export async function saveLegacyDocument(title: string, content: string): Promise<void> {
+export async function saveLegacyDocument(userEmail: string, title: string, content: string): Promise<void> {
+  const docId = userEmail ? `doc_nexus_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}` : "doc_nexus_default";
   try {
     await prisma.document.upsert({
-      where: { id: "doc_nexus_default" },
+      where: { id: docId },
       update: { title, content },
-      create: { id: "doc_nexus_default", title, content }
+      create: { id: docId, title, content }
     });
   } catch {}
 }

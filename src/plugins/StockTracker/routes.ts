@@ -48,7 +48,8 @@ import {
   createSimulationInstance,
   deleteSimulation,
   setSimulationPublicStatus,
-  updateSimulationConfig
+  updateSimulationConfig,
+  type SimulationRegistryEntry
 } from "./simulator/index.js";
 import { readJsonData, writeJsonData } from "./storageUtils.js";
 

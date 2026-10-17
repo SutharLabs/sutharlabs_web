@@ -719,7 +719,7 @@ export default function UserProfileView({
       )}
 
       {/* 2. Grid: Profile, Security & Data Management */}
-      {(activeSettingsTab !== 'preferences' || activeSettingsTab === 'all') && (
+      {activeSettingsTab !== 'preferences' && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-fade-in">
           
           {/* Left Column: Profile Info & Password */}

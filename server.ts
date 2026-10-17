@@ -1885,7 +1885,7 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
       });
 
       const updated = await prisma.portfolio.update({
-        where: { userEmail: String(email).toLowerCase() },
+        where: { userEmail: String(targetEmail).toLowerCase() },
         data: {
           cash: updatedCash,
           shares: updatedShares,
@@ -1895,7 +1895,7 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
 
       // Increment overall user activity sync count
       await prisma.user.update({
-        where: { email: String(email).toLowerCase() },
+        where: { email: String(targetEmail).toLowerCase() },
         data: { activityCount: { increment: 1 } }
       });
 

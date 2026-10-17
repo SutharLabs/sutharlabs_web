@@ -72,7 +72,7 @@ export function resolveAccurateTradeTimestamp({
 }: {
   dateStr: string;
   market: string;
-  type: "BUY_ENTRY" | "TAKE_PROFIT" | "STOP_LOSS" | "TRAILING_STOP_EXIT" | "MANUAL_CLOSE";
+  type: "BUY_ENTRY" | "TAKE_PROFIT" | "STOP_LOSS" | "TRAILING_STOP_EXIT" | "MANUAL_CLOSE" | "INTRADAY_SQUARE_OFF";
   existingIso?: string;
   intradayBars?: Array<{ time?: number; isoTime?: string; high?: number; low?: number; close?: number; open?: number }>;
   priceTarget?: number;
@@ -528,6 +528,7 @@ export interface PersistedEODState {
   positions: EODPosition[];
   closedTrades: EODTradeExecution[];
   lastRunDate?: string;
+  productType?: 'CNC' | 'MIS';
   totalRealizedPnL: number;
   totalFrictionPaid: number;
   winCount: number;
@@ -1876,7 +1877,7 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
   // 6. Record run count and heartbeat in registry & simulation store
   const currentReg = readRegistry();
-  const cur = currentReg.find(r => r.id === simId || r.id === safeSimId || r.id.endsWith(`__${simId}`));
+  const cur = currentReg.find(r => r.id === simId || r.id.endsWith(`__${simId}`));
   const updatedTotalRuns = (cur?.totalRuns ?? 0) + 1;
   const updatedTradeRuns = (cur?.totalTradeRuns ?? 0) + (hadTrades ? 1 : 0);
   report.runCount = updatedTotalRuns;
