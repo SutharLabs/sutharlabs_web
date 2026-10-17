@@ -44,7 +44,8 @@ import {
   BarChart2,
   ChevronLeft,
   ChevronRight,
-  GripVertical
+  GripVertical,
+  Terminal
 } from 'lucide-react';
 import {
   createChart,
@@ -1407,9 +1408,25 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [enableWebhooks, setEnableWebhooks] = useState<boolean>(false);
   const [webhookUrl, setWebhookUrl] = useState<string>('');
 
-  // Terminal & UI
+  // Terminal & UI (Disabled and hidden by default)
   const [activeTab, setActiveTab] = useState<'AGENT_LOGS' | 'OUTPUT' | 'DEBUG_CONSOLE'>('AGENT_LOGS');
   const [isTerminalCollapsed, setIsTerminalCollapsed] = useState(false);
+  const [isTerminalEnabled, setIsTerminalEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('sutharlabs_enable_terminal') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleTerminal = (enabled: boolean) => {
+    setIsTerminalEnabled(enabled);
+    try {
+      localStorage.setItem('sutharlabs_enable_terminal', enabled ? 'true' : 'false');
+    } catch {}
+    setNotification(enabled ? 'Terminal Console enabled in workspace' : 'Terminal Console hidden');
+    setTimeout(() => setNotification(''), 3000);
+  };
 
   // Paper Trading Portfolio
   const [portfolio, setPortfolio] = useState<UserPortfolio>({ cash: 10000, shares: 0, buyPrice: 0 });
@@ -2899,30 +2916,72 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           <div className="glass-panel rounded-xl flex flex-col overflow-hidden border border-outline/20 bg-surface-container-lowest shadow-md h-full">
             
             {/* Chart Toolbar: Timeframe Selector + Indicator Overlays + Expand Button */}
-            <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2 p-2 sm:p-2.5 pr-3 sm:pr-4 md:pr-5 border-b border-outline/10 bg-surface-container-low/60">
+            <div className="flex flex-wrap items-center justify-between gap-2 p-2 sm:p-2.5 pr-3 sm:pr-4 md:pr-5 border-b border-outline/10 bg-surface-container-low/60">
               
               {/* Range & Interval Selectors */}
-              <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden py-0.5 shrink-0">
-                {/* Professional Candle Size Dropdown (TradingView / Kite standard) */}
-                <div className="relative shrink-0 flex items-center group">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all border bg-surface-container-lowest/90 text-on-surface border-outline/20 group-hover:border-emerald-500/50 pointer-events-none shadow-sm">
-                    <Clock className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span className="text-[11px] text-on-surface-variant uppercase font-medium">Bar:</span>
-                    <span className="text-emerald-400 font-bold uppercase">{activeInterval}</span>
-                    <ChevronDown className="w-3.5 h-3.5 text-on-surface-variant shrink-0" />
-                  </div>
-                  <select
-                    value={activeInterval}
-                    onChange={(e) => setActiveInterval(e.target.value as CandleInterval)}
-                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-30"
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap py-0.5">
+                {/* Professional Candle Size Dropdown (Themed Custom Dropdown with Outside Click) */}
+                <div className="relative shrink-0" ref={intervalMenuRef}>
+                  <button
+                    type="button"
+                    onClick={() => setShowIntervalMenu(prev => !prev)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer border ${
+                      showIntervalMenu 
+                        ? 'bg-[#00dbe7]/20 text-[#00dbe7] border-[#00dbe7]/50 shadow-[0_0_10px_rgba(0,219,231,0.25)]' 
+                        : 'bg-surface-container-lowest/90 text-on-surface hover:bg-surface-container border-outline/20 hover:border-[#00dbe7]/40 shadow-sm'
+                    }`}
                     title="Select Candlestick Interval"
                   >
-                    {CANDLE_INTERVAL_OPTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value} className="bg-[#18181b] text-white py-1">
-                        {opt.label} — {opt.description}
-                      </option>
-                    ))}
-                  </select>
+                    <Clock className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+                    <span className="text-[11px] text-on-surface-variant uppercase font-medium">Bar:</span>
+                    <span className="text-[#00dbe7] font-bold uppercase">{activeInterval}</span>
+                    <ChevronDown className={`w-3.5 h-3.5 text-on-surface-variant transition-transform duration-200 ${showIntervalMenu ? 'rotate-180 text-[#00dbe7]' : ''}`} />
+                  </button>
+
+                  {/* High-Fidelity Themed Dropdown Menu (Directly matches Light and Dark Themes) */}
+                  {showIntervalMenu && (
+                    <div className="absolute left-0 top-full mt-1.5 w-64 rounded-xl bg-surface-container border border-outline/30 shadow-[0_15px_40px_rgba(0,0,0,0.35)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                      <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-on-surface-variant/70 border-b border-outline/10 flex items-center justify-between">
+                        <span>Candle Resolution</span>
+                        <span className="text-[#00dbe7] font-mono text-[9px] font-semibold">Live Feed</span>
+                      </div>
+                      <div className="py-1 flex flex-col gap-0.5 px-1">
+                        {CANDLE_INTERVAL_OPTIONS.map((opt) => {
+                          const isSelected = activeInterval === opt.value;
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => {
+                                setActiveInterval(opt.value);
+                                setShowIntervalMenu(false);
+                              }}
+                              className={`w-full px-2.5 py-1.5 rounded-lg flex items-center justify-between text-left transition-all cursor-pointer text-xs ${
+                                isSelected
+                                  ? 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold shadow-sm'
+                                  : 'text-on-surface hover:bg-surface-container-high hover:text-[#00dbe7]'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 font-mono">
+                                <span className={`w-8 text-center font-bold px-1.5 py-0.5 rounded text-[11px] ${
+                                  isSelected ? 'bg-[#00dbe7]/25 text-[#00dbe7]' : 'bg-surface-container-high text-on-surface-variant'
+                                }`}>
+                                  {opt.label}
+                                </span>
+                                <span className="text-[11px] font-sans text-on-surface-variant">
+                                  {opt.description}
+                                </span>
+                              </div>
+                              {isSelected && <Check className="w-3.5 h-3.5 text-[#00dbe7] ml-1.5 shrink-0" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <div className="px-3 pt-1.5 pb-0.5 border-t border-outline/10 text-[10px] text-on-surface-variant/60 font-sans">
+                        Tip: Auto-selects optimal candle for range.
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Graph Scale / Range Selector with Intelligent Default Candle Size */}
@@ -2949,7 +3008,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               </div>
 
               {/* Indicator Overlay Toggles & Fullscreen Toggle */}
-              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap sm:flex-nowrap py-0.5 justify-start sm:justify-end shrink-0 pr-1">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap py-0.5 justify-start sm:justify-end shrink-0 pr-1 ml-auto sm:ml-0">
                 <button
                   onClick={() => setShowEma20(!showEma20)}
                   className={`px-2 py-0.5 rounded text-[11px] font-mono flex items-center gap-1 transition-colors cursor-pointer shrink-0 ${
@@ -4066,10 +4125,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
       </div>
 
-      {/* ── 3. WORKSPACE TERMINAL CONSOLE ────────────────────────────────────── */}
-      <div className={`border border-outline/20 bg-surface-container-lowest rounded-xl flex flex-col overflow-hidden transition-all duration-300 ${
-        isTerminalCollapsed ? 'h-9 shrink-0' : 'h-40'
-      }`}>
+      {/* ── 3. WORKSPACE TERMINAL CONSOLE (Hidden by default, user-configurable in settings) ── */}
+      {isTerminalEnabled && (
+        <div className={`border border-outline/20 bg-surface-container-lowest rounded-xl flex flex-col overflow-hidden transition-all duration-300 ${
+          isTerminalCollapsed ? 'h-9 shrink-0' : 'h-40'
+        }`}>
         <div
           onClick={() => setIsTerminalCollapsed(!isTerminalCollapsed)}
           className="flex items-center justify-between px-4 py-2 border-b border-outline/10 bg-surface-container-high select-none cursor-pointer"
@@ -4167,6 +4227,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           </div>
         )}
       </div>
+      )}
 
       {/* ── 4. FULL-VIEWPORT EXPANDED FLOATING HOVER WINDOW (CENTERED POPUP) ──────── */}
       {showSettingsDrawer && (
@@ -6124,6 +6185,44 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
             {/* TAB 4: TRADING & RISK RULES (100% EDITABLE RISK PARAMETERS) */}
             {settingsActiveTab === 'TRADING' && (
               <div className="flex flex-col gap-6 text-xs font-mono">
+                {/* Workspace Terminal / Execution Logs Toggle */}
+                <div className="bg-surface-container-low p-4 sm:p-5 rounded-xl border border-outline/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-sm">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2.5 rounded-xl bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30 shrink-0 mt-0.5">
+                      <Terminal className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-on-surface font-semibold text-sm">
+                          Workspace Execution Logs & Terminal Console
+                        </span>
+                        <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                          isTerminalEnabled
+                            ? 'bg-[#00e476]/15 text-[#00e476] border border-[#00e476]/30'
+                            : 'bg-surface-container text-on-surface-variant'
+                        }`}>
+                          {isTerminalEnabled ? 'ENABLED' : 'DISABLED (HIDDEN)'}
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-on-surface-variant font-sans mt-1">
+                        Control visibility of the live execution terminal (Agent Logs, System Output, Debug Console) at the bottom of the workspace screen.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleTerminal(!isTerminalEnabled)}
+                    className={`px-4 py-2 rounded-xl text-xs font-mono font-bold flex items-center gap-2 transition-all cursor-pointer shrink-0 border ${
+                      isTerminalEnabled
+                        ? 'bg-[#00e476]/15 text-[#00e476] border-[#00e476]/40 shadow-[0_0_10px_rgba(0,228,118,0.2)]'
+                        : 'bg-surface-container text-on-surface-variant border-outline/30 hover:text-on-surface'
+                    }`}
+                  >
+                    <span className={`w-2 h-2 rounded-full ${isTerminalEnabled ? 'bg-[#00e476] animate-pulse' : 'bg-gray-400'}`} />
+                    <span>{isTerminalEnabled ? 'Disable Window' : 'Enable Window'}</span>
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {/* Reporting Currency Selection */}
                   <div className="bg-surface-container-low p-4 rounded-xl border border-outline/20 flex flex-col gap-2">
