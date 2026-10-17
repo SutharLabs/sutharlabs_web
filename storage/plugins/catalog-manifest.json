@@ -2,19 +2,19 @@
   {
     "id": "wp_stock_analyzer",
     "name": "Stock Tracker",
-    "version": "1.1.3",
+    "version": "1.1.4",
     "category": "Finance",
     "type": "Native",
     "description": "Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.",
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-17T09:06:51.303Z",
-    "archiveFileName": "wp_stock_analyzer-v1.1.3.zip",
-    "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.3.zip",
-    "sizeBytes": 90206,
-    "checksumSha256": "5eea3d8890be71ca47fcfae0b8995426370a929a1cdb95f63391a2136884c4d8",
-    "changelog": "### v1.1.3 Bug Fix Release & UI Polish\n- **Themed Candle Size Selector**: Custom dropdown popover adhering to dark & light themes, replacing native OS select, and resolving interval selection issues.\n- **Chart Toolbar Dynamic Layout**: Enabled dynamic wrapping on the chart toolbar header to prevent button cutoff/clipping when dragging the window splitter slider.\n- **Workspace Terminal / Execution Log Control**: Added toggle in Settings under the Trading tab to enable/disable terminal log window; hidden and disabled by default with persistent localStorage state.\n- **Fluid Dynamic Tile Widths & Spacing**: Made sidebar and market cards fluidly dynamic across all viewports with proper vertical spacing when stacked on smaller screens; resolved icon overlap.\n- **Trade Simulator Multi-Instance Persistence**:\n  - Fixed public/private instance state persistence across tenant prefixes and database refreshes.\n  - Eliminated duplicate cron_live entries and enforced base slug deduplication.\n  - Database-safe simulation target ID resolution preventing unintended instance creation.\n  - Dynamic responsive action buttons with compact mobile layout.\n  - Supported trade product types (CNC delivery vs MIS intraday) with automatic 3:15 PM EOD square-off.\n  - Restored authentic execution timestamps matching price points across live crons and historical replays.\n  - Verified live cron heartbeat tracking accurately reflecting Neon DB updatedAt timestamps."
+    "packagedAt": "2026-10-17T15:26:07.756Z",
+    "archiveFileName": "wp_stock_analyzer-v1.1.4.zip",
+    "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.4.zip",
+    "sizeBytes": 107084,
+    "checksumSha256": "53d58adc3ca57a3402b7824f61848661d3e580ef1f21b265584acd8f036149c5",
+    "changelog": "### v1.1.4 Subversion Release & Indicator Suite\n- **18 Professional Plottable Indicators on TradingView Graph**: Full mathematical calculation engine and plotting for EMA, SMA, WMA, VWAP, Bollinger Bands, Supertrend, Parabolic SAR, Donchian Channels, Keltner Channels, RSI, MACD, Stochastic Oscillator, ATR, ADX, CCI, Williams %R, OBV, and Volume.\n- **Dedicated Studies Ribbon Bar**: Clean, high-density studies bar situated directly above the chart canvas displaying active indicators, live telemetry at the hover crosshair, customizable parameters, visibility eye toggle, configuration settings gear modal, and removal controls.\n- **Unified Indicator Engine across Platform**:\n  - **Algo Creation (Strategy Builder)**: Categorized entry (BUY) and exit (SELL) rule builder with access to all 18 indicators.\n  - **Trade Simulator (EOD & Intraday)**: Dynamic calculation and evaluation of all 18 indicators across simulation runs.\n  - **Market Scanner Hub (Screener)**: Multi-indicator candidate metrics with quick filter buttons (Above VWAP, Supertrend Bull, RSI ≤ 35, RSI ≥ 50).\n- **Unobstructed Chart Canvas**: Relocated floating overlay from inside the canvas to the dedicated top ribbon, giving candles 100% full, unobstructed visibility.\n- **Toolbar Redundancy**: Removed redundant fixed indicator buttons from the chart toolbar.\n- **UI Polish**: Fixed duplicate '+' icon on the Study button."
   },
   {
     "id": "wp_flow_designer",
@@ -26,11 +26,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-17T09:06:56.886Z",
+    "packagedAt": "2026-10-17T15:26:09.956Z",
     "archiveFileName": "wp_flow_designer-v0.1.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.1.0.zip",
     "sizeBytes": 2962,
-    "checksumSha256": "6dd572ae296fb7b8cb912c952eefb76ef3ff6f3dbb8a2e6a465d85657150f854",
+    "checksumSha256": "9c841635d410236c082e3a75676d5bc116c2e1dd5f78e6782009c050c6cc0be0",
     "changelog": "Interactive canvas for architectural node topologies, microservices modeling, and JSON state import/export."
   },
   {
@@ -43,11 +43,11 @@
     "iconSymbol": "auto_stories",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-17T09:06:57.837Z",
+    "packagedAt": "2026-10-17T15:26:10.970Z",
     "archiveFileName": "wp_doc_nexus-v0.3.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.3.0.zip",
-    "sizeBytes": 85203,
-    "checksumSha256": "74988047ce904c7033aa261fd9f1bd52918a78ddc94cb6bbde211cf1ac270bec",
+    "sizeBytes": 85225,
+    "checksumSha256": "e1bba3cf788ab73aa2715a4d498f4db13270737361bc62edfe0a21fd608d13ed",
     "changelog": "Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations."
   },
   {
@@ -60,11 +60,11 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-10-17T09:06:59.787Z",
+    "packagedAt": "2026-10-17T15:26:12.835Z",
     "archiveFileName": "wp_accounting-v0.2.3.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.2.3.zip",
     "sizeBytes": 78943,
-    "checksumSha256": "3c83d2ee5fedb8b3ee6eef7d1b404d71b05779fb2ae91c35b10d75ff9e2a1bfc",
+    "checksumSha256": "e9d64d75fa72ec0b6f1acf381531d3caa7d5f01f498f1a798cbbf0b817e401fc",
     "changelog": "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync."
   }
 ]

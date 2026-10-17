@@ -3,7 +3,7 @@ import { WorkspacePluginManifest } from "../types.js";
 export const manifest: WorkspacePluginManifest = {
   id: "wp_stock_analyzer",
   name: "Stock Tracker",
-  version: "1.1.3",
+  version: "1.1.4",
   category: "Finance",
   type: "Native",
   iconSymbol: "monitoring",

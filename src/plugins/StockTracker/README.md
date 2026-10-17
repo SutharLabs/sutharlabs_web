@@ -1,5 +1,5 @@
 # Stock Tracker Plugin (`wp_stock_analyzer`)
-### Version: `v1.1.3` (Bug Fix Release) &bull; Native Workspace Extension
+### Version: `v1.1.4` (Subversion Release) &bull; Native Workspace Extension
 
 The **Stock Tracker** plugin is an enterprise-grade quantitative trading, backtesting, market screening, and algorithmic portfolio management suite built natively for the SutharLabs platform.
 

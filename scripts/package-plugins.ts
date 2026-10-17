@@ -23,25 +23,22 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'StockTracker',
     id: 'wp_stock_analyzer',
     name: 'Stock Tracker',
-    version: '1.1.3',
+    version: '1.1.4',
     category: 'Finance',
     type: 'Native',
     description: 'Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.',
     iconSymbol: 'monitoring',
     minEngineVersion: '0.1.0',
-    changelog: `### v1.1.3 Bug Fix Release & UI Polish
-- **Themed Candle Size Selector**: Custom dropdown popover adhering to dark & light themes, replacing native OS select, and resolving interval selection issues.
-- **Chart Toolbar Dynamic Layout**: Enabled dynamic wrapping on the chart toolbar header to prevent button cutoff/clipping when dragging the window splitter slider.
-- **Workspace Terminal / Execution Log Control**: Added toggle in Settings under the Trading tab to enable/disable terminal log window; hidden and disabled by default with persistent localStorage state.
-- **Fluid Dynamic Tile Widths & Spacing**: Made sidebar and market cards fluidly dynamic across all viewports with proper vertical spacing when stacked on smaller screens; resolved icon overlap.
-- **Trade Simulator Multi-Instance Persistence**:
-  - Fixed public/private instance state persistence across tenant prefixes and database refreshes.
-  - Eliminated duplicate cron_live entries and enforced base slug deduplication.
-  - Database-safe simulation target ID resolution preventing unintended instance creation.
-  - Dynamic responsive action buttons with compact mobile layout.
-  - Supported trade product types (CNC delivery vs MIS intraday) with automatic 3:15 PM EOD square-off.
-  - Restored authentic execution timestamps matching price points across live crons and historical replays.
-  - Verified live cron heartbeat tracking accurately reflecting Neon DB updatedAt timestamps.`
+    changelog: `### v1.1.4 Subversion Release & Indicator Suite
+- **18 Professional Plottable Indicators on TradingView Graph**: Full mathematical calculation engine and plotting for EMA, SMA, WMA, VWAP, Bollinger Bands, Supertrend, Parabolic SAR, Donchian Channels, Keltner Channels, RSI, MACD, Stochastic Oscillator, ATR, ADX, CCI, Williams %R, OBV, and Volume.
+- **Dedicated Studies Ribbon Bar**: Clean, high-density studies bar situated directly above the chart canvas displaying active indicators, live telemetry at the hover crosshair, customizable parameters, visibility eye toggle, configuration settings gear modal, and removal controls.
+- **Unified Indicator Engine across Platform**:
+  - **Algo Creation (Strategy Builder)**: Categorized entry (BUY) and exit (SELL) rule builder with access to all 18 indicators.
+  - **Trade Simulator (EOD & Intraday)**: Dynamic calculation and evaluation of all 18 indicators across simulation runs.
+  - **Market Scanner Hub (Screener)**: Multi-indicator candidate metrics with quick filter buttons (Above VWAP, Supertrend Bull, RSI ≤ 35, RSI ≥ 50).
+- **Unobstructed Chart Canvas**: Relocated floating overlay from inside the canvas to the dedicated top ribbon, giving candles 100% full, unobstructed visibility.
+- **Toolbar Redundancy**: Removed redundant fixed indicator buttons from the chart toolbar.
+- **UI Polish**: Fixed duplicate '+' icon on the Study button.`
   },
 
   {

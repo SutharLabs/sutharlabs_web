@@ -3545,7 +3545,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 title="Add More Indicators & Strategies"
               >
                 <Plus className="w-3 h-3" />
-                <span>+ Study</span>
+                <span>Study</span>
               </button>
             </div>
 

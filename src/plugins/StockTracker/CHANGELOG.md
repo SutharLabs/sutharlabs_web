@@ -4,6 +4,21 @@ All notable changes to the **Stock Tracker** plugin will be documented in this f
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.4] - 2026-10-17
+
+### Added
+- **18 Professional Plottable Indicators on TradingView Graph**: Full mathematical calculation engine, continuous plotting series, and customizable parameter inputs for EMA, SMA, WMA, VWAP, Bollinger Bands, Supertrend, Parabolic SAR, Donchian Channels, Keltner Channels, RSI, MACD, Stochastic Oscillator, ATR, ADX, CCI, Williams %R, OBV, and Volume.
+- **Dedicated Studies Ribbon Bar**: Clean, high-density studies bar situated directly above the chart canvas displaying active indicators, live telemetry at the hover crosshair, customizable parameters, visibility eye toggle, configuration settings gear modal, and removal controls.
+- **Unified Indicator Engine across Platform**:
+  - **Algo Creation (Strategy Builder)**: Categorized entry (BUY) and exit (SELL) rule builder with access to all 18 indicators.
+  - **Trade Simulator (EOD & Intraday)**: Dynamic calculation and evaluation of all 18 indicators across simulation runs.
+  - **Market Scanner Hub (Screener)**: Multi-indicator candidate metrics (`vwap`, `supertrend`, `sma_50`, `rsi`, `macd`, `atr`, `adx`, `obv`) with quick filter buttons (Above VWAP, Supertrend Bull, RSI ≤ 35, RSI ≥ 50).
+
+### Fixed & Polished
+- **Unobstructed Chart Canvas**: Relocated floating overlay from inside the canvas to the dedicated top ribbon, giving candles 100% full, unobstructed visibility.
+- **Toolbar Redundancy**: Removed redundant fixed indicator buttons from the chart toolbar.
+- **Study Button Icon**: Resolved duplicate `+` icon on the `+ Study` action button.
+
 ---
 
 ## [1.1.3] - 2026-10-17
