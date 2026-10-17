@@ -150,6 +150,20 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
           }
         }
 
+        // Calculate 52-Week High/Low Proximity and Breakout Signals
+        const quote52wH = (quote as any)?.fifty_two_week_high;
+        const quote52wL = (quote as any)?.fifty_two_week_low;
+        const candle52wH = candles.length > 0 ? Math.max(...candles.map((c: any) => c.high || c.close)) : currentPrice;
+        const candle52wL = candles.length > 0 ? Math.min(...candles.map((c: any) => c.low || c.close)) : currentPrice;
+        const final52wH = quote52wH && quote52wH > 0 ? quote52wH : candle52wH;
+        const final52wL = quote52wL && quote52wL > 0 ? quote52wL : candle52wL;
+
+        const away52wH = final52wH > 0 ? parseFloat((((final52wH - currentPrice) / final52wH) * 100).toFixed(2)) : 0;
+        const away52wL = final52wL > 0 ? parseFloat((((currentPrice - final52wL) / final52wL) * 100).toFixed(2)) : 0;
+        const is52wBreakoutToday = (quote as any)?.crossed_high ?? (currentPrice >= final52wH * 0.998);
+        const is52wBreakdownToday = (quote as any)?.crossed_low ?? (currentPrice <= final52wL * 1.002);
+        const volBreakout = (quote as any)?.vol_breakout ?? volSpike;
+
         const candidate: ScannerCandidate = {
           symbol: normSym,
           name: quote?.name || meta.name || fmt.cleanSymbol,
@@ -165,6 +179,13 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
           volume,
           avgVolume20d: Math.round(avgVol),
           volumeSpikeRatio: volSpike,
+          volBreakout,
+          fiftyTwoWeekHigh: parseFloat(final52wH.toFixed(2)),
+          fiftyTwoWeekLow: parseFloat(final52wL.toFixed(2)),
+          away52wHighPercent: away52wH,
+          away52wLowPercent: away52wL,
+          is52wBreakoutToday,
+          is52wBreakdownToday,
           signal: signal.action,
           confidence: parseFloat(signal.confidence.toFixed(2)),
           reason: (signal.reasoning && signal.reasoning.length > 0) ? signal.reasoning.join("; ") : "Quantitative condition criteria verified",
@@ -204,7 +225,13 @@ export async function runMarketScan(options: ScannerFilterOptions): Promise<Scan
     filtered = filtered.filter(c => c.confidence >= options.minConfidence!);
   }
   if (options.minVolumeSpike !== undefined && options.minVolumeSpike > 1.0) {
-    filtered = filtered.filter(c => c.volumeSpikeRatio >= options.minVolumeSpike!);
+    filtered = filtered.filter(c => c.volumeSpikeRatio >= options.minVolumeSpike! || (c.volBreakout !== undefined && c.volBreakout >= options.minVolumeSpike!));
+  }
+  if (options.near52wHighOnly) {
+    filtered = filtered.filter(c => c.away52wHighPercent !== undefined && c.away52wHighPercent <= 5.0 && c.away52wHighPercent >= -1.0);
+  }
+  if (options.breakoutTodayOnly) {
+    filtered = filtered.filter(c => c.is52wBreakoutToday === true);
   }
 
   // Sort by Signal Priority (BUY > SELL > HOLD), then Confidence (descending), then 24h change %

@@ -181,6 +181,77 @@ export function registerRoutes(router: Router) {
     }
   });
 
+  // Fast in-memory cache for Market Ticker Tape
+  interface TapeCacheRecord {
+    timestamp: number;
+    data: any[];
+  }
+  let tapeCache: TapeCacheRecord | null = null;
+  const TAPE_CACHE_TTL = 20 * 1000; // 20s TTL
+
+  // Real-Time Top Market Ticker Tape Endpoint (inspired by Tickertape /product/tape)
+  router.get("/tape", async (req: any, res: any) => {
+    try {
+      const now = Date.now();
+      if (tapeCache && (now - tapeCache.timestamp < TAPE_CACHE_TTL)) {
+        return res.json(tapeCache.data);
+      }
+
+      const tapeSymbols = [
+        { symbol: '^NSEI', name: 'NIFTY 50', market: 'IN', type: 'INDEX' },
+        { symbol: '^NSEBANK', name: 'BANK NIFTY', market: 'IN', type: 'INDEX' },
+        { symbol: '^BSESN', name: 'SENSEX', market: 'IN', type: 'INDEX' },
+        { symbol: '^CNXIT', name: 'NIFTY IT', market: 'IN', type: 'INDEX' },
+        { symbol: 'RELIANCE.NS', name: 'RELIANCE', market: 'IN', type: 'STOCK' },
+        { symbol: 'TCS.NS', name: 'TCS', market: 'IN', type: 'STOCK' },
+        { symbol: 'HDFCBANK.NS', name: 'HDFC BANK', market: 'IN', type: 'STOCK' },
+        { symbol: 'BHARTIARTL.NS', name: 'BHARTI AIRTEL', market: 'IN', type: 'STOCK' },
+        { symbol: '^GSPC', name: 'S&P 500', market: 'US', type: 'INDEX' },
+        { symbol: '^IXIC', name: 'NASDAQ', market: 'US', type: 'INDEX' },
+        { symbol: 'NVDA', name: 'NVIDIA', market: 'US', type: 'STOCK' },
+        { symbol: 'AAPL', name: 'APPLE', market: 'US', type: 'STOCK' },
+        { symbol: 'MSFT', name: 'MICROSOFT', market: 'US', type: 'STOCK' }
+      ];
+
+      const quotesSettled = await Promise.allSettled(
+        tapeSymbols.map(async (item) => {
+          const q = await getQuote(item.symbol, item.market);
+          return {
+            symbol: item.symbol,
+            name: item.name,
+            market: item.market,
+            type: item.type,
+            price: q.current_price,
+            change: q.change,
+            changePercent: q.change_percent,
+            currencySymbol: q.currency_symbol,
+            high: q.high,
+            low: q.low,
+            volume: q.volume,
+            volBreakout: (q as any).vol_breakout,
+            away52wHigh: (q as any).away_52w_high,
+            crossedHigh: (q as any).crossed_high
+          };
+        })
+      );
+
+      const tapeData = quotesSettled
+        .filter(r => r.status === 'fulfilled')
+        .map((r: any) => r.value);
+
+      if (tapeData.length > 0) {
+        tapeCache = { timestamp: now, data: tapeData };
+      }
+      res.json(tapeData);
+    } catch (e: any) {
+      res.status(500).json({ error: e.message });
+    }
+  });
+
+  // Fast in-memory quote cache (10s TTL) to prevent redundant upstream calls
+  const quoteMemoryCache = new Map<string, { timestamp: number; data: any }>();
+  const QUOTE_CACHE_TTL = 10 * 1000;
+
   // Market-Aware Batch Quotes for Watchlist Deck (e.g. "NVDA:US,RELIANCE.NS:IN,TSLA:US")
   router.get("/watchlist-quotes", async (req: any, res: any) => {
     try {
@@ -190,8 +261,9 @@ export function registerRoutes(router: Router) {
         return res.json([]);
       }
 
+      const now = Date.now();
       const results = await Promise.allSettled(
-        rawSymbols.map(entry => {
+        rawSymbols.map(async entry => {
           let sym = entry;
           let market = defaultRegion;
           if (entry.includes(':')) {
@@ -205,7 +277,16 @@ export function registerRoutes(router: Router) {
           } else if (KNOWN_US_TICKERS.has(entry.toUpperCase())) {
             market = 'US';
           }
-          return getQuote(sym, market);
+
+          const cacheKey = `${sym.toUpperCase()}_${market}`;
+          const cached = quoteMemoryCache.get(cacheKey);
+          if (cached && (now - cached.timestamp < QUOTE_CACHE_TTL)) {
+            return cached.data;
+          }
+
+          const fresh = await getQuote(sym, market);
+          quoteMemoryCache.set(cacheKey, { timestamp: now, data: fresh });
+          return fresh;
         })
       );
 

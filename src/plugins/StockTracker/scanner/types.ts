@@ -26,6 +26,13 @@ export interface ScannerCandidate {
   riskRewardRatio?: number;
   atr?: number;
   atrPercent?: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  away52wHighPercent?: number;
+  away52wLowPercent?: number;
+  is52wBreakoutToday?: boolean;
+  is52wBreakdownToday?: boolean;
+  volBreakout?: number;
   scannedAt: string;
 }
 
@@ -38,6 +45,8 @@ export interface ScannerFilterOptions {
   signalFilter?: 'ALL' | 'BUY' | 'SELL' | 'HIGH_CONVICTION';
   minConfidence?: number;
   minVolumeSpike?: number;
+  near52wHighOnly?: boolean;
+  breakoutTodayOnly?: boolean;
   paramOverrides?: Record<string, any>;
 }
 

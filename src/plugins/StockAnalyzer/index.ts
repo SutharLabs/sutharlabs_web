@@ -1,8 +1,9 @@
 import YahooFinance from 'yahoo-finance2';
 import { RSI, MACD, BollingerBands, ATR, ADX, SMA, EMA } from 'technicalindicators';
 
-// Instantiate YahooFinance client (compatible with yahoo-finance2 v3+)
-const yahooFinance = new (YahooFinance as any)({ suppressNotices: ['yahooSurvey'] });
+// Instantiate YahooFinance client (compatible with both ESM and CJS bundling)
+const YF = (YahooFinance as any)?.default || YahooFinance;
+const yahooFinance = typeof YF === 'function' ? new YF({ suppressNotices: ['yahooSurvey'] }) : (typeof (YahooFinance as any) === 'function' ? new (YahooFinance as any)({ suppressNotices: ['yahooSurvey'] }) : YahooFinance);
 
 export interface MarketStock {
   symbol: string;
@@ -149,7 +150,10 @@ export interface StockSearchResult {
   name: string;          // e.g. "Ather Energy Limited"
   exchange: string;      // e.g. "NSE"
   sector?: string;
-  quoteType?: string;
+  quoteType?: string;    // "INDEX" | "EQUITY" | "ETF"
+  price?: number;
+  change?: number;
+  changePercent?: number;
 }
 
 export const INDEX_TICKER_MAP: Record<string, { name: string; displaySymbol: string; cleanSymbol: string; exchange: string; sector: string }> = {
@@ -415,7 +419,7 @@ export async function searchStocks(query: string, region: string = 'IN'): Promis
         name,
         exchange: formatted.exchange,
         sector: item.sectorDisp || item.sector || item.industryDisp || 'Equity',
-        quoteType: item.quoteType
+        quoteType: item.symbol.startsWith('^') ? 'INDEX' : (item.quoteType === 'ETF' || /etf/i.test(name) ? 'ETF' : (item.quoteType || 'EQUITY'))
       });
       seenSymbols.add(item.symbol);
     }
@@ -517,6 +521,21 @@ export async function getQuote(symbol: string, defaultRegion: string = 'IN') {
       change_percent: changePercent,
       fifty_two_week_high: quote.fiftyTwoWeekHigh ?? high,
       fifty_two_week_low: quote.fiftyTwoWeekLow ?? low,
+      away_52w_high: (quote.fiftyTwoWeekHigh && quote.fiftyTwoWeekHigh > 0 && currentPrice > 0)
+        ? parseFloat((((quote.fiftyTwoWeekHigh - currentPrice) / quote.fiftyTwoWeekHigh) * 100).toFixed(2))
+        : 0,
+      away_52w_low: (quote.fiftyTwoWeekLow && quote.fiftyTwoWeekLow > 0 && currentPrice > 0)
+        ? parseFloat((((currentPrice - quote.fiftyTwoWeekLow) / quote.fiftyTwoWeekLow) * 100).toFixed(2))
+        : 0,
+      crossed_high: (quote.fiftyTwoWeekHigh && quote.fiftyTwoWeekHigh > 0)
+        ? (currentPrice >= quote.fiftyTwoWeekHigh * 0.998 || high >= quote.fiftyTwoWeekHigh * 0.998)
+        : false,
+      crossed_low: (quote.fiftyTwoWeekLow && quote.fiftyTwoWeekLow > 0)
+        ? (currentPrice <= quote.fiftyTwoWeekLow * 1.002 || low <= quote.fiftyTwoWeekLow * 1.002)
+        : false,
+      vol_breakout: ((quote.averageDailyVolume10Day || quote.averageDailyVolume3Month || 0) > 0)
+        ? parseFloat(((quote.regularMarketVolume ?? quote.volume ?? 0) / (quote.averageDailyVolume10Day || quote.averageDailyVolume3Month)).toFixed(2))
+        : 1.0,
       market_cap: quote.marketCap ?? 0,
       market_open: quote.marketState === 'REGULAR',
       market_state: quote.marketState || 'CLOSED',

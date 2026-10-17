@@ -65,6 +65,8 @@ export default function StockScannerPanel({
   const [minConfidence, setMinConfidence] = useState<number>(0.60);
   const [minVolumeSpike, setMinVolumeSpike] = useState<number>(1.0);
   const [signalFilter, setSignalFilter] = useState<'ALL' | 'BUY' | 'SELL' | 'HIGH_CONVICTION'>('ALL');
+  const [near52wHigh, setNear52wHigh] = useState<boolean>(false);
+  const [breakoutToday, setBreakoutToday] = useState<boolean>(false);
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   // Complete Catalog of Strategies (Presets + Custom + Community)
@@ -163,7 +165,9 @@ export default function StockScannerPanel({
         interval: selectedTimeframe,
         minConfidence,
         minVolumeSpike,
-        signalFilter
+        signalFilter,
+        near52wHighOnly: near52wHigh,
+        breakoutTodayOnly: breakoutToday
       };
 
       if (selectedUniverse === 'WATCHLIST') {
@@ -440,6 +444,32 @@ export default function StockScannerPanel({
                 {pill.label}
               </button>
             ))}
+
+            <div className="h-4 w-[1px] bg-outline/20 mx-1 hidden sm:block" />
+
+            <button
+              onClick={() => setNear52wHigh(!near52wHigh)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer flex items-center gap-1 ${
+                near52wHigh
+                  ? 'bg-cyan-500/20 border border-cyan-400 text-cyan-300 font-bold'
+                  : 'bg-surface-container-lowest border border-outline/20 text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <TrendingUp className="w-3 h-3 text-cyan-400" />
+              <span>Near 52W H (≤5%)</span>
+            </button>
+
+            <button
+              onClick={() => setBreakoutToday(!breakoutToday)}
+              className={`px-2.5 py-1 rounded-lg text-[10px] font-mono transition-all cursor-pointer flex items-center gap-1 ${
+                breakoutToday
+                  ? 'bg-[#00e476]/20 border border-[#00e476] text-[#00e476] font-bold'
+                  : 'bg-surface-container-lowest border border-outline/20 text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <Flame className="w-3 h-3 text-amber-400" />
+              <span>52W Breakout Today</span>
+            </button>
           </div>
 
           {/* Search Candidate Filter */}
@@ -670,6 +700,17 @@ export default function StockScannerPanel({
                         <div className={`font-bold flex items-center justify-end gap-0.5 ${cand.changePercent24h >= 0 ? 'text-[#00e476]' : 'text-rose-400'}`}>
                           {cand.changePercent24h >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
                           <span>{cand.changePercent24h >= 0 ? '+' : ''}{cand.changePercent24h.toFixed(2)}%</span>
+                        </div>
+                        <div className="mt-0.5 flex flex-col items-end gap-0.5">
+                          {cand.is52wBreakoutToday ? (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded font-bold bg-[#00e476]/20 text-[#00e476] border border-[#00e476]/30 inline-flex items-center gap-0.5">
+                              52W Breakout
+                            </span>
+                          ) : (cand.away52wHighPercent !== undefined && cand.away52wHighPercent <= 5.0 && cand.away52wHighPercent >= -0.5) ? (
+                            <span className="text-[9px] px-1 py-0.2 rounded font-mono bg-cyan-400/15 text-cyan-400">
+                              -{cand.away52wHighPercent}% from 52W H
+                            </span>
+                          ) : null}
                         </div>
                       </td>
 

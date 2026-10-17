@@ -45,7 +45,8 @@ import {
   ChevronLeft,
   ChevronRight,
   GripVertical,
-  Terminal
+  Terminal,
+  Flame
 } from 'lucide-react';
 import {
   createChart,
@@ -293,6 +294,9 @@ export interface StockSearchResult {
   exchange: string;
   sector?: string;
   quoteType?: string;
+  price?: number;
+  change?: number;
+  changePercent?: number;
 }
 
 export interface WatchlistItem {
@@ -600,6 +604,8 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [showDropdown, setShowDropdown] = useState(false);
   const [searchResults, setSearchResults] = useState<StockSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [tapeItems, setTapeItems] = useState<any[]>([]);
+  const [searchCategory, setSearchCategory] = useState<'ALL' | 'EQUITY' | 'INDEX' | 'ETF'>('ALL');
 
   const [quote, setQuote] = useState<Quote | null>(null);
   const [candles, setCandles] = useState<Candle[]>([]);
@@ -1884,6 +1890,42 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     return () => clearTimeout(timer);
   }, [symbolInput, activeMarketKey, universes]);
 
+  // Real-time market tape continuous fetch (auto-refreshes every 30s)
+  useEffect(() => {
+    let isMounted = true;
+    const fetchTape = async () => {
+      try {
+        const res = await fetch(`${STOCK_API}/tape`);
+        if (res.ok) {
+          const data = await res.json();
+          if (isMounted && Array.isArray(data) && data.length > 0) {
+            setTapeItems(data);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load market tape:', err);
+      }
+    };
+
+    fetchTape();
+    const interval = setInterval(fetchTape, 30000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, []);
+
+  // Filter search results by category (ALL, EQUITY, INDEX, ETF)
+  const displayedSearchResults = useMemo(() => {
+    if (searchCategory === 'ALL') return searchResults;
+    return searchResults.filter(item => {
+      const qType = (item.quoteType || (item.symbol.startsWith('^') ? 'INDEX' : 'EQUITY')).toUpperCase();
+      if (searchCategory === 'INDEX') return qType === 'INDEX';
+      if (searchCategory === 'ETF') return qType === 'ETF';
+      return qType === 'EQUITY';
+    });
+  }, [searchResults, searchCategory]);
+
   // Initial fetch and on symbol/period/interval/parameter change
   useEffect(() => {
     fetchAll(symbol, activePeriod, activeInterval);
@@ -2429,6 +2471,55 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         </div>
       )}
 
+      {/* ── 0. CONTINUOUS REAL-TIME MARKET TICKER TAPE (IN-MEMORY CACHED) ── */}
+      {tapeItems.length > 0 && (
+        <div className="glass-panel rounded-xl px-2.5 py-1.5 border border-outline/20 bg-surface-container-lowest/80 shadow-sm flex items-center gap-2 overflow-hidden">
+          <div className="flex items-center gap-1.5 shrink-0 px-2 py-0.5 rounded-lg bg-[#00dbe7]/10 border border-[#00dbe7]/20 text-[#00dbe7] font-mono text-[10px] font-bold tracking-wider">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#00e476] animate-pulse" />
+            <span>MARKET TAPE</span>
+          </div>
+          <div className="flex items-center gap-3 overflow-x-auto no-scrollbar scroll-smooth flex-1 py-0.5">
+            {tapeItems.map((item) => {
+              const isPositive = (item.changePercent ?? 0) >= 0;
+              return (
+                <button
+                  key={item.symbol}
+                  onClick={() => {
+                    setSymbol(item.symbol);
+                    setSymbolInput(formatTickerDisplay(item.symbol).displaySymbol);
+                  }}
+                  className="flex items-center gap-2 px-2 py-1 rounded-lg bg-surface-container-low/60 hover:bg-surface-container-high hover:border-[#00dbe7]/40 border border-outline/10 transition-all font-mono text-xs shrink-0 cursor-pointer group"
+                  title={`Click to load ${item.name} (${item.symbol})`}
+                >
+                  <span className="font-bold text-on-surface group-hover:text-[#00dbe7] transition-colors">
+                    {item.name}
+                  </span>
+                  <span className="text-on-surface font-semibold">
+                    {item.currencySymbol || '₹'}{item.price?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                  </span>
+                  <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded ${
+                    isPositive ? 'bg-[#00e476]/15 text-[#00e476]' : 'bg-rose-500/15 text-rose-400'
+                  }`}>
+                    {isPositive ? '+' : ''}{(item.changePercent ?? 0).toFixed(2)}%
+                  </span>
+                  {item.volBreakout && item.volBreakout >= 2.0 && (
+                    <span className="text-[9px] px-1 py-0.2 rounded font-bold bg-amber-400/20 text-amber-400 flex items-center gap-0.5">
+                      <Flame className="w-2.5 h-2.5" />
+                      {item.volBreakout}x
+                    </span>
+                  )}
+                  {item.crossedHigh && (
+                    <span className="text-[9px] px-1 py-0.2 rounded font-bold bg-emerald-400/20 text-emerald-400">
+                      52W H
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (RESPONSIVE UNIFIED LAYOUT) ── */}
       <div className="relative z-50 glass-panel rounded-xl p-2 sm:p-2.5 border border-outline/20 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 bg-surface-container-lowest/80 shadow-sm">
         
@@ -2516,9 +2607,30 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
             {/* Autocomplete Suggestions Dropdown */}
             {showDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/40 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-[100] overflow-hidden backdrop-blur-2xl max-h-72 overflow-y-auto custom-scrollbar">
-                {searchResults.length > 0 ? (
-                  searchResults.map(item => (
+              <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/40 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-[100] overflow-hidden backdrop-blur-2xl max-h-80 overflow-y-auto custom-scrollbar">
+                {/* Search Category Filter Tabs (Tickertape-style All / Stocks / Indices / ETFs) */}
+                <div className="flex items-center gap-1 p-1.5 border-b border-outline/10 bg-surface-container-low/70 sticky top-0 z-10 backdrop-blur-md">
+                  {(['ALL', 'EQUITY', 'INDEX', 'ETF'] as const).map(cat => (
+                    <button
+                      key={cat}
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setSearchCategory(cat);
+                      }}
+                      className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
+                        searchCategory === cat
+                          ? 'bg-[#00dbe7] text-[#002022]'
+                          : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high'
+                      }`}
+                    >
+                      {cat === 'ALL' ? 'All' : cat === 'EQUITY' ? 'Stocks' : cat === 'INDEX' ? 'Indices' : 'ETFs'}
+                    </button>
+                  ))}
+                </div>
+
+                {displayedSearchResults.length > 0 ? (
+                  displayedSearchResults.map(item => (
                     <div
                       key={item.symbol}
                       onMouseDown={() => {
@@ -2536,6 +2648,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                           <span className="text-[10px] px-1.5 py-0.2 rounded bg-surface-container-highest text-on-surface-variant font-mono">
                             {item.cleanSymbol}
                           </span>
+                          {item.quoteType && item.quoteType !== 'EQUITY' && (
+                            <span className="text-[9px] px-1 py-0.2 rounded font-bold bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30">
+                              {item.quoteType}
+                            </span>
+                          )}
                         </div>
                         <span className="text-[10px] text-on-surface-variant truncate max-w-[280px]">
                           {item.sector || 'Listed Equity'}
@@ -2543,6 +2660,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       </div>
 
                       <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                        {item.price !== undefined && (
+                          <span className="text-[10px] font-mono font-bold text-on-surface">
+                            ₹{item.price.toFixed(2)}
+                          </span>
+                        )}
                         <span className={`text-[11px] px-2 py-0.5 rounded font-mono font-bold border ${
                           item.exchange === 'NSE' ? 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/40' :
                           item.exchange === 'BSE' ? 'bg-amber-500/15 text-amber-400 border-amber-500/40' :
