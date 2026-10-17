@@ -1187,104 +1187,17 @@ export default function StockSimulatorPanel({
   return (
     <div className="flex flex-col gap-6 text-xs font-mono">
       {/* ── Top Control & Setup Card ── */}
-      <div className="p-5 rounded-2xl bg-surface-container-low border border-outline/20 flex flex-col gap-4 shadow-sm">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-          <div>
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="text-base font-bold text-on-surface flex items-center gap-2">
-                <Zap className="w-5 h-5 text-[#00e476]" />
-                Trade Simulator & Portfolio Engine
-              </h2>
-              {/* Live Polling Sync Status Pill */}
-              <span
-                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#00e476]/10 text-[#00e476] text-[10px] font-bold border border-[#00e476]/20 transition-all cursor-pointer"
-                onClick={() => fetchPortfolioAndHistory(selectedSimulationId, false)}
-                title="Click to sync simulator state immediately"
-              >
-                <span className={`w-1.5 h-1.5 rounded-full ${isLoadingPortfolio ? 'bg-[#00e476] animate-spin' : 'bg-[#00e476] animate-pulse'}`}></span>
-                {isLoadingPortfolio ? 'Syncing...' : `Live Sync (${Math.max(0, Math.floor((nowTick - lastSyncTimestamp) / 1000))}s ago)`}
-              </span>
-
-              {/* Background Cron Heartbeat Status Pill */}
-              {(() => {
-                const candidates: number[] = [];
-                if (portfolio?.lastUpdated) {
-                  const t = new Date(portfolio.lastUpdated).getTime();
-                  if (!isNaN(t) && t > 0) candidates.push(t);
-                }
-                if (historyRuns && historyRuns.length > 0 && historyRuns[0]?.executionTimestamp) {
-                  const t = new Date(historyRuns[0].executionTimestamp).getTime();
-                  if (!isNaN(t) && t > 0) candidates.push(t);
-                }
-                if (latestReport?.executionTimestamp) {
-                  const t = new Date(latestReport.executionTimestamp).getTime();
-                  if (!isNaN(t) && t > 0) candidates.push(t);
-                }
-                if ((currentSim as any)?.lastHeartbeatAt) {
-                  const t = new Date((currentSim as any).lastHeartbeatAt).getTime();
-                  if (!isNaN(t) && t > 0) candidates.push(t);
-                }
-                if (currentSim?.lastRunAt) {
-                  const t = new Date(currentSim.lastRunAt).getTime();
-                  if (!isNaN(t) && t > 0) candidates.push(t);
-                }
-
-                if (candidates.length === 0) {
-                  return (
-                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] border border-outline/20">
-                      <Clock className="w-3 h-3 opacity-60" />
-                      Cron: Awaiting Run
-                    </span>
-                  );
-                }
-
-                const bestHeartbeat = Math.max(...candidates);
-                const secAgo = Math.max(0, Math.floor((nowTick - bestHeartbeat) / 1000));
-                // Fresh / Active if pinged within last 3 minutes (180s)
-                const isFresh = secAgo < 180;
-                const timeText = secAgo < 60 ? `${secAgo}s ago` : `${Math.floor(secAgo / 60)}m ago`;
-
-                return (
-                  <span
-                    className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
-                      isFresh
-                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                        : 'bg-surface-container-high text-on-surface-variant border-outline/20'
-                    }`}
-                    title={`Last cron heartbeat executed at: ${new Date(bestHeartbeat).toLocaleString()} (${secAgo}s ago)`}
-                  >
-                    <span className={`w-1.5 h-1.5 rounded-full ${isFresh ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`}></span>
-                    Cron: {isFresh ? `Active (${timeText})` : `Idle (${timeText})`}
-                  </span>
-                );
-              })()}
-
-              <span
-                className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors cursor-help select-none ${
-                  marketSession.isOpen
-                    ? 'bg-[#00e476]/10 text-[#00e476] border-[#00e476]/30'
-                    : 'bg-amber-400/10 text-amber-400 border-amber-400/30'
-                }`}
-                title={
-                  !marketSession.isOpen
-                    ? `Market Closed (${marketSession.timeStr || marketSession.hours}): Live positions and trailing stops are actively tracked & retained in database. Algorithmic entries are strictly paused until market open (${marketSession.hours}).`
-                    : `Market Open (${marketSession.hours}): Active algorithmic scanning and order execution enabled.`
-                }
-              >
-                {!marketSession.isOpen ? (
-                  <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
-                ) : (
-                  <span className="w-1.5 h-1.5 rounded-full bg-[#00e476] animate-pulse"></span>
-                )}
-                {marketSession.name}: {marketSession.status}
-              </span>
-            </div>
-            <p className="text-xs text-on-surface-variant font-sans mt-0.5">
-              Simulate algorithmic trade execution with realistic slippage, STT/SEC friction, trailing stops, and multi-day historical bar replay.
-            </p>
+      <div className="p-4 sm:p-5 rounded-2xl bg-surface-container-low border border-outline/20 flex flex-col gap-3 sm:gap-4 shadow-sm">
+        {/* Top Header: Title on Left, Action Buttons on Right */}
+        <div className="flex items-center justify-between gap-2.5 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <Zap className="w-5 h-5 text-[#00e476] shrink-0" />
+            <h2 className="text-sm sm:text-base font-bold text-on-surface truncate">
+              Trade Simulator <span className="hidden sm:inline">& Portfolio Engine</span>
+            </h2>
           </div>
 
-          <div className="flex items-center gap-2 w-full md:w-auto justify-end flex-wrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               type="button"
               onClick={(e) => {
@@ -1293,7 +1206,7 @@ export default function StockSimulatorPanel({
                 fetchPortfolioAndHistory(selectedSimulationId, false);
               }}
               disabled={isLoadingPortfolio}
-              className="px-2.5 sm:px-3 py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline/30 rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all text-xs"
+              className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface border border-outline/30 rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all text-xs"
               title="Refresh simulator data now (Sync latest portfolio & execution records)"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPortfolio ? 'animate-spin text-[#00e476]' : 'text-on-surface-variant'}`} />
@@ -1312,7 +1225,7 @@ export default function StockSimulatorPanel({
                 setShowResetConfirm(true);
               }}
               disabled={isRunningSim || isResettingSim || !isCurrentSimOwner}
-              className={`px-2.5 sm:px-3.5 py-2 border rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all text-xs ${
+              className={`px-2.5 sm:px-3.5 py-1.5 sm:py-2 border rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all text-xs ${
                 !isCurrentSimOwner
                   ? 'bg-surface-container opacity-40 cursor-not-allowed border-outline/20 text-on-surface-variant'
                   : 'bg-surface-container-high hover:bg-rose-500/20 text-on-surface hover:text-rose-400 border border-outline/30'
@@ -1335,7 +1248,7 @@ export default function StockSimulatorPanel({
                 handleRunSimulation();
               }}
               disabled={isRunningSim || isResettingSim}
-              className="px-3.5 sm:px-5 py-2 bg-[#00e476] text-[#002022] font-bold rounded-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap justify-center text-xs"
+              className="px-3.5 sm:px-5 py-1.5 sm:py-2 bg-[#00e476] text-[#002022] font-bold rounded-xl hover:brightness-110 active:scale-95 transition-all cursor-pointer flex items-center gap-1.5 sm:gap-2 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap justify-center text-xs"
               title={simulationMode === 'HISTORICAL_REPLAY' ? 'Run historical bar-by-bar trade simulation replay' : 'Execute live strategy trade simulation step'}
             >
               <Play className={`w-4 h-4 fill-current ${isRunningSim ? 'animate-pulse' : ''}`} />
@@ -1351,7 +1264,97 @@ export default function StockSimulatorPanel({
           </div>
         </div>
 
-        {/* ── Active Simulation Instance Switcher & Manager Bar ── */}
+        {/* Status badges & brief subtitle */}
+        <div className="flex flex-col gap-1.5 -mt-1">
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Live Polling Sync Status Pill */}
+            <span
+              className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#00e476]/10 text-[#00e476] text-[10px] font-bold border border-[#00e476]/20 transition-all cursor-pointer"
+              onClick={() => fetchPortfolioAndHistory(selectedSimulationId, false)}
+              title="Click to sync simulator state immediately"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${isLoadingPortfolio ? 'bg-[#00e476] animate-spin' : 'bg-[#00e476] animate-pulse'}`}></span>
+              {isLoadingPortfolio ? 'Syncing...' : `Live Sync (${Math.max(0, Math.floor((nowTick - lastSyncTimestamp) / 1000))}s ago)`}
+            </span>
+
+            {/* Background Cron Heartbeat Status Pill */}
+            {(() => {
+              const candidates: number[] = [];
+              if (portfolio?.lastUpdated) {
+                const t = new Date(portfolio.lastUpdated).getTime();
+                if (!isNaN(t) && t > 0) candidates.push(t);
+              }
+              if (historyRuns && historyRuns.length > 0 && historyRuns[0]?.executionTimestamp) {
+                const t = new Date(historyRuns[0].executionTimestamp).getTime();
+                if (!isNaN(t) && t > 0) candidates.push(t);
+              }
+              if (latestReport?.executionTimestamp) {
+                const t = new Date(latestReport.executionTimestamp).getTime();
+                if (!isNaN(t) && t > 0) candidates.push(t);
+              }
+              if ((currentSim as any)?.lastHeartbeatAt) {
+                const t = new Date((currentSim as any).lastHeartbeatAt).getTime();
+                if (!isNaN(t) && t > 0) candidates.push(t);
+              }
+              if (currentSim?.lastRunAt) {
+                const t = new Date(currentSim.lastRunAt).getTime();
+                if (!isNaN(t) && t > 0) candidates.push(t);
+              }
+
+              if (candidates.length === 0) {
+                return (
+                  <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] border border-outline/20">
+                    <Clock className="w-3 h-3 opacity-60" />
+                    Cron: Awaiting Run
+                  </span>
+                );
+              }
+
+              const bestHeartbeat = Math.max(...candidates);
+              const secAgo = Math.max(0, Math.floor((nowTick - bestHeartbeat) / 1000));
+              const isFresh = secAgo < 180;
+              const timeText = secAgo < 60 ? `${secAgo}s ago` : `${Math.floor(secAgo / 60)}m ago`;
+
+              return (
+                <span
+                  className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors ${
+                    isFresh
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                      : 'bg-surface-container-high text-on-surface-variant border-outline/20'
+                  }`}
+                  title={`Last cron heartbeat executed at: ${new Date(bestHeartbeat).toLocaleString()} (${secAgo}s ago)`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${isFresh ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`}></span>
+                  Cron: {isFresh ? `Active (${timeText})` : `Idle (${timeText})`}
+                </span>
+              );
+            })()}
+
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors cursor-help select-none ${
+                marketSession.isOpen
+                  ? 'bg-[#00e476]/10 text-[#00e476] border-[#00e476]/30'
+                  : 'bg-amber-400/10 text-amber-400 border-amber-400/30'
+              }`}
+              title={
+                !marketSession.isOpen
+                  ? `Market Closed (${marketSession.timeStr || marketSession.hours}): Live positions and trailing stops are actively tracked & retained in database. Algorithmic entries are strictly paused until market open (${marketSession.hours}).`
+                  : `Market Open (${marketSession.hours}): Active algorithmic scanning and order execution enabled.`
+              }
+            >
+              {!marketSession.isOpen ? (
+                <AlertTriangle className="w-3 h-3 text-amber-400 shrink-0" />
+              ) : (
+                <span className="w-1.5 h-1.5 rounded-full bg-[#00e476] animate-pulse"></span>
+              )}
+              {marketSession.name}: {marketSession.status}
+            </span>
+          </div>
+          <p className="text-xs text-on-surface-variant font-sans">
+            Simulate algorithmic trade execution with realistic slippage, STT/SEC friction, trailing stops, and multi-day historical bar replay.
+          </p>
+        </div>
+
         {/* ── Active Simulation Instance Switcher & Manager Bar ── */}
         <div className="p-2.5 sm:p-3.5 rounded-xl bg-surface-container border border-outline/20 flex flex-col gap-2 shadow-sm">
           {/* Row 1: Instance selector & simulation instance management */}
