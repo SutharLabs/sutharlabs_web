@@ -249,6 +249,22 @@ export async function updateSimulationConfig(
             { simId: baseSlug },
             { simId: { endsWith: `__${baseSlug}` } }
           ]
+        },
+        select: {
+          simId: true,
+          label: true,
+          owner: true,
+          market: true,
+          strategyId: true,
+          strategyName: true,
+          timeframe: true,
+          productType: true,
+          capitalAllocationPct: true,
+          trailingStopPct: true,
+          isPublic: true,
+          updatedAt: true,
+          winCount: true,
+          lossCount: true
         }
       });
       if (row) {
@@ -558,7 +574,20 @@ export async function ensureSimulatorStore(simId: string): Promise<PersistedEODS
   try {
     const prisma = getPrismaClient();
     const row = await prisma.simulationStore.findUnique({
-      where: { simId: safeSimId }
+      where: { simId: safeSimId },
+      select: {
+        owner: true,
+        initialCash: true,
+        cash: true,
+        positions: true,
+        closedTrades: true,
+        lastRunDate: true,
+        totalRealizedPnL: true,
+        totalFrictionPaid: true,
+        winCount: true,
+        lossCount: true,
+        lastUpdated: true
+      }
     });
 
     if (row) {
@@ -726,16 +755,19 @@ export async function saveSimulatorStore(state: PersistedEODState, simId: string
 }
 
 /**
- * Append a full report to history — called ONLY when trades occurred.
+ * Append a full report to history — called ONLY when actionable trades/stops occurred.
  */
 async function appendHistoryReport(report: EODSimulationReport, simId: string): Promise<void> {
   const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
   let history: EODSimulationReport[] = [];
 
-  // Try DB first
+  // Try DB first with select: { history: true } to prevent overfetching
   try {
     const prisma = getPrismaClient();
-    const row = await prisma.simulationStore.findUnique({ where: { simId: safeSimId } });
+    const row = await prisma.simulationStore.findUnique({
+      where: { simId: safeSimId },
+      select: { history: true }
+    });
     if (row && row.history) {
       try { history = JSON.parse(row.history); } catch {}
     }
@@ -747,7 +779,7 @@ async function appendHistoryReport(report: EODSimulationReport, simId: string): 
   if (!Array.isArray(history)) history = [];
 
   history.unshift(report);
-  if (history.length > 100) history = history.slice(0, 100); // Keep last 100 runs
+  if (history.length > 20) history = history.slice(0, 20); // Keep last 20 actionable runs (compact ledger)
 
   writeJsonData(historyKey(safeSimId), history);
 
@@ -780,30 +812,19 @@ async function appendHistoryReport(report: EODSimulationReport, simId: string): 
 }
 
 /**
- * For no-trade runs: silently update the latest history entry's portfolio snapshot
- * (endingCapital, activePositions, netDailyPnL) instead of adding a new row.
+ * For no-trade heartbeat runs: update in-memory/local history,
+ * but NEVER re-serialize or write the multi-megabyte history JSON string to PostgreSQL.
+ * Updates only lightweight scalar fields (lastUpdated, cash) to keep cron heartbeat active.
  */
 async function updateHistoryPortfolioSnapshot(
   report: EODSimulationReport,
   simId: string
 ): Promise<void> {
   const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
-  let history: EODSimulationReport[] = [];
 
-  try {
-    const prisma = getPrismaClient();
-    const row = await prisma.simulationStore.findUnique({ where: { simId: safeSimId } });
-    if (row && row.history) {
-      try { history = JSON.parse(row.history); } catch {}
-    }
-  } catch {}
-
-  if (!Array.isArray(history) || history.length === 0) {
-    history = readJsonData<EODSimulationReport[]>(historyKey(safeSimId), []);
-  }
-  if (!Array.isArray(history)) history = [];
-
-  if (history.length > 0) {
+  // 1. Update in-memory / local disk history cache so local process has latest equity
+  let history: EODSimulationReport[] = readJsonData<EODSimulationReport[]>(historyKey(safeSimId), []);
+  if (Array.isArray(history) && history.length > 0) {
     const currentRunCount = report.runCount || ((history[0] as any)?.runCount ? (history[0] as any).runCount + 1 : 1);
     history[0] = {
       ...history[0],
@@ -825,17 +846,26 @@ async function updateHistoryPortfolioSnapshot(
         fs.writeFileSync(localPath, JSON.stringify(history, null, 2), "utf8");
       }
     } catch {}
-
-    try {
-      const prisma = getPrismaClient();
-      await prisma.simulationStore.update({
-        where: { simId: safeSimId },
-        data: { history: JSON.stringify(history) }
-      });
-    } catch {}
   } else {
-    // No existing entries at all — write the first one even without trades
+    // No history exists at all — write the first initial report
     await appendHistoryReport(report, safeSimId);
+    return;
+  }
+
+  // 2. FOR NEON DB: ZERO-HISTORY-WRITE HEARTBEAT
+  // Update ONLY the scalar fields (lastUpdated, cash).
+  // Eliminates transferring 500 KB - 1 MB on every 1-minute cron tick!
+  try {
+    const prisma = getPrismaClient();
+    await prisma.simulationStore.update({
+      where: { simId: safeSimId },
+      data: {
+        lastUpdated: report.executionTimestamp,
+        cash: report.endingCapital
+      }
+    });
+  } catch (err) {
+    console.warn(`[Simulator DB] Failed to update heartbeat for ${safeSimId}:`, err);
   }
 }
 
@@ -843,7 +873,10 @@ export async function getEODHistory(simId: string = "default"): Promise<EODSimul
   const safeSimId = (simId || "default").replace(/[^a-zA-Z0-9_-]/g, "_");
   try {
     const prisma = getPrismaClient();
-    const row = await prisma.simulationStore.findUnique({ where: { simId: safeSimId } });
+    const row = await prisma.simulationStore.findUnique({
+      where: { simId: safeSimId },
+      select: { history: true }
+    });
     if (row && row.history !== null && row.history !== undefined) {
       try {
         const parsed = JSON.parse(row.history);
@@ -1005,6 +1038,49 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   // 2. Resolve tracked assets for Simulation based on selected market
   const trackedSymbols: Array<{ symbol: string; market: string }> = [];
   const targetMarket = ((options as any).market || (options as any).marketRegion || existingEntry?.market || "IN").toUpperCase();
+  const sessionStatus = getMarketSessionStatus(targetMarket);
+
+  // ── Market-Closed Early Exit Guard for Automated Crons ──────────────────────
+  // If triggered by background cron when exchange is closed and no open positions exist:
+  // Return immediately without fetching external candles or executing database write roundtrips.
+  const isAutomatedCron = Boolean(options.isCron || (options as any).cronSecret);
+  const isHistoricalReplay = options.mode === "HISTORICAL_REPLAY" || Boolean(options.startDate) || Boolean((options as any).forcedDate);
+  if (isAutomatedCron && !isHistoricalReplay && !options.forceRun && !sessionStatus.isOpen && (!store.positions || store.positions.length === 0)) {
+    const endingCapital = store.cash;
+    const simDate = nowIsoStart.slice(0, 10);
+    upsertRegistry(simId, {
+      lastRunAt: nowIsoStart,
+      lastHeartbeatAt: nowIsoStart,
+      lastHeartbeatStatus: `IDLE_${sessionStatus.sessionType || 'MARKET_CLOSED'}`
+    });
+
+    return {
+      id: `eod-idle-${Date.now()}`,
+      simulationId: simId,
+      simulatedDate: simDate,
+      executionTimestamp: nowIsoStart,
+      strategyId: strategy.id,
+      strategyName: strategy.name,
+      productType: resolvedProductType,
+      startingCapital: parseFloat(endingCapital.toFixed(2)),
+      endingCapital: parseFloat(endingCapital.toFixed(2)),
+      netDailyPnL: 0,
+      netDailyPnLPct: 0,
+      totalOpenPositions: 0,
+      totalTradesExecuted: 0,
+      closedPositions: [],
+      openedPositions: [],
+      updatedTrailingStops: [],
+      activePositions: [],
+      digest: `Market session closed (${sessionStatus.reason}). Automated cron tick skipped to conserve database bandwidth.`,
+      replayMode: "SINGLE_STEP",
+      hadTrades: false,
+      hadActions: false,
+      isHoliday: sessionStatus.isHoliday,
+      holidayName: sessionStatus.holidayName,
+      marketSessionType: sessionStatus.sessionType
+    };
+  }
 
   if (options.watchlistSymbols && options.watchlistSymbols.length > 0) {
     options.watchlistSymbols.forEach(s => trackedSymbols.push({ symbol: s, market: detectMarketRegion(s) }));
@@ -1125,7 +1201,6 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
       const sortedBarTimes = Array.from(allBarTimesSet).sort();
       const nowIso = new Date().toISOString();
       const todayStr = nowIso.slice(0, 10);
-      const sessionStatus = getMarketSessionStatus(targetMarket);
 
       const validBars = sortedBarTimes.filter(bt => {
         const d = bt.slice(0, 10);
@@ -1522,7 +1597,6 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   const startingCapital = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
   const nowIso = new Date().toISOString();
   const simDate = nowIso.slice(0, 10);
-  const sessionStatus = getMarketSessionStatus(targetMarket);
   const now = new Date();
   const isIndianMarket = targetMarket === 'IN';
   const totalUtcMinutes = now.getUTCHours() * 60 + now.getUTCMinutes();
@@ -1822,9 +1896,9 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   }
 
   // 5. Finalize EOD Metrics & Ledger
+  const prevRunDate = store.lastRunDate;
   store.lastRunDate = simDate;
   store.lastUpdated = nowIso;
-  await saveSimulatorStore(store, simId);
 
   const endingCapital = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
   const netDailyPnL = endingCapital - startingCapital;
@@ -1833,6 +1907,14 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
   const trailingStopsCount = updatedTrailingStops.length;
   const hadTrades = tradesCount > 0;
   const hadActions = hadTrades || trailingStopsCount > 0;
+
+  // Persist full portfolio state to PostgreSQL ONLY when actionable events took place or date changed.
+  // On heartbeats with no trades, update memory/local file cache and skip the heavy DB upsert.
+  if (hadActions || !prevRunDate || prevRunDate !== simDate) {
+    await saveSimulatorStore(store, simId);
+  } else {
+    writeJsonData(portfolioKey(simId), store);
+  }
 
   let sessionNote = '';
   if (!sessionStatus.isOpen) {

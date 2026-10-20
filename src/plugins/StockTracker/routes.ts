@@ -1126,7 +1126,29 @@ export function registerRoutes(router: Router) {
         const prisma = getPrismaClient();
         const dbStores = await prisma.simulationStore.findMany({
           where: { simId: { not: 'default' } },
-          orderBy: { updatedAt: 'desc' }
+          orderBy: { updatedAt: 'desc' },
+          select: {
+            simId: true,
+            label: true,
+            owner: true,
+            strategyId: true,
+            strategyName: true,
+            market: true,
+            productType: true,
+            timeframe: true,
+            capitalAllocationPct: true,
+            trailingStopPct: true,
+            isPublic: true,
+            initialCash: true,
+            cash: true,
+            totalRealizedPnL: true,
+            totalFrictionPaid: true,
+            winCount: true,
+            lossCount: true,
+            lastRunDate: true,
+            lastUpdated: true,
+            updatedAt: true
+          }
         });
 
         const memRegistry = listSimulations();
@@ -1135,34 +1157,13 @@ export function registerRoutes(router: Router) {
           const baseSlug = s.simId.includes('__') ? s.simId.split('__').pop()! : s.simId;
           const mem = memRegistry.find(r => r.id === s.simId || r.id === baseSlug || r.id.endsWith(`__${baseSlug}`) || s.simId.endsWith(`__${r.id}`));
 
-          let parsedHistCount = 0;
-          let latestRunCount = 0;
-          try {
-            const h = JSON.parse(s.history || '[]');
-            if (Array.isArray(h)) {
-              parsedHistCount = h.length;
-              if (h[0] && typeof (h[0] as any).runCount === 'number') {
-                latestRunCount = (h[0] as any).runCount;
-              }
-            }
-          } catch {}
-
-          let parsedTradesCount = 0;
-          try {
-            const ct = JSON.parse(s.closedTrades || '[]');
-            if (Array.isArray(ct)) parsedTradesCount = ct.length;
-          } catch {}
-
           const effectiveTotalRuns = Math.max(
             mem?.totalRuns ?? 0,
-            latestRunCount,
-            parsedHistCount,
             (s.winCount || 0) + (s.lossCount || 0)
           );
 
           const effectiveTradeRuns = Math.max(
             mem?.totalTradeRuns ?? 0,
-            parsedTradesCount,
             (s.winCount || 0) + (s.lossCount || 0)
           );
 
@@ -1577,7 +1578,8 @@ export function registerRoutes(router: Router) {
         allocationPct: payload.allocationPct !== undefined && payload.allocationPct !== '' ? Number(payload.allocationPct) : undefined,
         trailingStopPct: payload.trailingStopPct !== undefined && payload.trailingStopPct !== '' ? Number(payload.trailingStopPct) : undefined,
         simulationId: targetSimId,
-        userEmail: req.user?.email || payload.userEmail
+        userEmail: req.user?.email || payload.userEmail,
+        isCron
       });
       res.json(report);
     } catch (e: any) {

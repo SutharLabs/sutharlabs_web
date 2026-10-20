@@ -115,6 +115,8 @@ export interface EODSimulationOptions {
   replayDays?: number; // e.g. 30, 60, 90, 180
   allowAfterHours?: boolean;
   isPublic?: boolean;
+  isCron?: boolean;
+  forceRun?: boolean;
 }
 
 /** Registry entry tracking every active simulation instance. */
