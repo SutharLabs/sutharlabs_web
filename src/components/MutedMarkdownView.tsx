@@ -28,7 +28,12 @@ SYS_ROUTING_LATENCY_THRESHOLD=25
 
 *For assistance with model model contexts or ledger setups, contact our operations department.*`;
 
-export default function MutedMarkdownView() {
+interface MutedMarkdownProps {
+  theme?: 'light' | 'dark';
+}
+
+export default function MutedMarkdownView({ theme = 'dark' }: MutedMarkdownProps) {
+  const isLight = theme === 'light';
   const [markdown, setMarkdown] = useState(initialMarkdown);
 
   // High-performance bulletproof Markdown parsing regex helper
@@ -42,28 +47,28 @@ export default function MutedMarkdownView() {
       .replace(/>/g, '&gt;');
 
     // Headings
-    html = html.replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold font-sans text-white mt-4 first:mt-0 mb-3">$1</h1>');
-    html = html.replace(/^## (.*$)/gim, '<h2 class="text-lg font-bold font-sans text-[#74f5ff] mt-5 mb-2">$1</h2>');
-    html = html.replace(/^### (.*$)/gim, '<h3 class="text-base font-bold font-sans text-[#ce5dff] mt-4 mb-2">$1</h3>');
+    html = html.replace(/^# (.*$)/gim, `<h1 class="text-2xl font-bold font-sans ${isLight ? 'text-slate-900' : 'text-white'} mt-4 first:mt-0 mb-3">$1</h1>`);
+    html = html.replace(/^## (.*$)/gim, `<h2 class="text-lg font-bold font-sans ${isLight ? 'text-sky-700' : 'text-[#74f5ff]'} mt-5 mb-2">$1</h2>`);
+    html = html.replace(/^### (.*$)/gim, `<h3 class="text-base font-bold font-sans ${isLight ? 'text-purple-700' : 'text-[#ce5dff]'} mt-4 mb-2">$1</h3>`);
 
     // Blockquotes
-    html = html.replace(/^\s*&gt;\s+(.*$)/gim, '<blockquote class="border-l-4 border-[#ce5dff] pl-3 py-1 my-3 bg-[#ce5dff]/5 rounded-r font-sans italic text-sm text-[#b9cacb]">$1</blockquote>');
+    html = html.replace(/^\s*&gt;\s+(.*$)/gim, `<blockquote class="border-l-4 border-[#ce5dff] pl-3 py-1 my-3 ${isLight ? 'bg-purple-50 text-slate-700' : 'bg-[#ce5dff]/5 text-[#b9cacb]'} rounded-r font-sans italic text-sm">$1</blockquote>`);
 
     // Code Blocks (fenced)
-    html = html.replace(/```([\s\S]*?)```/gim, '<pre class="bg-[#201f21] border border-outline/30 rounded p-3 my-4 font-mono text-xs overflow-x-auto text-[#74f5ff]">$1</pre>');
+    html = html.replace(/```([\s\S]*?)```/gim, `<pre class="${isLight ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-[#201f21] border-outline/30 text-[#74f5ff]'} border rounded-lg p-3.5 my-4 font-mono text-xs overflow-x-auto">$1</pre>`);
 
     // Inline Code
-    html = html.replace(/`([^`]+)`/g, '<code class="bg-[#2a2a2c]/60 border border-outline/20 px-1 py-0.5 rounded font-mono text-xs text-[#ebb2ff]">$1</code>');
+    html = html.replace(/`([^`]+)`/g, `<code class="${isLight ? 'bg-slate-100 text-purple-700 border-slate-300 font-semibold' : 'bg-[#2a2a2c]/60 border-outline/20 text-[#ebb2ff]'} border px-1.5 py-0.5 rounded font-mono text-xs">$1</code>`);
 
     // Bold
-    html = html.replace(/\*\*([^*]+)\*\*/g, '<strong class="font-bold text-white">$1</strong>');
+    html = html.replace(/\*\*([^*]+)\*\*/g, `<strong class="font-bold ${isLight ? 'text-slate-900' : 'text-white'}">$1</strong>`);
 
     // Bullet list items
     html = html.replace(/^[-*+]\s+(.*$)/gim, '<li class="ml-4 list-disc pl-1 mb-1.5 font-light">$1</li>');
 
     // Wrap list piles
     // Simple helper to wrap groups of <li>
-    html = html.replace(/((?:<li.*?>.*?<\/li>\s*)+)/g, '<ul class="my-3 text-sm text-[#b9cacb]">$1</ul>');
+    html = html.replace(/((?:<li.*?>.*?<\/li>\s*)+)/g, `<ul class="my-3 text-sm ${isLight ? 'text-slate-700' : 'text-[#b9cacb]'}">$1</ul>`);
 
     // Paragraph wrappers for orphaned text files
     const paragraphs = html.split(/\n\n+/);

@@ -678,7 +678,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               )}
 
               {activeTab === 'README' && (
-                <MutedMarkdownView />
+                <MutedMarkdownView theme={theme} />
               )}
 
               {![

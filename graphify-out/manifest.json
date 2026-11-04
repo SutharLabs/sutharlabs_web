@@ -56,15 +56,15 @@
     "semantic_hash": "6776e03727fcdb41ca9db460f8d817b7"
   },
   "server.ts": {
-    "mtime": 1793785650.075708,
-    "seen": 1793785844.6762242,
+    "mtime": 1793785987.0106013,
+    "seen": 1793788012.1980526,
     "ast_hash": "15bd0df525900f0c9277d6d1f2b525e1",
     "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1793781253.5268264,
-    "seen": 1793783643.5367181,
-    "ast_hash": "73144c7f8788b66a139bffc84a3c2f12",
+    "mtime": 1793787977.0015464,
+    "seen": 1793788012.1980553,
+    "ast_hash": "e44dc9ad9637f39c81d3c4b0b7cbea02",
     "semantic_hash": ""
   },
   "src/components/AccountingView.tsx": {
@@ -170,10 +170,10 @@
     "semantic_hash": "4e0b8390a727198975337459a2fbcd54"
   },
   "src/components/MutedMarkdownView.tsx": {
-    "mtime": 1790497065.4251738,
-    "seen": 1793772051.9659507,
-    "ast_hash": "48e289aff4964553c4235bccc4afcc67",
-    "semantic_hash": "48e289aff4964553c4235bccc4afcc67"
+    "mtime": 1793787977.328964,
+    "seen": 1793788012.1980922,
+    "ast_hash": "bbe4c30964fe974d388998e6fafb0ab4",
+    "semantic_hash": ""
   },
   "src/components/PrivacyPolicyView.tsx": {
     "mtime": 1791181872.2530732,
@@ -1040,14 +1040,14 @@
     "semantic_hash": ""
   },
   "src/components/ManageDatabaseView.tsx": {
-    "mtime": 1793785776.0471623,
-    "seen": 1793785844.6762784,
-    "ast_hash": "e085e8fe44b159c15862c948eb1ec7b3",
+    "mtime": 1793787977.2308064,
+    "seen": 1793788012.1980867,
+    "ast_hash": "add9b7b7e937ce24e9959f57b20790b8",
     "semantic_hash": ""
   },
   "src/services/databaseSyncService.ts": {
-    "mtime": 1793785617.6714203,
-    "seen": 1793785844.6765878,
+    "mtime": 1793785988.21246,
+    "seen": 1793788012.1982799,
     "ast_hash": "3ba237d9a1103862d55135a5fce1676c",
     "semantic_hash": ""
   },
@@ -1058,21 +1058,21 @@
     "semantic_hash": ""
   },
   "src/components/ConfirmModal.tsx": {
-    "mtime": 1793785372.442415,
-    "seen": 1793785844.676246,
+    "mtime": 1793785987.8864503,
+    "seen": 1793788012.1980665,
     "ast_hash": "87c743bcf737795b7b76b7644c129b33",
     "semantic_hash": ""
   },
   ".agents/rules/ui-styling-and-icons.md": {
-    "mtime": 1793785392.3997233,
-    "seen": 1793785844.6766114,
-    "ast_hash": "5c84e99ccd14a0418ca0de57958a3280",
+    "mtime": 1793787976.3833566,
+    "seen": 1793788012.1982949,
+    "ast_hash": "a435f0e50c5d2549ae64545918f1a09d",
     "semantic_hash": ""
   },
   "docs/ui_and_design_system_guidelines.md": {
-    "mtime": 1793785399.1148155,
-    "seen": 1793785844.6766818,
-    "ast_hash": "44e4935e822f3d1dd583869379bbd6fd",
+    "mtime": 1793787923.367748,
+    "seen": 1793788012.1983385,
+    "ast_hash": "8e957d4fd9af5b62552dd6024e521717",
     "semantic_hash": ""
   },
   "package-lock.json": {

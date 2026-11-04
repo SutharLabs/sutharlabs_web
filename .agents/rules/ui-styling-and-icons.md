@@ -175,7 +175,52 @@ const promptAction = () => {
 
 ---
 
-## 5. Copy-Paste Code Templates
+## 5. Code Highlight Blocks, Commands & Inline Code Guidelines
+
+All command snippets, terminal copy boxes, and inline `<code>` badges must adapt seamlessly between **Light Theme** and **Dark Theme**. Never hardcode translucent dark backgrounds (like `bg-black/40` or `bg-[#201f21]`) without providing an explicit `isLight` alternative, as they render as washed-out, unreadable dark gray boxes in light mode.
+
+### A. Terminal & Command Snippet Block Standard
+Use this standard for copyable commands, API endpoints, webhook URLs, and configuration code:
+```tsx
+<div className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl border font-mono text-[10px] sm:text-xs select-all shadow-xs transition-colors ${
+  isLight
+    ? 'bg-slate-100 border-slate-300 text-slate-800'
+    : 'bg-[#121215] border-[#3a494b]/40 text-[#e5e1e4]'
+}`}>
+  <span className={isLight ? 'text-sky-600 font-bold' : 'text-[#00dbe7] font-bold'}>POST </span>
+  <span>https://www.sutharlabs.com/api/cron/database-sync?key=vault-secret</span>
+</div>
+```
+
+### B. Shell & Crontab Command Box Standard
+```tsx
+<div className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl border font-mono text-[10px] sm:text-xs select-all shadow-xs transition-colors ${
+  isLight
+    ? 'bg-slate-100 border-slate-300 text-emerald-800 font-semibold'
+    : 'bg-[#121215] border-[#3a494b]/40 text-emerald-300'
+}`}>
+  30 20 * * * cd /home/ubuntu/website && npm run db:cron-sync >> /var/log/db-sync.log 2>&1
+</div>
+```
+
+### C. Inline Code Badge Standard (`<code>` inside text)
+Always wrap inline filenames, env vars, or code keywords in a styled badge:
+```tsx
+<code className={`px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-mono border ${
+  isLight
+    ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium'
+    : 'bg-white/5 text-on-surface border-white/10'
+}`}>
+  DATABASE_URL
+</code>
+```
+* For primary accent code words (e.g. key config files):
+  * Light: `bg-slate-100 text-sky-700 border-slate-300 font-bold`
+  * Dark: `bg-white/5 text-[#00dbe7] border-white/10 font-bold`
+
+---
+
+## 6. Copy-Paste Code Templates
 
 ### A. Sub-Tab Switcher
 ```tsx
@@ -216,9 +261,11 @@ const promptAction = () => {
 
 ---
 
-## 6. Anti-Patterns Checklist
+## 7. Anti-Patterns Checklist
 
 * ❌ **Do NOT** use `window.alert()`, `window.confirm()`, or `window.prompt()`. Use `<ConfirmModal />` instead.
+* ❌ **Do NOT** hardcode translucent dark backgrounds (`bg-black/40`, `bg-black/50`, `bg-[#201f21]`) on command or code highlight blocks without an `isLight` alternative.
+* ❌ **Do NOT** use uncontained, unstyled inline `<code>` tags that disappear against light-mode card backgrounds.
 * ❌ **Do NOT** place raw Lucide icons directly inside `<h1..3>` text strings.
 * ❌ **Do NOT** omit `shrink-0` on icon elements.
 * ❌ **Do NOT** use dark-only colors (`bg-[#201f21]`, `text-[#e5e1e4]`) without checking `isLight` or using CSS variable utilities (`bg-surface-container`, `text-on-surface`).

@@ -92,4 +92,25 @@ This guarantees that secondary and primary buttons do not break across lines or 
    * Confirm button: Variant-matched primary action token (`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider`).
    * Placed in `flex items-center justify-end gap-2.5 shrink-0 flex-nowrap`.
 
+---
+
+## 5. Code Highlight Blocks, Commands & Inline Code Guidelines
+
+### High-Contrast Theme Adaptation
+Never hardcode translucent dark backgrounds (`bg-black/40`, `bg-black/50`, `bg-[#201f21]`) on command or code highlight blocks without an explicit `isLight` alternative. On light mode, translucent black creates a muddy, unreadable gray rectangle that ruins visual harmony.
+
+### Specifications
+1. **Command / Code Highlight Box**:
+   * **Light Theme (`isLight === true`)**: `bg-slate-100 border-slate-300 text-slate-800` (HTTP verbs in `text-sky-600 font-bold`, shell commands in `text-emerald-800 font-semibold`).
+   * **Dark Theme (`isLight === false`)**: `bg-[#121215] border-[#3a494b]/40 text-[#e5e1e4]` (HTTP verbs in `text-[#00dbe7] font-bold`, shell commands in `text-emerald-300`).
+   * **Structure**: `p-2.5 sm:p-3 rounded-lg sm:rounded-xl border font-mono text-[10px] sm:text-xs select-all shadow-xs transition-colors`.
+
+2. **Inline Code (`<code>` elements)**:
+   * **Light Theme**: `px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-mono border bg-slate-100 text-slate-800 border-slate-300 font-medium`.
+   * **Dark Theme**: `px-1.5 py-0.5 rounded text-[10px] sm:text-[11px] font-mono border bg-white/5 text-on-surface border-white/10`.
+   * For primary accented keywords (e.g. `DATABASE_URL`, `vercel.json`):
+     * Light: `text-sky-700 border-slate-300 font-bold`
+     * Dark: `text-[#00dbe7] border-white/10 font-bold`
+
+
 

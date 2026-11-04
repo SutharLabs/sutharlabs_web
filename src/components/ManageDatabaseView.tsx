@@ -996,23 +996,35 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
             </p>
 
             {/* Option 1: Vercel Cron */}
-            <div className="p-3.5 rounded-xl border border-outline/15 bg-surface-container-high/20 space-y-2">
+            <div className={`p-3.5 rounded-xl border space-y-2 transition-all ${
+              isLight
+                ? 'bg-white border-slate-200/90 shadow-xs text-slate-800'
+                : 'border-outline/15 bg-surface-container-high/20 text-[#e5e1e4]'
+            }`}>
               <div className="flex items-center justify-between">
                 <span className="font-bold text-on-surface flex items-center gap-2 font-sans">
                   <span className="w-2 h-2 rounded-full bg-[#00dbe7] shrink-0" />
-                  <span>Option 1: Vercel Scheduled Cron (Active in <code className="font-mono text-[#00dbe7]">vercel.json</code>)</span>
+                  <span>Option 1: Vercel Scheduled Cron (Active in <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-sky-700 border-slate-300 font-bold' : 'bg-white/5 text-[#00dbe7] border-white/10'}`}>vercel.json</code>)</span>
                 </span>
-                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                  isLight
+                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300 font-bold'
+                    : 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20'
+                }`}>
                   Pre-configured
                 </span>
               </div>
               <p className="text-on-surface-variant">
-                If your frontend/API is deployed on Vercel, the cron is automatically registered in <code className="font-mono text-on-surface">vercel.json</code> to fire daily at 20:30 UTC (02:00 AM IST) targeting <code className="font-mono text-on-surface">/api/cron/database-sync</code>.
+                If your frontend/API is deployed on Vercel, the cron is automatically registered in <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>vercel.json</code> to fire daily at 20:30 UTC (02:00 AM IST) targeting <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>/api/cron/database-sync</code>.
               </p>
             </div>
 
             {/* Option 2: External Webhook / Cron-job.org */}
-            <div className="p-3.5 rounded-xl border border-outline/15 bg-surface-container-high/20 space-y-2">
+            <div className={`p-3.5 rounded-xl border space-y-2 transition-all ${
+              isLight
+                ? 'bg-white border-slate-200/90 shadow-xs text-slate-800'
+                : 'border-outline/15 bg-surface-container-high/20 text-[#e5e1e4]'
+            }`}>
               <div className="flex items-center justify-between">
                 <span className="font-bold text-on-surface flex items-center gap-2 font-sans">
                   <span className="w-2 h-2 rounded-full bg-[#ce5dff] shrink-0" />
@@ -1034,16 +1046,25 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
               <p className="text-on-surface-variant">
                 Configure a recurring webhook monitor on <a href="https://cron-job.org" target="_blank" rel="noreferrer" className="text-[#00dbe7] underline">cron-job.org</a> or any ping service:
               </p>
-              <div className="bg-black/40 p-2.5 rounded-lg border border-outline/15 font-mono text-[10px] text-sky-300 break-all select-all">
-                POST {typeof window !== 'undefined' ? window.location.origin : 'https://sutharlabs.com'}/api/cron/database-sync?key=sutharlabs-cron-vault-2026
+              <div className={`p-2.5 rounded-lg border font-mono text-[10px] break-all select-all shadow-xs transition-colors ${
+                isLight
+                  ? 'bg-slate-100 border-slate-300 text-sky-800'
+                  : 'bg-[#121215] border-[#3a494b]/40 text-sky-300'
+              }`}>
+                <span className={isLight ? 'text-sky-600 font-bold' : 'text-[#00dbe7] font-bold'}>POST </span>
+                <span>{typeof window !== 'undefined' ? window.location.origin : 'https://sutharlabs.com'}/api/cron/database-sync?key=sutharlabs-cron-vault-2026</span>
               </div>
               <p className="text-[10px] text-on-surface-variant/80">
-                Supports <code className="font-mono text-on-surface">Authorization: Bearer &lt;CRON_SECRET&gt;</code> or query parameter <code className="font-mono text-on-surface">?key=&lt;CRON_SECRET&gt;</code>.
+                Supports <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>Authorization: Bearer &lt;CRON_SECRET&gt;</code> or query parameter <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>?key=&lt;CRON_SECRET&gt;</code>.
               </p>
             </div>
 
             {/* Option 3: Oracle VM Native Crontab */}
-            <div className="p-3.5 rounded-xl border border-outline/15 bg-surface-container-high/20 space-y-2">
+            <div className={`p-3.5 rounded-xl border space-y-2 transition-all ${
+              isLight
+                ? 'bg-white border-slate-200/90 shadow-xs text-slate-800'
+                : 'border-outline/15 bg-surface-container-high/20 text-[#e5e1e4]'
+            }`}>
               <div className="flex items-center justify-between">
                 <span className="font-bold text-on-surface flex items-center gap-2 font-sans">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
@@ -1063,9 +1084,13 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
                 </button>
               </div>
               <p className="text-on-surface-variant">
-                Run directly on your Oracle Cloud VM without relying on web requests. On the VM terminal, execute <code className="font-mono text-on-surface">crontab -e</code> and append:
+                Run directly on your Oracle Cloud VM without relying on web requests. On the VM terminal, execute <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-emerald-700 border-slate-300 font-bold' : 'bg-white/5 text-emerald-400 border-white/10'}`}>crontab -e</code> and append:
               </p>
-              <div className="bg-black/40 p-2.5 rounded-lg border border-outline/15 font-mono text-[10px] text-emerald-300 select-all">
+              <div className={`p-2.5 rounded-lg border font-mono text-[10px] select-all shadow-xs transition-colors ${
+                isLight
+                  ? 'bg-slate-100 border-slate-300 text-emerald-800 font-semibold'
+                  : 'bg-[#121215] border-[#3a494b]/40 text-emerald-300'
+              }`}>
                 30 20 * * * cd /home/ubuntu/website &amp;&amp; npm run db:cron-sync &gt;&gt; /var/log/db-sync.log 2&gt;&amp;1
               </div>
             </div>
@@ -1074,7 +1099,9 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
       </div>
 
       {/* Failover & Recovery Guide Accordion */}
-      <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/20">
+      <div className={`p-4 rounded-xl border transition-all ${
+        isLight ? 'bg-white border-slate-200/90 shadow-xs' : 'glass-panel border-outline/15 bg-surface-container-low/20'
+      }`}>
         <button
           type="button"
           onClick={() => setShowFailoverGuide(!showFailoverGuide)}
@@ -1086,7 +1113,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
             </div>
             <span>Instant Failover &amp; Disaster Recovery Runbook</span>
           </div>
-          <span className="text-[11px] text-[#00dbe7] group-hover:underline">
+          <span className={`text-[11px] group-hover:underline ${isLight ? 'text-sky-600 font-semibold' : 'text-[#00dbe7]'}`}>
             {showFailoverGuide ? 'Hide Runbook ▲' : 'View Runbook ▼'}
           </span>
         </button>
@@ -1094,17 +1121,17 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
         {showFailoverGuide && (
           <div className="mt-4 pt-3 border-t border-outline/10 space-y-3 text-[11px] text-on-surface-variant font-sans leading-relaxed animate-fade-in">
             <p>
-              If the Oracle Cloud VM (<code className="text-emerald-400 font-mono">137.23.61.191</code>) ever undergoes maintenance, network updates, or an unexpected OS reboot, failover to the Neon Backup can be completed in under <strong>30 seconds</strong>:
+              If the Oracle Cloud VM (<code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-emerald-700 border-slate-300 font-bold' : 'bg-white/5 text-emerald-400 border-white/10'}`}>137.23.61.191</code>) ever undergoes maintenance, network updates, or an unexpected OS reboot, failover to the Neon Backup can be completed in under <strong>30 seconds</strong>:
             </p>
             <ol className="list-decimal pl-5 space-y-2 font-mono text-[11px]">
               <li>
-                <strong>Trigger Instant Failover in Vercel:</strong> Open Vercel Project Settings &rarr; Environment Variables &rarr; set <code className="text-[#00dbe7]">DATABASE_URL</code> to your <code className="text-sky-300">BACKUP_DATABASE_URL</code> connection string.
+                <strong>Trigger Instant Failover in Vercel:</strong> Open Vercel Project Settings &rarr; Environment Variables &rarr; set <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-sky-700 border-slate-300 font-bold' : 'bg-white/5 text-[#00dbe7] border-white/10'}`}>DATABASE_URL</code> to your <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-sky-700 border-slate-300 font-bold' : 'bg-white/5 text-sky-300 border-white/10'}`}>BACKUP_DATABASE_URL</code> connection string.
               </li>
               <li>
-                <strong>Trigger Local/VPS Failover:</strong> In your <code className="text-on-surface font-mono">.env</code>, set <code className="text-[#00dbe7]">DATABASE_URL</code> to the Neon URI and restart the process.
+                <strong>Trigger Local/VPS Failover:</strong> In your <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>.env</code>, set <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-sky-700 border-slate-300 font-bold' : 'bg-white/5 text-[#00dbe7] border-white/10'}`}>DATABASE_URL</code> to the Neon URI and restart the process.
               </li>
               <li>
-                <strong>Automated Driver Adaptation:</strong> [`api/_utils.ts`](file:///d:/Code/SutharLabs/website/api/_utils.ts) automatically detects <code className="text-sky-300">neon.tech</code> and swaps from <code className="text-on-surface font-mono">@prisma/adapter-pg</code> to <code className="text-on-surface font-mono">@prisma/adapter-neon</code> dynamically.
+                <strong>Automated Driver Adaptation:</strong> [`api/_utils.ts`](file:///d:/Code/SutharLabs/website/api/_utils.ts) automatically detects <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-sky-700 border-slate-300 font-bold' : 'bg-white/5 text-sky-300 border-white/10'}`}>neon.tech</code> and swaps from <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>@prisma/adapter-pg</code> to <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>@prisma/adapter-neon</code> dynamically.
               </li>
             </ol>
           </div>
