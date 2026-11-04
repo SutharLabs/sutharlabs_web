@@ -19,10 +19,10 @@
     "ast_empty": true
   },
   "package.json": {
-    "mtime": 1791648164.9602487,
-    "seen": 1793772051.9609938,
-    "ast_hash": "69f6c3955620b2810f74baa68ed9e851",
-    "semantic_hash": "69f6c3955620b2810f74baa68ed9e851"
+    "mtime": 1793779769.3126597,
+    "seen": 1793780091.099287,
+    "ast_hash": "78fe5d616dc272fc67774d2cd8fc11ba",
+    "semantic_hash": ""
   },
   "plugins-db.json": {
     "mtime": 1779610704.753796,
@@ -56,9 +56,9 @@
     "semantic_hash": "6776e03727fcdb41ca9db460f8d817b7"
   },
   "server.ts": {
-    "mtime": 1793777260.886534,
-    "seen": 1793777603.4232202,
-    "ast_hash": "7de9dbe6351903eb10b7e83b0000a782",
+    "mtime": 1793779406.363281,
+    "seen": 1793780091.0993123,
+    "ast_hash": "8e141240f081784694082f03cf32d80e",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -824,10 +824,10 @@
     "semantic_hash": "3fb5d98480b7ea548bcaa3616c444da1"
   },
   "vercel.json": {
-    "mtime": 1791471871.5718281,
-    "seen": 1793772051.976118,
-    "ast_hash": "04803a6b3d766ad5f9b5bbfb9b760ac5",
-    "semantic_hash": "04803a6b3d766ad5f9b5bbfb9b760ac5"
+    "mtime": 1793779787.3616354,
+    "seen": 1793780091.0997114,
+    "ast_hash": "e5da1726fa74094c9e4d229c1a400564",
+    "semantic_hash": ""
   },
   "vite.config.ts": {
     "mtime": 1791471871.575062,
@@ -1040,15 +1040,21 @@
     "semantic_hash": ""
   },
   "src/components/ManageDatabaseView.tsx": {
-    "mtime": 1793777513.4660857,
-    "seen": 1793777603.4232714,
-    "ast_hash": "75101684990ae796a0d6732a3efea19a",
+    "mtime": 1793779914.798369,
+    "seen": 1793780091.0993676,
+    "ast_hash": "0e6772d89a2b86d2d40b22250049f054",
     "semantic_hash": ""
   },
   "src/services/databaseSyncService.ts": {
-    "mtime": 1793777269.33453,
-    "seen": 1793777603.4235613,
-    "ast_hash": "82410bf5b6e7a64aeb49be5f84c26291",
+    "mtime": 1793779742.4178963,
+    "seen": 1793780091.099694,
+    "ast_hash": "94bc261da80ba9751e03ba952690d038",
+    "semantic_hash": ""
+  },
+  "scripts/cron-sync-database.ts": {
+    "mtime": 1793779750.4287071,
+    "seen": 1793780091.0992985,
+    "ast_hash": "b45734a30fb8d32fb095279776c76502",
     "semantic_hash": ""
   },
   "package-lock.json": {

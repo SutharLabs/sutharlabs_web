@@ -1,0 +1,54 @@
+[
+  {
+    "id": "sync_1793780023745_11kwc",
+    "timestamp": "2026-11-04T08:13:43.744Z",
+    "trigger": "CRON_JOB",
+    "status": "SUCCESS",
+    "durationMs": 14903,
+    "totalRecordsSynced": 88,
+    "syncedCounts": {
+      "workspacePlugins": 4,
+      "workspacePluginVersions": 23,
+      "plugins": 5,
+      "users": 6,
+      "portfolios": 5,
+      "userWorkspacePlugins": 19,
+      "pluginReviews": 4,
+      "accountingStores": 4,
+      "invoices": 4,
+      "flowNodes": 3,
+      "trades": 0,
+      "documents": 2,
+      "developmentProjects": 4,
+      "contactInquiries": 2,
+      "simulations": 3,
+      "bugReports": 0
+    },
+    "sourceDatabase": "Oracle Cloud Always Free VM (PostgreSQL)",
+    "targetDatabase": "Neon Serverless PostgreSQL",
+    "initiatedBy": "Standalone CLI Crontab"
+  },
+  {
+    "id": "sync_1793779969434_6x09a",
+    "timestamp": "2026-11-04T08:12:49.434Z",
+    "trigger": "CRON_JOB",
+    "status": "FAILED",
+    "durationMs": 12758,
+    "totalRecordsSynced": 74,
+    "syncedCounts": {
+      "workspacePlugins": 4,
+      "workspacePluginVersions": 23,
+      "plugins": 5,
+      "users": 6,
+      "portfolios": 5,
+      "userWorkspacePlugins": 19,
+      "pluginReviews": 4,
+      "accountingStores": 4,
+      "invoices": 4
+    },
+    "sourceDatabase": "Oracle Cloud Always Free VM (PostgreSQL)",
+    "targetDatabase": "Neon Serverless PostgreSQL",
+    "errorMessage": "\nInvalid `backup.flowNode.upsert()` invocation in\nD:\\Code\\SutharLabs\\website\\src\\services\\databaseSyncService.ts:430:29\n\n  427 // 9. Sync FlowNodes\n  428 const flowNodes = await primary.flowNode.findMany();\n  429 for (const node of flowNodes) {\n→ 430   await backup.flowNode.upsert(\nThe table `public.flow_nodes` does not exist in the current database.",
+    "initiatedBy": "Standalone CLI Crontab"
+  }
+]

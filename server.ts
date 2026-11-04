@@ -29,7 +29,8 @@ import {
 import {
   getDatabaseStatus,
   executeDatabaseSync,
-  exportDatabaseDump
+  exportDatabaseDump,
+  getSyncHistorySummary
 } from "./src/services/databaseSyncService.js";
 import {
   securityHeaders,
@@ -1775,11 +1776,62 @@ app.get("/api/admin/database/status", authenticateToken, requireAdmin, async (re
 // POST /api/admin/database/sync
 app.post("/api/admin/database/sync", authenticateToken, requireAdmin, async (req: any, res: any) => {
   try {
-    const result = await executeDatabaseSync();
+    const adminEmail = req.user?.email || 'Admin';
+    const result = await executeDatabaseSync({ trigger: 'MANUAL_ADMIN', initiatedBy: adminEmail });
     res.json(result);
   } catch (error: any) {
     console.error("[Database Admin] Error during database sync:", error);
     res.status(500).json({ error: error.message || "Failed to synchronize databases." });
+  }
+});
+
+// GET /api/admin/database/sync-history
+app.get("/api/admin/database/sync-history", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const limit = parseInt(req.query.limit || '50', 10);
+    const summary = getSyncHistorySummary(limit);
+    res.json({ success: true, ...summary });
+  } catch (error: any) {
+    console.error("[Database Admin] Error fetching sync history:", error);
+    res.status(500).json({ error: "Failed to retrieve sync history logs." });
+  }
+});
+
+// ==========================================
+// AUTOMATED CRON REPLICATION SCHEDULER API
+// ==========================================
+// Triggered by Vercel Cron, Cron-Job.org, or external crons
+app.all(["/api/cron/database-sync", "/api/cron/database-sync/"], async (req: any, res: any) => {
+  const cronSecret = process.env.CRON_SECRET || process.env.JWT_SECRET || 'sutharlabs-cron-vault-2026';
+  const authHeader = req.headers.authorization;
+  const querySecret = req.query.secret || req.query.key;
+  const xSecret = req.headers['x-cron-secret'];
+
+  const isAuthorized = 
+    (authHeader && authHeader === `Bearer ${cronSecret}`) ||
+    (querySecret && querySecret === cronSecret) ||
+    (xSecret && xSecret === cronSecret) ||
+    req.headers['x-vercel-cron'] === '1' ||
+    process.env.NODE_ENV !== 'production';
+
+  if (!isAuthorized) {
+    return res.status(401).json({ 
+      error: "Unauthorized: Invalid or missing cron authorization token. Pass Authorization: Bearer <CRON_SECRET> or ?key=<CRON_SECRET>." 
+    });
+  }
+
+  try {
+    const callerId = req.headers['user-agent'] || (req.headers['x-vercel-cron'] ? 'Vercel Scheduled Cron' : 'External Cron Trigger');
+    const result = await executeDatabaseSync({ trigger: 'CRON_JOB', initiatedBy: callerId });
+    res.json({
+      success: true,
+      trigger: 'CRON_JOB',
+      message: "Scheduled database backup and replication completed successfully.",
+      ...result
+    });
+  } catch (error: any) {
+    console.error("[Cron Database Sync] Error:", error);
+    res.status(500).json({ error: error.message || "Failed to execute scheduled database synchronization." });
   }
 });
 

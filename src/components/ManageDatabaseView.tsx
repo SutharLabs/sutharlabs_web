@@ -16,7 +16,10 @@ import {
   ExternalLink,
   Info,
   Check,
-  AlertCircle
+  AlertCircle,
+  Copy,
+  Zap,
+  History
 } from 'lucide-react';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
@@ -40,6 +43,29 @@ interface DatabaseEndpointInfo {
   stats: Record<string, number>;
 }
 
+export interface SyncHistoryEntry {
+  id: string;
+  timestamp: string;
+  trigger: 'CRON_JOB' | 'MANUAL_ADMIN';
+  status: 'SUCCESS' | 'FAILED';
+  durationMs: number;
+  totalRecordsSynced: number;
+  syncedCounts: Record<string, number>;
+  sourceDatabase: string;
+  targetDatabase: string;
+  errorMessage?: string;
+  initiatedBy?: string;
+}
+
+export interface SyncHistorySummary {
+  history: SyncHistoryEntry[];
+  totalRuns: number;
+  successfulRuns: number;
+  failedRuns: number;
+  lastCronTimestamp: string | null;
+  lastManualTimestamp: string | null;
+}
+
 interface DatabaseStatusResponse {
   primary: DatabaseEndpointInfo;
   backup: DatabaseEndpointInfo;
@@ -47,6 +73,7 @@ interface DatabaseStatusResponse {
   overallInSync: boolean;
   lastSyncTimestamp: string | null;
   lastSyncStats: Record<string, number> | null;
+  syncHistorySummary?: SyncHistorySummary;
 }
 
 export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 'dark' }: ManageDatabaseProps) {
@@ -62,6 +89,14 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
     syncedCounts?: Record<string, number>;
   } | null>(null);
   const [showFailoverGuide, setShowFailoverGuide] = useState<boolean>(false);
+  const [historyTab, setHistoryTab] = useState<'history' | 'cron_setup'>('history');
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2500);
+  };
 
   const fetchStatus = useCallback(async () => {
     setLoading(true);
@@ -136,7 +171,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           type: 'SUCCESS',
           message: `DATABASE: Replication completed successfully in ${result.durationMs}ms.`
         });
-        // Refresh statuses to reflect matching counts
+        // Refresh statuses and history to reflect matching counts and updated log
         await fetchStatus();
       } else {
         setSyncFeedback({
@@ -148,6 +183,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           type: 'ERROR',
           message: `DATABASE: Replication failed: ${result.error || 'Unknown error'}`
         });
+        await fetchStatus();
       }
     } catch (err: any) {
       setSyncFeedback({
@@ -238,207 +274,191 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
             } disabled:opacity-50`}
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#00dbe7]' : ''}`} />
-            <span>{loading ? 'Checking...' : 'Refresh'}</span>
+            <span>Probe Health</span>
           </button>
 
           <button
             type="button"
             onClick={handleExportDump}
-            disabled={exporting}
+            disabled={exporting || loading}
             className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-2 ${
               isLight
-                ? 'bg-purple-50 text-purple-700 border-purple-300 hover:bg-purple-100'
-                : 'bg-[#ce5dff]/10 text-[#ebb2ff] border-[#ce5dff]/30 hover:bg-[#ce5dff]/20'
+                ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                : 'bg-surface-container-high hover:bg-surface-container text-on-surface border-outline/30'
             } disabled:opacity-50`}
+            title="Download full JSON snapshot backup of primary database"
           >
-            <Download className="w-3.5 h-3.5" />
-            <span>{exporting ? 'Exporting...' : 'Export Snapshot'}</span>
+            <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-bounce text-[#00dbe7]' : ''}`} />
+            <span>Export Snapshot</span>
           </button>
 
           <button
             type="button"
             onClick={handleTriggerSync}
             disabled={syncing || loading}
-            className={`px-4 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-2 ${
-              isLight
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-600'
-                : 'bg-[#00e476] hover:bg-[#00fb83] text-black border-[#00e476] shadow-[0_0_12px_rgba(0,228,118,0.25)]'
-            } disabled:opacity-50`}
+            className="px-4 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer bg-gradient-to-r from-[#00dbe7] to-[#ce5dff] text-surface font-semibold hover:opacity-90 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
           >
             <ArrowRightLeft className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
-            <span>{syncing ? 'Replicating...' : 'Trigger Sync to Neon'}</span>
+            <span>{syncing ? 'Replicating...' : 'Trigger Sync Now'}</span>
           </button>
         </div>
       </div>
 
-      {/* Sync Feedback Toast / Banner */}
+      {/* Sync Banner Feedback */}
       {syncFeedback && (
         <div className={`p-4 rounded-xl border flex items-start gap-3 animate-fade-in ${
           syncFeedback.success 
-            ? 'bg-emerald-950/20 border-emerald-500/40 text-emerald-300' 
-            : 'bg-rose-950/20 border-rose-500/40 text-rose-300'
+            ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' 
+            : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
         }`}>
           {syncFeedback.success ? (
             <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
           ) : (
             <AlertTriangle className="w-5 h-5 text-rose-400 shrink-0 mt-0.5" />
           )}
-          <div className="flex-1 space-y-1">
-            <div className="font-bold text-sm font-sans">{syncFeedback.message}</div>
+          <div className="flex-1 text-xs">
+            <p className="font-bold font-sans">{syncFeedback.message}</p>
             {syncFeedback.syncedCounts && (
-              <div className="text-[11px] font-mono text-on-surface-variant flex flex-wrap gap-x-4 gap-y-1 mt-1">
+              <div className="mt-2 flex flex-wrap gap-2 text-[10px] font-mono">
                 {Object.entries(syncFeedback.syncedCounts).map(([tbl, cnt]) => (
-                  <span key={tbl}>
-                    <code className="text-on-surface font-semibold">{tbl}</code>: {cnt}
+                  <span key={tbl} className="bg-emerald-500/15 px-2 py-0.5 rounded border border-emerald-500/20 text-emerald-200">
+                    {tbl}: {cnt}
                   </span>
                 ))}
               </div>
             )}
           </div>
-          <button 
-            onClick={() => setSyncFeedback(null)}
-            className="text-xs text-on-surface-variant hover:text-white px-2 py-1"
-          >
-            ✕
-          </button>
         </div>
       )}
 
-      {/* Dual Database Topology Cards (Primary vs Backup) */}
+      {/* Database Topology Grid (Primary vs Standby) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         
-        {/* Card 1: Primary Database (Oracle Cloud VM) */}
-        <div className="glass-panel p-5 rounded-xl border border-emerald-500/30 bg-surface-container-low/40 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl pointer-events-none" />
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 font-sans">
-                  PRIMARY PRODUCTION NODE
-                </span>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                ACTIVE (READ / WRITE)
+        {/* Primary DB Card */}
+        <div className="glass-panel p-5 rounded-2xl border border-outline/20 relative overflow-hidden flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
+              <span className="text-[10px] font-mono tracking-widest uppercase font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                ACTIVE PRIMARY
               </span>
             </div>
-
-            <h3 className="text-base font-bold text-on-surface font-sans mb-1 flex items-center gap-2">
-              <Server className="w-4 h-4 text-emerald-400" />
-              {data?.primary.provider || 'Oracle Cloud Always Free VM (PostgreSQL)'}
-            </h3>
-            <p className="text-[11px] text-on-surface-variant mb-4">
-              All live client sessions, transaction mutations, and trade orders execute against this node.
-            </p>
-
-            <div className="space-y-2 bg-surface-container-high/40 p-3 rounded-lg border border-outline/10 text-[11px]">
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Host Endpoint:</span>
-                <span className="font-bold text-on-surface select-all">{data?.primary.host || '137.23.61.191'}:{data?.primary.port || 5432}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Database Name:</span>
-                <span className="font-bold text-on-surface">{data?.primary.database || 'sutharlabs_production'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Database User:</span>
-                <span className="font-mono text-on-surface-variant">{data?.primary.user || 'sutharlabs_admin'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Prisma Adapter:</span>
-                <span className="font-mono text-[#00dbe7] text-[10px]">{data?.primary.adapter || '@prisma/adapter-pg (Pool)'}</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                data?.primary?.status === 'ONLINE' 
+                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' 
+                  : 'bg-rose-500/10 text-rose-400 border border-rose-500/30'
+              }`}>
+                {data?.primary?.status || 'PROBING...'}
+              </span>
+              {data?.primary?.latencyMs !== undefined && data.primary.latencyMs >= 0 && (
+                <span className="text-[10px] text-on-surface-variant font-mono flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-[#00dbe7]" />
+                  {data.primary.latencyMs}ms
+                </span>
+              )}
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-outline/10 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
-              <Activity className="w-3.5 h-3.5 text-emerald-400" />
-              <span>Ping Latency:</span>
-              <span className="font-bold text-emerald-400">
-                {data?.primary.latencyMs !== undefined && data.primary.latencyMs >= 0 ? `${data.primary.latencyMs}ms` : 'Connecting...'}
+          <div>
+            <h3 className="text-base font-bold text-on-surface flex items-center gap-2 font-sans">
+              <Server className="w-4 h-4 text-emerald-400" />
+              <span>{data?.primary?.provider || 'Oracle Cloud Always Free VM'}</span>
+            </h3>
+            <p className="text-[11px] text-on-surface-variant mt-1">
+              Main PostgreSQL operational engine powering high-frequency transactions, WebSocket feeds &amp; user state.
+            </p>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-outline/10 space-y-2 text-[11px]">
+            <div className="flex justify-between items-center text-on-surface-variant">
+              <span>Endpoint Host:</span>
+              <span className="font-mono text-on-surface font-semibold bg-surface-container-high px-2 py-0.5 rounded border border-outline/20">
+                {data?.primary?.host || '137.23.61.191'}
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${data?.primary.status === 'ONLINE' ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-              <span className="font-bold text-[11px] uppercase text-on-surface">{data?.primary.status || 'PROBING'}</span>
+            <div className="flex justify-between items-center text-on-surface-variant">
+              <span>Database &amp; Port:</span>
+              <span className="font-mono text-on-surface">
+                {data?.primary?.database || 'postgres'}:{data?.primary?.port || 5432}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-on-surface-variant">
+              <span>Prisma Driver Adapter:</span>
+              <span className="font-mono text-emerald-400">
+                {data?.primary?.adapter || '@prisma/adapter-pg (TCP Pool)'}
+              </span>
             </div>
           </div>
         </div>
 
-        {/* Card 2: Secondary / Backup Database (Neon Cloud) */}
-        <div className="glass-panel p-5 rounded-xl border border-sky-500/30 bg-surface-container-low/40 relative overflow-hidden flex flex-col justify-between">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-sky-500/5 rounded-full blur-2xl pointer-events-none" />
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-2">
-                <span className="relative flex h-2.5 w-2.5">
-                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-400"></span>
-                </span>
-                <span className="text-xs font-bold uppercase tracking-wider text-sky-400 font-sans">
-                  STANDBY REPLICA NODE
-                </span>
-              </div>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-sky-500/10 text-sky-400 border border-sky-500/30">
-                HOT BACKUP (DR READY)
+        {/* Standby / Backup DB Card */}
+        <div className="glass-panel p-5 rounded-2xl border border-outline/20 relative overflow-hidden flex flex-col justify-between">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8]" />
+              <span className="text-[10px] font-mono tracking-widest uppercase font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/20">
+                STANDBY REPLICA
               </span>
             </div>
-
-            <h3 className="text-base font-bold text-on-surface font-sans mb-1 flex items-center gap-2">
-              <HardDrive className="w-4 h-4 text-sky-400" />
-              {data?.backup.provider || 'Neon Serverless PostgreSQL (Cloud)'}
-            </h3>
-            <p className="text-[11px] text-on-surface-variant mb-4">
-              Serverless cloud replica ready for instantaneous failover if the primary VPS undergoes maintenance.
-            </p>
-
-            <div className="space-y-2 bg-surface-container-high/40 p-3 rounded-lg border border-outline/10 text-[11px]">
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Cloud Host:</span>
-                <span className="font-bold text-on-surface truncate max-w-[200px]" title={data?.backup.host}>{data?.backup.host || 'neon.tech'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Database Name:</span>
-                <span className="font-bold text-on-surface">{data?.backup.database || 'neondb'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Database User:</span>
-                <span className="font-mono text-on-surface-variant">{data?.backup.user || 'neondb_owner'}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                <span className="text-on-surface-variant">Prisma Adapter:</span>
-                <span className="font-mono text-[#ce5dff] text-[10px]">{data?.backup.adapter || '@prisma/adapter-neon (WebSocket)'}</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
+                data?.backup?.status === 'ONLINE' 
+                  ? 'bg-sky-500/10 text-sky-400 border border-sky-500/30' 
+                  : 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+              }`}>
+                {data?.backup?.status || 'PROBING...'}
+              </span>
+              {data?.backup?.latencyMs !== undefined && data.backup.latencyMs >= 0 && (
+                <span className="text-[10px] text-on-surface-variant font-mono flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-sky-400" />
+                  {data.backup.latencyMs}ms
+                </span>
+              )}
             </div>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-outline/10 flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs text-on-surface-variant">
-              <Activity className="w-3.5 h-3.5 text-sky-400" />
-              <span>Ping Latency:</span>
-              <span className="font-bold text-sky-400">
-                {data?.backup.latencyMs !== undefined && data.backup.latencyMs >= 0 ? `${data.backup.latencyMs}ms` : 'Connecting...'}
+          <div>
+            <h3 className="text-base font-bold text-on-surface flex items-center gap-2 font-sans">
+              <HardDrive className="w-4 h-4 text-sky-400" />
+              <span>{data?.backup?.provider || 'Neon Serverless Cloud'}</span>
+            </h3>
+            <p className="text-[11px] text-on-surface-variant mt-1">
+              Serverless PostgreSQL with instant scale-to-zero, hot-standby failover and branchable test environments.
+            </p>
+          </div>
+
+          <div className="mt-4 pt-4 border-t border-outline/10 space-y-2 text-[11px]">
+            <div className="flex justify-between items-center text-on-surface-variant">
+              <span>Endpoint Host:</span>
+              <span className="font-mono text-on-surface font-semibold bg-surface-container-high px-2 py-0.5 rounded border border-outline/20 truncate max-w-[200px]" title={data?.backup?.host}>
+                {data?.backup?.host || 'neon.tech'}
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
-              <span className={`w-2 h-2 rounded-full ${data?.backup.status === 'ONLINE' ? 'bg-sky-400' : 'bg-amber-400'}`} />
-              <span className="font-bold text-[11px] uppercase text-on-surface">{data?.backup.status || 'PROBING'}</span>
+            <div className="flex justify-between items-center text-on-surface-variant">
+              <span>Database &amp; Port:</span>
+              <span className="font-mono text-on-surface">
+                {data?.backup?.database || 'neondb'}:{data?.backup?.port || 5432}
+              </span>
+            </div>
+            <div className="flex justify-between items-center text-on-surface-variant">
+              <span>Prisma Driver Adapter:</span>
+              <span className="font-mono text-sky-400">
+                {data?.backup?.adapter || '@prisma/adapter-neon (WebSocket)'}
+              </span>
             </div>
           </div>
         </div>
 
       </div>
 
-      {/* Sync Parity Matrix Section */}
-      <div className="glass-panel p-5 rounded-xl border border-outline/15 bg-surface-container-low/20 space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-outline/10">
+      {/* Data Parity Matrix Section */}
+      <div className="glass-panel p-5 rounded-2xl border border-outline/15 bg-surface-container-low/30 space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-outline/10 pb-3">
           <div>
-            <h3 className="font-sans font-bold text-sm text-on-surface flex items-center gap-2">
+            <h3 className="text-sm font-bold text-on-surface flex items-center gap-2 font-sans">
               <Layers className="w-4 h-4 text-[#00dbe7]" />
-              Data Parity &amp; Replication Matrix
+              <span>Data Parity &amp; Replication Matrix</span>
             </h3>
             <p className="text-[11px] text-on-surface-variant mt-0.5">
               Row-level comparison across core business models between Oracle Production and Neon Standby.
@@ -514,6 +534,230 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
         </div>
       </div>
 
+      {/* Automated Replication Scheduler & Execution History */}
+      <div className="glass-panel p-5 rounded-2xl border border-outline/15 bg-surface-container-low/20 space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-outline/10 pb-3">
+          <div>
+            <h3 className="text-sm font-bold text-on-surface flex items-center gap-2 font-sans">
+              <History className="w-4 h-4 text-[#00dbe7]" />
+              <span>Cron Scheduler &amp; Replication History</span>
+            </h3>
+            <p className="text-[11px] text-on-surface-variant mt-0.5">
+              Persistent execution audit trail of automated cron synchronizations and administrative manual runs.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <div className="flex bg-surface-container-high/60 rounded-lg p-0.5 border border-outline/20 text-[11px]">
+              <button
+                type="button"
+                onClick={() => setHistoryTab('history')}
+                className={`px-3 py-1 rounded-md font-mono cursor-pointer transition-all ${
+                  historyTab === 'history'
+                    ? 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                Sync History ({data?.syncHistorySummary?.totalRuns || 0})
+              </button>
+              <button
+                type="button"
+                onClick={() => setHistoryTab('cron_setup')}
+                className={`px-3 py-1 rounded-md font-mono cursor-pointer transition-all ${
+                  historyTab === 'cron_setup'
+                    ? 'bg-[#ce5dff]/15 text-[#ce5dff] font-bold border border-[#ce5dff]/30'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                Cron Setup Guide
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* History Metrics Summary Cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="p-3 rounded-xl border border-outline/15 bg-surface-container-high/30">
+            <span className="text-[10px] text-on-surface-variant uppercase tracking-wider block">Last Cron Sync</span>
+            <span className="text-xs font-bold text-on-surface mt-1 block font-mono">
+              {data?.syncHistorySummary?.lastCronTimestamp
+                ? new Date(data.syncHistorySummary.lastCronTimestamp).toLocaleString()
+                : 'Not executed yet'}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl border border-outline/15 bg-surface-container-high/30">
+            <span className="text-[10px] text-on-surface-variant uppercase tracking-wider block">Last Manual Sync</span>
+            <span className="text-xs font-bold text-on-surface mt-1 block font-mono">
+              {data?.syncHistorySummary?.lastManualTimestamp
+                ? new Date(data.syncHistorySummary.lastManualTimestamp).toLocaleString()
+                : 'Not executed yet'}
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl border border-outline/15 bg-surface-container-high/30">
+            <span className="text-[10px] text-on-surface-variant uppercase tracking-wider block">Total Recorded Runs</span>
+            <span className="text-xs font-bold text-on-surface mt-1 block font-mono">
+              {data?.syncHistorySummary?.totalRuns || 0} runs
+            </span>
+          </div>
+
+          <div className="p-3 rounded-xl border border-outline/15 bg-surface-container-high/30">
+            <span className="text-[10px] text-on-surface-variant uppercase tracking-wider block">Replication Health</span>
+            <span className="text-xs font-bold text-emerald-400 mt-1 block font-mono flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" />
+              {data?.syncHistorySummary?.totalRuns
+                ? `${Math.round(((data.syncHistorySummary.successfulRuns) / data.syncHistorySummary.totalRuns) * 100)}% Success`
+                : '100% Ready'}
+            </span>
+          </div>
+        </div>
+
+        {/* Tab 1: Execution History Table */}
+        {historyTab === 'history' && (
+          <div className="overflow-x-auto min-w-full">
+            {(!data?.syncHistorySummary?.history || data.syncHistorySummary.history.length === 0) ? (
+              <div className="text-center py-8 text-on-surface-variant border border-dashed border-outline/20 rounded-xl bg-surface-container-low/10">
+                <Clock className="w-6 h-6 mx-auto mb-2 text-on-surface-variant/50" />
+                <p className="text-xs font-semibold">No synchronization logs recorded yet</p>
+                <p className="text-[11px] text-on-surface-variant/70 mt-1">
+                  Trigger a manual sync above or run the cron job script to see execution history timestamps.
+                </p>
+              </div>
+            ) : (
+              <table className="w-full text-left font-mono text-xs">
+                <thead>
+                  <tr className="border-b border-outline/10 text-on-surface-variant text-[10px] uppercase tracking-wider">
+                    <th className="py-2.5 font-semibold">Timestamp</th>
+                    <th className="py-2.5 font-semibold text-center">Trigger Mode</th>
+                    <th className="py-2.5 font-semibold text-center">Outcome</th>
+                    <th className="py-2.5 font-semibold text-center">Duration</th>
+                    <th className="py-2.5 font-semibold text-center">Records Synced</th>
+                    <th className="py-2.5 font-semibold text-right">Initiator</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline/10 text-[11px]">
+                  {data.syncHistorySummary.history.map((entry) => (
+                    <tr key={entry.id} className="hover:bg-white/[0.02] transition-colors">
+                      <td className="py-2.5 text-on-surface font-mono">
+                        {new Date(entry.timestamp).toLocaleString()}
+                      </td>
+                      <td className="py-2.5 text-center">
+                        {entry.trigger === 'CRON_JOB' ? (
+                          <span className="inline-flex items-center gap-1 text-[#00dbe7] font-bold text-[10px] bg-[#00dbe7]/10 px-2 py-0.5 rounded border border-[#00dbe7]/30">
+                            <Clock className="w-3 h-3" /> CRON JOB
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-[#ce5dff] font-bold text-[10px] bg-[#ce5dff]/10 px-2 py-0.5 rounded border border-[#ce5dff]/30">
+                            <Zap className="w-3 h-3" /> MANUAL ADMIN
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 text-center">
+                        {entry.status === 'SUCCESS' ? (
+                          <span className="inline-flex items-center gap-1 text-emerald-400 font-bold text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                            <Check className="w-3 h-3" /> SUCCESS
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 text-rose-400 font-bold text-[10px] bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/30" title={entry.errorMessage}>
+                            <AlertCircle className="w-3 h-3" /> FAILED
+                          </span>
+                        )}
+                      </td>
+                      <td className="py-2.5 text-center text-on-surface-variant font-mono">
+                        {entry.durationMs}ms
+                      </td>
+                      <td className="py-2.5 text-center font-bold text-on-surface">
+                        {entry.totalRecordsSynced} records
+                      </td>
+                      <td className="py-2.5 text-right text-on-surface-variant text-[10px] font-mono truncate max-w-[150px]" title={entry.initiatedBy}>
+                        {entry.initiatedBy || 'System'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Cron Scheduler Setup Instructions */}
+        {historyTab === 'cron_setup' && (
+          <div className="space-y-4 animate-fade-in text-[11px] font-sans leading-relaxed">
+            <p className="text-on-surface-variant">
+              You can trigger automated replications from Oracle VM to Neon standby using any of the 3 standard options below whenever you are ready to activate scheduling:
+            </p>
+
+            {/* Option 1: Vercel Cron */}
+            <div className="p-3.5 rounded-xl border border-outline/15 bg-surface-container-high/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-on-surface flex items-center gap-1.5 font-sans">
+                  <span className="w-2 h-2 rounded-full bg-[#00dbe7]" />
+                  <span>Option 1: Vercel Scheduled Cron (Active in <code className="font-mono text-[#00dbe7]">vercel.json</code>)</span>
+                </span>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                  Pre-configured
+                </span>
+              </div>
+              <p className="text-on-surface-variant">
+                If your frontend/API is deployed on Vercel, the cron is automatically registered in <code className="font-mono text-on-surface">vercel.json</code> to fire daily at 20:30 UTC (02:00 AM IST) targeting <code className="font-mono text-on-surface">/api/cron/database-sync</code>.
+              </p>
+            </div>
+
+            {/* Option 2: External Webhook / Cron-job.org */}
+            <div className="p-3.5 rounded-xl border border-outline/15 bg-surface-container-high/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-on-surface flex items-center gap-1.5 font-sans">
+                  <span className="w-2 h-2 rounded-full bg-[#ce5dff]" />
+                  <span>Option 2: External HTTP Webhook (Cron-Job.org / Uptime Robot / GitHub Actions)</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/cron/database-sync?key=sutharlabs-cron-vault-2026`, 'webhook')}
+                  className="px-2.5 py-1 rounded text-[10px] font-mono bg-surface-container hover:bg-surface-container-highest text-on-surface border border-outline/20 flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedKey === 'webhook' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedKey === 'webhook' ? 'Copied URL!' : 'Copy Webhook URL'}</span>
+                </button>
+              </div>
+              <p className="text-on-surface-variant">
+                Configure a recurring webhook monitor on <a href="https://cron-job.org" target="_blank" rel="noreferrer" className="text-[#00dbe7] underline">cron-job.org</a> or any ping service:
+              </p>
+              <div className="bg-black/40 p-2.5 rounded-lg border border-outline/15 font-mono text-[10px] text-sky-300 break-all select-all">
+                POST {typeof window !== 'undefined' ? window.location.origin : 'https://sutharlabs.com'}/api/cron/database-sync?key=sutharlabs-cron-vault-2026
+              </div>
+              <p className="text-[10px] text-on-surface-variant/80">
+                Supports <code className="font-mono text-on-surface">Authorization: Bearer &lt;CRON_SECRET&gt;</code> or query parameter <code className="font-mono text-on-surface">?key=&lt;CRON_SECRET&gt;</code>.
+              </p>
+            </div>
+
+            {/* Option 3: Oracle VM Native Crontab */}
+            <div className="p-3.5 rounded-xl border border-outline/15 bg-surface-container-high/20 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-on-surface flex items-center gap-1.5 font-sans">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                  <span>Option 3: Oracle VM System Crontab (Zero Cloud Dependency)</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard('30 20 * * * cd /home/ubuntu/website && npm run db:cron-sync >> /var/log/db-sync.log 2>&1', 'crontab')}
+                  className="px-2.5 py-1 rounded text-[10px] font-mono bg-surface-container hover:bg-surface-container-highest text-on-surface border border-outline/20 flex items-center gap-1 cursor-pointer"
+                >
+                  {copiedKey === 'crontab' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  <span>{copiedKey === 'crontab' ? 'Copied Command!' : 'Copy Crontab Command'}</span>
+                </button>
+              </div>
+              <p className="text-on-surface-variant">
+                Run directly on your Oracle Cloud VM without relying on web requests. On the VM terminal, execute <code className="font-mono text-on-surface">crontab -e</code> and append:
+              </p>
+              <div className="bg-black/40 p-2.5 rounded-lg border border-outline/15 font-mono text-[10px] text-emerald-300 select-all">
+                30 20 * * * cd /home/ubuntu/website &amp;&amp; npm run db:cron-sync &gt;&gt; /var/log/db-sync.log 2&gt;&amp;1
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Failover & Recovery Guide Accordion */}
       <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/20">
         <button
@@ -555,4 +799,3 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
     </div>
   );
 }
-

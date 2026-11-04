@@ -11,6 +11,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js plugins-db.json",
     "package:plugins": "tsx scripts/package-plugins.ts --sync-db",
+    "db:cron-sync": "tsx scripts/cron-sync-database.ts",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

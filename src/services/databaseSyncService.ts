@@ -1,3 +1,5 @@
+import fs from 'fs';
+import path from 'path';
 import { PrismaClient } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaPg } from '@prisma/adapter-pg';
@@ -9,6 +11,68 @@ import { getPrismaClient } from '../../api/_utils.js';
 let cachedBackupClient: PrismaClient | null = null;
 let lastSyncTimestamp: string | null = null;
 let lastSyncStats: Record<string, number> | null = null;
+
+export interface DatabaseSyncHistoryEntry {
+  id: string;
+  timestamp: string;
+  trigger: 'CRON_JOB' | 'MANUAL_ADMIN';
+  status: 'SUCCESS' | 'FAILED';
+  durationMs: number;
+  totalRecordsSynced: number;
+  syncedCounts: Record<string, number>;
+  sourceDatabase: string;
+  targetDatabase: string;
+  errorMessage?: string;
+  initiatedBy?: string;
+}
+
+const HISTORY_FILE = path.join(process.cwd(), 'data', 'database_sync_history.json');
+
+export function loadSyncHistory(): DatabaseSyncHistoryEntry[] {
+  try {
+    if (!fs.existsSync(HISTORY_FILE)) return [];
+    const raw = fs.readFileSync(HISTORY_FILE, 'utf-8');
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (e) {
+    console.error("[DatabaseSyncService] Failed to read sync history:", e);
+    return [];
+  }
+}
+
+export function saveSyncHistoryEntry(entry: DatabaseSyncHistoryEntry) {
+  try {
+    const history = loadSyncHistory();
+    history.unshift(entry);
+    const trimmed = history.slice(0, 100);
+    const dataDir = path.dirname(HISTORY_FILE);
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(trimmed, null, 2), 'utf-8');
+  } catch (e) {
+    console.error("[DatabaseSyncService] Failed to persist sync history:", e);
+  }
+}
+
+export function getSyncHistorySummary(limit: number = 20) {
+  const all = loadSyncHistory();
+  const recent = all.slice(0, limit);
+  const totalRuns = all.length;
+  const successfulRuns = all.filter(e => e.status === 'SUCCESS').length;
+  const failedRuns = all.filter(e => e.status === 'FAILED').length;
+  const lastCron = all.find(e => e.trigger === 'CRON_JOB');
+  const lastManual = all.find(e => e.trigger === 'MANUAL_ADMIN');
+
+  return {
+    history: recent,
+    totalRuns,
+    successfulRuns,
+    failedRuns,
+    lastCronTimestamp: lastCron ? lastCron.timestamp : null,
+    lastManualTimestamp: lastManual ? lastManual.timestamp : null
+  };
+}
 
 export function getBackupPrismaClient(): PrismaClient | null {
   if (cachedBackupClient) return cachedBackupClient;
@@ -49,42 +113,39 @@ export function parseDatabaseMetadata(url?: string, role: 'primary' | 'backup' =
       port: 0,
       database: 'none',
       user: 'none',
-      status: 'OFFLINE'
+      adapter: 'none'
     };
   }
 
   try {
     const isNeon = url.includes("neon.tech");
-    const normalized = url.replace(/^postgres:/, 'http:').replace(/^postgresql:/, 'http:');
-    const parsed = new URL(normalized);
-    const host = parsed.hostname;
-    const isOracle = host === '137.23.61.191' || host.includes('oracle') || (!isNeon && host !== 'localhost');
+    const isPostgres = url.startsWith("postgres://") || url.startsWith("postgresql://");
+    const parsed = new URL(url);
+
+    let provider = 'PostgreSQL';
+    if (isNeon) {
+      provider = 'Neon Serverless Cloud (AWS Singapore)';
+    } else if (parsed.hostname.startsWith('137.23') || parsed.hostname.includes('oracle')) {
+      provider = 'Oracle Cloud Always Free VM (PostgreSQL)';
+    }
 
     return {
       role,
-      provider: isNeon 
-        ? 'Neon Serverless PostgreSQL' 
-        : isOracle 
-        ? 'Oracle Cloud Always Free VM (PostgreSQL)' 
-        : 'Standard PostgreSQL Instance',
-      host,
-      port: parsed.port ? parseInt(parsed.port, 10) : 5432,
-      database: parsed.pathname.replace(/^\//, '') || 'sutharlabs_production',
-      user: parsed.username ? `${parsed.username.slice(0, 4)}***` : 'admin',
-      isNeon,
-      isOracle,
-      adapter: isNeon ? '@prisma/adapter-neon (WebSocket)' : '@prisma/adapter-pg (Pool)'
+      provider,
+      host: parsed.hostname || 'localhost',
+      port: parseInt(parsed.port || '5432', 10),
+      database: parsed.pathname ? parsed.pathname.replace(/^\//, '') : 'default',
+      user: parsed.username ? `${parsed.username.slice(0, 3)}***` : 'default',
+      adapter: isNeon ? '@prisma/adapter-neon (WebSocket)' : '@prisma/adapter-pg (TCP Pool)'
     };
-  } catch {
+  } catch (e) {
     return {
       role,
-      provider: 'PostgreSQL Database',
+      provider: 'Custom Database Connection',
       host: 'Configured via URI',
       port: 5432,
-      database: 'sutharlabs_production',
-      user: 'admin',
-      isNeon: false,
-      isOracle: false,
+      database: 'production',
+      user: 'authenticated',
       adapter: '@prisma/adapter-pg'
     };
   }
@@ -94,17 +155,30 @@ export async function getDatabaseStatus() {
   const primaryPrisma = getPrismaClient();
   const backupPrisma = getBackupPrismaClient();
 
-  const primaryMeta = parseDatabaseMetadata(process.env["DATABASE_URL"], 'primary');
-  const backupMeta = parseDatabaseMetadata(process.env["BACKUP_DATABASE_URL"], 'backup');
+  const primaryUrl = process.env["DATABASE_URL"] || "";
+  const backupUrl = process.env["BACKUP_DATABASE_URL"] || "";
 
-  // Test Primary Connection & Latency
-  let primaryStatus = 'UNKNOWN';
+  const primaryMeta = parseDatabaseMetadata(primaryUrl, 'primary');
+  const backupMeta = parseDatabaseMetadata(backupUrl, 'backup');
+
+  let primaryStatus = 'OFFLINE';
   let primaryLatencyMs = -1;
   let primaryStats: Record<string, number> = {};
 
   try {
     const start = Date.now();
-    const [userCount, portfolioCount, simCount, invoiceCount, nodeCount, docCount, bugCount, inquiryCount, pluginCount, tradeCount] = await Promise.all([
+    const [
+      userCount, 
+      portfolioCount, 
+      simCount, 
+      invoiceCount, 
+      nodeCount, 
+      docCount, 
+      bugCount, 
+      inquiryCount, 
+      pluginCount, 
+      tradeCount
+    ] = await Promise.all([
       primaryPrisma.user.count(),
       primaryPrisma.portfolio.count(),
       primaryPrisma.simulationStore.count(),
@@ -131,19 +205,29 @@ export async function getDatabaseStatus() {
       trades: tradeCount
     };
   } catch (err: any) {
-    primaryStatus = 'OFFLINE';
+    primaryStatus = 'ERROR';
     console.error("[DatabaseSyncService] Primary health check error:", err.message);
   }
 
-  // Test Backup Connection & Latency
-  let backupStatus = 'NOT_CONFIGURED';
+  let backupStatus = 'UNCONFIGURED';
   let backupLatencyMs = -1;
   let backupStats: Record<string, number> = {};
 
   if (backupPrisma) {
     try {
       const start = Date.now();
-      const [userCount, portfolioCount, simCount, invoiceCount, nodeCount, docCount, bugCount, inquiryCount, pluginCount, tradeCount] = await Promise.all([
+      const [
+        userCount, 
+        portfolioCount, 
+        simCount, 
+        invoiceCount, 
+        nodeCount, 
+        docCount, 
+        bugCount, 
+        inquiryCount, 
+        pluginCount, 
+        tradeCount
+      ] = await Promise.all([
         backupPrisma.user.count(),
         backupPrisma.portfolio.count(),
         backupPrisma.simulationStore.count(),
@@ -207,210 +291,263 @@ export async function getDatabaseStatus() {
     tableDiffs,
     overallInSync,
     lastSyncTimestamp,
-    lastSyncStats
+    lastSyncStats,
+    syncHistorySummary: getSyncHistorySummary(10)
   };
 }
 
-export async function executeDatabaseSync() {
+export async function executeDatabaseSync(options?: { trigger?: 'CRON_JOB' | 'MANUAL_ADMIN'; initiatedBy?: string }) {
+  const trigger = options?.trigger || 'MANUAL_ADMIN';
+  const initiatedBy = options?.initiatedBy || (trigger === 'CRON_JOB' ? 'System Cron Scheduler' : 'Admin User');
   const primary = getPrismaClient();
   const backup = getBackupPrismaClient();
-
-  if (!backup) {
-    throw new Error("Backup database is not configured in BACKUP_DATABASE_URL");
-  }
 
   const startTime = Date.now();
   const syncedCounts: Record<string, number> = {};
 
-  // 1. Sync WorkspacePlugin definitions first (dependency for UserWorkspacePlugin)
-  const plugins = await primary.workspacePlugin.findMany();
-  for (const item of plugins) {
-    await backup.workspacePlugin.upsert({
-      where: { id: item.id },
-      create: item,
-      update: item
-    });
+  if (!backup) {
+    const errorMsg = "Backup database is not configured in BACKUP_DATABASE_URL";
+    const failedEntry: DatabaseSyncHistoryEntry = {
+      id: `sync_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: new Date().toISOString(),
+      trigger,
+      status: 'FAILED',
+      durationMs: 0,
+      totalRecordsSynced: 0,
+      syncedCounts: {},
+      sourceDatabase: 'Oracle Cloud Always Free VM (PostgreSQL)',
+      targetDatabase: 'Neon Serverless PostgreSQL',
+      errorMessage: errorMsg,
+      initiatedBy
+    };
+    saveSyncHistoryEntry(failedEntry);
+    throw new Error(errorMsg);
   }
-  syncedCounts['workspacePlugins'] = plugins.length;
 
-  // 1b. Sync WorkspacePluginVersion
-  const pluginVersions = await primary.workspacePluginVersion.findMany();
-  for (const item of pluginVersions) {
-    await backup.workspacePluginVersion.upsert({
-      where: { id: item.id },
-      create: item,
-      update: item
-    });
+  try {
+    // 1. Sync WorkspacePlugin definitions first (dependency for UserWorkspacePlugin)
+    const plugins = await primary.workspacePlugin.findMany();
+    for (const item of plugins) {
+      await backup.workspacePlugin.upsert({
+        where: { id: item.id },
+        create: item,
+        update: item
+      });
+    }
+    syncedCounts['workspacePlugins'] = plugins.length;
+
+    // 1b. Sync WorkspacePluginVersion
+    const pluginVersions = await primary.workspacePluginVersion.findMany();
+    for (const item of pluginVersions) {
+      await backup.workspacePluginVersion.upsert({
+        where: { id: item.id },
+        create: item,
+        update: item
+      });
+    }
+    syncedCounts['workspacePluginVersions'] = pluginVersions.length;
+
+    // 2. Sync Storefront Plugins
+    const storePlugins = await primary.plugin.findMany();
+    for (const item of storePlugins) {
+      await backup.plugin.upsert({
+        where: { id: item.id },
+        create: item,
+        update: item
+      });
+    }
+    syncedCounts['plugins'] = storePlugins.length;
+
+    // 3. Sync Users
+    const users = await primary.user.findMany();
+    for (const u of users) {
+      await backup.user.upsert({
+        where: { email: u.email },
+        create: u,
+        update: u
+      });
+    }
+    syncedCounts['users'] = users.length;
+
+    // 4. Sync Portfolios
+    const portfolios = await primary.portfolio.findMany();
+    for (const p of portfolios) {
+      await backup.portfolio.upsert({
+        where: { userEmail: p.userEmail },
+        create: p,
+        update: p
+      });
+    }
+    syncedCounts['portfolios'] = portfolios.length;
+
+    // 5. Sync UserWorkspacePlugin
+    const userPlugins = await primary.userWorkspacePlugin.findMany();
+    for (const up of userPlugins) {
+      await backup.userWorkspacePlugin.upsert({
+        where: { userEmail_pluginId: { userEmail: up.userEmail, pluginId: up.pluginId } },
+        create: up,
+        update: up
+      });
+    }
+    syncedCounts['userWorkspacePlugins'] = userPlugins.length;
+
+    // 6. Sync WorkspacePluginReview
+    const reviews = await primary.workspacePluginReview.findMany();
+    for (const r of reviews) {
+      await backup.workspacePluginReview.upsert({
+        where: { userEmail_pluginId: { userEmail: r.userEmail, pluginId: r.pluginId } },
+        create: r,
+        update: r
+      });
+    }
+    syncedCounts['pluginReviews'] = reviews.length;
+
+    // 7. Sync AccountingTenantStore
+    const accountingStores = await primary.accountingTenantStore.findMany();
+    for (const acc of accountingStores) {
+      await backup.accountingTenantStore.upsert({
+        where: { userEmail: acc.userEmail },
+        create: acc,
+        update: acc
+      });
+    }
+    syncedCounts['accountingStores'] = accountingStores.length;
+
+    // 8. Sync Invoices
+    const invoices = await primary.invoice.findMany();
+    for (const inv of invoices) {
+      await backup.invoice.upsert({
+        where: { id: inv.id },
+        create: inv,
+        update: inv
+      });
+    }
+    syncedCounts['invoices'] = invoices.length;
+
+    // 9. Sync FlowNodes
+    const flowNodes = await primary.flowNode.findMany();
+    for (const node of flowNodes) {
+      await backup.flowNode.upsert({
+        where: { id: node.id },
+        create: node,
+        update: node
+      });
+    }
+    syncedCounts['flowNodes'] = flowNodes.length;
+
+    // 10. Sync Trades
+    const trades = await primary.trade.findMany();
+    for (const tr of trades) {
+      await backup.trade.upsert({
+        where: { id: tr.id },
+        create: tr,
+        update: tr
+      });
+    }
+    syncedCounts['trades'] = trades.length;
+
+    // 11. Sync Documents
+    const docs = await primary.document.findMany();
+    for (const doc of docs) {
+      await backup.document.upsert({
+        where: { id: doc.id },
+        create: doc,
+        update: doc
+      });
+    }
+    syncedCounts['documents'] = docs.length;
+
+    // 12. Sync DevelopmentProject
+    const projects = await primary.developmentProject.findMany();
+    for (const proj of projects) {
+      await backup.developmentProject.upsert({
+        where: { id: proj.id },
+        create: proj,
+        update: proj
+      });
+    }
+    syncedCounts['developmentProjects'] = projects.length;
+
+    // 13. Sync ContactInquiry
+    const inquiries = await primary.contactInquiry.findMany();
+    for (const inq of inquiries) {
+      await backup.contactInquiry.upsert({
+        where: { id: inq.id },
+        create: inq,
+        update: inq
+      });
+    }
+    syncedCounts['contactInquiries'] = inquiries.length;
+
+    // 14. Sync SimulationStore
+    const simulations = await primary.simulationStore.findMany();
+    for (const sim of simulations) {
+      await backup.simulationStore.upsert({
+        where: { simId: sim.simId },
+        create: sim,
+        update: sim
+      });
+    }
+    syncedCounts['simulations'] = simulations.length;
+
+    // 15. Sync BugReports
+    const bugReports = await primary.bugReport.findMany();
+    for (const bug of bugReports) {
+      await backup.bugReport.upsert({
+        where: { id: bug.id },
+        create: bug,
+        update: bug
+      });
+    }
+    syncedCounts['bugReports'] = bugReports.length;
+
+    const durationMs = Date.now() - startTime;
+    lastSyncTimestamp = new Date().toISOString();
+    lastSyncStats = syncedCounts;
+
+    const totalRecords = Object.values(syncedCounts).reduce((acc, curr) => acc + curr, 0);
+
+    const historyEntry: DatabaseSyncHistoryEntry = {
+      id: `sync_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: lastSyncTimestamp,
+      trigger,
+      status: 'SUCCESS',
+      durationMs,
+      totalRecordsSynced: totalRecords,
+      syncedCounts,
+      sourceDatabase: 'Oracle Cloud Always Free VM (PostgreSQL)',
+      targetDatabase: 'Neon Serverless PostgreSQL',
+      initiatedBy
+    };
+    saveSyncHistoryEntry(historyEntry);
+
+    return {
+      success: true,
+      message: `Database synchronization complete. ${totalRecords} records synced to Neon backup across ${Object.keys(syncedCounts).length} tables in ${durationMs}ms.`,
+      durationMs,
+      syncedCounts,
+      timestamp: lastSyncTimestamp,
+      trigger,
+      historyEntry
+    };
+  } catch (err: any) {
+    const durationMs = Date.now() - startTime;
+    const historyEntry: DatabaseSyncHistoryEntry = {
+      id: `sync_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+      timestamp: new Date().toISOString(),
+      trigger,
+      status: 'FAILED',
+      durationMs,
+      totalRecordsSynced: Object.values(syncedCounts).reduce((acc, curr) => acc + curr, 0),
+      syncedCounts,
+      sourceDatabase: 'Oracle Cloud Always Free VM (PostgreSQL)',
+      targetDatabase: 'Neon Serverless PostgreSQL',
+      errorMessage: err.message || String(err),
+      initiatedBy
+    };
+    saveSyncHistoryEntry(historyEntry);
+    throw err;
   }
-  syncedCounts['workspacePluginVersions'] = pluginVersions.length;
-
-  // 2. Sync Storefront Plugins
-  const storePlugins = await primary.plugin.findMany();
-  for (const item of storePlugins) {
-    await backup.plugin.upsert({
-      where: { id: item.id },
-      create: item,
-      update: item
-    });
-  }
-  syncedCounts['plugins'] = storePlugins.length;
-
-  // 3. Sync Users
-  const users = await primary.user.findMany();
-  for (const u of users) {
-    await backup.user.upsert({
-      where: { email: u.email },
-      create: u,
-      update: u
-    });
-  }
-  syncedCounts['users'] = users.length;
-
-  // 4. Sync Portfolios
-  const portfolios = await primary.portfolio.findMany();
-  for (const p of portfolios) {
-    await backup.portfolio.upsert({
-      where: { userEmail: p.userEmail },
-      create: p,
-      update: p
-    });
-  }
-  syncedCounts['portfolios'] = portfolios.length;
-
-  // 5. Sync UserWorkspacePlugin
-  const userPlugins = await primary.userWorkspacePlugin.findMany();
-  for (const up of userPlugins) {
-    await backup.userWorkspacePlugin.upsert({
-      where: { userEmail_pluginId: { userEmail: up.userEmail, pluginId: up.pluginId } },
-      create: up,
-      update: up
-    });
-  }
-  syncedCounts['userWorkspacePlugins'] = userPlugins.length;
-
-  // 6. Sync WorkspacePluginReview
-  const reviews = await primary.workspacePluginReview.findMany();
-  for (const r of reviews) {
-    await backup.workspacePluginReview.upsert({
-      where: { userEmail_pluginId: { userEmail: r.userEmail, pluginId: r.pluginId } },
-      create: r,
-      update: r
-    });
-  }
-  syncedCounts['pluginReviews'] = reviews.length;
-
-  // 7. Sync AccountingTenantStore
-  const accountingStores = await primary.accountingTenantStore.findMany();
-  for (const acc of accountingStores) {
-    await backup.accountingTenantStore.upsert({
-      where: { userEmail: acc.userEmail },
-      create: acc,
-      update: acc
-    });
-  }
-  syncedCounts['accountingStores'] = accountingStores.length;
-
-  // 8. Sync Invoices
-  const invoices = await primary.invoice.findMany();
-  for (const inv of invoices) {
-    await backup.invoice.upsert({
-      where: { id: inv.id },
-      create: inv,
-      update: inv
-    });
-  }
-  syncedCounts['invoices'] = invoices.length;
-
-  // 9. Sync FlowNodes
-  const flowNodes = await primary.flowNode.findMany();
-  for (const node of flowNodes) {
-    await backup.flowNode.upsert({
-      where: { id: node.id },
-      create: node,
-      update: node
-    });
-  }
-  syncedCounts['flowNodes'] = flowNodes.length;
-
-  // 10. Sync Trades
-  const trades = await primary.trade.findMany();
-  for (const tr of trades) {
-    await backup.trade.upsert({
-      where: { id: tr.id },
-      create: tr,
-      update: tr
-    });
-  }
-  syncedCounts['trades'] = trades.length;
-
-  // 11. Sync Documents
-  const docs = await primary.document.findMany();
-  for (const doc of docs) {
-    await backup.document.upsert({
-      where: { id: doc.id },
-      create: doc,
-      update: doc
-    });
-  }
-  syncedCounts['documents'] = docs.length;
-
-  // 12. Sync DevelopmentProject
-  const projects = await primary.developmentProject.findMany();
-  for (const proj of projects) {
-    await backup.developmentProject.upsert({
-      where: { id: proj.id },
-      create: proj,
-      update: proj
-    });
-  }
-  syncedCounts['developmentProjects'] = projects.length;
-
-  // 13. Sync ContactInquiry
-  const inquiries = await primary.contactInquiry.findMany();
-  for (const inq of inquiries) {
-    await backup.contactInquiry.upsert({
-      where: { id: inq.id },
-      create: inq,
-      update: inq
-    });
-  }
-  syncedCounts['contactInquiries'] = inquiries.length;
-
-  // 14. Sync SimulationStore
-  const simulations = await primary.simulationStore.findMany();
-  for (const sim of simulations) {
-    await backup.simulationStore.upsert({
-      where: { simId: sim.simId },
-      create: sim,
-      update: sim
-    });
-  }
-  syncedCounts['simulations'] = simulations.length;
-
-  // 15. Sync BugReports
-  const bugReports = await primary.bugReport.findMany();
-  for (const bug of bugReports) {
-    await backup.bugReport.upsert({
-      where: { id: bug.id },
-      create: bug,
-      update: bug
-    });
-  }
-  syncedCounts['bugReports'] = bugReports.length;
-
-  const durationMs = Date.now() - startTime;
-  lastSyncTimestamp = new Date().toISOString();
-  lastSyncStats = syncedCounts;
-
-  const totalRecords = Object.values(syncedCounts).reduce((acc, curr) => acc + curr, 0);
-
-  return {
-    success: true,
-    message: `Database synchronization complete. ${totalRecords} records synced to Neon backup across ${Object.keys(syncedCounts).length} tables in ${durationMs}ms.`,
-    durationMs,
-    syncedCounts,
-    timestamp: lastSyncTimestamp
-  };
 }
 
 export async function exportDatabaseDump() {
@@ -467,4 +604,3 @@ export async function exportDatabaseDump() {
     }
   };
 }
-
