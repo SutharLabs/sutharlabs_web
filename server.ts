@@ -2389,9 +2389,9 @@ app.get("/api/admin/portfolios", authenticateToken, requireAdmin, async (req: an
     });
   }
 
-  if (process.env.NODE_ENV !== 'production' && !process.env.VERCEL) {
+  if (!process.env.VERCEL) {
     app.listen(PORT, "0.0.0.0", () => {
-      console.log(`[SutharLabs Sovereign Engine] Full-stack SQLite server running on http://0.0.0.0:${PORT}`);
+      console.log(`[SutharLabs Sovereign Engine] Full-stack server running on http://0.0.0.0:${PORT}`);
     });
   }
 }
