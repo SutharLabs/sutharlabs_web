@@ -131,6 +131,15 @@ async function seed() {
       description: "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync.",
       iconSymbol: "currency_exchange",
       version: "0.2.1"
+    },
+    {
+      id: "speech-studio",
+      name: "Speech Studio",
+      category: "AI & Multimedia",
+      type: "Native",
+      description: "Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting.",
+      iconSymbol: "record_voice_over",
+      version: "0.1.1"
     }
   ];
 
@@ -246,6 +255,14 @@ async function seed() {
       version: "0.2.1",
       changelog: "Beta release v0.2.1: Multi-Tenant Neon PostgreSQL Database Sync, per-user ledger isolation, fallback disk persistence, and enterprise Tally Prime / SAP ERP parity.",
       checksumSha256: "b30f3516eac0177358562183a3ac94bd8fb5ec889030a78e2ee9a09a0dc5ea16",
+      minEngineVersion: "0.1.0",
+      publishedBy: "Suthar Suresh"
+    },
+    {
+      pluginId: "speech-studio",
+      version: "0.1.1",
+      changelog: "Initial release. Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, pitch/rate controls, real-time waveform telemetry, and tiered rate-limiting.",
+      checksumSha256: "9fbb9e62c9ed8ced8504fe05006e1061080b4a4af711ef20142331f94baed53b",
       minEngineVersion: "0.1.0",
       publishedBy: "Suthar Suresh"
     }

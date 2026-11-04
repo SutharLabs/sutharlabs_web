@@ -135,22 +135,67 @@ async function seedDatabase() {
       }
     }
 
-    // 1b. Seed Workspace Plugins
-    const wsPluginCount = await prisma.workspacePlugin.count();
-    if (wsPluginCount === 0) {
-      console.log("[Seeding] Populating workspace plugins...");
-      await prisma.workspacePlugin.create({
-        data: {
-          id: "wp_stock_analyzer",
-          name: "Stock Tracker",
-          category: "Finance",
-          type: "Native",
-          description: "Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.",
-          iconSymbol: "monitoring",
-          version: "1.1.1"
-        }
-      });
+    // 1b. Ensure all in-tree Workspace Plugins exist in catalog
+    const inTreeCatalog = [
+      {
+        id: "wp_stock_analyzer",
+        name: "Stock Tracker",
+        category: "Finance",
+        type: "Native",
+        description: "Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.",
+        iconSymbol: "monitoring",
+        version: "1.1.5"
+      },
+      {
+        id: "wp_flow_designer",
+        name: "Custom Flow",
+        category: "Architecture",
+        type: "Native",
+        description: "Interactive canvas for architectural node topologies, microservices modeling, and JSON state import/export.",
+        iconSymbol: "account_tree",
+        version: "0.1.0"
+      },
+      {
+        id: "wp_doc_nexus",
+        name: "Doc Nexus",
+        category: "Creativity & Docs",
+        type: "Native",
+        description: "Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations.",
+        iconSymbol: "auto_stories",
+        version: "0.3.0"
+      },
+      {
+        id: "wp_accounting",
+        name: "Accounting",
+        category: "Operations",
+        type: "Native",
+        description: "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync.",
+        iconSymbol: "currency_exchange",
+        version: "0.2.3"
+      },
+      {
+        id: "speech-studio",
+        name: "Speech Studio",
+        category: "AI & Multimedia",
+        type: "Native",
+        description: "Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting.",
+        iconSymbol: "record_voice_over",
+        version: "0.1.1"
+      }
+    ];
 
+    for (const p of inTreeCatalog) {
+      await prisma.workspacePlugin.upsert({
+        where: { id: p.id },
+        update: {
+          name: p.name,
+          category: p.category,
+          type: p.type,
+          description: p.description,
+          iconSymbol: p.iconSymbol
+        },
+        create: p
+      }).catch(() => {});
     }
 
     // 2. Seed default users and their portfolios if none exist

@@ -636,6 +636,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                   userEmail={user.email} 
                   userToken={user.token || ''} 
                   onPluginsChange={fetchInstalledPlugins}
+                  theme={theme}
                 />
               )}
 

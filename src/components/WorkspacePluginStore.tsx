@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { TerminalLog } from '../types';
 import { CheckCircle2 } from 'lucide-react';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer';
+import ConfirmModal from './ConfirmModal.js';
 
 interface WorkspacePluginStoreProps {
   logs: TerminalLog[];
@@ -9,6 +10,7 @@ interface WorkspacePluginStoreProps {
   userEmail: string;
   userToken: string;
   onPluginsChange?: () => void;
+  theme?: 'light' | 'dark';
 }
 
 export interface WorkspacePluginReview {
@@ -179,6 +181,56 @@ const PLUGIN_METADATA_REGISTRY: Record<string, {
     accentColor: '#00dbe7',
     accentBg: 'rgba(0, 219, 231, 0.1)',
     accentBorder: 'rgba(0, 219, 231, 0.3)'
+  },
+  'speech-studio': {
+    publisher: 'SutharLabs Neural Intelligence Core',
+    tags: ['Neural TTS', 'Devanagari Hindi', 'Indian English', 'Voice Modulation', 'Web Speech API', 'Rate Limiting'],
+    highlights: [
+      'Multilingual Neural Speech Synthesis for English & Hindi (हिंदी)',
+      'Real-time Waveform Audio Telemetry & Pitch/Rate Modulation',
+      'Server-Enforced Tiered Quota (Unlimited for Admin, 10/hr for Developers)',
+      'Local Speech History Drawer with Playback & Devanagari Script Support'
+    ],
+    features: [
+      'High-fidelity natural voice synthesis across Indian English (en-IN), Hindi (hi-IN), and US/UK dialects',
+      'Real-time modulation sliders for Pitch (0.5x - 2.0x), Rate (0.5x - 2.0x), and Volume (0% - 100%)',
+      'Dynamic audio waveform visualizer and active syllable tracking',
+      'Tiered quota middleware with cryptographic RBAC verification and automated token bucket replenishment',
+      'Pre-configured quick templates for market flashes, bilingual updates, and AI greeters'
+    ],
+    permissions: [
+      { name: 'Audio Output', description: 'Accesses browser audio output hardware for neural voice rendering', granted: true },
+      { name: 'Speech Synthesis API', description: 'Invokes native Web Speech and remote neural TTS models', granted: true },
+      { name: 'Quota Telemetry', description: 'Monitors hourly synthesis request allocation with the server', granted: true }
+    ],
+    accentColor: '#00dbe7',
+    accentBg: 'rgba(0, 219, 231, 0.1)',
+    accentBorder: 'rgba(0, 219, 231, 0.3)'
+  },
+  wp_speech_studio: {
+    publisher: 'SutharLabs Neural Intelligence Core',
+    tags: ['Neural TTS', 'Devanagari Hindi', 'Indian English', 'Voice Modulation', 'Web Speech API', 'Rate Limiting'],
+    highlights: [
+      'Multilingual Neural Speech Synthesis for English & Hindi (हिंदी)',
+      'Real-time Waveform Audio Telemetry & Pitch/Rate Modulation',
+      'Server-Enforced Tiered Quota (Unlimited for Admin, 10/hr for Developers)',
+      'Local Speech History Drawer with Playback & Devanagari Script Support'
+    ],
+    features: [
+      'High-fidelity natural voice synthesis across Indian English (en-IN), Hindi (hi-IN), and US/UK dialects',
+      'Real-time modulation sliders for Pitch (0.5x - 2.0x), Rate (0.5x - 2.0x), and Volume (0% - 100%)',
+      'Dynamic audio waveform visualizer and active syllable tracking',
+      'Tiered quota middleware with cryptographic RBAC verification and automated token bucket replenishment',
+      'Pre-configured quick templates for market flashes, bilingual updates, and AI greeters'
+    ],
+    permissions: [
+      { name: 'Audio Output', description: 'Accesses browser audio output hardware for neural voice rendering', granted: true },
+      { name: 'Speech Synthesis API', description: 'Invokes native Web Speech and remote neural TTS models', granted: true },
+      { name: 'Quota Telemetry', description: 'Monitors hourly synthesis request allocation with the server', granted: true }
+    ],
+    accentColor: '#00dbe7',
+    accentBg: 'rgba(0, 219, 231, 0.1)',
+    accentBorder: 'rgba(0, 219, 231, 0.3)'
   }
 };
 
@@ -209,7 +261,8 @@ export default function WorkspacePluginStore({
   onAddLog,
   userEmail,
   userToken,
-  onPluginsChange
+  onPluginsChange,
+  theme = 'dark'
 }: WorkspacePluginStoreProps) {
   const [plugins, setPlugins] = useState<WorkspacePlugin[]>([]);
   const [installed, setInstalled] = useState<InstalledPlugin[]>([]);
@@ -396,8 +449,16 @@ export default function WorkspacePluginStore({
 
   const reviewFormRef = useRef<HTMLDivElement>(null);
 
-  const handleDeleteReview = async (pluginId: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete your review and rating for ${name}?`)) return;
+  const [deleteConfirmModal, setDeleteConfirmModal] = useState<{
+    isOpen: boolean;
+    pluginId: string;
+    name: string;
+  } | null>(null);
+
+  const confirmDeleteReview = async () => {
+    if (!deleteConfirmModal) return;
+    const { pluginId, name } = deleteConfirmModal;
+    setDeleteConfirmModal(null);
     setIsSubmittingReview(true);
     try {
       const res = await fetch(`/api/workspace-plugins/${pluginId}/reviews`, {
@@ -425,6 +486,14 @@ export default function WorkspacePluginStore({
     } finally {
       setIsSubmittingReview(false);
     }
+  };
+
+  const handleDeleteReview = (pluginId: string, name: string) => {
+    setDeleteConfirmModal({
+      isOpen: true,
+      pluginId,
+      name
+    });
   };
 
   const handleStartEditReview = (rating: number, feedback?: string | null) => {
@@ -1703,6 +1772,22 @@ export default function WorkspacePluginStore({
           </div>
         );
       })()}
+
+      {/* Review Deletion Confirmation Modal */}
+      {deleteConfirmModal && (
+        <ConfirmModal
+          isOpen={deleteConfirmModal.isOpen}
+          onClose={() => setDeleteConfirmModal(null)}
+          onConfirm={confirmDeleteReview}
+          title="Delete Review"
+          message={`Are you sure you want to delete your review and rating for ${deleteConfirmModal.name}?`}
+          subtext="This action cannot be undone. Your rating and feedback will be permanently removed from the plugin catalog."
+          confirmLabel="Delete Review"
+          cancelLabel="Cancel"
+          variant="danger"
+          theme={theme}
+        />
+      )}
 
       {/* Collapsible Terminal Log Drawer */}
       <CollapsibleLogDrawer

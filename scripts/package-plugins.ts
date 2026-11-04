@@ -180,6 +180,29 @@ async function packageAllPlugins() {
       const prisma = getPrismaClient();
 
       for (const item of manifestCatalog) {
+        // 1. Ensure parent catalog entry exists first (foreign key requirement)
+        await prisma.workspacePlugin.upsert({
+          where: { id: item.id },
+          update: {
+            name: item.name,
+            version: item.version,
+            description: item.description,
+            category: item.category,
+            iconSymbol: item.iconSymbol,
+            type: item.type || 'Native'
+          },
+          create: {
+            id: item.id,
+            name: item.name,
+            version: item.version,
+            description: item.description,
+            category: item.category,
+            iconSymbol: item.iconSymbol,
+            type: item.type || 'Native'
+          }
+        });
+
+        // 2. Upsert immutable historical version record
         await prisma.workspacePluginVersion.upsert({
           where: { pluginId_version: { pluginId: item.id, version: item.version } },
           update: {
@@ -197,17 +220,6 @@ async function packageAllPlugins() {
             publishedBy: 'Suthar Suresh'
           }
         });
-
-        // Also update parent plugin version and description
-        await prisma.workspacePlugin.update({
-          where: { id: item.id },
-          data: {
-            version: item.version,
-            description: item.description,
-            category: item.category,
-            iconSymbol: item.iconSymbol
-          }
-        }).catch(() => {});
       }
       console.log('✅ Database version records synchronized successfully.');
     } catch (e: any) {
