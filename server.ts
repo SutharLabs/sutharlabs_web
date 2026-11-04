@@ -1919,6 +1919,88 @@ app.delete("/api/vault/files/:id", authenticateToken, requireAdmin, async (req: 
 });
 
 // ==========================================
+// ORACLE CLOUD AI INFERENCE API (VM2: 132.226.190.125)
+// ==========================================
+const ORACLE_AI_URL = process.env.ORACLE_AI_URL || "http://132.226.190.125";
+const ORACLE_AI_SECRET = process.env.ORACLE_AI_SECRET || "sutharlabs-matrix-ai-prod-2026";
+
+// GET /api/ai/health - Public status check
+app.get("/api/ai/health", async (_req: any, res: any) => {
+  try {
+    const response = await fetch(`${ORACLE_AI_URL}/health`);
+    const data = await response.json();
+    res.json(data);
+  } catch (err: any) {
+    res.status(502).json({ error: "AI Inference node unreachable", details: err.message });
+  }
+});
+
+// GET /api/ai/models - List local LLM models
+app.get("/api/ai/models", authenticateToken, requireAdmin, async (_req: any, res: any) => {
+  try {
+    const response = await fetch(`${ORACLE_AI_URL}/api/tags`, {
+      headers: { "x-ai-secret": ORACLE_AI_SECRET }
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err: any) {
+    res.status(502).json({ error: "Failed to fetch model catalog from Oracle VM", details: err.message });
+  }
+});
+
+// POST /api/ai/chat - Streaming conversational inference
+app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const { model = "gemma2:2b", messages = [], stream = true, options = {} } = req.body;
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+      return res.status(400).json({ error: "Messages array is required." });
+    }
+
+    const payload = {
+      model,
+      messages,
+      stream,
+      options: {
+        temperature: options.temperature ?? 0.7,
+        num_predict: options.num_predict ?? 2048,
+        ...options
+      }
+    };
+
+    const targetUrl = `${ORACLE_AI_URL}/api/chat`;
+    const response = await fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-ai-secret": ORACLE_AI_SECRET
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      return res.status(response.status).json({ error: `Ollama error: ${errText}` });
+    }
+
+    if (stream && response.body) {
+      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
+      res.setHeader("Cache-Control", "no-cache, no-transform");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("X-Accel-Buffering", "no");
+
+      const { Readable } = await import("stream");
+      Readable.fromWeb(response.body as any).pipe(res);
+    } else {
+      const data = await response.json();
+      res.json(data);
+    }
+  } catch (err: any) {
+    console.error("[AI Chat Proxy] Error:", err);
+    res.status(500).json({ error: "Inference request failed", details: err.message });
+  }
+});
+
+// ==========================================
 // AUTOMATED CRON REPLICATION SCHEDULER API
 // ==========================================
 // Triggered by Vercel Cron, Cron-Job.org, or external crons

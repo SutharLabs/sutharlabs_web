@@ -56,15 +56,15 @@
     "semantic_hash": "6776e03727fcdb41ca9db460f8d817b7"
   },
   "server.ts": {
-    "mtime": 1793792292.347746,
-    "seen": 1793792691.923788,
-    "ast_hash": "58e3fee88c065a0ba79f2a8dfd5d644e",
+    "mtime": 1793795165.9208074,
+    "seen": 1793795563.8112824,
+    "ast_hash": "d4ac92a8209776427ea307f55c5fda81",
     "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1793792472.1928449,
-    "seen": 1793792691.9237905,
-    "ast_hash": "14cf42b09faa51a79865d4c5dbdc5cb4",
+    "mtime": 1793795527.3267038,
+    "seen": 1793795563.8112853,
+    "ast_hash": "81e309ead71bf4d399cce9ca0ab52e65",
     "semantic_hash": ""
   },
   "src/components/AccountingView.tsx": {
@@ -74,9 +74,9 @@
     "semantic_hash": "4d0419c7df9b5bc4e1a337e854b747e7"
   },
   "src/components/AdminConsoleView.tsx": {
-    "mtime": 1793792511.7219095,
-    "seen": 1793792691.9237933,
-    "ast_hash": "6b4eb9a17869a4596f355af3034c72ca",
+    "mtime": 1793795529.2325654,
+    "seen": 1793795563.8112915,
+    "ast_hash": "88388ec80fe6300bd8b0b7a78641f092",
     "semantic_hash": ""
   },
   "src/components/AuthPage.tsx": {
@@ -812,9 +812,9 @@
     "semantic_hash": "1f8dfc3e3f1a4d86bc600f06aae2ca08"
   },
   "src/types.ts": {
-    "mtime": 1793792203.8074214,
-    "seen": 1793792691.923974,
-    "ast_hash": "2151ba3d9764c2627c0d736855e868cf",
+    "mtime": 1793795526.3593464,
+    "seen": 1793795563.8115506,
+    "ast_hash": "84df93a044d5296316c956be13e8bea9",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -848,9 +848,9 @@
     "semantic_hash": ""
   },
   "docs/DOCUMENTATION.md": {
-    "mtime": 1779611346.8719344,
-    "seen": 1793773436.6222587,
-    "ast_hash": "eb546ac568d782017dd1fb8d7a9644ee",
+    "mtime": 1793794565.7715154,
+    "seen": 1793794621.6195903,
+    "ast_hash": "ff9e9a9e995f5366f4546e1a41a089e4",
     "semantic_hash": ""
   },
   "docs/accounting_plugin_architecture_and_logic.md": {
@@ -1076,15 +1076,39 @@
     "semantic_hash": ""
   },
   "src/components/StorageVaultView.tsx": {
-    "mtime": 1793792625.328256,
-    "seen": 1793792691.9238322,
+    "mtime": 1793792739.9203484,
+    "seen": 1793794621.6192615,
     "ast_hash": "6e23f6a5e649c4df9a82aa69df722064",
     "semantic_hash": ""
   },
   "src/services/vaultStorageService.ts": {
-    "mtime": 1793792215.6631842,
-    "seen": 1793792691.9239726,
-    "ast_hash": "02bc74a9cc61bb4883b16a7dbc1fb1a0",
+    "mtime": 1793792722.228487,
+    "seen": 1793794621.6195652,
+    "ast_hash": "59a1785157211d6d017653e9d610fdc1",
+    "semantic_hash": ""
+  },
+  "docs/llm_inference_node_setup_and_benchmarks.md": {
+    "mtime": 1793794607.840542,
+    "seen": 1793794621.6196184,
+    "ast_hash": "4dda8866b44a106b729c625edc06d2d7",
+    "semantic_hash": ""
+  },
+  "docs/storage_vault_and_infrastructure_guide.md": {
+    "mtime": 1793793346.0764935,
+    "seen": 1793794621.6196551,
+    "ast_hash": "a8fbed0ac1aa44a795f50c156113f594",
+    "semantic_hash": ""
+  },
+  "src/components/AdminAIChatView.tsx": {
+    "mtime": 1793795525.7716262,
+    "seen": 1793795563.8112895,
+    "ast_hash": "f861b6075843b4aa94a197c4ac5f67b2",
+    "semantic_hash": ""
+  },
+  "src/services/aiChatService.ts": {
+    "mtime": 1793795503.7096503,
+    "seen": 1793795563.8115342,
+    "ast_hash": "13ac3c2ea344580eca48a8f6db768cb7",
     "semantic_hash": ""
   },
   "package-lock.json": {

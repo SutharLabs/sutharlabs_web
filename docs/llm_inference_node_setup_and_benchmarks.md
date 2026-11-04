@@ -77,19 +77,51 @@ python3 /home/ubuntu/test_inference.py qwen2.5:7b "Write an algorithm for Dijkst
 
 ---
 
-## 4. API Endpoints for Website Integration
+## 4. Reverse Proxy & Security Architecture
 
-The node exposes an OpenAI-compatible REST API at `http://132.226.190.125:11434`:
+To securely expose Ollama across Oracle Cloud's open HTTP port (80) without exposing port 11434 directly, an Nginx reverse proxy was deployed on `sutharlabs-prod`:
 
-* **Ollama Native API:** `POST /api/generate`
-* **OpenAI Chat Completions API:** `POST /v1/chat/completions`
+* **Nginx Configuration (`/etc/nginx/sites-available/default`):**
+  ```nginx
+  server {
+      listen 80 default_server;
+      server_name _;
 
-```json
-{
-  "model": "gemma2:2b",
-  "messages": [
-    { "role": "user", "content": "Analyze portfolio risk indicators." }
-  ],
-  "stream": false
-}
-```
+      location /health {
+          return 200 '{"status":"ok","node":"sutharlabs-prod"}\n';
+          add_header Content-Type application/json;
+      }
+
+      location / {
+          # Require matrix secret key for non-health requests
+          if ($http_x_ai_secret != "sutharlabs-matrix-ai-prod-2026") {
+              return 403 '{"error":"Forbidden: Invalid AI Gateway Secret"}\n';
+          }
+          proxy_pass http://127.0.0.1:11434;
+          proxy_http_version 1.1;
+          proxy_set_header Host 127.0.0.1;
+          proxy_set_header Connection "";
+          proxy_buffering off;
+          proxy_read_timeout 600s;
+      }
+  }
+  ```
+
+---
+
+## 5. Website Admin AI Agent Studio Integration
+
+The SutharLabs platform connects directly to the inference node through a dedicated admin-only streaming proxy:
+
+### A. Backend Endpoints (`server.ts`):
+- `GET /api/ai/health`: Real-time node liveness check.
+- `GET /api/ai/models`: Queries Ollama's loaded tags (`/api/tags`) to populate model switchers dynamically.
+- `POST /api/ai/chat`: Authenticated SSE (Server-Sent Events) streaming gateway forwarding user messages with persona system prompts to Ollama's `/api/chat` with `stream: true`.
+
+### B. Frontend Claude-Style Agent Studio (`AdminAIChatView.tsx`):
+- **Model Switcher:** Seamless toggle between `qwen2.5:7b` (deep reasoning) and `gemma2:2b` (ultra-fast generation at ~10 t/s).
+- **Agent Personas Aggregator:** Instant switching between Cloud Architect, DB Architect, Software Engineer, Quant Strategist, and Sovereign Assistant.
+- **Split-Screen Artifacts Studio Drawer:** Automatically detects markdown code fences (` ```language ... ``` `), parses them into interactive artifact cards, and displays them in a dedicated right-hand drawer with syntax highlighting, line numbers, one-click copy, and file download.
+- **Real-Time Telemetry:** Calculates real-time tokens-per-second, elapsed generation time, token counts, and memory node status.
+- **Sovereign Engine Design Compliance:** Fully styled with zero native browser dialogs (utilizing `<ConfirmModal />`), theme-aware button and code box matrices, and `shrink-0` icon containment.
+

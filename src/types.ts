@@ -18,6 +18,7 @@ export type WorkspaceTab =
   | 'Admin Console' 
   | 'Manage Database'
   | 'Storage Vault'
+  | 'AI Agent Studio'
   | 'Manage Plugins' 
   | 'Manage Apps' 
   | 'Manage Portfolios' 
@@ -52,6 +53,38 @@ export interface VaultStatsResponse {
   disk: VaultDiskStats;
   uptimeSeconds: number;
   memory?: Record<string, number>;
+}
+
+export interface AIChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  model?: string;
+  tokensGenerated?: number;
+  tokensPerSec?: number;
+  durationMs?: number;
+  timestamp: string;
+  agentId?: string;
+}
+
+export interface AIAgentPersona {
+  id: string;
+  name: string;
+  title: string;
+  icon: string;
+  badge: string;
+  description: string;
+  systemPrompt: string;
+  recommendedModel: 'gemma2:2b' | 'qwen2.5:7b';
+}
+
+export interface AIArtifactItem {
+  id: string;
+  title: string;
+  language: string;
+  code: string;
+  sourceMessageId: string;
+  timestamp: string;
 }
 
 export interface ContactInquiryItem {

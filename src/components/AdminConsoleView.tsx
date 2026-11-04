@@ -16,7 +16,8 @@ import {
   Cpu,
   Zap,
   HardDrive,
-  RefreshCw
+  RefreshCw,
+  Bot
 } from 'lucide-react';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
@@ -651,6 +652,42 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
         >
           <HardDrive className="w-3.5 h-3.5 shrink-0" />
           <span>Open Storage Vault</span>
+        </button>
+      </div>
+
+      {/* Autonomous AI Agent Studio Cockpit Widget */}
+      <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#00dbe7]/10 border border-[#00dbe7]/25 flex items-center justify-center shrink-0 shadow-sm">
+            <Bot className="w-5 h-5 text-[#00dbe7] shrink-0" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-sm text-on-surface font-sans">Autonomous AI Agent Studio</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-sky-500/10 text-sky-400 border border-sky-500/30">
+                PROD VM: 132.226.190.125 (ARM64 12GB + 4GB SWAP)
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                QWEN 2.5 7B &amp; GEMMA 2 2B
+              </span>
+            </div>
+            <p className="text-[11px] text-on-surface-variant font-mono mt-0.5">
+              Open-source Claude-style multi-agent aggregator with split-pane interactive Artifacts Studio drawer, token streaming telemetry, and system personas.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/admin/ai-studio')}
+          className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm ${
+            isLight
+              ? 'bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-300'
+              : 'bg-[#00dbe7]/10 hover:bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/30'
+          }`}
+        >
+          <Bot className="w-3.5 h-3.5 shrink-0" />
+          <span>Launch AI Studio</span>
         </button>
       </div>
 
