@@ -38,9 +38,9 @@
     "semantic_hash": "6f5aff542ba80bd5af0915d18a041af9"
   },
   "scripts/package-plugins.ts": {
-    "mtime": 1793798838.269593,
-    "seen": 1793798887.0526705,
-    "ast_hash": "3a589ef6017e7ea2e846fe601a0b37f4",
+    "mtime": 1793799589.6375098,
+    "seen": 1793799821.485112,
+    "ast_hash": "554fcdf6d0a02152d572157d3e4f2fab",
     "semantic_hash": ""
   },
   "scripts/setup-simulation-table.ts": {
@@ -1118,15 +1118,15 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/index.ts": {
-    "mtime": 1793797456.977146,
-    "seen": 1793798088.8705182,
-    "ast_hash": "6ebf3fc33fb5e1c85b56c4e10079f962",
+    "mtime": 1793799620.5101666,
+    "seen": 1793799821.4852467,
+    "ast_hash": "3f0994695867e8078488d4c787f6f51a",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.ts": {
-    "mtime": 1793798838.6576138,
-    "seen": 1793798887.0528367,
-    "ast_hash": "162dc20b8ecd249f932f917ec783572d",
+    "mtime": 1793799621.2420623,
+    "seen": 1793799821.4852493,
+    "ast_hash": "e24452fdb8321322d9a9f22daf115bb6",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/routes.ts": {
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1793798774.8800077,
-    "seen": 1793798887.0528345,
-    "ast_hash": "ff9c2dead4e67fda63912bf87b59b841",
+    "mtime": 1793799621.178224,
+    "seen": 1793799821.485248,
+    "ast_hash": "dccc008f520517de221e7e49311393a7",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {

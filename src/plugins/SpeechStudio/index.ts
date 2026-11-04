@@ -1,13 +1,11 @@
 import { manifest } from "./manifest.js";
 import SpeechStudioView from "./components/SpeechStudioView.js";
-import { registerRoutes } from "./routes.js";
-import { WorkspacePluginModule } from "../types.js";
 
-export const SpeechStudioPlugin: WorkspacePluginModule = {
+export const SpeechStudioPlugin = {
   manifest,
-  registerRoutes,
   View: SpeechStudioView
 };
 
-export { manifest, SpeechStudioView, registerRoutes };
+export { manifest, SpeechStudioView, SpeechStudioView as View };
+export default SpeechStudioPlugin;
 

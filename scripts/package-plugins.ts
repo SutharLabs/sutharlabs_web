@@ -78,7 +78,7 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'SpeechStudio',
     id: 'speech-studio',
     name: 'Speech Studio',
-    version: '0.1.0',
+    version: '0.1.1',
     category: 'AI & Multimedia',
     type: 'Native',
     description: 'Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting.',
