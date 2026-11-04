@@ -1,10 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaNeon } from '@prisma/adapter-neon';
-import { Pool, neonConfig } from '@neondatabase/serverless';
+import { PrismaPg } from '@prisma/adapter-pg';
+import { neonConfig } from '@neondatabase/serverless';
+import pg from 'pg';
 import ws from 'ws';
 import crypto from 'crypto';
-
-neonConfig.webSocketConstructor = ws;
 
 export const SECRET_KEY = process.env.JWT_SECRET || "suthar-labs-sovereign-secret-key-2026-matrix-neon";
 
@@ -12,9 +12,26 @@ let cachedPrisma: PrismaClient | null = null;
 
 export function getPrismaClient() {
   if (cachedPrisma) return cachedPrisma;
-  const dbUrl = process.env["NEON_DB_URL"] || process.env["DATABASE_URL"];
-  const adapter = new PrismaNeon({ connectionString: dbUrl });
-  cachedPrisma = new PrismaClient({ adapter });
+  const dbUrl = process.env["DATABASE_URL"] || process.env["NEON_DB_URL"] || "";
+
+  // 1. Neon Serverless detection
+  if (dbUrl.includes("neon.tech")) {
+    neonConfig.webSocketConstructor = ws;
+    const adapter = new PrismaNeon({ connectionString: dbUrl });
+    cachedPrisma = new PrismaClient({ adapter });
+    return cachedPrisma;
+  }
+
+  // 2. Standard PostgreSQL (Oracle VPS, Aiven, Supabase, Local)
+  if (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://")) {
+    const pool = new pg.Pool({ connectionString: dbUrl });
+    const adapter = new PrismaPg(pool);
+    cachedPrisma = new PrismaClient({ adapter });
+    return cachedPrisma;
+  }
+
+  // 3. Fallback standard client
+  cachedPrisma = new PrismaClient();
   return cachedPrisma;
 }
 
