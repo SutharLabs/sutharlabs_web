@@ -1283,7 +1283,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
   const [watchlistSearchFilter, setWatchlistSearchFilter] = useState<string>('');
   const [watchlistSortBy, setWatchlistSortBy] = useState<'DEFAULT' | 'CHANGE_DESC' | 'CHANGE_ASC' | 'PRICE_DESC'>('DEFAULT');
 
-  // ── Real-Time Financial News & AI Sentiment Stream (Stage 3) ──
+  // ── Real-Time Financial News &amp; AI Sentiment Stream (Stage 3) ──
   const [newsArticles, setNewsArticles] = useState<StockNewsArticle[]>([]);
   const [sentimentReport, setSentimentReport] = useState<StockSentimentReport | null>(null);
   const [loadingNews, setLoadingNews] = useState<boolean>(false);
@@ -1760,7 +1760,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       .catch(() => {});
   }, [userEmail, userToken]);
 
-  // ── Stage 3: Real-Time News & AI Sentiment Fetcher ─────────
+  // ── Stage 3: Real-Time News &amp; AI Sentiment Fetcher ─────────
   const fetchNewsAndSentiment = useCallback(async (sym: string, marketKey: string, company?: string) => {
     if (!sym) return;
     setLoadingNews(true);
@@ -1837,7 +1837,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         }
       }
 
-      // 4. Real-Time News & AI Sentiment Stream (Stage 3)
+      // 4. Real-Time News &amp; AI Sentiment Stream (Stage 3)
       fetchNewsAndSentiment(sym, activeMarketKey, fetchedQuote?.name);
 
       // 5. Algorithmic Strategy Signal Execution with AI Sentiment Confluence
@@ -3679,7 +3679,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               >
                 <Newspaper className="w-3.5 h-3.5 shrink-0" />
                 <span className="leading-none inline-flex items-center gap-1">
-                  <span>News & AI</span>
+                  <span>News &amp; AI</span>
                   {sentimentReport && (
                     <span className={`w-2 h-2 rounded-full shrink-0 ${
                       sentimentReport.verdict === 'BULLISH' ? 'bg-[#00e476]' : sentimentReport.verdict === 'BEARISH' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'
@@ -4224,7 +4224,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   </div>
                   <div>
                     <h4 className="text-xs font-mono font-bold text-on-surface">
-                      News & AI Sentiment
+                      News &amp; AI Sentiment
                     </h4>
                     <span className="text-[10px] font-mono text-on-surface-variant">
                       {quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
@@ -4247,7 +4247,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       setShowSettingsDrawer(true);
                     }}
                     className="text-[10px] font-mono px-2 py-1 rounded bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/30 hover:bg-[#00dbe7]/20 transition-all flex items-center gap-1 cursor-pointer leading-none"
-                    title="Open Full Expanded News & AI Sentiment Hub"
+                    title="Open Full Expanded News &amp; AI Sentiment Hub"
                   >
                     <Maximize2 className="w-3 h-3 shrink-0" />
                     <span className="leading-none">Expanded View</span>
@@ -4373,7 +4373,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               ) : loadingNews ? (
                 <div className="p-6 text-center font-mono text-xs text-on-surface-variant animate-pulse flex flex-col items-center gap-2">
                   <RefreshCw className="w-5 h-5 animate-spin text-[#00dbe7]" />
-                  <span>Synthesizing live news streams & AI sentiment...</span>
+                  <span>Synthesizing live news streams &amp; AI sentiment...</span>
                 </div>
               ) : null}
 
@@ -4747,7 +4747,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       {tab === 'SCANNER' && 'Market Screener'}
                       {tab === 'SIMULATOR' && 'Trade Simulator'}
                       {tab === 'BACKTEST' && 'Backtest Engine'}
-                      {tab === 'NEWS_AI' && 'News & AI Sentiment'}
+                      {tab === 'NEWS_AI' && 'News &amp; AI Sentiment'}
                       {tab === 'INDICATORS' && 'Indicator Mathematics'}
                       {tab === 'TRADING' && 'Order & Risk Rules'}
                       {tab === 'FEEDS' && 'Data Feeds & Brokers'}
@@ -4772,7 +4772,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                         Custom Watchlists Hub
                       </span>
                       <p className="text-xs text-on-surface-variant font-sans">
-                        Organize your assets into custom watchlists (e.g. EV & Mobility, High Beta, Dividend, US Tech). Symbols in each list can be switched with 1 click.
+                        Organize your assets into custom watchlists (e.g. EV &amp; Mobility, High Beta, Dividend, US Tech). Symbols in each list can be switched with 1 click.
                       </p>
                     </div>
 
@@ -5057,7 +5057,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       }}
                       className="px-4 py-2 bg-[#00dbe7] text-[#002022] font-bold rounded-lg uppercase cursor-pointer hover:brightness-110"
                     >
-                      Load & Close
+                      Load &amp; Close
                     </button>
                   </div>
 
@@ -5180,7 +5180,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <div className="flex justify-between items-center">
                       <span className="text-on-surface font-semibold flex items-center gap-2">
                         <Key className="w-4 h-4 text-[#00dbe7]" />
-                        {selectedDataSource} API Credentials & Access Tokens
+                        {selectedDataSource} API Credentials &amp; Access Tokens
                       </span>
                       <span className="text-[10px] text-on-surface-variant">Stored encrypted locally in workspace</span>
                     </div>
@@ -5428,7 +5428,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   className="py-3 bg-[#00dbe7] text-[#002022] font-bold rounded-xl uppercase tracking-wider hover:brightness-110 cursor-pointer flex items-center justify-center gap-2 shadow-lg"
                 >
                   <RefreshCw className="w-4 h-4" />
-                  Apply Parameters & Re-run Algorithm
+                  Apply Parameters &amp; Re-run Algorithm
                 </button>
               </div>
             )}
@@ -5555,7 +5555,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     {/* Section 1: Metadata */}
                     <div className="bg-surface-container-low p-5 rounded-xl border border-outline/20 flex flex-col gap-4">
                       <div className="flex justify-between items-center">
-                        <span className="text-on-surface font-semibold text-sm">Strategy Identification & Scope</span>
+                        <span className="text-on-surface font-semibold text-sm">Strategy Identification &amp; Scope</span>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] text-[#00dbe7] uppercase font-bold flex items-center gap-1">
                             <Sparkles className="w-3 h-3" />
@@ -5610,7 +5610,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                             <option value="GLOBAL">GLOBAL (All Exchanges)</option>
                             <option value="IN">IN (NSE / BSE India)</option>
                             <option value="US">US (NYSE / NASDAQ)</option>
-                            <option value="BOTH">BOTH (India & US)</option>
+                            <option value="BOTH">BOTH (India &amp; US)</option>
                           </select>
                         </div>
                       </div>
@@ -6129,10 +6129,10 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <div>
                       <h4 className="text-sm font-bold text-on-surface flex items-center gap-2">
                         <Newspaper className="w-4 h-4 text-[#00dbe7]" />
-                        Real-Time News Stream & AI Sentiment Intelligence
+                        Real-Time News Stream &amp; AI Sentiment Intelligence
                       </h4>
                       <p className="text-on-surface-variant text-[11px] mt-0.5 max-w-3xl leading-relaxed">
-                        Continuous financial news ingestion across global exchanges (NSE/BSE India, US S&P 500, Europe & East Asia).
+                        Continuous financial news ingestion across global exchanges (NSE/BSE India, US S&amp;P 500, Europe &amp; East Asia).
                         Headlines are evaluated using <strong>Google Gemini AI</strong> with a deterministic <strong>Autonomous Financial Lexicon Engine</strong> fallback.
                       </p>
                     </div>
@@ -6204,7 +6204,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                             Google Gemini 2.5 Flash API Key
                           </span>
                           <span className="text-[11px] text-on-surface-variant font-sans">
-                            Powers institutional catalyst summaries & deep financial headline reasoning.
+                            Powers institutional catalyst summaries &amp; deep financial headline reasoning.
                           </span>
                         </div>
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold shrink-0 flex items-center gap-1 ${
@@ -6306,7 +6306,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-xs text-on-surface flex items-center gap-1.5">
                           <Activity className="w-3.5 h-3.5 text-[#00dbe7]" />
-                          Daily News & AI Usage Tracking
+                          Daily News &amp; AI Usage Tracking
                         </span>
                         <span className="text-[10px] text-on-surface-variant font-mono">
                           Date: {aiUsageStats.date}
@@ -6352,7 +6352,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
                     <div className="pt-2 border-t border-outline/10 flex justify-between items-center text-[10px]">
                       <span className="text-on-surface-variant">
-                        Autonomous Lexicon fallback operates at <strong>0 cost & unlimited volume</strong>.
+                        Autonomous Lexicon fallback operates at <strong>0 cost &amp; unlimited volume</strong>.
                       </span>
                       <button
                         onClick={handleResetUsageStats}
@@ -6678,7 +6678,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-on-surface font-semibold text-sm">
-                          Workspace Execution Logs & Terminal Console
+                          Workspace Execution Logs &amp; Terminal Console
                         </span>
                         <span className={`text-[10px] font-mono px-2 py-0.5 rounded font-bold ${
                           isTerminalEnabled
@@ -6808,7 +6808,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
                   <div className="flex items-center justify-between border-t border-outline/10 pt-3">
                     <div>
-                      <span className="font-bold text-on-surface">Simulated Slippage & Friction</span>
+                      <span className="font-bold text-on-surface">Simulated Slippage &amp; Friction</span>
                       <span className="text-[10px] text-on-surface-variant block font-sans">Deducts simulated execution impact from paper trades.</span>
                     </div>
                     <div className="flex items-center gap-2">

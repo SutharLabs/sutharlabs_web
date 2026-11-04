@@ -1,0 +1,19 @@
+# Build and dependencies
+node_modules/
+dist/
+uploads/
+installed_plugins/
+storage/
+data/
+
+# Temporary / backup scripts
+*.backup
+*.txt
+*.bat
+*.cjs
+*.py
+
+# Database & lockfiles
+*.db
+package-lock.json
+

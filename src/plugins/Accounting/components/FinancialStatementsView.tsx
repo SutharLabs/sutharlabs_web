@@ -54,7 +54,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
     return (
       <div className="p-12 text-center font-mono text-xs text-slate-400 dark:text-gray-400">
         <span className="material-symbols-outlined text-3xl animate-spin text-primary dark:text-[#00dbe7] block mb-2">sync</span>
-        Calculating Financial Statements & Auditing Ledgers...
+        Calculating Financial Statements &amp; Auditing Ledgers...
       </div>
     );
   }
@@ -99,7 +99,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
                 {formatINR(bs.assets.totalAssets)}
               </span>
               <span className="text-[10px] font-mono text-emerald-600 dark:text-[#00e476] mt-1 block">
-                Assets Equal Liabilities & Equity ✓
+                Assets Equal Liabilities &amp; Equity ✓
               </span>
             </div>
 
@@ -134,7 +134,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
             {/* Left: Equities and Liabilities */}
             <div className="glass-panel rounded-xl overflow-hidden border border-slate-200 dark:border-outline/15 bg-white dark:bg-surface-container-low/40 shadow-sm">
               <div className="bg-slate-50 dark:bg-[#18181c] p-3 border-b border-slate-200 dark:border-[#3a494b]/20 font-sans font-bold text-sm text-slate-900 dark:text-white flex justify-between items-center">
-                <span>I. EQUITIES & LIABILITIES</span>
+                <span>I. EQUITIES &amp; LIABILITIES</span>
                 <span className="text-xs font-mono text-primary dark:text-[#00dbe7]">Schedule III</span>
               </div>
 
@@ -151,11 +151,11 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
                       <span>{formatINR(bs.equitiesAndLiabilities.shareholdersFunds.shareCapital)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>(b) Reserves & Surplus</span>
+                      <span>(b) Reserves &amp; Surplus</span>
                       <span>{formatINR(bs.equitiesAndLiabilities.shareholdersFunds.reservesAndSurplus)}</span>
                     </div>
                     <div className="flex justify-between text-emerald-600 dark:text-[#00e476]">
-                      <span>(c) Current Year Surplus (P&L)</span>
+                      <span>(c) Current Year Surplus (P&amp;L)</span>
                       <span>{formatINR(bs.equitiesAndLiabilities.shareholdersFunds.currentYearEarnings)}</span>
                     </div>
                   </div>
@@ -191,7 +191,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
                       <span>{formatINR(bs.equitiesAndLiabilities.currentLiabilities.outputGstPayable)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>(c) Short-term Provisions & Utilities</span>
+                      <span>(c) Short-term Provisions &amp; Utilities</span>
                       <span>{formatINR(bs.equitiesAndLiabilities.currentLiabilities.shortTermProvisions)}</span>
                     </div>
                   </div>
@@ -199,7 +199,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
 
                 {/* Total */}
                 <div className="pt-3 border-t-2 border-slate-300 dark:border-white/20 flex justify-between font-bold text-sm text-slate-900 dark:text-white font-sans">
-                  <span>TOTAL EQUITIES & LIABILITIES:</span>
+                  <span>TOTAL EQUITIES &amp; LIABILITIES:</span>
                   <span className="text-emerald-600 dark:text-[#00e476]">
                     {formatINR(bs.equitiesAndLiabilities.totalLiabilitiesAndEquity)}
                   </span>
@@ -223,11 +223,11 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
                   </div>
                   <div className="pl-3 text-[11px] space-y-1 text-slate-600 dark:text-gray-400">
                     <div className="flex justify-between">
-                      <span>(a) Tangible Hardware & GPU Nodes</span>
+                      <span>(a) Tangible Hardware &amp; GPU Nodes</span>
                       <span>{formatINR(bs.assets.nonCurrentAssets.fixedAssetsPlantTech)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>(b) Intangible Software & Frameworks</span>
+                      <span>(b) Intangible Software &amp; Frameworks</span>
                       <span>{formatINR(bs.assets.nonCurrentAssets.intangibleAssetsSoftware)}</span>
                     </div>
                     <div className="flex justify-between text-rose-500">
@@ -245,7 +245,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
                   </div>
                   <div className="pl-3 text-[11px] space-y-1 text-slate-600 dark:text-gray-400">
                     <div className="flex justify-between font-bold text-primary dark:text-[#00dbe7]">
-                      <span>(a) Cash & Bank Balances (HDFC)</span>
+                      <span>(a) Cash &amp; Bank Balances (HDFC)</span>
                       <span>{formatINR(bs.assets.currentAssets.cashAndBankBalances)}</span>
                     </div>
                     <div className="flex justify-between">
@@ -261,7 +261,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
                       <span>{formatINR(bs.assets.currentAssets.inventories)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>(e) Prepaid Expenses & Advances</span>
+                      <span>(e) Prepaid Expenses &amp; Advances</span>
                       <span>{formatINR(bs.assets.currentAssets.prepaidExpenses)}</span>
                     </div>
                   </div>
@@ -335,12 +335,12 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
               {/* COGS */}
               <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-[#3a494b]/20">
                 <div className="font-bold text-slate-900 dark:text-white flex justify-between">
-                  <span>II. COST OF GOODS SOLD & DELIVERIES (COGS)</span>
+                  <span>II. COST OF GOODS SOLD &amp; DELIVERIES (COGS)</span>
                   <span>{formatINR(pl.costOfGoodsSold.totalCOGS)}</span>
                 </div>
                 <div className="pl-4 text-[11px] space-y-1 text-slate-600 dark:text-gray-400">
                   <div className="flex justify-between">
-                    <span>Hardware Purchases & Inward Compute</span>
+                    <span>Hardware Purchases &amp; Inward Compute</span>
                     <span>{formatINR(pl.costOfGoodsSold.purchases)}</span>
                   </div>
                   <div className="flex justify-between">
@@ -357,7 +357,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
               {/* Operating Expenses */}
               <div className="space-y-1.5 pt-2 border-t border-slate-200 dark:border-[#3a494b]/20">
                 <div className="font-bold text-slate-900 dark:text-white flex justify-between">
-                  <span>III. OPERATING & ADMINISTRATIVE EXPENSES</span>
+                  <span>III. OPERATING &amp; ADMINISTRATIVE EXPENSES</span>
                   <span>{formatINR(pl.operatingExpenses.totalOperatingExpenses)}</span>
                 </div>
                 <div className="pl-4 text-[11px] space-y-1 text-slate-600 dark:text-gray-400">
@@ -370,19 +370,19 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
                     <span>{formatINR(pl.operatingExpenses.salariesAndStaffCosts)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>(c) Office Rent & Utilities</span>
+                    <span>(c) Office Rent &amp; Utilities</span>
                     <span>{formatINR(pl.operatingExpenses.rentAndUtilities)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>(d) Marketing & Client Acquisition</span>
+                    <span>(d) Marketing &amp; Client Acquisition</span>
                     <span>{formatINR(pl.operatingExpenses.marketingAndClientAcquisition)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>(e) Legal & Audit Compliance Fees</span>
+                    <span>(e) Legal &amp; Audit Compliance Fees</span>
                     <span>{formatINR(pl.operatingExpenses.legalAndAuditFees)}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span>(f) Depreciation & Amortization</span>
+                    <span>(f) Depreciation &amp; Amortization</span>
                     <span>{formatINR(pl.operatingExpenses.depreciationAndAmortization)}</span>
                   </div>
                 </div>
@@ -417,7 +417,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
                 Grouped General Ledger Trial Balance
               </h4>
               <span className="text-[11px] text-slate-500 dark:text-gray-400">
-                Debits & Credits parity check across all Chart of Accounts heads
+                Debits &amp; Credits parity check across all Chart of Accounts heads
               </span>
             </div>
             <div className="flex items-center gap-4">
@@ -473,7 +473,7 @@ export default function FinancialStatementsView({ userToken }: FinancialStatemen
           <div className="glass-panel p-4 rounded-xl border border-slate-200 dark:border-outline/15 bg-white dark:bg-surface-container-low/40 flex justify-between items-center shadow-sm">
             <div>
               <h4 className="font-bold text-slate-900 dark:text-white font-sans text-sm">
-                Accounts Receivable & Payable Aging Matrix (SAP FBL5N)
+                Accounts Receivable &amp; Payable Aging Matrix (SAP FBL5N)
               </h4>
               <span className="text-[11px] text-slate-500 dark:text-gray-400">
                 Default 30-day interval overdue buckets for liquidity management
