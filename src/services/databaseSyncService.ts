@@ -28,35 +28,181 @@ export interface DatabaseSyncHistoryEntry {
 
 const HISTORY_FILE = path.join(process.cwd(), 'data', 'database_sync_history.json');
 
-export function loadSyncHistory(): DatabaseSyncHistoryEntry[] {
-  try {
-    if (!fs.existsSync(HISTORY_FILE)) return [];
+const TMP_HISTORY_FILE = path.join('/tmp', 'database_sync_history.json');
+
+// In-memory sync history cache to preserve manual/cron entries within the runtime
+let inMemoryHistory: DatabaseSyncHistoryEntry[] = [];
+
+// Seed in-memory cache from disk if available
+try {
+  if (fs.existsSync(HISTORY_FILE)) {
     const raw = fs.readFileSync(HISTORY_FILE, 'utf-8');
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch (e) {
-    console.error("[DatabaseSyncService] Failed to read sync history:", e);
-    return [];
+    if (Array.isArray(parsed)) inMemoryHistory = parsed;
+  }
+} catch (e) {
+  // Ignore initial read error
+}
+
+/**
+ * Persists sync history record in the primary PostgreSQL database so it survives
+ * serverless function restarts, container redeploys, and ephemeral filesystems.
+ */
+export async function persistSyncHistoryInDb(entry: DatabaseSyncHistoryEntry): Promise<void> {
+  try {
+    const primary = getPrismaClient();
+    await primary.$executeRawUnsafe(`
+      CREATE TABLE IF NOT EXISTS "_database_sync_history" (
+        "id" TEXT PRIMARY KEY,
+        "timestamp" TEXT NOT NULL,
+        "trigger" TEXT NOT NULL,
+        "status" TEXT NOT NULL,
+        "durationMs" INT NOT NULL,
+        "totalRecordsSynced" INT NOT NULL,
+        "syncedCounts" JSONB,
+        "sourceDatabase" TEXT,
+        "targetDatabase" TEXT,
+        "errorMessage" TEXT,
+        "initiatedBy" TEXT
+      );
+    `);
+
+    await primary.$executeRawUnsafe(`
+      INSERT INTO "_database_sync_history" 
+      ("id", "timestamp", "trigger", "status", "durationMs", "totalRecordsSynced", "syncedCounts", "sourceDatabase", "targetDatabase", "errorMessage", "initiatedBy")
+      VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8, $9, $10, $11)
+      ON CONFLICT ("id") DO NOTHING;
+    `,
+      entry.id,
+      entry.timestamp,
+      entry.trigger,
+      entry.status,
+      entry.durationMs,
+      entry.totalRecordsSynced,
+      JSON.stringify(entry.syncedCounts || {}),
+      entry.sourceDatabase,
+      entry.targetDatabase,
+      entry.errorMessage || null,
+      entry.initiatedBy || null
+    );
+  } catch (err: any) {
+    console.error("[DatabaseSyncService] DB sync history persistence warning:", err.message);
   }
 }
 
-export function saveSyncHistoryEntry(entry: DatabaseSyncHistoryEntry) {
+/**
+ * Loads recorded sync history entries directly from PostgreSQL database table.
+ */
+export async function loadSyncHistoryFromDb(): Promise<DatabaseSyncHistoryEntry[]> {
   try {
-    const history = loadSyncHistory();
-    history.unshift(entry);
-    const trimmed = history.slice(0, 100);
+    const primary = getPrismaClient();
+    const rows = await primary.$queryRawUnsafe<any[]>(`
+      SELECT * FROM "_database_sync_history" ORDER BY "timestamp" DESC LIMIT 100;
+    `);
+    if (Array.isArray(rows) && rows.length > 0) {
+      return rows.map(r => ({
+        id: r.id,
+        timestamp: r.timestamp,
+        trigger: r.trigger,
+        status: r.status,
+        durationMs: Number(r.durationMs || r.duration_ms || 0),
+        totalRecordsSynced: Number(r.totalRecordsSynced || r.total_records_synced || 0),
+        syncedCounts: typeof r.syncedCounts === 'string' ? JSON.parse(r.syncedCounts) : (r.syncedCounts || {}),
+        sourceDatabase: r.sourceDatabase || r.source_database || '',
+        targetDatabase: r.targetDatabase || r.target_database || '',
+        errorMessage: r.errorMessage || r.error_message || undefined,
+        initiatedBy: r.initiatedBy || r.initiated_by || undefined
+      }));
+    }
+  } catch (e: any) {
+    // Table not created yet or query failed - fallback gracefully
+  }
+  return [];
+}
+
+/**
+ * Combines history from database, memory, and filesystem with automatic deduplication.
+ */
+export async function loadSyncHistory(): Promise<DatabaseSyncHistoryEntry[]> {
+  const map = new Map<string, DatabaseSyncHistoryEntry>();
+
+  // 1. Load from DB
+  const dbEntries = await loadSyncHistoryFromDb();
+  for (const entry of dbEntries) {
+    map.set(entry.id, entry);
+  }
+
+  // 2. Load from In-Memory
+  for (const entry of inMemoryHistory) {
+    if (!map.has(entry.id)) {
+      map.set(entry.id, entry);
+    }
+  }
+
+  // 3. Load from data/ file
+  try {
+    if (fs.existsSync(HISTORY_FILE)) {
+      const raw = fs.readFileSync(HISTORY_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        for (const entry of parsed) {
+          if (!map.has(entry.id)) map.set(entry.id, entry);
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  // 4. Load from /tmp file (Vercel serverless fallback)
+  try {
+    if (fs.existsSync(TMP_HISTORY_FILE)) {
+      const raw = fs.readFileSync(TMP_HISTORY_FILE, 'utf-8');
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        for (const entry of parsed) {
+          if (!map.has(entry.id)) map.set(entry.id, entry);
+        }
+      }
+    }
+  } catch (e) {
+    // ignore
+  }
+
+  const combined = Array.from(map.values());
+  combined.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return combined;
+}
+
+export async function saveSyncHistoryEntry(entry: DatabaseSyncHistoryEntry): Promise<void> {
+  // 1. Update in-memory cache immediately
+  inMemoryHistory.unshift(entry);
+  inMemoryHistory = inMemoryHistory.slice(0, 100);
+
+  // 2. Persist to PostgreSQL database
+  await persistSyncHistoryInDb(entry);
+
+  // 3. Persist to data/ file if writable
+  try {
     const dataDir = path.dirname(HISTORY_FILE);
     if (!fs.existsSync(dataDir)) {
       fs.mkdirSync(dataDir, { recursive: true });
     }
-    fs.writeFileSync(HISTORY_FILE, JSON.stringify(trimmed, null, 2), 'utf-8');
+    const combined = await loadSyncHistory();
+    fs.writeFileSync(HISTORY_FILE, JSON.stringify(combined.slice(0, 100), null, 2), 'utf-8');
   } catch (e) {
-    console.error("[DatabaseSyncService] Failed to persist sync history:", e);
+    // 4. Fallback to /tmp if filesystem is read-only (Vercel environment)
+    try {
+      const combined = await loadSyncHistory();
+      fs.writeFileSync(TMP_HISTORY_FILE, JSON.stringify(combined.slice(0, 100), null, 2), 'utf-8');
+    } catch (tmpErr) {
+      console.error("[DatabaseSyncService] Failed to persist sync history to tmp:", tmpErr);
+    }
   }
 }
 
-export function getSyncHistorySummary(limit: number = 20) {
-  const all = loadSyncHistory();
+export async function getSyncHistorySummary(limit: number = 20) {
+  const all = await loadSyncHistory();
   const recent = all.slice(0, limit);
   const totalRuns = all.length;
   const successfulRuns = all.filter(e => e.status === 'SUCCESS').length;
@@ -292,7 +438,7 @@ export async function getDatabaseStatus() {
     overallInSync,
     lastSyncTimestamp,
     lastSyncStats,
-    syncHistorySummary: getSyncHistorySummary(10)
+    syncHistorySummary: await getSyncHistorySummary(20)
   };
 }
 
@@ -320,7 +466,7 @@ export async function executeDatabaseSync(options?: { trigger?: 'CRON_JOB' | 'MA
       errorMessage: errorMsg,
       initiatedBy
     };
-    saveSyncHistoryEntry(failedEntry);
+    await saveSyncHistoryEntry(failedEntry);
     throw new Error(errorMsg);
   }
 
@@ -519,7 +665,7 @@ export async function executeDatabaseSync(options?: { trigger?: 'CRON_JOB' | 'MA
       targetDatabase: 'Neon Serverless PostgreSQL',
       initiatedBy
     };
-    saveSyncHistoryEntry(historyEntry);
+    await saveSyncHistoryEntry(historyEntry);
 
     return {
       success: true,
@@ -545,7 +691,7 @@ export async function executeDatabaseSync(options?: { trigger?: 'CRON_JOB' | 'MA
       errorMessage: err.message || String(err),
       initiatedBy
     };
-    saveSyncHistoryEntry(historyEntry);
+    await saveSyncHistoryEntry(historyEntry);
     throw err;
   }
 }

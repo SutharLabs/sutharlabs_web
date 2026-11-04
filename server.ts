@@ -1789,7 +1789,7 @@ app.post("/api/admin/database/sync", authenticateToken, requireAdmin, async (req
 app.get("/api/admin/database/sync-history", authenticateToken, requireAdmin, async (req: any, res: any) => {
   try {
     const limit = parseInt(req.query.limit || '50', 10);
-    const summary = getSyncHistorySummary(limit);
+    const summary = await getSyncHistorySummary(limit);
     res.json({ success: true, ...summary });
   } catch (error: any) {
     console.error("[Database Admin] Error fetching sync history:", error);

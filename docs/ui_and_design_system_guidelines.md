@@ -77,11 +77,13 @@ This guarantees that secondary and primary buttons do not break across lines or 
    * Sizing: `relative w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden transition-all animate-in fade-in zoom-in-95 duration-150`.
    * Light Theme: `bg-white border-slate-200 text-slate-800`
    * Dark Theme: `bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]`
-3. **Accent Gradient**:
-   * Top bar `h-1.5 w-full`
-   * Database / Replication / Warning: `bg-gradient-to-r from-[#00dbe7] via-[#ce5dff] to-[#00e476]`
-   * Danger / Irreversible: `bg-gradient-to-r from-rose-500 to-red-600`
-   * Primary: `bg-gradient-to-r from-[#00dbe7] to-[#74f5ff]`
+3. **Accent Bar**:
+   * Top bar: `h-1 w-full`
+   * Single-color solid accents (Zero multicolored rainbow bars):
+     * Database / Replication / Primary: `bg-[#00dbe7]`
+     * Danger / Irreversible: `bg-rose-500`
+     * Success / Ready: `bg-emerald-500`
+     * Warning: `bg-amber-400`
 4. **Icon Container**:
    * Sizing: `w-11 h-11 rounded-xl border flex items-center justify-center shrink-0`
    * Themed badge with corresponding status color.

@@ -105,14 +105,14 @@ Follow the Sovereign Engine color tokens defined in `src/index.css`:
    * Sizing: `relative w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden transition-all animate-in fade-in zoom-in-95 duration-150`.
    * Light mode (`isLight === true`): `bg-white border-slate-200 text-slate-800`
    * Dark mode (`isLight === false`): `bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]`
-3. **Top Accent Gradient Bar**:
-   * Height: `h-1.5 w-full`
-   * Variants:
-     * **Warning / Migration / Replication**: `bg-gradient-to-r from-[#00dbe7] via-[#ce5dff] to-[#00e476]`
-     * **Danger / Destructive / Permanent Delete**: `bg-gradient-to-r from-rose-500 to-red-600`
-     * **Success**: `bg-gradient-to-r from-emerald-400 to-teal-500`
-     * **Info / Telemetry**: `bg-gradient-to-r from-sky-400 to-blue-500`
-     * **Primary**: `bg-gradient-to-r from-[#00dbe7] to-[#74f5ff]`
+3. **Top Accent Bar**:
+   * Height: `h-1 w-full`
+   * Variants (Strictly clean single-tone sovereign lines — NEVER use multicoloured/rainbow gradients):
+     * **Primary / Telemetry / Database Replication**: `bg-[#00dbe7]`
+     * **Danger / Destructive / Permanent Delete**: `bg-rose-500`
+     * **Success / Parity Matched**: `bg-emerald-500`
+     * **Warning / Attention**: `bg-amber-400`
+     * **Info**: `bg-sky-500`
 4. **Header Icon Badge**:
    * Sizing: `w-11 h-11 rounded-xl border flex items-center justify-center shrink-0`
    * Never naked; always inside its themed container badge.

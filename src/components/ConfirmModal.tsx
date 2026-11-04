@@ -63,7 +63,7 @@ export default function ConfirmModal({
     switch (variant) {
       case 'danger':
         return {
-          accentBar: 'bg-gradient-to-r from-rose-500 to-red-600',
+          accentBar: 'bg-rose-500',
           badgeBg: isLight ? 'bg-rose-50 text-rose-600 border-rose-200 shadow-xs' : 'bg-rose-500/15 text-rose-400 border-rose-500/30',
           defaultIcon: <AlertCircle className="w-5 h-5 text-rose-500 shrink-0" />,
           confirmBtn: isLight
@@ -72,16 +72,16 @@ export default function ConfirmModal({
         };
       case 'warning':
         return {
-          accentBar: 'bg-gradient-to-r from-[#00dbe7] via-[#ce5dff] to-[#00e476]',
+          accentBar: 'bg-amber-400',
           badgeBg: isLight ? 'bg-amber-50 text-amber-600 border-amber-200 shadow-xs' : 'bg-amber-500/15 text-amber-400 border-amber-500/30',
           defaultIcon: <AlertTriangle className="w-5 h-5 text-amber-400 shrink-0" />,
           confirmBtn: isLight
-            ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-sky-500/20'
-            : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border-[#00dbe7]/50 hover:border-[#00dbe7] shadow-[#00dbe7]/10'
+            ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-amber-500/20'
+            : 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 hover:text-white border-amber-500/50 hover:border-amber-500 shadow-amber-500/10'
         };
       case 'success':
         return {
-          accentBar: 'bg-gradient-to-r from-emerald-400 to-teal-500',
+          accentBar: 'bg-emerald-500',
           badgeBg: isLight ? 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-xs' : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
           defaultIcon: <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />,
           confirmBtn: isLight
@@ -90,7 +90,7 @@ export default function ConfirmModal({
         };
       case 'info':
         return {
-          accentBar: 'bg-gradient-to-r from-sky-400 to-blue-500',
+          accentBar: 'bg-sky-500',
           badgeBg: isLight ? 'bg-sky-50 text-sky-600 border-sky-200 shadow-xs' : 'bg-sky-500/15 text-sky-400 border-sky-500/30',
           defaultIcon: <Info className="w-5 h-5 text-sky-400 shrink-0" />,
           confirmBtn: isLight
@@ -100,7 +100,7 @@ export default function ConfirmModal({
       case 'primary':
       default:
         return {
-          accentBar: 'bg-gradient-to-r from-[#00dbe7] to-[#74f5ff]',
+          accentBar: 'bg-[#00dbe7]',
           badgeBg: isLight ? 'bg-sky-50 text-sky-600 border-sky-200 shadow-xs' : 'bg-[#00dbe7]/10 text-[#00dbe7] border-[#00dbe7]/30',
           defaultIcon: <ArrowRightLeft className="w-5 h-5 text-[#00dbe7] shrink-0" />,
           confirmBtn: isLight
@@ -129,7 +129,7 @@ export default function ConfirmModal({
         onClick={e => e.stopPropagation()}
       >
         {/* Accent Bar */}
-        <div className={`h-1.5 w-full ${currentStyles.accentBar}`} />
+        <div className={`h-1 w-full ${currentStyles.accentBar}`} />
 
         {/* Modal Header & Content */}
         <div className="p-6">

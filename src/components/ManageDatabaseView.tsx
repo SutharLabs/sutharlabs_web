@@ -19,7 +19,8 @@ import {
   AlertCircle,
   Copy,
   Zap,
-  History
+  History,
+  Loader2
 } from 'lucide-react';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 import ConfirmModal, { ModalVariant } from './ConfirmModal';
@@ -77,12 +78,31 @@ interface DatabaseStatusResponse {
   syncHistorySummary?: SyncHistorySummary;
 }
 
+const SYNC_STAGES = [
+  { step: 1, name: 'Handshake', desc: 'Connecting to Primary & Standby nodes' },
+  { step: 2, name: 'Plugins & Config', desc: 'Syncing Marketplace plugins & versions' },
+  { step: 3, name: 'Accounts & Ledgers', desc: 'Upserting User accounts, portfolios & invoices' },
+  { step: 4, name: 'Workflows & Docs', desc: 'Replicating node workflows & documentation' },
+  { step: 5, name: 'Diagnostics & Check', desc: 'Syncing bug reports & validating parity checksums' },
+];
+
 export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 'dark' }: ManageDatabaseProps) {
   const isLight = theme === 'light';
   const [data, setData] = useState<DatabaseStatusResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [syncing, setSyncing] = useState<boolean>(false);
   const [exporting, setExporting] = useState<boolean>(false);
+  const [syncProgress, setSyncProgress] = useState<{
+    stageIndex: number;
+    currentStage: string;
+    percent: number;
+    elapsedSeconds: number;
+  }>({
+    stageIndex: 1,
+    currentStage: 'Connecting to Primary Oracle VM & Standby Neon endpoints...',
+    percent: 10,
+    elapsedSeconds: 0
+  });
   const [syncFeedback, setSyncFeedback] = useState<{
     success: boolean;
     message: string;
@@ -121,6 +141,37 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
       });
       if (res.ok) {
         const json = await res.json();
+
+        // Merge with local manual sync entries from localStorage so no runs are lost
+        if (json.syncHistorySummary) {
+          try {
+            const rawLocal = localStorage.getItem('sutharlabs_manual_sync_history');
+            if (rawLocal) {
+              const localEntries: SyncHistoryEntry[] = JSON.parse(rawLocal);
+              const map = new Map<string, SyncHistoryEntry>();
+              for (const item of (json.syncHistorySummary.history || [])) {
+                map.set(item.id, item);
+              }
+              for (const item of localEntries) {
+                if (!map.has(item.id)) {
+                  map.set(item.id, item);
+                }
+              }
+              const merged = Array.from(map.values()).sort(
+                (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+              );
+              const lastManual = merged.find(e => e.trigger === 'MANUAL_ADMIN');
+              json.syncHistorySummary.history = merged;
+              json.syncHistorySummary.totalRuns = Math.max(json.syncHistorySummary.totalRuns, merged.length);
+              if (lastManual && (!json.syncHistorySummary.lastManualTimestamp || new Date(lastManual.timestamp) > new Date(json.syncHistorySummary.lastManualTimestamp))) {
+                json.syncHistorySummary.lastManualTimestamp = lastManual.timestamp;
+              }
+            }
+          } catch (e) {
+            // ignore
+          }
+        }
+
         setData(json);
         onAddLog({
           timestamp: new Date().toLocaleTimeString(),
@@ -151,7 +202,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
     fetchStatus();
   }, [fetchStatus]);
 
-  // Request sync confirmation via custom modal
+  // Request sync confirmation via custom modal with sovereign cyan styling
   const promptTriggerSync = () => {
     setModalConfig({
       isOpen: true,
@@ -160,7 +211,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
       subtext: 'Existing records in Neon standby will be synchronized with primary tables. Primary write traffic remains completely active during this batch synchronization.',
       confirmLabel: 'Confirm & Replicate',
       cancelLabel: 'Cancel',
-      variant: 'warning',
+      variant: 'primary',
       onConfirm: () => {
         setModalConfig(null);
         executeTriggerSync();
@@ -171,11 +222,55 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
   const executeTriggerSync = async () => {
     setSyncing(true);
     setSyncFeedback(null);
+    setSyncProgress({
+      stageIndex: 1,
+      currentStage: 'Connecting to Primary Oracle VM & Standby Neon endpoints...',
+      percent: 12,
+      elapsedSeconds: 0
+    });
+
     onAddLog({
       timestamp: new Date().toLocaleTimeString(),
       type: 'ALERT',
       message: 'DATABASE: Manual replication sequence initiated (Oracle VM -> Neon Backup)...'
     });
+
+    const startTime = Date.now();
+    const timer = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      let stageIndex = 1;
+      let stageText = 'Connecting to Primary Oracle VM & Standby Neon endpoints...';
+      let targetPercent = 15;
+
+      if (elapsed < 2) {
+        stageIndex = 1;
+        stageText = 'Connecting to Primary Oracle VM & Standby Neon endpoints...';
+        targetPercent = Math.min(20, 12 + elapsed * 4);
+      } else if (elapsed < 5) {
+        stageIndex = 2;
+        stageText = 'Replicating Marketplace plugins & extension definitions...';
+        targetPercent = Math.min(45, 22 + (elapsed - 2) * 7);
+      } else if (elapsed < 9) {
+        stageIndex = 3;
+        stageText = 'Batch upserting user accounts, portfolios, ledgers & invoices...';
+        targetPercent = Math.min(72, 47 + (elapsed - 5) * 6);
+      } else if (elapsed < 13) {
+        stageIndex = 4;
+        stageText = 'Synchronizing visual architecture flow nodes & documents...';
+        targetPercent = Math.min(88, 74 + (elapsed - 9) * 4);
+      } else {
+        stageIndex = 5;
+        stageText = 'Replicating diagnostics, bug reports & verifying parity checksums...';
+        targetPercent = Math.min(94, 89 + (elapsed - 13) * 1);
+      }
+
+      setSyncProgress({
+        stageIndex,
+        currentStage: stageText,
+        percent: targetPercent,
+        elapsedSeconds: elapsed
+      });
+    }, 1000);
 
     try {
       const res = await fetch('/api/admin/database/sync', {
@@ -185,8 +280,16 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           'Content-Type': 'application/json'
         }
       });
+      clearInterval(timer);
       const result = await res.json();
       if (res.ok) {
+        setSyncProgress(prev => ({
+          stageIndex: 5,
+          currentStage: 'Replication complete! Parity verified across all tables.',
+          percent: 100,
+          elapsedSeconds: prev.elapsedSeconds
+        }));
+
         setSyncFeedback({
           success: true,
           message: result.message,
@@ -198,8 +301,42 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           type: 'SUCCESS',
           message: `DATABASE: Replication completed successfully in ${result.durationMs}ms.`
         });
+
+        // Store in localStorage & optimistically update state
+        if (result.historyEntry) {
+          try {
+            const rawLocal = localStorage.getItem('sutharlabs_manual_sync_history');
+            const localList: SyncHistoryEntry[] = rawLocal ? JSON.parse(rawLocal) : [];
+            const updatedLocal = [result.historyEntry, ...localList.filter(x => x.id !== result.historyEntry.id)].slice(0, 50);
+            localStorage.setItem('sutharlabs_manual_sync_history', JSON.stringify(updatedLocal));
+          } catch (e) {
+            // ignore
+          }
+
+          setData(prev => {
+            if (!prev) return prev;
+            const currentHistory = prev.syncHistorySummary?.history || [];
+            const merged = [result.historyEntry, ...currentHistory.filter(h => h.id !== result.historyEntry.id)];
+            return {
+              ...prev,
+              lastSyncTimestamp: result.historyEntry.timestamp,
+              lastSyncStats: result.historyEntry.syncedCounts,
+              syncHistorySummary: {
+                history: merged,
+                totalRuns: (prev.syncHistorySummary?.totalRuns || 0) + 1,
+                successfulRuns: (prev.syncHistorySummary?.successfulRuns || 0) + 1,
+                failedRuns: prev.syncHistorySummary?.failedRuns || 0,
+                lastCronTimestamp: prev.syncHistorySummary?.lastCronTimestamp || null,
+                lastManualTimestamp: result.historyEntry.timestamp
+              }
+            };
+          });
+        }
+
+        setTimeout(() => setSyncing(false), 800);
         await fetchStatus();
       } else {
+        clearInterval(timer);
         setSyncFeedback({
           success: false,
           message: result.error || 'Database sync encountered an unexpected error.'
@@ -209,14 +346,15 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           type: 'ERROR',
           message: `DATABASE: Replication failed: ${result.error || 'Unknown error'}`
         });
+        setSyncing(false);
         await fetchStatus();
       }
     } catch (err: any) {
+      clearInterval(timer);
       setSyncFeedback({
         success: false,
         message: err.message || 'Network error executing database sync.'
       });
-    } finally {
       setSyncing(false);
     }
   };
@@ -357,11 +495,97 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
             }`}
             title="Trigger manual batch synchronization from Oracle VM to Neon standby"
           >
-            <ArrowRightLeft className={`w-3.5 h-3.5 shrink-0 ${syncing ? 'animate-spin' : ''}`} />
-            <span>{syncing ? 'Replicating...' : 'Trigger Sync Now'}</span>
+            {syncing ? (
+              <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin" />
+            ) : (
+              <ArrowRightLeft className="w-3.5 h-3.5 shrink-0" />
+            )}
+            <span>{syncing ? `Syncing (${Math.round(syncProgress.percent)}%)...` : 'Trigger Sync Now'}</span>
           </button>
         </div>
       </div>
+
+      {/* Live Replication Progress Indicator */}
+      {syncing && (
+        <div className={`p-4 rounded-xl border transition-all animate-in fade-in duration-200 ${
+          isLight ? 'bg-sky-50/70 border-sky-200 text-slate-800' : 'bg-[#00dbe7]/5 border-[#00dbe7]/30 text-[#e5e1e4]'
+        }`}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#00dbe7]/15 border border-[#00dbe7]/30 flex items-center justify-center shrink-0">
+                <ArrowRightLeft className="w-5 h-5 text-[#00dbe7] animate-spin" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-bold font-sans text-on-surface">
+                    Live Replication Sequence In Progress
+                  </h3>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30 animate-pulse">
+                    STAGE {syncProgress.stageIndex} OF {SYNC_STAGES.length}
+                  </span>
+                </div>
+                <p className="text-xs text-on-surface-variant font-mono mt-0.5 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00dbe7] animate-ping" />
+                  <span>{syncProgress.currentStage}</span>
+                </p>
+              </div>
+            </div>
+
+            {/* Elapsed Timer & Parity Target */}
+            <div className="flex items-center gap-3 self-end sm:self-auto font-mono text-xs">
+              <div className={`px-3 py-1.5 rounded-lg border flex items-center gap-1.5 ${
+                isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-black/30 border-[#3a494b]/40 text-[#00dbe7]'
+              }`}>
+                <Clock className="w-3.5 h-3.5 shrink-0 text-[#00dbe7]" />
+                <span>Elapsed: <strong>{syncProgress.elapsedSeconds}s</strong></span>
+              </div>
+              <span className="text-sm font-bold font-mono text-[#00dbe7]">
+                {Math.round(syncProgress.percent)}%
+              </span>
+            </div>
+          </div>
+
+          {/* Animated Progress Bar */}
+          <div className="w-full bg-surface-container-high/40 rounded-full h-2 overflow-hidden border border-outline/10 p-0.5">
+            <div 
+              className="h-full rounded-full bg-gradient-to-r from-[#00dbe7] to-[#00b4d8] transition-all duration-300 ease-out shadow-sm shadow-[#00dbe7]/30"
+              style={{ width: `${Math.min(syncProgress.percent, 100)}%` }}
+            />
+          </div>
+
+          {/* Stage Milestones */}
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-5 gap-2 text-[10px] font-mono">
+            {SYNC_STAGES.map((stage, idx) => {
+              const isPassed = syncProgress.stageIndex > idx + 1;
+              const isCurrent = syncProgress.stageIndex === idx + 1;
+              return (
+                <div 
+                  key={stage.name}
+                  className={`p-2 rounded-lg border transition-all ${
+                    isPassed 
+                      ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+                      : isCurrent 
+                        ? 'bg-[#00dbe7]/15 border-[#00dbe7]/50 text-[#00dbe7] font-bold shadow-sm'
+                        : 'bg-surface-container-low/20 border-outline/10 text-on-surface-variant/50'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-0.5">
+                    <span className="font-semibold">{stage.name}</span>
+                    {isPassed ? (
+                      <Check className="w-3 h-3 text-emerald-400 shrink-0" />
+                    ) : isCurrent ? (
+                      <Loader2 className="w-3 h-3 animate-spin shrink-0 text-[#00dbe7]" />
+                    ) : null}
+                  </div>
+                  <span className="text-[9px] block text-on-surface-variant truncate">
+                    {stage.desc}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Sync Banner Feedback */}
       {syncFeedback && (
