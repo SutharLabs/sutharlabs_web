@@ -22,6 +22,7 @@ import {
   History
 } from 'lucide-react';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer';
+import ConfirmModal, { ModalVariant } from './ConfirmModal';
 
 interface ManageDatabaseProps {
   logs: TerminalLog[];
@@ -92,6 +93,19 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
   const [historyTab, setHistoryTab] = useState<'history' | 'cron_setup'>('history');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
+  // Custom Modal State (replaces native window.alert and window.confirm)
+  const [modalConfig, setModalConfig] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    subtext?: string;
+    confirmLabel?: string;
+    cancelLabel?: string;
+    variant?: ModalVariant;
+    isAlert?: boolean;
+    onConfirm: () => void;
+  } | null>(null);
+
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
@@ -137,11 +151,24 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
     fetchStatus();
   }, [fetchStatus]);
 
-  const handleTriggerSync = async () => {
-    if (!confirm("Initiate live replication from Primary (Oracle Cloud VM) to Backup (Neon PostgreSQL)? Existing records in Neon will be updated with primary data.")) {
-      return;
-    }
+  // Request sync confirmation via custom modal
+  const promptTriggerSync = () => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Database Replication Confirmation',
+      message: 'Initiate live replication from Primary (Oracle Cloud VM) to Backup (Neon PostgreSQL)?',
+      subtext: 'Existing records in Neon standby will be synchronized with primary tables. Primary write traffic remains completely active during this batch synchronization.',
+      confirmLabel: 'Confirm & Replicate',
+      cancelLabel: 'Cancel',
+      variant: 'warning',
+      onConfirm: () => {
+        setModalConfig(null);
+        executeTriggerSync();
+      }
+    });
+  };
 
+  const executeTriggerSync = async () => {
     setSyncing(true);
     setSyncFeedback(null);
     onAddLog({
@@ -223,11 +250,29 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           message: 'DATABASE: Offline JSON snapshot downloaded successfully.'
         });
       } else {
-        alert('Failed to generate snapshot');
+        setModalConfig({
+          isOpen: true,
+          title: 'Export Snapshot Failed',
+          message: 'Failed to generate offline database snapshot.',
+          subtext: 'The server encountered an issue while generating table records. Check database connectivity.',
+          confirmLabel: 'Dismiss',
+          isAlert: true,
+          variant: 'danger',
+          onConfirm: () => setModalConfig(null)
+        });
       }
     } catch (e: any) {
       console.error(e);
-      alert('Network error downloading snapshot.');
+      setModalConfig({
+        isOpen: true,
+        title: 'Network Error',
+        message: 'Could not connect to database export endpoint.',
+        subtext: 'Please check your network connection and authorization credentials.',
+        confirmLabel: 'Dismiss',
+        isAlert: true,
+        variant: 'danger',
+        onConfirm: () => setModalConfig(null)
+      });
     } finally {
       setExporting(false);
     }
@@ -303,7 +348,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           {/* Trigger Sync Now (Primary Action Button) */}
           <button
             type="button"
-            onClick={handleTriggerSync}
+            onClick={promptTriggerSync}
             disabled={syncing || loading}
             className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50 select-none ${
               isLight
@@ -841,6 +886,23 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           </div>
         )}
       </div>
+
+      {/* Custom Themed Confirmation / Alert Modal (Zero Native Alerts) */}
+      {modalConfig && (
+        <ConfirmModal
+          isOpen={modalConfig.isOpen}
+          onClose={() => setModalConfig(null)}
+          onConfirm={modalConfig.onConfirm}
+          title={modalConfig.title}
+          message={modalConfig.message}
+          subtext={modalConfig.subtext}
+          confirmLabel={modalConfig.confirmLabel}
+          cancelLabel={modalConfig.cancelLabel}
+          variant={modalConfig.variant}
+          isAlert={modalConfig.isAlert}
+          theme={theme}
+        />
+      )}
 
       {/* Terminal Audit Log Drawer */}
       <CollapsibleLogDrawer logs={logs} title="DATABASE &amp; REPLICATION AUDIT LOG" />

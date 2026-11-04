@@ -60,3 +60,34 @@ This guarantees that secondary and primary buttons do not break across lines or 
 * **Success Emerald (`#00e476` / `#34d399`)**: High-performance nodes, 100% matched parity, online health.
 * **Warning Amber (`#f59e0b` / `#fbbf24`)**: Diffs detected, pending sync operations, telemetry alerts.
 * **Danger Rose (`#ffb4ab` / `#dc2626`)**: Offline services, failed replication jobs, destructive operations.
+
+---
+
+## 4. Modal, Dialog & Popup Standards (Zero Native Browser Dialogs)
+
+### Zero Browser-Native Dialogs Policy
+* **Prohibition**: Never invoke `window.alert()`, `window.confirm()`, or `window.prompt()`.
+* **Standard**: Always use `<ConfirmModal />` from `src/components/ConfirmModal.tsx` or module-specific custom modal components.
+
+### Specifications
+1. **Backdrop**:
+   * Fixed overlay with dark frosted backdrop: `fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-150`.
+   * Dismissable via ESC key or backdrop click (unless `isLoading` is active).
+2. **Card Container**:
+   * Sizing: `relative w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden transition-all animate-in fade-in zoom-in-95 duration-150`.
+   * Light Theme: `bg-white border-slate-200 text-slate-800`
+   * Dark Theme: `bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]`
+3. **Accent Gradient**:
+   * Top bar `h-1.5 w-full`
+   * Database / Replication / Warning: `bg-gradient-to-r from-[#00dbe7] via-[#ce5dff] to-[#00e476]`
+   * Danger / Irreversible: `bg-gradient-to-r from-rose-500 to-red-600`
+   * Primary: `bg-gradient-to-r from-[#00dbe7] to-[#74f5ff]`
+4. **Icon Container**:
+   * Sizing: `w-11 h-11 rounded-xl border flex items-center justify-center shrink-0`
+   * Themed badge with corresponding status color.
+5. **Action Buttons**:
+   * Cancel button: Standard secondary button token (`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider`).
+   * Confirm button: Variant-matched primary action token (`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider`).
+   * Placed in `flex items-center justify-end gap-2.5 shrink-0 flex-nowrap`.
+
+

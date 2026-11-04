@@ -1,6 +1,6 @@
 ---
 trigger: always_on
-description: Mandatory UI styling, icon alignment, color semantics, and button consistency guidelines for SutharLabs.
+description: Mandatory UI styling, icon alignment, color semantics, button consistency, and modal/dialog guidelines for SutharLabs.
 ---
 
 # SutharLabs UI Styling, Icon Alignment & Design System Guidelines
@@ -91,7 +91,91 @@ Follow the Sovereign Engine color tokens defined in `src/index.css`:
 
 ---
 
-## 4. Copy-Paste Code Templates
+## 4. Modal, Dialog & Popup Standards (Zero Native Browser Dialogs)
+
+### A. Zero Native Browser Dialogs (`window.alert`, `window.confirm`, `window.prompt`)
+* **Strict Prohibition**: NEVER use `window.alert()`, `window.confirm()`, or `window.prompt()`. Browser-native dialogs disrupt the application theme, break mobile/tablet UX, and look unstyled.
+* **Standard**: Always use the reusable `<ConfirmModal />` component from `src/components/ConfirmModal.tsx` or module-specific custom modal dialogs matching SutharLabs design tokens.
+
+### B. Canonical Modal Anatomy & Architecture
+1. **Backdrop**:
+   * Fixed overlay with dark frosted backdrop: `fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-150`.
+   * Clicking outside or pressing `Escape` safely dismisses the modal (disabled when `isLoading`).
+2. **Dialog Card**:
+   * Sizing: `relative w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden transition-all animate-in fade-in zoom-in-95 duration-150`.
+   * Light mode (`isLight === true`): `bg-white border-slate-200 text-slate-800`
+   * Dark mode (`isLight === false`): `bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]`
+3. **Top Accent Gradient Bar**:
+   * Height: `h-1.5 w-full`
+   * Variants:
+     * **Warning / Migration / Replication**: `bg-gradient-to-r from-[#00dbe7] via-[#ce5dff] to-[#00e476]`
+     * **Danger / Destructive / Permanent Delete**: `bg-gradient-to-r from-rose-500 to-red-600`
+     * **Success**: `bg-gradient-to-r from-emerald-400 to-teal-500`
+     * **Info / Telemetry**: `bg-gradient-to-r from-sky-400 to-blue-500`
+     * **Primary**: `bg-gradient-to-r from-[#00dbe7] to-[#74f5ff]`
+4. **Header Icon Badge**:
+   * Sizing: `w-11 h-11 rounded-xl border flex items-center justify-center shrink-0`
+   * Never naked; always inside its themed container badge.
+5. **Action Buttons**:
+   * Cancel button: Standard secondary styling (`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider`).
+   * Confirm button: Variant-matched primary action styling (`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider`).
+   * Grouping: `flex items-center justify-end gap-2.5 shrink-0 flex-nowrap`.
+
+### C. Standard Modal Usage Template
+```tsx
+import ConfirmModal, { ModalVariant } from './ConfirmModal';
+
+// 1. Declare state
+const [modalConfig, setModalConfig] = useState<{
+  isOpen: boolean;
+  title: string;
+  message: string;
+  subtext?: string;
+  confirmLabel?: string;
+  cancelLabel?: string;
+  variant?: ModalVariant;
+  isAlert?: boolean;
+  onConfirm: () => void;
+} | null>(null);
+
+// 2. Trigger confirmation dialog
+const promptAction = () => {
+  setModalConfig({
+    isOpen: true,
+    title: 'Database Replication Confirmation',
+    message: 'Initiate live synchronization from Primary (Oracle Cloud VM) to Backup (Neon PostgreSQL)?',
+    subtext: 'Standby database records will be synchronized. Primary traffic remains active.',
+    confirmLabel: 'Confirm & Replicate',
+    cancelLabel: 'Cancel',
+    variant: 'warning',
+    onConfirm: () => {
+      setModalConfig(null);
+      executeAction();
+    }
+  });
+};
+
+// 3. Render at root of component
+{modalConfig && (
+  <ConfirmModal
+    isOpen={modalConfig.isOpen}
+    onClose={() => setModalConfig(null)}
+    onConfirm={modalConfig.onConfirm}
+    title={modalConfig.title}
+    message={modalConfig.message}
+    subtext={modalConfig.subtext}
+    confirmLabel={modalConfig.confirmLabel}
+    cancelLabel={modalConfig.cancelLabel}
+    variant={modalConfig.variant}
+    isAlert={modalConfig.isAlert}
+    theme={theme}
+  />
+)}
+```
+
+---
+
+## 5. Copy-Paste Code Templates
 
 ### A. Sub-Tab Switcher
 ```tsx
@@ -132,10 +216,12 @@ Follow the Sovereign Engine color tokens defined in `src/index.css`:
 
 ---
 
-## 5. Anti-Patterns Checklist
+## 6. Anti-Patterns Checklist
 
+* ❌ **Do NOT** use `window.alert()`, `window.confirm()`, or `window.prompt()`. Use `<ConfirmModal />` instead.
 * ❌ **Do NOT** place raw Lucide icons directly inside `<h1..3>` text strings.
 * ❌ **Do NOT** omit `shrink-0` on icon elements.
 * ❌ **Do NOT** use dark-only colors (`bg-[#201f21]`, `text-[#e5e1e4]`) without checking `isLight` or using CSS variable utilities (`bg-surface-container`, `text-on-surface`).
 * ❌ **Do NOT** use saturated background gradients on buttons in light mode that lack contrast with body typography.
 * ❌ **Do NOT** let toolbar buttons wrap onto multiple rows unless on small mobile viewports (`< sm`).
+
