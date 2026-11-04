@@ -19,9 +19,9 @@
     "ast_empty": true
   },
   "package.json": {
-    "mtime": 1793779769.3126597,
-    "seen": 1793780091.099287,
-    "ast_hash": "78fe5d616dc272fc67774d2cd8fc11ba",
+    "mtime": 1793781253.520315,
+    "seen": 1793783643.536701,
+    "ast_hash": "ea6cdf397540b2ff67ee7736668f057e",
     "semantic_hash": ""
   },
   "plugins-db.json": {
@@ -56,14 +56,14 @@
     "semantic_hash": "6776e03727fcdb41ca9db460f8d817b7"
   },
   "server.ts": {
-    "mtime": 1793779406.363281,
-    "seen": 1793780091.0993123,
+    "mtime": 1793781253.5233722,
+    "seen": 1793783643.5367165,
     "ast_hash": "8e141240f081784694082f03cf32d80e",
     "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1793777415.1655202,
-    "seen": 1793777603.4232237,
+    "mtime": 1793781253.5268264,
+    "seen": 1793783643.5367181,
     "ast_hash": "73144c7f8788b66a139bffc84a3c2f12",
     "semantic_hash": ""
   },
@@ -74,8 +74,8 @@
     "semantic_hash": "4d0419c7df9b5bc4e1a337e854b747e7"
   },
   "src/components/AdminConsoleView.tsx": {
-    "mtime": 1793777461.6861875,
-    "seen": 1793777603.42323,
+    "mtime": 1793781253.5280497,
+    "seen": 1793783643.536722,
     "ast_hash": "32bb9969ef1341d82b13d0354a37a7f1",
     "semantic_hash": ""
   },
@@ -218,8 +218,8 @@
     "semantic_hash": "b221785dc10a508e4bfb9a3be909433f"
   },
   "src/components/StockTrackerView.tsx": {
-    "mtime": 1793773368.32273,
-    "seen": 1793773436.622077,
+    "mtime": 1793781253.5313349,
+    "seen": 1793783643.536765,
     "ast_hash": "fb1ed7cca3f36634e5b3c4589e3f7d5c",
     "semantic_hash": ""
   },
@@ -296,8 +296,8 @@
     "semantic_hash": "6462c3ee2a72427de3f608cda0be2535"
   },
   "src/plugins/Accounting/components/FinancialStatementsView.tsx": {
-    "mtime": 1793773304.2421656,
-    "seen": 1793773436.6220996,
+    "mtime": 1793781253.532334,
+    "seen": 1793783643.5367873,
     "ast_hash": "ab15370213c082f5afc1e57be4a0a084",
     "semantic_hash": ""
   },
@@ -812,9 +812,9 @@
     "semantic_hash": "1f8dfc3e3f1a4d86bc600f06aae2ca08"
   },
   "src/types.ts": {
-    "mtime": 1793777600.0506475,
-    "seen": 1793777603.423572,
-    "ast_hash": "35c42762ab57d565899189b855bcc6ec",
+    "mtime": 1793781253.5333345,
+    "seen": 1793783643.5369375,
+    "ast_hash": "290d25d0a0311e11fed2f8073ae0f977",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -824,9 +824,9 @@
     "semantic_hash": "3fb5d98480b7ea548bcaa3616c444da1"
   },
   "vercel.json": {
-    "mtime": 1793779787.3616354,
-    "seen": 1793780091.0997114,
-    "ast_hash": "e5da1726fa74094c9e4d229c1a400564",
+    "mtime": 1793781253.5333345,
+    "seen": 1793783643.536941,
+    "ast_hash": "280c6c04994f87df511634c13c095be2",
     "semantic_hash": ""
   },
   "vite.config.ts": {
@@ -836,9 +836,9 @@
     "semantic_hash": "837e1e7997943c3eaa0e5ca9e39ad3a5"
   },
   "CONTRIBUTING.md": {
-    "mtime": 1793772655.0855849,
-    "seen": 1793773436.622255,
-    "ast_hash": "efe2757fe443b192b3126b1a9ba87244",
+    "mtime": 1793781253.5007255,
+    "seen": 1793783643.5369444,
+    "ast_hash": "0604aa2fef587ebbfeaef287982f3fd4",
     "semantic_hash": ""
   },
   "README.md": {
@@ -890,9 +890,9 @@
     "semantic_hash": ""
   },
   "docs/graphify_installation_and_usage_guide.md": {
-    "mtime": 1793772640.2156036,
-    "seen": 1793773436.622269,
-    "ast_hash": "c39a72e860583175386af4006b20491a",
+    "mtime": 1793781253.501725,
+    "seen": 1793783643.5369604,
+    "ast_hash": "87d484a916b705a5379d84dbd62eb110",
     "semantic_hash": ""
   },
   "docs/live_trading_execution_guide.md": {
@@ -1040,21 +1040,21 @@
     "semantic_hash": ""
   },
   "src/components/ManageDatabaseView.tsx": {
-    "mtime": 1793779914.798369,
-    "seen": 1793780091.0993676,
-    "ast_hash": "0e6772d89a2b86d2d40b22250049f054",
+    "mtime": 1793783560.0653973,
+    "seen": 1793783643.5367463,
+    "ast_hash": "eed00d728b2adfd4715454f841f27a98",
     "semantic_hash": ""
   },
   "src/services/databaseSyncService.ts": {
-    "mtime": 1793779742.4178963,
-    "seen": 1793780091.099694,
-    "ast_hash": "94bc261da80ba9751e03ba952690d038",
+    "mtime": 1793781253.5333345,
+    "seen": 1793783643.5369308,
+    "ast_hash": "f02596eef48da02c1f3e17efc20060bb",
     "semantic_hash": ""
   },
   "scripts/cron-sync-database.ts": {
-    "mtime": 1793779750.4287071,
-    "seen": 1793780091.0992985,
-    "ast_hash": "b45734a30fb8d32fb095279776c76502",
+    "mtime": 1793781253.520315,
+    "seen": 1793783643.5367084,
+    "ast_hash": "3b4318bbcfc8c8aebca1e90c5170426f",
     "semantic_hash": ""
   },
   "package-lock.json": {

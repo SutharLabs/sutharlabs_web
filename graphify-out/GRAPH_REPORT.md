@@ -1,7 +1,7 @@
 # Graph Report - website  (2026-11-04)
 
 ## Corpus Check
-- 142 files · ~248,221 words
+- 142 files · ~248,463 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 6 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `24b592a9`
+- Built from commit: `d0e85b14`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -78,16 +78,16 @@
 10. `runEODSimulation()` - 22 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `startServer()` --indirect_call--> `requireAdmin()`  [INFERRED]
-  server.ts → src/middleware/auth.ts
 - `startServer()` --indirect_call--> `errorHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
 - `startServer()` --indirect_call--> `notFoundHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
-- `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
+- `startServer()` --indirect_call--> `requireAdmin()`  [INFERRED]
   server.ts → src/middleware/auth.ts
 - `main()` --calls--> `getPrismaClient()`  [EXTRACTED]
   scripts/setup-simulation-table.ts → api/_utils.ts
+- `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
+  server.ts → src/middleware/auth.ts
 
 ## Import Cycles
 - 2-file cycle: `src/components/LandingPage.tsx -> src/components/ProjectBrowserMockup.tsx -> src/components/LandingPage.tsx`

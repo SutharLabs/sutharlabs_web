@@ -171,7 +171,6 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           type: 'SUCCESS',
           message: `DATABASE: Replication completed successfully in ${result.durationMs}ms.`
         });
-        // Refresh statuses and history to reflect matching counts and updated log
         await fetchStatus();
       } else {
         setSyncFeedback({
@@ -251,54 +250,69 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
     <div className="space-y-6 flex flex-col h-full overflow-y-auto custom-scrollbar font-mono text-xs">
       
       {/* View Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-outline/20 pb-4 gap-4">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-on-surface flex items-center gap-2.5 font-sans">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-outline/15 pb-4 gap-4">
+        {/* Title & Unified Icon Container */}
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-[#00dbe7]/10 border border-[#00dbe7]/30 flex items-center justify-center shrink-0 shadow-sm">
             <Database className="w-5 h-5 text-[#00dbe7]" />
-            <span>Database Orchestration &amp; Disaster Recovery</span>
-          </h2>
-          <p className="text-xs text-on-surface-variant font-mono mt-1">
-            Primary Oracle Cloud VM live routing, Neon cloud replica synchronization &amp; automated disaster recovery.
-          </p>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-on-surface font-sans flex items-center gap-2">
+              <span>Database Orchestration &amp; Disaster Recovery</span>
+            </h2>
+            <p className="text-xs text-on-surface-variant font-mono mt-0.5">
+              Primary Oracle Cloud VM live routing, Neon cloud replica synchronization &amp; automated disaster recovery.
+            </p>
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Action Buttons: Unified with Theme Selector styling */}
+        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          {/* Probe Health Button */}
           <button
             type="button"
             onClick={fetchStatus}
             disabled={loading}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-2 ${
+            className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50 select-none ${
               isLight
-                ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
-                : 'bg-surface-container-high hover:bg-surface-container text-on-surface border-outline/30'
-            } disabled:opacity-50`}
+                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 hover:text-sky-600 hover:border-sky-400'
+                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7] hover:border-[#00dbe7]/50'
+            }`}
+            title="Probe real-time connection status and latency for both database instances"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-[#00dbe7]' : ''}`} />
+            <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${loading ? 'animate-spin text-[#00dbe7]' : ''}`} />
             <span>Probe Health</span>
           </button>
 
+          {/* Export Snapshot Button */}
           <button
             type="button"
             onClick={handleExportDump}
             disabled={exporting || loading}
-            className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center gap-2 ${
+            className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50 select-none ${
               isLight
-                ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
-                : 'bg-surface-container-high hover:bg-surface-container text-on-surface border-outline/30'
-            } disabled:opacity-50`}
+                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 hover:text-sky-600 hover:border-sky-400'
+                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7] hover:border-[#00dbe7]/50'
+            }`}
             title="Download full JSON snapshot backup of primary database"
           >
-            <Download className={`w-3.5 h-3.5 ${exporting ? 'animate-bounce text-[#00dbe7]' : ''}`} />
+            <Download className={`w-3.5 h-3.5 shrink-0 ${exporting ? 'animate-bounce text-[#00dbe7]' : ''}`} />
             <span>Export Snapshot</span>
           </button>
 
+          {/* Trigger Sync Now (Primary Action Button) */}
           <button
             type="button"
             onClick={handleTriggerSync}
             disabled={syncing || loading}
-            className="px-4 py-1.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer bg-gradient-to-r from-[#00dbe7] to-[#ce5dff] text-surface font-semibold hover:opacity-90 transition-all flex items-center gap-2 shadow-sm disabled:opacity-50"
+            className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all flex items-center justify-center gap-1.5 shrink-0 shadow-sm disabled:opacity-50 select-none ${
+              isLight
+                ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-sky-500/20'
+                : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border-[#00dbe7]/50 hover:border-[#00dbe7] shadow-[#00dbe7]/10'
+            }`}
+            title="Trigger manual batch synchronization from Oracle VM to Neon standby"
           >
-            <ArrowRightLeft className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+            <ArrowRightLeft className={`w-3.5 h-3.5 shrink-0 ${syncing ? 'animate-spin' : ''}`} />
             <span>{syncing ? 'Replicating...' : 'Trigger Sync Now'}</span>
           </button>
         </div>
@@ -353,21 +367,25 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
               </span>
               {data?.primary?.latencyMs !== undefined && data.primary.latencyMs >= 0 && (
                 <span className="text-[10px] text-on-surface-variant font-mono flex items-center gap-1">
-                  <Activity className="w-3 h-3 text-[#00dbe7]" />
+                  <Activity className="w-3 h-3 text-[#00dbe7] shrink-0" />
                   {data.primary.latencyMs}ms
                 </span>
               )}
             </div>
           </div>
 
-          <div>
-            <h3 className="text-base font-bold text-on-surface flex items-center gap-2 font-sans">
-              <Server className="w-4 h-4 text-emerald-400" />
-              <span>{data?.primary?.provider || 'Oracle Cloud Always Free VM'}</span>
-            </h3>
-            <p className="text-[11px] text-on-surface-variant mt-1">
-              Main PostgreSQL operational engine powering high-frequency transactions, WebSocket feeds &amp; user state.
-            </p>
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+              <Server className="w-4 h-4 text-emerald-400 shrink-0" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-on-surface font-sans">
+                {data?.primary?.provider || 'Oracle Cloud Always Free VM'}
+              </h3>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                Main PostgreSQL operational engine powering high-frequency transactions, WebSocket feeds &amp; user state.
+              </p>
+            </div>
           </div>
 
           <div className="mt-4 pt-4 border-t border-outline/10 space-y-2 text-[11px]">
@@ -411,21 +429,25 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
               </span>
               {data?.backup?.latencyMs !== undefined && data.backup.latencyMs >= 0 && (
                 <span className="text-[10px] text-on-surface-variant font-mono flex items-center gap-1">
-                  <Activity className="w-3 h-3 text-sky-400" />
+                  <Activity className="w-3 h-3 text-sky-400 shrink-0" />
                   {data.backup.latencyMs}ms
                 </span>
               )}
             </div>
           </div>
 
-          <div>
-            <h3 className="text-base font-bold text-on-surface flex items-center gap-2 font-sans">
-              <HardDrive className="w-4 h-4 text-sky-400" />
-              <span>{data?.backup?.provider || 'Neon Serverless Cloud'}</span>
-            </h3>
-            <p className="text-[11px] text-on-surface-variant mt-1">
-              Serverless PostgreSQL with instant scale-to-zero, hot-standby failover and branchable test environments.
-            </p>
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/20 flex items-center justify-center shrink-0 mt-0.5">
+              <HardDrive className="w-4 h-4 text-sky-400 shrink-0" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-on-surface font-sans">
+                {data?.backup?.provider || 'Neon Serverless Cloud'}
+              </h3>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                Serverless PostgreSQL with instant scale-to-zero, hot-standby failover and branchable test environments.
+              </p>
+            </div>
           </div>
 
           <div className="mt-4 pt-4 border-t border-outline/10 space-y-2 text-[11px]">
@@ -455,14 +477,18 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
       {/* Data Parity Matrix Section */}
       <div className="glass-panel p-5 rounded-2xl border border-outline/15 bg-surface-container-low/30 space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-outline/10 pb-3">
-          <div>
-            <h3 className="text-sm font-bold text-on-surface flex items-center gap-2 font-sans">
-              <Layers className="w-4 h-4 text-[#00dbe7]" />
-              <span>Data Parity &amp; Replication Matrix</span>
-            </h3>
-            <p className="text-[11px] text-on-surface-variant mt-0.5">
-              Row-level comparison across core business models between Oracle Production and Neon Standby.
-            </p>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#00dbe7]/10 border border-[#00dbe7]/20 flex items-center justify-center shrink-0">
+              <Layers className="w-4 h-4 text-[#00dbe7] shrink-0" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-on-surface font-sans">
+                Data Parity &amp; Replication Matrix
+              </h3>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                Row-level comparison across core business models between Oracle Production and Neon Standby.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -470,18 +496,18 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
               <span className="text-on-surface-variant">Overall Health:</span>
               {data?.overallInSync ? (
                 <span className="px-2 py-0.5 rounded font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                  <Check className="w-3 h-3" /> IN SYNC
+                  <Check className="w-3 h-3 shrink-0" /> IN SYNC
                 </span>
               ) : (
                 <span className="px-2 py-0.5 rounded font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-1">
-                  <AlertCircle className="w-3 h-3" /> DIFF DETECTED
+                  <AlertCircle className="w-3 h-3 shrink-0" /> DIFF DETECTED
                 </span>
               )}
             </div>
 
             {data?.lastSyncTimestamp && (
               <span className="text-[10px] text-on-surface-variant flex items-center gap-1">
-                <Clock className="w-3 h-3" />
+                <Clock className="w-3 h-3 shrink-0" />
                 Last Synced: {new Date(data.lastSyncTimestamp).toLocaleTimeString()}
               </span>
             )}
@@ -506,7 +532,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
                 return (
                   <tr key={tableKey} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-2.5 text-on-surface font-semibold flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#00dbe7]" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#00dbe7] shrink-0" />
                       <span>{label}</span>
                     </td>
                     <td className="py-2.5 text-center font-bold text-on-surface">
@@ -518,11 +544,11 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
                     <td className="py-2.5 text-right">
                       {diff.inSync ? (
                         <span className="inline-flex items-center gap-1 text-emerald-400 font-bold text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                          <Check className="w-3 h-3" /> Matched
+                          <Check className="w-3 h-3 shrink-0" /> Matched
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-amber-400 font-bold text-[10px] bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                          <AlertTriangle className="w-3 h-3" /> {diff.primary - diff.backup > 0 ? `+${diff.primary - diff.backup} Unsynced` : `${diff.primary - diff.backup}`}
+                          <AlertTriangle className="w-3 h-3 shrink-0" /> {diff.primary - diff.backup > 0 ? `+${diff.primary - diff.backup} Unsynced` : `${diff.primary - diff.backup}`}
                         </span>
                       )}
                     </td>
@@ -537,24 +563,34 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
       {/* Automated Replication Scheduler & Execution History */}
       <div className="glass-panel p-5 rounded-2xl border border-outline/15 bg-surface-container-low/20 space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-outline/10 pb-3">
-          <div>
-            <h3 className="text-sm font-bold text-on-surface flex items-center gap-2 font-sans">
-              <History className="w-4 h-4 text-[#00dbe7]" />
-              <span>Cron Scheduler &amp; Replication History</span>
-            </h3>
-            <p className="text-[11px] text-on-surface-variant mt-0.5">
-              Persistent execution audit trail of automated cron synchronizations and administrative manual runs.
-            </p>
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-[#00dbe7]/10 border border-[#00dbe7]/20 flex items-center justify-center shrink-0">
+              <History className="w-4 h-4 text-[#00dbe7] shrink-0" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-on-surface font-sans">
+                Cron Scheduler &amp; Replication History
+              </h3>
+              <p className="text-[11px] text-on-surface-variant mt-0.5">
+                Persistent execution audit trail of automated cron synchronizations and administrative manual runs.
+              </p>
+            </div>
           </div>
 
           <div className="flex items-center gap-2">
-            <div className="flex bg-surface-container-high/60 rounded-lg p-0.5 border border-outline/20 text-[11px]">
+            <div className={`flex rounded-lg p-0.5 border text-[11px] ${
+              isLight 
+                ? 'bg-slate-100 border-slate-300' 
+                : 'bg-[#201f21] border-[#3a494b]/40'
+            }`}>
               <button
                 type="button"
                 onClick={() => setHistoryTab('history')}
                 className={`px-3 py-1 rounded-md font-mono cursor-pointer transition-all ${
                   historyTab === 'history'
-                    ? 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                    ? isLight
+                      ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'
+                      : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
@@ -565,7 +601,9 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
                 onClick={() => setHistoryTab('cron_setup')}
                 className={`px-3 py-1 rounded-md font-mono cursor-pointer transition-all ${
                   historyTab === 'cron_setup'
-                    ? 'bg-[#ce5dff]/15 text-[#ce5dff] font-bold border border-[#ce5dff]/30'
+                    ? isLight
+                      ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'
+                      : 'bg-[#ce5dff]/15 text-[#ce5dff] font-bold border border-[#ce5dff]/30'
                     : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
@@ -605,7 +643,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           <div className="p-3 rounded-xl border border-outline/15 bg-surface-container-high/30">
             <span className="text-[10px] text-on-surface-variant uppercase tracking-wider block">Replication Health</span>
             <span className="text-xs font-bold text-emerald-400 mt-1 block font-mono flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5" />
+              <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
               {data?.syncHistorySummary?.totalRuns
                 ? `${Math.round(((data.syncHistorySummary.successfulRuns) / data.syncHistorySummary.totalRuns) * 100)}% Success`
                 : '100% Ready'}
@@ -618,7 +656,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           <div className="overflow-x-auto min-w-full">
             {(!data?.syncHistorySummary?.history || data.syncHistorySummary.history.length === 0) ? (
               <div className="text-center py-8 text-on-surface-variant border border-dashed border-outline/20 rounded-xl bg-surface-container-low/10">
-                <Clock className="w-6 h-6 mx-auto mb-2 text-on-surface-variant/50" />
+                <Clock className="w-6 h-6 mx-auto mb-2 text-on-surface-variant/50 shrink-0" />
                 <p className="text-xs font-semibold">No synchronization logs recorded yet</p>
                 <p className="text-[11px] text-on-surface-variant/70 mt-1">
                   Trigger a manual sync above or run the cron job script to see execution history timestamps.
@@ -645,22 +683,22 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
                       <td className="py-2.5 text-center">
                         {entry.trigger === 'CRON_JOB' ? (
                           <span className="inline-flex items-center gap-1 text-[#00dbe7] font-bold text-[10px] bg-[#00dbe7]/10 px-2 py-0.5 rounded border border-[#00dbe7]/30">
-                            <Clock className="w-3 h-3" /> CRON JOB
+                            <Clock className="w-3 h-3 shrink-0" /> CRON JOB
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-[#ce5dff] font-bold text-[10px] bg-[#ce5dff]/10 px-2 py-0.5 rounded border border-[#ce5dff]/30">
-                            <Zap className="w-3 h-3" /> MANUAL ADMIN
+                            <Zap className="w-3 h-3 shrink-0" /> MANUAL ADMIN
                           </span>
                         )}
                       </td>
                       <td className="py-2.5 text-center">
                         {entry.status === 'SUCCESS' ? (
                           <span className="inline-flex items-center gap-1 text-emerald-400 font-bold text-[10px] bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
-                            <Check className="w-3 h-3" /> SUCCESS
+                            <Check className="w-3 h-3 shrink-0" /> SUCCESS
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 text-rose-400 font-bold text-[10px] bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/30" title={entry.errorMessage}>
-                            <AlertCircle className="w-3 h-3" /> FAILED
+                            <AlertCircle className="w-3 h-3 shrink-0" /> FAILED
                           </span>
                         )}
                       </td>
@@ -691,8 +729,8 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
             {/* Option 1: Vercel Cron */}
             <div className="p-3.5 rounded-xl border border-outline/15 bg-surface-container-high/20 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-on-surface flex items-center gap-1.5 font-sans">
-                  <span className="w-2 h-2 rounded-full bg-[#00dbe7]" />
+                <span className="font-bold text-on-surface flex items-center gap-2 font-sans">
+                  <span className="w-2 h-2 rounded-full bg-[#00dbe7] shrink-0" />
                   <span>Option 1: Vercel Scheduled Cron (Active in <code className="font-mono text-[#00dbe7]">vercel.json</code>)</span>
                 </span>
                 <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
@@ -707,16 +745,20 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
             {/* Option 2: External Webhook / Cron-job.org */}
             <div className="p-3.5 rounded-xl border border-outline/15 bg-surface-container-high/20 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-on-surface flex items-center gap-1.5 font-sans">
-                  <span className="w-2 h-2 rounded-full bg-[#ce5dff]" />
+                <span className="font-bold text-on-surface flex items-center gap-2 font-sans">
+                  <span className="w-2 h-2 rounded-full bg-[#ce5dff] shrink-0" />
                   <span>Option 2: External HTTP Webhook (Cron-Job.org / Uptime Robot / GitHub Actions)</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => copyToClipboard(`${typeof window !== 'undefined' ? window.location.origin : ''}/api/cron/database-sync?key=sutharlabs-cron-vault-2026`, 'webhook')}
-                  className="px-2.5 py-1 rounded text-[10px] font-mono bg-surface-container hover:bg-surface-container-highest text-on-surface border border-outline/20 flex items-center gap-1 cursor-pointer"
+                  className={`h-7 px-2.5 rounded text-[10px] font-mono border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none ${
+                    isLight
+                      ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                      : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
+                  }`}
                 >
-                  {copiedKey === 'webhook' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  {copiedKey === 'webhook' ? <Check className="w-3 h-3 text-emerald-400 shrink-0" /> : <Copy className="w-3 h-3 shrink-0" />}
                   <span>{copiedKey === 'webhook' ? 'Copied URL!' : 'Copy Webhook URL'}</span>
                 </button>
               </div>
@@ -734,16 +776,20 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
             {/* Option 3: Oracle VM Native Crontab */}
             <div className="p-3.5 rounded-xl border border-outline/15 bg-surface-container-high/20 space-y-2">
               <div className="flex items-center justify-between">
-                <span className="font-bold text-on-surface flex items-center gap-1.5 font-sans">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
+                <span className="font-bold text-on-surface flex items-center gap-2 font-sans">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
                   <span>Option 3: Oracle VM System Crontab (Zero Cloud Dependency)</span>
                 </span>
                 <button
                   type="button"
                   onClick={() => copyToClipboard('30 20 * * * cd /home/ubuntu/website && npm run db:cron-sync >> /var/log/db-sync.log 2>&1', 'crontab')}
-                  className="px-2.5 py-1 rounded text-[10px] font-mono bg-surface-container hover:bg-surface-container-highest text-on-surface border border-outline/20 flex items-center gap-1 cursor-pointer"
+                  className={`h-7 px-2.5 rounded text-[10px] font-mono border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none ${
+                    isLight
+                      ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                      : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
+                  }`}
                 >
-                  {copiedKey === 'crontab' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                  {copiedKey === 'crontab' ? <Check className="w-3 h-3 text-emerald-400 shrink-0" /> : <Copy className="w-3 h-3 shrink-0" />}
                   <span>{copiedKey === 'crontab' ? 'Copied Command!' : 'Copy Crontab Command'}</span>
                 </button>
               </div>
@@ -765,8 +811,10 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
           onClick={() => setShowFailoverGuide(!showFailoverGuide)}
           className="w-full flex items-center justify-between text-left cursor-pointer group"
         >
-          <div className="flex items-center gap-2 text-on-surface font-bold font-sans">
-            <ShieldCheck className="w-4 h-4 text-[#ce5dff]" />
+          <div className="flex items-center gap-2.5 text-on-surface font-bold font-sans">
+            <div className="w-8 h-8 rounded-lg bg-[#ce5dff]/10 border border-[#ce5dff]/20 flex items-center justify-center shrink-0">
+              <ShieldCheck className="w-4 h-4 text-[#ce5dff] shrink-0" />
+            </div>
             <span>Instant Failover &amp; Disaster Recovery Runbook</span>
           </div>
           <span className="text-[11px] text-[#00dbe7] group-hover:underline">
