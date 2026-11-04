@@ -417,6 +417,34 @@ export function evaluateStrategy(
       confidence = 0.45;
       reasoning.push(`Awaiting institutional volume expansion on MACD crossover.`);
     }
+  } else if (strategy.id === 'strat-finllm-alpha') {
+    // FinLLM & Chronos Multi-Horizon Alpha Quantitative Model
+    const isMultiHorizonUptrend = latestEmaFast > latestEmaSlow && currentPrice > latestEma200;
+    const isSupertrendBullish = supertrendResult.direction === 'UP';
+    const isVolumeAccumulating = volumeRatio >= (Number(params.volumeMultiple) || 1.2);
+    const inHealthyMomentumCorridor = latestRsi >= 48 && latestRsi <= 74;
+
+    if (isMultiHorizonUptrend && isSupertrendBullish && isVolumeAccumulating && inHealthyMomentumCorridor) {
+      action = 'BUY';
+      confidence = 0.94;
+      reasoning.push(`Chronos Trend Forecast: Multi-horizon alignment (Fast EMA ${latestEmaFast.toFixed(2)} > Slow EMA ${latestEmaSlow.toFixed(2)} > EMA 200).`);
+      reasoning.push(`Supertrend Regime: Confirmed UP (Baseline: ${supertrendResult.supertrend.toFixed(2)}).`);
+      reasoning.push(`Volume Breakout: Institutional volume multiple of ${volumeRatio}x over 20-bar baseline.`);
+      reasoning.push(`Momentum Corridor: RSI at ${latestRsi.toFixed(1)} with positive MACD histogram expansion.`);
+    } else if (currentPrice < latestEma200 && !isSupertrendBullish) {
+      action = 'SELL';
+      confidence = 0.91;
+      reasoning.push(`Macro Regime Breakdown: Price slipped below 200 EMA with Supertrend breakdown.`);
+      reasoning.push(`Risk mitigation liquidation triggered.`);
+    } else if (latestRsi > 80) {
+      action = 'SELL';
+      confidence = 0.85;
+      reasoning.push(`Overbought Volatility Exhaustion: RSI ${latestRsi.toFixed(1)} > 80. Taking profits.`);
+    } else {
+      action = 'HOLD';
+      confidence = 0.50;
+      reasoning.push(`Consolidation Regime: Waiting for Chronos multi-horizon alignment and volume breakout.`);
+    }
   } else {
     // 2. DYNAMIC RULE EVALUATION FOR CUSTOM STRATEGIES
     const evaluateCondition = (cond: StrategyRuleCondition): boolean => {

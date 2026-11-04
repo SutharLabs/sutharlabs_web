@@ -181,6 +181,7 @@ SutharLabs is styled using **Tailwind CSS v4**'s advanced CSS-variables-based `@
 
 ## 5. Technical Architecture & Infrastructure Guides
 
+* [Oracle Cloud VMs Replication & Disaster Recovery Runbook](file:///d:/Code/SutharLabs/website/docs/oracle_vms_replication_and_disaster_recovery_runbook.md)
 * [Database Migration & Dual-Database Sync Architecture](file:///d:/Code/SutharLabs/website/docs/database_migration_guide.md)
 * [Private Storage Vault & Oracle Cloud Infrastructure Guide](file:///d:/Code/SutharLabs/website/docs/storage_vault_and_infrastructure_guide.md)
 * [Self-Hosted LLM Inference Node & Benchmarks](file:///d:/Code/SutharLabs/website/docs/llm_inference_node_setup_and_benchmarks.md)

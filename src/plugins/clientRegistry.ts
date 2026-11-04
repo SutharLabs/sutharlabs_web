@@ -2,6 +2,7 @@ import { StockTrackerPlugin } from "./StockTracker/index.js";
 import { FlowDesignerPlugin } from "./FlowDesigner/index.js";
 import { DocNexusPlugin } from "./DocNexus/index.js";
 import { AccountingPlugin } from "./Accounting/index.js";
+import { SpeechStudioPlugin } from "./SpeechStudio/index.js";
 import { WorkspacePluginManifest, WorkspacePluginViewProps } from "./types.js";
 import React from "react";
 
@@ -15,6 +16,7 @@ export const CLIENT_PLUGIN_REGISTRY: Record<string, ClientPluginEntry> = {
   [FlowDesignerPlugin.manifest.id]: FlowDesignerPlugin as any,
   [DocNexusPlugin.manifest.id]: DocNexusPlugin as any,
   [AccountingPlugin.manifest.id]: AccountingPlugin as any,
+  [SpeechStudioPlugin.manifest.id]: SpeechStudioPlugin as any,
 };
 
 export function getAllClientPlugins(): ClientPluginEntry[] {

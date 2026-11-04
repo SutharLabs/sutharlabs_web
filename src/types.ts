@@ -24,7 +24,8 @@ export type WorkspaceTab =
   | 'Manage Portfolios' 
   | 'Contact Inquiries'
   | 'Reported Bugs'
-  | 'Doc Nexus' 
+  | 'Doc Nexus'
+  | 'Speech Studio' 
   | 'README' 
   | 'Plugin Store' 
   | 'Profile & Settings';

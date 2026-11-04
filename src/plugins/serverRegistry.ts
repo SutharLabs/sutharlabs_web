@@ -7,12 +7,15 @@ import { manifest as docNexusManifest } from "./DocNexus/manifest.js";
 import { registerRoutes as registerDocNexusRoutes } from "./DocNexus/routes.js";
 import { manifest as accountingManifest } from "./Accounting/manifest.js";
 import { registerRoutes as registerAccountingRoutes } from "./Accounting/routes.js";
+import { manifest as speechStudioManifest } from "./SpeechStudio/manifest.js";
+import { registerRoutes as registerSpeechStudioRoutes } from "./SpeechStudio/routes.js";
 
 export const SERVER_PLUGIN_ENTRIES = [
   { manifest: stockManifest, registerRoutes: registerStockRoutes },
   { manifest: flowManifest, registerRoutes: registerFlowRoutes },
   { manifest: docNexusManifest, registerRoutes: registerDocNexusRoutes },
-  { manifest: accountingManifest, registerRoutes: registerAccountingRoutes }
+  { manifest: accountingManifest, registerRoutes: registerAccountingRoutes },
+  { manifest: speechStudioManifest, registerRoutes: registerSpeechStudioRoutes }
 ];
 
 /**
