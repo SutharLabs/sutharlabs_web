@@ -183,6 +183,7 @@ SutharLabs is styled using **Tailwind CSS v4**'s advanced CSS-variables-based `@
 
 * [Database Migration & Dual-Database Sync Architecture](file:///d:/Code/SutharLabs/website/docs/database_migration_guide.md)
 * [Private Storage Vault & Oracle Cloud Infrastructure Guide](file:///d:/Code/SutharLabs/website/docs/storage_vault_and_infrastructure_guide.md)
+* [Self-Hosted LLM Inference Node & Benchmarks](file:///d:/Code/SutharLabs/website/docs/llm_inference_node_setup_and_benchmarks.md)
 * [Data Segregation & Privacy Architecture](file:///d:/Code/SutharLabs/website/docs/data_segregation_and_privacy_architecture.md)
 * [UI Styling & Design System Guidelines](file:///d:/Code/SutharLabs/website/docs/ui_and_design_system_guidelines.md)
 
