@@ -1142,9 +1142,9 @@
     "semantic_hash": ""
   },
   "docs/oracle_vms_replication_and_disaster_recovery_runbook.md": {
-    "mtime": 1793804918.0232232,
-    "seen": 1793807081.2573,
-    "ast_hash": "1f7ded7ced3a0667884d71551e68911a",
+    "mtime": 1793807922.761379,
+    "seen": 1793807953.886676,
+    "ast_hash": "cafc7162323d0a0f9dedf1584da2b720",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
@@ -1157,6 +1157,12 @@
     "mtime": 1793798774.3642683,
     "seen": 1793798887.0529265,
     "ast_hash": "f5744ffc47eecda38f8ab3745f11bb3e",
+    "semantic_hash": ""
+  },
+  "scripts/deploy.sh": {
+    "mtime": 1793807702.1590364,
+    "seen": 1793807953.886128,
+    "ast_hash": "0cb10e150c1f595779c911c2cd628d70",
     "semantic_hash": ""
   },
   "package-lock.json": {

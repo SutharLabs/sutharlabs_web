@@ -48,16 +48,17 @@ flowchart TD
 
 ### Fleet Configuration Matrix
 
-| Parameter | VM 1 (`sutharlabs-db-store`) | VM 2 (`sutharlabs-prod`) | VM 3 (`sutharlabs-backend`) *(New)* |
+| Parameter | VM 1 (`sutharlabs-db-store`) | VM 2 (`sutharlabs-prod`) | VM 3 (`sutharlabs-backend`) |
 | :--- | :--- | :--- | :--- |
-| **Public IP** | `137.23.61.191` | `132.226.190.125` | *(Assigned on creation)* |
-| **Private IP** | `10.0.0.122` | `10.0.0.188` | `10.0.0.x` (Same Subnet) |
+| **Public IP** | `137.23.61.191` | `132.226.190.125` | `130.210.37.199` |
+| **Private IP** | `10.0.0.122` | `10.0.0.188` | `10.0.0.228` |
 | **Shape** | `VM.Standard.E2.1.Micro` (AMD) | `VM.Standard.A1.Flex` (Ampere ARM) | `VM.Standard.E2.1.Micro` (AMD) |
 | **Compute** | 1 OCPU (2 vCPUs) | 2 to 4 OCPUs (2 to 4 vCPUs) | 1 OCPU (2 vCPUs) |
 | **Memory** | 1 GB RAM + 2 GB Swap | 12 to 24 GB RAM + 4 GB Swap | 1 GB RAM + 2 GB Swap |
 | **Boot Volume** | **50 GB NVMe SSD** | **47 GB NVMe SSD** | **50 GB NVMe SSD** |
 | **Primary Roles** | PostgreSQL 16 (:5432) + Storage Vault (:80) | Ollama LLM (:11434) + Neural TTS + Heavy Quant | Node.js Express Gateway (:3000) + Nginx (:80) |
 | **Anti-Reclaim** | `lookbusy` systemd daemon (22% CPU) | `lookbusy` systemd daemon (22% CPU) | `lookbusy` systemd daemon (22% CPU) |
+| **Health Probe** | `http://137.23.61.191/health` | `http://132.226.190.125/health` | `http://130.210.37.199/health` |
 
 ---
 
@@ -343,3 +344,150 @@ Move background triggers completely off Vercel:
 # Market hours trade simulation EOD loop (Mon-Fri 09:15 - 15:30 IST / 03:45 - 10:00 UTC) every 5 minutes
 */5 3-10 * * 1-5 cd /home/ubuntu/website && npx tsx scripts/cron-sync-database.ts >> /var/log/eod-sim.log 2>&1
 ```
+
+---
+
+## 10. VM 3 Setup: Node.js Express Backend Gateway & Deployment Automation
+
+* **Host:** `130.210.37.199` (Private: `10.0.0.228`, AMD x86_64, 1 OCPU / 2 vCPUs, 1 GB RAM + 2 GB Swap, 50 GB Boot SSD)
+* **Status:** Operational & Healthy (`http://130.210.37.199/health`)
+
+### A. System Preparation & Anti-Reclaim Setup
+```bash
+# 1. Configure 2 GB Swap
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+sudo sysctl vm.swappiness=10
+echo 'vm.swappiness=10' | sudo tee -a /etc/sysctl.conf
+
+# 2. Install Dependencies & Anti-Reclaim lookbusy daemon
+sudo apt-get update && sudo apt-get install -y build-essential curl git iptables-persistent nginx
+curl -s http://dev.alpinelinux.org/archive/lookbusy/lookbusy-1.4.tar.gz | tar -xz
+cd lookbusy-1.4 && ./configure && make && sudo make install
+
+# Configure lookbusy systemd service (maintains 22% CPU to prevent OCI idle reclamation)
+sudo tee /etc/systemd/system/lookbusy.service > /dev/null << 'EOF'
+[Unit]
+Description=OCI Always Free Anti-Reclamation Daemon
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/lookbusy -c 22 -r fixed
+Restart=always
+Nice=19
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now lookbusy
+
+# 3. Open Ports 80 & 443 in iptables
+sudo iptables -I INPUT 5 -p tcp --dport 80 -j ACCEPT
+sudo iptables -I INPUT 6 -p tcp --dport 443 -j ACCEPT
+sudo netfilter-persistent save
+```
+
+### B. Node.js & Application Setup
+```bash
+# Install Node.js v20 LTS and PM2
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs
+sudo npm install -g pm2
+
+# Clone repository and build application
+cd /home/ubuntu
+git clone https://github.com/SutharLabs/website.git
+cd website
+npm install --omit=dev
+npx prisma generate
+npm run build
+
+# Start PM2 with memory watchdog and register systemd persistence
+pm2 start server.js --name "sutharlabs-backend" -i 1 --max-memory-restart 400M
+pm2 startup systemd
+pm2 save
+```
+
+### C. Nginx Reverse Proxy Configuration
+Replace `/etc/nginx/sites-available/default` with:
+```nginx
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    server_name _;
+    client_max_body_size 100M;
+
+    # Health check probe
+    location = /health {
+        add_header Content-Type application/json;
+        return 200 '{"status":"healthy","tier":"sutharlabs-backend-gateway","engine":"Node.js Express + PM2","target_db":"PostgreSQL 16 on VM1"}';
+    }
+
+    # Proxy all traffic to Express backend on port 3000
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 180s;
+        proxy_connect_timeout 15s;
+        proxy_buffering off;
+    }
+}
+```
+Reload Nginx:
+```bash
+sudo nginx -t && sudo systemctl restart nginx
+```
+
+### D. Environment Variables Protocol (`.env`)
+Environment variables reside in `/home/ubuntu/website/.env` on VM 3:
+* **Database Connection:** `DATABASE_URL="postgres://sutharlabs_admin:SutharLabsSecretPassword2026!@137.23.61.191:5432/sutharlabs_production"`
+* **Local Listener:** `PORT=3000`
+* **AI Engine:** Points to VM 2 `http://10.0.0.188:80` (or `http://132.226.190.125:80`)
+
+Whenever variables in `.env` are modified, execute:
+```bash
+cd /home/ubuntu/website
+nano .env
+pm2 restart sutharlabs-backend --update-env
+```
+
+### E. Code Update & Zero-Downtime Deployment
+To deploy code changes from GitHub `main` to VM 3, execute the automated deployment script:
+```bash
+/home/ubuntu/website/scripts/deploy.sh
+```
+Or execute remotely from your development workstation:
+```powershell
+ssh -i D:\Code\SutharLabs\OracleFreeTier\ssh-key-2026-11-03.key ubuntu@130.210.37.199 "bash /home/ubuntu/website/scripts/deploy.sh"
+```
+
+The script automatically executes:
+1. `git pull origin main`
+2. `npx prisma generate`
+3. `npm run build`
+4. `pm2 restart sutharlabs-backend --update-env`
+5. Verifies probe status via `curl -s http://127.0.0.1/health`
+
+### F. Vercel Dual-Mode Switch Activation
+To offload API compute from Vercel to VM 3:
+1. Navigate to **Vercel Project Settings -> Environment Variables**.
+2. Add or update:
+   - `BACKEND_TARGET` = `ORACLE` (Setting to `VERCEL` instantly reverts execution to Vercel Lambdas)
+   - `ORACLE_BACKEND_URL` = `http://130.210.37.199`
+3. Redeploy or promote latest deployment.
+*(Note: If VM 3 is ever unreachable or times out after 15s, `api/server.ts` automatically falls back to local Vercel execution without throwing errors to clients).*
+
