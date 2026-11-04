@@ -56,16 +56,16 @@
     "semantic_hash": "6776e03727fcdb41ca9db460f8d817b7"
   },
   "server.ts": {
-    "mtime": 1792246535.4454293,
-    "seen": 1793772051.9616137,
-    "ast_hash": "5205c7387d29013344f4cb253ab58994",
-    "semantic_hash": "5205c7387d29013344f4cb253ab58994"
+    "mtime": 1793777260.886534,
+    "seen": 1793777603.4232202,
+    "ast_hash": "7de9dbe6351903eb10b7e83b0000a782",
+    "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1792223968.404363,
-    "seen": 1793772051.9617426,
-    "ast_hash": "1b0a2fa83bbb1efc1b3b72022e7352f5",
-    "semantic_hash": "1b0a2fa83bbb1efc1b3b72022e7352f5"
+    "mtime": 1793777415.1655202,
+    "seen": 1793777603.4232237,
+    "ast_hash": "73144c7f8788b66a139bffc84a3c2f12",
+    "semantic_hash": ""
   },
   "src/components/AccountingView.tsx": {
     "mtime": 1791625128.963614,
@@ -74,10 +74,10 @@
     "semantic_hash": "4d0419c7df9b5bc4e1a337e854b747e7"
   },
   "src/components/AdminConsoleView.tsx": {
-    "mtime": 1792229994.809384,
-    "seen": 1793772051.9622116,
-    "ast_hash": "e4963379318e1cb39ac6e75acd7cd50d",
-    "semantic_hash": "e4963379318e1cb39ac6e75acd7cd50d"
+    "mtime": 1793777461.6861875,
+    "seen": 1793777603.42323,
+    "ast_hash": "32bb9969ef1341d82b13d0354a37a7f1",
+    "semantic_hash": ""
   },
   "src/components/AuthPage.tsx": {
     "mtime": 1790497065.4078505,
@@ -812,10 +812,10 @@
     "semantic_hash": "1f8dfc3e3f1a4d86bc600f06aae2ca08"
   },
   "src/types.ts": {
-    "mtime": 1791650478.9399848,
-    "seen": 1793772051.975854,
-    "ast_hash": "75bb312370c48dfe44f7813ff741a4b6",
-    "semantic_hash": "75bb312370c48dfe44f7813ff741a4b6"
+    "mtime": 1793777600.0506475,
+    "seen": 1793777603.423572,
+    "ast_hash": "35c42762ab57d565899189b855bcc6ec",
+    "semantic_hash": ""
   },
   "tsconfig.json": {
     "mtime": 1790497065.4380708,
@@ -1037,6 +1037,18 @@
     "mtime": 1791100089.801958,
     "seen": 1793773436.6223059,
     "ast_hash": "f683a7a584a7e9abc8cc04c1b053e990",
+    "semantic_hash": ""
+  },
+  "src/components/ManageDatabaseView.tsx": {
+    "mtime": 1793777513.4660857,
+    "seen": 1793777603.4232714,
+    "ast_hash": "75101684990ae796a0d6732a3efea19a",
+    "semantic_hash": ""
+  },
+  "src/services/databaseSyncService.ts": {
+    "mtime": 1793777269.33453,
+    "seen": 1793777603.4235613,
+    "ast_hash": "82410bf5b6e7a64aeb49be5f84c26291",
     "semantic_hash": ""
   },
   "package-lock.json": {

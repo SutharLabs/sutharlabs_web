@@ -27,6 +27,11 @@ import {
   verifyBlobWebhookSignature
 } from "./src/services/blobStorage.js";
 import {
+  getDatabaseStatus,
+  executeDatabaseSync,
+  exportDatabaseDump
+} from "./src/services/databaseSyncService.js";
+import {
   securityHeaders,
   requestLogger,
   authLimiter,
@@ -1748,6 +1753,46 @@ app.get("/api/admin/telemetry/live-logs", authenticateToken, requireAdmin, async
     res.json({ logs });
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch live telemetry logs." });
+  }
+});
+
+
+// ==========================================
+// ADMIN DATABASE MANAGEMENT & DISASTER RECOVERY API
+// ==========================================
+
+// GET /api/admin/database/status
+app.get("/api/admin/database/status", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const status = await getDatabaseStatus();
+    res.json({ success: true, ...status });
+  } catch (error: any) {
+    console.error("[Database Admin] Error fetching database status:", error);
+    res.status(500).json({ error: error.message || "Failed to retrieve database status." });
+  }
+});
+
+// POST /api/admin/database/sync
+app.post("/api/admin/database/sync", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const result = await executeDatabaseSync();
+    res.json(result);
+  } catch (error: any) {
+    console.error("[Database Admin] Error during database sync:", error);
+    res.status(500).json({ error: error.message || "Failed to synchronize databases." });
+  }
+});
+
+// GET /api/admin/database/export
+app.get("/api/admin/database/export", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const dump = await exportDatabaseDump();
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', 'attachment; filename="sutharlabs-db-dump.json"');
+    res.json(dump);
+  } catch (error: any) {
+    console.error("[Database Admin] Error exporting database snapshot:", error);
+    res.status(500).json({ error: error.message || "Failed to export database snapshot." });
   }
 });
 

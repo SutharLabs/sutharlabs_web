@@ -8,6 +8,7 @@ import FlowDesignerView from './components/FlowDesignerView';
 import AccountingView from './components/AccountingView';
 import MutedMarkdownView from './components/MutedMarkdownView';
 import AdminConsoleView from './components/AdminConsoleView';
+import ManageDatabaseView from './components/ManageDatabaseView';
 import ManageAppsView from './components/ManageAppsView';
 import ManagePluginsView from './components/ManagePluginsView';
 import ManagePortfoliosView from './components/ManagePortfoliosView';
@@ -37,6 +38,7 @@ const INSTALLED_PLUGINS: { name: WorkspaceTab; icon: string; size: string }[] = 
 
 const ADMIN_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
   { name: 'Admin Console', icon: 'security', size: '' },
+  { name: 'Manage Database', icon: 'database', size: '' },
   { name: 'Reported Bugs', icon: 'bug_report', size: '' },
   { name: 'Contact Inquiries', icon: 'mark_email_unread', size: '' },
   { name: 'Manage Plugins', icon: 'bolt', size: '' },
@@ -56,6 +58,7 @@ const ROUTE_MAP: Record<WorkspaceTab, string> = {
   'Custom Flow': '/workspace/flow',
   'Accounting': '/workspace/accounting',
   'Admin Console': '/admin',
+  'Manage Database': '/admin/database',
   'Reported Bugs': '/admin/bug-reports',
   'Contact Inquiries': '/admin/contact-inquiries',
   'Doc Nexus': '/workspace/docnexus',
@@ -640,7 +643,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 />
               )}
 
-              {(activeTab === 'Admin Console' || activeTab === 'Reported Bugs' || activeTab === 'Contact Inquiries' || activeTab === 'Manage Plugins' || activeTab === 'Manage Apps' || activeTab === 'Manage Portfolios') && user.role !== 'Admin' && (
+              {(activeTab === 'Admin Console' || activeTab === 'Manage Database' || activeTab === 'Reported Bugs' || activeTab === 'Contact Inquiries' || activeTab === 'Manage Plugins' || activeTab === 'Manage Apps' || activeTab === 'Manage Portfolios') && user.role !== 'Admin' && (
                   <div className="glass-panel p-8 rounded-xl border border-red-900/20 bg-red-950/5 flex flex-col items-center justify-center text-center max-w-lg mx-auto my-12 space-y-4">
                     <div className="w-16 h-16 rounded-full bg-red-950/20 border border-red-900 flex items-center justify-center mb-2">
                       <span className="material-symbols-outlined text-3xl text-[#ffb4ab]">security</span>
@@ -654,6 +657,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               
               {activeTab === 'Admin Console' && user.role === 'Admin' && (
                 <AdminConsoleView logs={logs} onAddLog={addLog} currentUserEmail={user.email} userToken={user.token || ''} theme={theme} />
+              )}
+              {activeTab === 'Manage Database' && user.role === 'Admin' && (
+                <ManageDatabaseView logs={logs} onAddLog={addLog} userToken={user.token || ''} theme={theme} />
               )}
               {activeTab === 'Reported Bugs' && user.role === 'Admin' && (
                 <ManageBugReportsView logs={logs} onAddLog={addLog} userToken={user.token || ''} theme={theme} />
@@ -683,6 +689,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 'Plugin Store',
                 'Profile & Settings',
                 'Admin Console',
+                'Manage Database',
                 'Reported Bugs',
                 'Contact Inquiries',
                 'Manage Apps',

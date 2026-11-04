@@ -16,6 +16,7 @@ export type WorkspaceTab =
   | 'Custom Flow' 
   | 'Accounting' 
   | 'Admin Console' 
+  | 'Manage Database'
   | 'Manage Plugins' 
   | 'Manage Apps' 
   | 'Manage Portfolios' 
@@ -102,4 +103,3 @@ export interface StorePlugin {
   iconSymbol: string;
   tags: string[];
 }
-

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { RegisteredUser, TerminalLog } from '../types';
 import { 
   Users, 
@@ -61,6 +62,7 @@ interface AdminConsoleProps {
 
 export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, userToken, theme = 'dark' }: AdminConsoleProps) {
   const isLight = theme === 'light';
+  const navigate = useNavigate();
   // Load or initialize registered users from localStorage
   const [users, setUsers] = useState<RegisteredUser[]>([]);
   const [newUser, setNewUser] = useState({ name: '', email: '', role: 'Developer' as const });
@@ -585,6 +587,39 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
             {isRefreshingTelemetry ? 'REFRESHING...' : 'RUN DIAGNOSTICS'}
           </button>
         </div>
+      </div>
+
+
+      {/* Database Active & Backup Status Cockpit Widget */}
+      <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-lg bg-[#00dbe7]/10 border border-[#00dbe7]/25 flex items-center justify-center shrink-0">
+            <Database className="w-5 h-5 text-[#00dbe7]" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-sm text-on-surface font-sans">Multi-Tier Database Architecture</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                PRIMARY: ORACLE CLOUD VM (137.23.61.191)
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-sky-500/10 text-sky-400 border border-sky-500/30">
+                BACKUP: NEON SERVERLESS
+              </span>
+            </div>
+            <p className="text-[11px] text-on-surface-variant font-mono mt-0.5">
+              Zero-quota-throttling production database on Oracle Always Free VM with hot disaster recovery replica on Neon AWS Singapore.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/admin/database')}
+          className="px-3.5 py-2 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer bg-[#00dbe7]/10 hover:bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/30 flex items-center gap-2 shrink-0 shadow-sm"
+        >
+          <Database className="w-3.5 h-3.5" />
+          <span>Manage &amp; Sync Database</span>
+        </button>
       </div>
 
       {/* Aggregate Telemetry Cards */}
