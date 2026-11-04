@@ -8,7 +8,7 @@ This document outlines the mandatory steps every developer must follow before co
 
 | Type of Changes | Required Pre-Commit Commands | Files to Stage & Commit |
 | :--- | :--- | :--- |
-| **Plugin Code Modified** (`src/plugins/*`) | 1. Bump version in `manifest.json`<br>2. `npm run package:plugins`<br>3. `npm run lint`<br>4. `npm run build` | `src/plugins/<Plugin>/*`<br>`src/plugins/<Plugin>/manifest.json`<br>`storage/plugins/*` |
+| **Plugin Code Modified** (`src/plugins/*`) | 1. Bump version in `manifest.json` & `manifest.ts` (start new at `0.1.0`, bump at least `+0.0.1` on each commit)<br>2. `npm run package:plugins` (optional package archive)<br>3. `npm run lint`<br>4. `npm run build`<br>5. `graphify update .` | `src/plugins/<Plugin>/*`<br>`src/plugins/<Plugin>/manifest.json`<br>`storage/plugins/*` |
 | **Database Schema** (`prisma/schema.prisma`) | 1. `npx prisma db push`<br>2. `npx prisma generate`<br>3. `npm run lint`<br>4. `npm run build` | `prisma/schema.prisma`<br>`seed.ts` (if updated) |
 | **Core UI / Server Code** (`src/components/*`, `server.ts`) | 1. `npm run lint`<br>2. `npm run build` | Modified source files |
 | **Documentation Only** (`docs/*`, `*.md`) | Verification of markdown links & preview | `.md` files |

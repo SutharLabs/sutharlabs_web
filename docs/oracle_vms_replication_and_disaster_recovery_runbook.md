@@ -218,3 +218,4 @@ ORACLE_AI_SECRET="sutharlabs-matrix-ai-prod-2026"
 * **Tiered Rate Limiting:**
   * **Admin:** Unlimited queries (`isUnlimited: true`).
   * **Developer / Guest:** 10 requests per hour with automatic countdown resets.
+

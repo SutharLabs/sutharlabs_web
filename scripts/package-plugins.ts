@@ -23,7 +23,7 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'StockTracker',
     id: 'wp_stock_analyzer',
     name: 'Stock Tracker',
-    version: '1.1.4',
+    version: '1.1.5',
     category: 'Finance',
     type: 'Native',
     description: 'Enterprise multi-market quantitative trading suite featuring live TradingView charts, algorithmic strategies, visual condition builder, institutional backtesting, and automated trade simulation.',
@@ -72,6 +72,17 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     type: 'Native',
     description: 'Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync.',
     iconSymbol: 'currency_exchange',
+    minEngineVersion: '0.1.0'
+  },
+  {
+    dirName: 'SpeechStudio',
+    id: 'speech-studio',
+    name: 'Speech Studio',
+    version: '0.1.0',
+    category: 'AI & Multimedia',
+    type: 'Native',
+    description: 'Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting.',
+    iconSymbol: 'record_voice_over',
     minEngineVersion: '0.1.0'
   }
 ];
