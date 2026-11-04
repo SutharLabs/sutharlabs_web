@@ -56,15 +56,15 @@
     "semantic_hash": "6776e03727fcdb41ca9db460f8d817b7"
   },
   "server.ts": {
-    "mtime": 1793785987.0106013,
-    "seen": 1793788012.1980526,
-    "ast_hash": "15bd0df525900f0c9277d6d1f2b525e1",
+    "mtime": 1793792292.347746,
+    "seen": 1793792691.923788,
+    "ast_hash": "58e3fee88c065a0ba79f2a8dfd5d644e",
     "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1793787977.0015464,
-    "seen": 1793788012.1980553,
-    "ast_hash": "e44dc9ad9637f39c81d3c4b0b7cbea02",
+    "mtime": 1793792472.1928449,
+    "seen": 1793792691.9237905,
+    "ast_hash": "14cf42b09faa51a79865d4c5dbdc5cb4",
     "semantic_hash": ""
   },
   "src/components/AccountingView.tsx": {
@@ -74,9 +74,9 @@
     "semantic_hash": "4d0419c7df9b5bc4e1a337e854b747e7"
   },
   "src/components/AdminConsoleView.tsx": {
-    "mtime": 1793781253.5280497,
-    "seen": 1793783643.536722,
-    "ast_hash": "32bb9969ef1341d82b13d0354a37a7f1",
+    "mtime": 1793792511.7219095,
+    "seen": 1793792691.9237933,
+    "ast_hash": "6b4eb9a17869a4596f355af3034c72ca",
     "semantic_hash": ""
   },
   "src/components/AuthPage.tsx": {
@@ -812,9 +812,9 @@
     "semantic_hash": "1f8dfc3e3f1a4d86bc600f06aae2ca08"
   },
   "src/types.ts": {
-    "mtime": 1793781253.5333345,
-    "seen": 1793783643.5369375,
-    "ast_hash": "290d25d0a0311e11fed2f8073ae0f977",
+    "mtime": 1793792203.8074214,
+    "seen": 1793792691.923974,
+    "ast_hash": "2151ba3d9764c2627c0d736855e868cf",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -1073,6 +1073,18 @@
     "mtime": 1793787923.367748,
     "seen": 1793788012.1983385,
     "ast_hash": "8e957d4fd9af5b62552dd6024e521717",
+    "semantic_hash": ""
+  },
+  "src/components/StorageVaultView.tsx": {
+    "mtime": 1793792625.328256,
+    "seen": 1793792691.9238322,
+    "ast_hash": "6e23f6a5e649c4df9a82aa69df722064",
+    "semantic_hash": ""
+  },
+  "src/services/vaultStorageService.ts": {
+    "mtime": 1793792215.6631842,
+    "seen": 1793792691.9239726,
+    "ast_hash": "02bc74a9cc61bb4883b16a7dbc1fb1a0",
     "semantic_hash": ""
   },
   "package-lock.json": {

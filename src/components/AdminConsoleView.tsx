@@ -622,6 +622,38 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
         </button>
       </div>
 
+      {/* Oracle Cloud Storage Vault Cockpit Widget */}
+      <div className="glass-panel p-4 rounded-xl border border-outline/15 bg-surface-container-low/30 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-[#ce5dff]/10 border border-[#ce5dff]/25 flex items-center justify-center shrink-0 shadow-sm">
+            <HardDrive className="w-5 h-5 text-[#c084fc] shrink-0" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-sm text-on-surface font-sans">Persistent Storage Vault</span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-purple-500/10 text-purple-400 border border-purple-500/30">
+                ORACLE VM: 137.23.61.191 (50 GB SSD)
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                &lt; 60 MB RAM OVERHEAD
+              </span>
+            </div>
+            <p className="text-[11px] text-on-surface-variant font-mono mt-0.5">
+              Secure self-hosted file vault on sutharlabs-db-store for private database dumps, backups, credentials, and encrypted assets.
+            </p>
+          </div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => navigate('/admin/storage')}
+          className="h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer bg-[#ce5dff]/10 hover:bg-[#ce5dff]/20 text-[#c084fc] border border-[#ce5dff]/30 flex items-center gap-1.5 shrink-0 shadow-sm"
+        >
+          <HardDrive className="w-3.5 h-3.5 shrink-0" />
+          <span>Open Storage Vault</span>
+        </button>
+      </div>
+
       {/* Aggregate Telemetry Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         

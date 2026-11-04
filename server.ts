@@ -1798,6 +1798,127 @@ app.get("/api/admin/database/sync-history", authenticateToken, requireAdmin, asy
 });
 
 // ==========================================
+// ORACLE CLOUD STORAGE VAULT API (VM1: 137.23.61.191)
+// ==========================================
+const ORACLE_VAULT_URL = process.env.ORACLE_VAULT_URL || "http://137.23.61.191";
+const ORACLE_VAULT_SECRET = process.env.ORACLE_VAULT_SECRET || "sutharlabs-vault-master-sec-2026-matrix";
+
+// GET /api/vault/health - Status check
+app.get("/api/vault/health", async (_req: any, res: any) => {
+  try {
+    const response = await fetch(`${ORACLE_VAULT_URL}/health`);
+    const data = await response.json();
+    res.json(data);
+  } catch (err: any) {
+    res.status(502).json({ error: "Storage vault unreachable", details: err.message });
+  }
+});
+
+// GET /api/vault/stats - Admin telemetry & disk stats
+app.get("/api/vault/stats", authenticateToken, requireAdmin, async (_req: any, res: any) => {
+  try {
+    const response = await fetch(`${ORACLE_VAULT_URL}/api/stats`, {
+      headers: { "x-vault-token": ORACLE_VAULT_SECRET }
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err: any) {
+    res.status(502).json({ error: "Failed to fetch vault stats from Oracle VM", details: err.message });
+  }
+});
+
+// GET /api/vault/files - List files in vault
+app.get("/api/vault/files", authenticateToken, requireAdmin, async (_req: any, res: any) => {
+  try {
+    const response = await fetch(`${ORACLE_VAULT_URL}/api/files`, {
+      headers: { "x-vault-token": ORACLE_VAULT_SECRET }
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err: any) {
+    res.status(502).json({ error: "Failed to list vault files from Oracle VM", details: err.message });
+  }
+});
+
+// POST /api/vault/upload - Stream file upload to Oracle VM
+app.post("/api/vault/upload", authenticateToken, requireAdmin, upload.single("file"), async (req: any, res: any) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: "No file provided for vault storage." });
+    }
+
+    const formData = new FormData();
+    const blob = new Blob([req.file.buffer], { type: req.file.mimetype });
+    formData.append("file", blob, req.file.originalname);
+    if (req.body.category) formData.append("category", req.body.category);
+
+    const response = await fetch(`${ORACLE_VAULT_URL}/api/upload`, {
+      method: "POST",
+      headers: { "x-vault-token": ORACLE_VAULT_SECRET },
+      body: formData
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json(data);
+    }
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to upload file to Oracle VM Vault", details: err.message });
+  }
+});
+
+// GET /api/vault/download/:id - Stream file download from Oracle VM
+app.get("/api/vault/download/:id", async (req: any, res: any) => {
+  try {
+    const fileId = req.params.id;
+    const authHeader = req.headers.authorization;
+    const queryToken = req.query.token;
+    const user = authHeader ? verifyToken(authHeader.replace("Bearer ", "")) : (queryToken ? verifyToken(queryToken) : null);
+    if (!user || user.role !== 'Admin') {
+      return res.status(401).json({ error: "Unauthorized: Admin privileges required to access vault storage." });
+    }
+
+    const targetUrl = `${ORACLE_VAULT_URL}/api/download/${encodeURIComponent(fileId)}?token=${ORACLE_VAULT_SECRET}`;
+    const response = await fetch(targetUrl);
+    if (!response.ok) {
+      return res.status(response.status).json({ error: "Failed to retrieve file from storage vault." });
+    }
+
+    const contentType = response.headers.get("content-type");
+    const contentDisposition = response.headers.get("content-disposition");
+    const contentLength = response.headers.get("content-length");
+    if (contentType) res.setHeader("Content-Type", contentType);
+    if (contentDisposition) res.setHeader("Content-Disposition", contentDisposition);
+    if (contentLength) res.setHeader("Content-Length", contentLength);
+
+    if (response.body) {
+      const { Readable } = await import("stream");
+      Readable.fromWeb(response.body as any).pipe(res);
+    } else {
+      res.end();
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: "Download stream failed", details: err.message });
+  }
+});
+
+// DELETE /api/vault/files/:id - Delete file from vault
+app.delete("/api/vault/files/:id", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const fileId = req.params.id;
+    const response = await fetch(`${ORACLE_VAULT_URL}/api/files/${encodeURIComponent(fileId)}`, {
+      method: "DELETE",
+      headers: { "x-vault-token": ORACLE_VAULT_SECRET }
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: "Failed to delete file from Oracle VM Vault", details: err.message });
+  }
+});
+
+// ==========================================
 // AUTOMATED CRON REPLICATION SCHEDULER API
 // ==========================================
 // Triggered by Vercel Cron, Cron-Job.org, or external crons

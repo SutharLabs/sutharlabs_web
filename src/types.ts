@@ -17,6 +17,7 @@ export type WorkspaceTab =
   | 'Accounting' 
   | 'Admin Console' 
   | 'Manage Database'
+  | 'Storage Vault'
   | 'Manage Plugins' 
   | 'Manage Apps' 
   | 'Manage Portfolios' 
@@ -26,6 +27,32 @@ export type WorkspaceTab =
   | 'README' 
   | 'Plugin Store' 
   | 'Profile & Settings';
+
+export interface VaultFileItem {
+  id: string;
+  originalName: string;
+  filename: string;
+  size: number;
+  mimeType: string;
+  checksum: string;
+  uploadedAt: string;
+  category?: string;
+}
+
+export interface VaultDiskStats {
+  totalBytes: number;
+  usedBytes: number;
+  availBytes: number;
+  percentUsed: string;
+}
+
+export interface VaultStatsResponse {
+  totalFiles: number;
+  totalVaultBytes: number;
+  disk: VaultDiskStats;
+  uptimeSeconds: number;
+  memory?: Record<string, number>;
+}
 
 export interface ContactInquiryItem {
   id: string;

@@ -1,6 +1,6 @@
 {
   "0": "react",
-  "1": "indicatorEngine.ts",
+  "1": "tradeSimulator.ts",
   "2": "lucide-react",
   "3": "DocNexusStudio.tsx",
   "4": "dependencies",
@@ -40,11 +40,15 @@
   "38": "scripts",
   "39": "TerminalLog",
   "40": "vite",
-  "41": "strategies/types.ts",
+  "41": "getPrismaClient",
   "42": "server.ts",
-  "43": "StockScannerPanel.tsx",
+  "43": "scannerEngine.ts",
   "44": "WorkspaceLayout",
   "45": "dotenv",
   "46": "ManageBugReportsView.tsx",
-  "47": "vercel.json"
+  "47": "vercel.json",
+  "48": "StockAnalyzer/index.ts",
+  "49": "StorageVaultView.tsx",
+  "50": "technicalindicators",
+  "51": "storageUtils.ts"
 }
