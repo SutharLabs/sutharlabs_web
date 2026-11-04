@@ -19,8 +19,9 @@ import {
 } from './friction.js';
 import { normalizeTicker, formatTickerDisplay } from '../../StockAnalyzer/index.js';
 
-// YahooFinance client instance
-const yf = new (YahooFinance as any)({ suppressNotices: ['yahooSurvey'] });
+// Instantiate YahooFinance client (compatible with both ESM and CJS bundling)
+const YF = (YahooFinance as any)?.default || YahooFinance;
+const yf = typeof YF === 'function' ? new YF({ suppressNotices: ['yahooSurvey'] }) : (typeof (YahooFinance as any) === 'function' ? new (YahooFinance as any)({ suppressNotices: ['yahooSurvey'] }) : (YF || YahooFinance));
 
 export async function fetchHistoricalBacktestBars(
   symbol: string,

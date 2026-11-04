@@ -6,8 +6,8 @@
     "semantic_hash": "6eab2f1626c4f1fbdd66aa25ee74fd00"
   },
   "api/server.ts": {
-    "mtime": 1793804076.5925167,
-    "seen": 1793804263.0081954,
+    "mtime": 1793804603.1984065,
+    "seen": 1793807081.2567341,
     "ast_hash": "7076ab89c1a27fb071d4d55117093b58",
     "semantic_hash": ""
   },
@@ -38,9 +38,9 @@
     "semantic_hash": "6f5aff542ba80bd5af0915d18a041af9"
   },
   "scripts/package-plugins.ts": {
-    "mtime": 1793801553.7990663,
-    "seen": 1793802043.6565664,
-    "ast_hash": "a6d11adae803ccef7404a4b444f7f065",
+    "mtime": 1793806987.2042165,
+    "seen": 1793807081.2567647,
+    "ast_hash": "b4df2076d0416b0dc2416724fb081476",
     "semantic_hash": ""
   },
   "scripts/setup-simulation-table.ts": {
@@ -56,8 +56,8 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1793804093.813099,
-    "seen": 1793804263.008225,
+    "mtime": 1793804603.8686607,
+    "seen": 1793807081.256776,
     "ast_hash": "14f7caee7d8c978d32a04d70ee973b1b",
     "semantic_hash": ""
   },
@@ -572,10 +572,10 @@
     "semantic_hash": "3ce4f1ef91315cd446f68d0f411dba89"
   },
   "src/plugins/StockTracker/backtest/engine.ts": {
-    "mtime": 1791471871.4979773,
-    "seen": 1793772051.9721477,
-    "ast_hash": "d60a7f0c1d645e815736e4ddb0ad07b2",
-    "semantic_hash": "d60a7f0c1d645e815736e4ddb0ad07b2"
+    "mtime": 1793806938.9040823,
+    "seen": 1793807081.257093,
+    "ast_hash": "c0556e0db41c62cf6c84b598bd4cc711",
+    "semantic_hash": ""
   },
   "src/plugins/StockTracker/backtest/friction.ts": {
     "mtime": 1791257359.6080987,
@@ -644,15 +644,15 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1793801572.5164096,
-    "seen": 1793802043.6567836,
-    "ast_hash": "bd4113e19c74e1a4ec963199cfe46aac",
+    "mtime": 1793806987.2024698,
+    "seen": 1793807081.2571337,
+    "ast_hash": "a03fc207c3bb6e9f5ed8a2939222bcaf",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
-    "mtime": 1793798838.8301482,
-    "seen": 1793798887.052868,
-    "ast_hash": "fb203162cbe8445d6fbffe09a2064ffb",
+    "mtime": 1793806987.2034764,
+    "seen": 1793807081.2571368,
+    "ast_hash": "d8cf6c8438cf5c40111811bc46d513b5",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/news/fetcher.ts": {
@@ -824,8 +824,8 @@
     "semantic_hash": "3fb5d98480b7ea548bcaa3616c444da1"
   },
   "vercel.json": {
-    "mtime": 1793804122.4500782,
-    "seen": 1793804263.0085535,
+    "mtime": 1793804603.9693885,
+    "seen": 1793807081.2572439,
     "ast_hash": "dd9fd2dca5e0993061257bd328ec3e23",
     "semantic_hash": ""
   },
@@ -1142,9 +1142,9 @@
     "semantic_hash": ""
   },
   "docs/oracle_vms_replication_and_disaster_recovery_runbook.md": {
-    "mtime": 1793798171.4289804,
-    "seen": 1793798887.0529509,
-    "ast_hash": "354aded320731a027aacddb3d793149a",
+    "mtime": 1793804918.0232232,
+    "seen": 1793807081.2573,
+    "ast_hash": "1f7ded7ced3a0667884d71551e68911a",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
