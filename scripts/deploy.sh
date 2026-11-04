@@ -20,3 +20,4 @@ pm2 restart sutharlabs-backend --update-env
 echo "✅ [SutharLabs Deploy] Deployment finished successfully! Health status:"
 curl -s http://127.0.0.1/health
 echo ""
+

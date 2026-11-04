@@ -6,12 +6,13 @@ This guide details the architecture, setup, and frontend integration of the **Su
 
 ## 1. Fleet Architecture Overview
 
-The SutharLabs cloud infrastructure leverages Oracle Cloud's Always Free tier across two dedicated virtual machines in Mumbai (`ap-mumbai-1`):
+The SutharLabs cloud infrastructure leverages Oracle Cloud's Always Free tier across three dedicated virtual machines in Mumbai (`ap-mumbai-1`):
 
-| VM Name | Shape & Specs | Public IP | Role | RAM Footprint |
-| :--- | :--- | :--- | :--- | :--- |
-| **`sutharlabs-db-store`** | AMD `VM.Standard.E2.1.Micro` (1 OCPU, 1 GB RAM + 2GB swap, 50 GB SSD) | `137.23.61.191` | Primary PostgreSQL 16 DB + Storage Vault Daemon | ~250 MB (Postgres) + ~55 MB (Vault) |
-| **`sutharlabs-prod`** | Ampere `VM.Standard.A1.Flex` (2 OCPU, 12 GB RAM, 47 GB SSD) | `132.226.190.125` | Production App Host & Local LLM Inference Node | Workload Ready |
+| VM Name | Shape & Specs | Public IP | Private IP | Role & Usage | RAM Footprint |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`sutharlabs-db-store`** (VM 1) | AMD `VM.Standard.E2.1.Micro` (1 OCPU, 1 GB RAM + 2GB swap, 50 GB SSD) | `137.23.61.191` | `10.0.0.122` | Primary PostgreSQL 16 DB + Storage Vault Daemon + DR Sync | ~250 MB (Postgres) + ~55 MB (Vault) |
+| **`sutharlabs-prod`** (VM 2) | Ampere `VM.Standard.A1.Flex` (2–4 OCPU, 12–24 GB RAM, 47 GB SSD) | `132.226.190.125` | `10.0.0.188` | Local LLM Inference (Ollama) + Neural Speech Studio + Heavy Quant | 4–12 GB (Model & Compute dependent) |
+| **`sutharlabs-backend`** (VM 3) | AMD `VM.Standard.E2.1.Micro` (1 OCPU, 1 GB RAM + 2GB swap, 50 GB SSD) | `130.210.37.199` | `10.0.0.228` | Production Node.js Express Gateway (:3000) + Nginx Ingress (:80) | ~75 MB (Express + PM2) + ~15 MB (Nginx) |
 
 ---
 

@@ -51,14 +51,59 @@ flowchart TD
 | Parameter | VM 1 (`sutharlabs-db-store`) | VM 2 (`sutharlabs-prod`) | VM 3 (`sutharlabs-backend`) |
 | :--- | :--- | :--- | :--- |
 | **Public IP** | `137.23.61.191` | `132.226.190.125` | `130.210.37.199` |
-| **Private IP** | `10.0.0.122` | `10.0.0.188` | `10.0.0.228` |
-| **Shape** | `VM.Standard.E2.1.Micro` (AMD) | `VM.Standard.A1.Flex` (Ampere ARM) | `VM.Standard.E2.1.Micro` (AMD) |
+| **Private IP (VCN)** | `10.0.0.122` | `10.0.0.188` | `10.0.0.228` |
+| **Shape** | `VM.Standard.E2.1.Micro` (AMD x86_64) | `VM.Standard.A1.Flex` (Ampere Altra ARM64) | `VM.Standard.E2.1.Micro` (AMD x86_64) |
 | **Compute** | 1 OCPU (2 vCPUs) | 2 to 4 OCPUs (2 to 4 vCPUs) | 1 OCPU (2 vCPUs) |
-| **Memory** | 1 GB RAM + 2 GB Swap | 12 to 24 GB RAM + 4 GB Swap | 1 GB RAM + 2 GB Swap |
+| **Memory & Swap** | 1 GB RAM + 2 GB Swap | 12 to 24 GB RAM + 4 GB Swap | 1 GB RAM + 2 GB Swap |
 | **Boot Volume** | **50 GB NVMe SSD** | **47 GB NVMe SSD** | **50 GB NVMe SSD** |
-| **Primary Roles** | PostgreSQL 16 (:5432) + Storage Vault (:80) | Ollama LLM (:11434) + Neural TTS + Heavy Quant | Node.js Express Gateway (:3000) + Nginx (:80) |
-| **Anti-Reclaim** | `lookbusy` systemd daemon (22% CPU) | `lookbusy` systemd daemon (22% CPU) | `lookbusy` systemd daemon (22% CPU) |
-| **Health Probe** | `http://137.23.61.191/health` | `http://132.226.190.125/health` | `http://130.210.37.199/health` |
+| **Active Ports** | `22` (SSH), `80` (Vault), `5432` (PostgreSQL) | `22` (SSH), `80` (Nginx AI Proxy), `11434` (Ollama) | `22` (SSH), `80` (Nginx), `3000` (Express PM2) |
+| **Primary Usage & Role** | PostgreSQL 16 Primary DB + Storage Vault + DR Sync | Ollama AI Inference + Neural Speech Studio + Quant Engine | Node.js Express Gateway + Vercel Smart Proxy Target |
+| **Anti-Reclaim Daemon** | `lookbusy` systemd daemon (22% CPU, `Nice=19`) | `lookbusy` systemd daemon (22% CPU, `Nice=19`) | `lookbusy` systemd daemon (22% CPU, `Nice=19`) |
+| **Health Probe URL** | `http://137.23.61.191/health` | `http://132.226.190.125/health` | `http://130.210.37.199/health` |
+| **SSH Access Command** | `ssh -i <key> ubuntu@137.23.61.191` | `ssh -i <key> ubuntu@132.226.190.125` | `ssh -i <key> ubuntu@130.210.37.199` |
+| **Code Update Method** | Manual Git pull / Prisma schema sync | Model pull (`ollama pull`) & Cron update | One-command deploy: `bash scripts/deploy.sh` |
+
+---
+
+### Detailed Breakdown: Roles, Usage & Workload Segregation
+
+#### 1. VM 1: `sutharlabs-db-store` (Database & Storage Vault)
+* **Public IP:** `137.23.61.191` | **Private IP:** `10.0.0.122`
+* **Hardware:** AMD x86_64, 1 OCPU (2 vCPUs), 1 GB RAM + 2 GB Swap, 50 GB Boot SSD
+* **Primary Usages & Responsibilities:**
+  1. **PostgreSQL 16 Relational Engine (`:5432`):** Primary database storage for production data (`sutharlabs_production`), user accounts, plugin registry, audit logs, and accounting ledgers.
+  2. **Storage Vault Server (`:80`):** Lightweight Node.js server hosting database dump archives, automated snapshot backups, and disaster recovery scripts (`sync_neon_to_oracle.js`).
+  3. **Disaster Recovery Parity Cron:** Nightly crontab executing automated sync from primary PostgreSQL to Neon Cloud Standby at 02:00 AM IST (`npm run db:cron-sync`).
+  4. **Always Free Preservation:** Persistent `lookbusy` service maintaining 22% CPU consumption with lowest system priority.
+* **Access & Health:**
+  * Probe: `curl -s http://137.23.61.191/health`
+  * SSH: `ssh -i D:\Code\SutharLabs\OracleFreeTier\ssh-key-2026-11-03.key ubuntu@137.23.61.191`
+
+#### 2. VM 2: `sutharlabs-prod` (AI Inference, Speech & High-Memory Compute)
+* **Public IP:** `132.226.190.125` | **Private IP:** `10.0.0.188`
+* **Hardware:** Ampere Altra ARM64, 2–4 OCPUs, 12–24 GB RAM + 4 GB Swap, 47 GB Boot SSD
+* **Primary Usages & Responsibilities:**
+  1. **Ollama Local LLM Inference (`:11434`):** Hosts and executes quantized open models (`gemma2:2b`, `qwen2.5:3b`, `all-minilm` embeddings) powering AI Studio and copilot features without external token costs.
+  2. **Nginx Security Layer (`:80`):** Secure reverse proxy that validates incoming `x-ai-secret` authorization headers before routing prompts to Ollama.
+  3. **Speech Studio & Neural TTS:** Heavy audio generation and text-to-speech audio processing.
+  4. **Quantitative Compute Engine:** Market hours trade simulation EOD loops, batch backtesting algorithms, and heavy matrix operations.
+  5. **Always Free Preservation:** Persistent `lookbusy` service maintaining 22% CPU consumption with lowest system priority.
+* **Access & Health:**
+  * Probe: `curl -s http://132.226.190.125/health`
+  * SSH: `ssh -i D:\Code\SutharLabs\OracleFreeTier\ssh-key-2026-11-03.key ubuntu@132.226.190.125`
+
+#### 3. VM 3: `sutharlabs-backend` (Express API Gateway & Vercel Offload Target)
+* **Public IP:** `130.210.37.199` | **Private IP:** `10.0.0.228`
+* **Hardware:** AMD x86_64, 1 OCPU (2 vCPUs), 1 GB RAM + 2 GB Swap, 50 GB Boot SSD
+* **Primary Usages & Responsibilities:**
+  1. **Node.js Express API Gateway (`:3000` via PM2):** Receives and processes `/api/*` traffic offloaded from Vercel Serverless Functions, completely eliminating Vercel's 4-hour monthly CPU limit.
+  2. **Nginx Ingress Reverse Proxy (`:80`):** Handles client connections, WebSocket upgrades, SSL termination preparation, 100MB body limits, and `/health` probe endpoint.
+  3. **Private Network Interconnect:** Executes Prisma database queries against VM 1 (`10.0.0.122:5432`) at ultra-low latency (<0.5ms over Oracle VCN), and dispatches AI prompts to VM 2 (`10.0.0.188:80`).
+  4. **Always Free Preservation:** Persistent `lookbusy` service maintaining 22% CPU consumption with lowest system priority.
+* **Access & Health:**
+  * Probe: `curl -s http://130.210.37.199/health`
+  * SSH: `ssh -i D:\Code\SutharLabs\OracleFreeTier\ssh-key-2026-11-03.key ubuntu@130.210.37.199`
+* **Deployment / Update Method:** One-command deployment script `/home/ubuntu/website/scripts/deploy.sh`.
 
 ---
 
@@ -98,8 +143,8 @@ In **Vercel Dashboard** (`Project Settings -> Environment Variables`):
 # 1. Backend Routing Target: "VERCEL" (default) or "ORACLE"
 BACKEND_TARGET="ORACLE"
 
-# 2. Oracle VM Endpoint (Point to VM 3 or VM 2 public IP / domain)
-ORACLE_BACKEND_URL="http://132.226.190.125"
+# 2. Oracle VM Endpoint (Point to VM 3 Express Gateway)
+ORACLE_BACKEND_URL="http://130.210.37.199"
 ```
 
 ### B. Execution Modes
@@ -490,4 +535,75 @@ To offload API compute from Vercel to VM 3:
    - `ORACLE_BACKEND_URL` = `http://130.210.37.199`
 3. Redeploy or promote latest deployment.
 *(Note: If VM 3 is ever unreachable or times out after 15s, `api/server.ts` automatically falls back to local Vercel execution without throwing errors to clients).*
+
+---
+
+## 11. Fleet Code Update & Maintenance Protocols
+
+This section provides the master operations reference for updating each tier in the SutharLabs fleet after pushing new code or schema changes to GitHub `main`.
+
+### A. Updating VM 3 (`sutharlabs-backend` — 130.210.37.199)
+
+VM 3 hosts the live Node.js Express API server and handles all `/api/*` workloads. Updates are fully automated via `scripts/deploy.sh`.
+
+#### Method 1: Remote Execution from Local Workstation (Recommended)
+Run this single command from your local Windows PowerShell or terminal:
+```powershell
+ssh -i D:\Code\SutharLabs\OracleFreeTier\ssh-key-2026-11-03.key ubuntu@130.210.37.199 "bash /home/ubuntu/website/scripts/deploy.sh"
+```
+
+#### Method 2: Direct Execution on VM 3
+If already connected via SSH:
+```bash
+/home/ubuntu/website/scripts/deploy.sh
+```
+
+#### What `deploy.sh` Executes Under the Hood:
+```bash
+#!/usr/bin/env bash
+set -e
+cd /home/ubuntu/website
+git pull origin main                          # 1. Fetch latest commits from GitHub
+npx prisma generate                           # 2. Re-generate Prisma Client bindings
+npm run build                                 # 3. Compile backend production bundle
+pm2 restart sutharlabs-backend --update-env   # 4. Zero-downtime reload with updated env
+curl -s http://127.0.0.1/health               # 5. Verify local health probe returns 200
+```
+
+---
+
+### B. Updating Database Schemas on VM 1 (`sutharlabs-db-store` — 137.23.61.191)
+
+When you introduce new Prisma migrations or schema changes:
+
+1. **Deploy Migration from Workstation (or VM 3):**
+   ```bash
+   DATABASE_URL="postgres://sutharlabs_admin:SutharLabsSecretPassword2026!@137.23.61.191:5432/sutharlabs_production" npx prisma migrate deploy
+   ```
+2. **Restarting Storage Vault Service (if vault scripts updated):**
+   ```powershell
+   ssh -i D:\Code\SutharLabs\OracleFreeTier\ssh-key-2026-11-03.key ubuntu@137.23.61.191 "pm2 restart vault"
+   ```
+
+---
+
+### C. Updating AI Models & Compute Scripts on VM 2 (`sutharlabs-prod` — 132.226.190.125)
+
+1. **Pulling New or Updated Ollama Models:**
+   ```powershell
+   ssh -i D:\Code\SutharLabs\OracleFreeTier\ssh-key-2026-11-03.key ubuntu@132.226.190.125 "ollama pull gemma2:2b && ollama pull qwen2.5:3b"
+   ```
+2. **Refreshing Background Crontab Scripts:**
+   ```powershell
+   ssh -i D:\Code\SutharLabs\OracleFreeTier\ssh-key-2026-11-03.key ubuntu@132.226.190.125 "cd /home/ubuntu/website && git pull origin main"
+   ```
+
+---
+
+### D. Updating Vercel Edge Tier (Static Assets & Smart Router)
+
+1. Pushing to `origin main` automatically triggers a Vercel build.
+2. Vercel compiles and deploys static assets to its global CDN edge (0s serverless compute time).
+3. `api/server.ts` routes incoming `/api/*` traffic directly to VM 3 (`http://130.210.37.199`) while preserving the instant static loading performance on Vercel.
+
 
