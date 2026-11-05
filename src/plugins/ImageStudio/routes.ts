@@ -168,20 +168,21 @@ export function registerRoutes(router: Router) {
         signal: AbortSignal.timeout(35000)
       });
 
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => "");
+      const contentType = response.headers.get("content-type") || "";
+      const arrayBuf = await response.arrayBuffer();
+
+      // Verify if valid image bytes were received (Pollinations sometimes returns HTTP 503 for non-priority queue while delivering valid JPEG)
+      const isImage = contentType.startsWith("image/") || 
+                      (arrayBuf.byteLength > 1000 && !contentType.includes("json") && !contentType.includes("text/html"));
+
+      if (!response.ok && !isImage) {
+        const errorText = Buffer.from(arrayBuf).toString("utf-8");
         throw new Error(`Upstream image synthesis returned HTTP ${response.status}: ${errorText.slice(0, 150)}`);
       }
 
-      const contentType = response.headers.get("content-type") || "image/jpeg";
-      if (!contentType.startsWith("image/")) {
-        const jsonText = await response.text().catch(() => "");
-        throw new Error(`Upstream synthesis returned non-image payload: ${jsonText.slice(0, 150)}`);
-      }
-
-      const arrayBuf = await response.arrayBuffer();
+      const mimeType = contentType.startsWith("image/") ? contentType : "image/jpeg";
       const base64Data = Buffer.from(arrayBuf).toString("base64");
-      const imageUrl = `data:${contentType};base64,${base64Data}`;
+      const imageUrl = `data:${mimeType};base64,${base64Data}`;
 
       const executionTimeMs = Date.now() - startTime;
 
