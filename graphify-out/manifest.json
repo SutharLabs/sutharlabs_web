@@ -356,9 +356,9 @@
     "semantic_hash": "8dab1d2f4b290c72f4b09fe1b159d0b2"
   },
   "src/plugins/Accounting/manifest.json": {
-    "mtime": 1793888462.4489179,
-    "seen": 1793888518.6366508,
-    "ast_hash": "86ea42481a24c0325b273956257c33ad",
+    "mtime": 1793889991.434728,
+    "seen": 1793890095.7813013,
+    "ast_hash": "f01d9706b013d7ee0dc785e18b549425",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/manifest.ts": {
@@ -470,9 +470,9 @@
     "semantic_hash": "2cf61e718991de61558a761f4a82f17b"
   },
   "src/plugins/DocNexus/manifest.json": {
-    "mtime": 1793888461.0524926,
-    "seen": 1793888518.6366994,
-    "ast_hash": "7267de148658b7293309773d8763d6f7",
+    "mtime": 1793889990.4587278,
+    "seen": 1793890095.781329,
+    "ast_hash": "9f60c0f5189f4e61b98947b9e71a63b6",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/manifest.ts": {
@@ -536,9 +536,9 @@
     "semantic_hash": "60a8dc279c1c40a63b3d53988dbd2e61"
   },
   "src/plugins/FlowDesigner/manifest.json": {
-    "mtime": 1793888460.2885587,
-    "seen": 1793888518.6367278,
-    "ast_hash": "861d56201c4f94f09947afcea932fac3",
+    "mtime": 1793889989.713538,
+    "seen": 1793890095.7813444,
+    "ast_hash": "1484c175910c5d8674a64a7f01a55671",
     "semantic_hash": ""
   },
   "src/plugins/FlowDesigner/manifest.ts": {
@@ -644,9 +644,9 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1793888458.5774517,
-    "seen": 1793888518.6368134,
-    "ast_hash": "b5a7c53fb20af09fa723c767c326c6d9",
+    "mtime": 1793889988.1275005,
+    "seen": 1793890095.7813895,
+    "ast_hash": "039478bb8c84c5c5852666f21665756d",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
@@ -674,8 +674,8 @@
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/news/types.ts": {
-    "mtime": 1793888204.158358,
-    "seen": 1793888518.636826,
+    "mtime": 1793888976.065201,
+    "seen": 1793890095.7813966,
     "ast_hash": "8fd7bab5d963f2065e1e74bc48fccdbf",
     "semantic_hash": ""
   },
@@ -1112,9 +1112,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
-    "mtime": 1793884831.7824025,
-    "seen": 1793886740.146405,
-    "ast_hash": "34beeaadf931d5f4e36b6340c9ab6ac3",
+    "mtime": 1793889788.9622493,
+    "seen": 1793890095.7813618,
+    "ast_hash": "405c8e29f1803b4a827b958db68bd10f",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/index.ts": {
@@ -1130,9 +1130,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/routes.ts": {
-    "mtime": 1793884832.0303822,
-    "seen": 1793886740.1464114,
-    "ast_hash": "f33576f3adec439bb18b04d1f34acce5",
+    "mtime": 1793889924.0414557,
+    "seen": 1793890095.7813673,
+    "ast_hash": "f648aefb949beb13ac6063f2add0bff5",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/types.ts": {
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1793888463.8321693,
-    "seen": 1793888518.6367655,
-    "ast_hash": "446c1886faaed139c41872bfc35b14dc",
+    "mtime": 1793889992.3949144,
+    "seen": 1793890095.7813644,
+    "ast_hash": "3e4e3db77625bec5db3901a750c51fd1",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {
@@ -1178,9 +1178,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.json": {
-    "mtime": 1793888464.9197717,
-    "seen": 1793888518.636741,
-    "ast_hash": "418f88565a6bc97271c4f6cb53fce2ee",
+    "mtime": 1793889993.1581936,
+    "seen": 1793890095.7813516,
+    "ast_hash": "cd78387b41494e34b4023b5d53ebcb1e",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.ts": {
@@ -1376,9 +1376,9 @@
     "semantic_hash": ""
   },
   "docs/speech/voice_cloning_and_calibration.md": {
-    "mtime": 1793887004.624435,
-    "seen": 1793888518.6370273,
-    "ast_hash": "ea631a5fcbf358880fe9a9a393b05a3f",
+    "mtime": 1793890054.246937,
+    "seen": 1793890095.7815106,
+    "ast_hash": "00f409e79c5dd7b80018b5de99773302",
     "semantic_hash": ""
   },
   "docs/stock-quant/README.md": {
@@ -1400,9 +1400,9 @@
     "semantic_hash": ""
   },
   "docs/stock-quant/quantitative_model_architecture.md": {
-    "mtime": 1793887004.9036868,
-    "seen": 1793888518.6370397,
-    "ast_hash": "96e1f9d02975f862e1eb4a21f7385aa5",
+    "mtime": 1793890073.9354243,
+    "seen": 1793890095.7815177,
+    "ast_hash": "a3631105ea1b6eb85277bf1910fcf45e",
     "semantic_hash": ""
   },
   "docs/stock-quant/top_rated_quant_algorithms_backtested.md": {

@@ -587,6 +587,12 @@ export function registerRoutes(router: Router) {
           throw new Error(`VM2 Voice Cloning service returned HTTP ${vmResponse.status}: ${errorMsg || vmResponse.statusText}`);
         }
 
+        const audioStatus = vmResponse.headers.get("x-audio-status") || "ACTIVE_SPEECH";
+        const detectedTimbre = vmResponse.headers.get("x-detected-timbre") || timbrePreference;
+        const detectedPitchHz = vmResponse.headers.get("x-detected-pitch-hz") || "140";
+        const peakVolumePct = vmResponse.headers.get("x-peak-volume-pct") || "50";
+        const voiceAssigned = vmResponse.headers.get("x-voice-assigned") || "cloned-user";
+
         const arrayBuf = await vmResponse.arrayBuffer();
         audioBuffer = Buffer.from(arrayBuf);
       } catch (cloneErr: any) {

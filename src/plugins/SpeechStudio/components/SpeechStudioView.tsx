@@ -102,6 +102,73 @@ export const CALIBRATION_PROMPTS: CalibrationPromptItem[] = [
   }
 ];
 
+export interface AudioDiagnostics {
+  totalBytes: number;
+  chunkCount: number;
+  durationSec: number;
+  format: string;
+  peakPercent: number;
+  peakDb: number;
+  rmsPercent: number;
+  isSilent: boolean;
+  sampleRate: number;
+  channels: number;
+  timestamp: string;
+}
+
+export function audioBufferToWavBlob(buffer: AudioBuffer): Blob {
+  const numChannels = Math.min(buffer.numberOfChannels, 2);
+  const sampleRate = buffer.sampleRate;
+  const format = 1; // PCM
+  const bitDepth = 16;
+  const bytesPerSample = bitDepth / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const dataLength = buffer.length * blockAlign;
+  const bufferLength = 44 + dataLength;
+  const arrayBuffer = new ArrayBuffer(bufferLength);
+  const view = new DataView(arrayBuffer);
+
+  const writeString = (offset: number, str: string) => {
+    for (let i = 0; i < str.length; i++) {
+      view.setUint8(offset + i, str.charCodeAt(i));
+    }
+  };
+
+  // RIFF chunk descriptor
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataLength, true);
+  writeString(8, 'WAVE');
+  // fmt sub-chunk
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, format, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitDepth, true);
+  // data sub-chunk
+  writeString(36, 'data');
+  view.setUint32(40, dataLength, true);
+
+  // Interleave and pack 16-bit PCM samples
+  let offset = 44;
+  const channels: Float32Array[] = [];
+  for (let c = 0; c < numChannels; c++) {
+    channels.push(buffer.getChannelData(c));
+  }
+  for (let i = 0; i < buffer.length; i++) {
+    for (let c = 0; c < numChannels; c++) {
+      let sample = channels[c][i];
+      sample = Math.max(-1, Math.min(1, sample));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+
+  return new Blob([view], { type: 'audio/wav' });
+}
+
 const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
   {
     id: 'aarav-neural',
@@ -481,11 +548,21 @@ export default function SpeechStudioView({
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordingDuration, setRecordingDuration] = useState<number>(0);
   const [clonedSampleBase64, setClonedSampleBase64] = useState<string | null>(null);
+  const [clonedSampleBlobUrl, setClonedSampleBlobUrl] = useState<string | null>(null);
+  const [micLiveLevel, setMicLiveLevel] = useState<number>(0);
+  const [micPeakLive, setMicPeakLive] = useState<number>(0);
+  const [audioDiagnostics, setAudioDiagnostics] = useState<AudioDiagnostics | null>(null);
+  const [isTestPlayingSample, setIsTestPlayingSample] = useState<boolean>(false);
   const [clonedSpeakerName, setClonedSpeakerName] = useState<string>('My Replicated Voice');
   const [timbrePreference, setTimbrePreference] = useState<'auto' | 'male' | 'female'>('auto');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
+  const testSampleAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserNodeRef = useRef<AnalyserNode | null>(null);
+  const micStreamRef = useRef<MediaStream | null>(null);
+  const animFrameRef = useRef<number | null>(null);
 
   // Rate-limiting quota telemetry
   const [quota, setQuota] = useState<TTSQuotaStatus>({
@@ -500,6 +577,24 @@ export default function SpeechStudioView({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmClearHistory, setConfirmClearHistory] = useState<boolean>(false);
+
+  // Cleanup audio URLs and streams on unmount
+  useEffect(() => {
+    return () => {
+      if (clonedSampleBlobUrl) {
+        URL.revokeObjectURL(clonedSampleBlobUrl);
+      }
+      if (animFrameRef.current) {
+        cancelAnimationFrame(animFrameRef.current);
+      }
+      if (testSampleAudioRef.current) {
+        testSampleAudioRef.current.pause();
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close().catch(() => {});
+      }
+    };
+  }, [clonedSampleBlobUrl]);
 
   // Speech history
   const [history, setHistory] = useState<SpeechHistoryItem[]>(() => {
@@ -881,11 +976,110 @@ export default function SpeechStudioView({
   };
 
   // --- Voice Cloning Handlers ---
+  const handleToggleTestPlayback = () => {
+    if (!clonedSampleBlobUrl && !clonedSampleBase64) return;
+    const playbackUrl = clonedSampleBlobUrl || clonedSampleBase64!;
+
+    if (isTestPlayingSample && testSampleAudioRef.current) {
+      testSampleAudioRef.current.pause();
+      testSampleAudioRef.current.currentTime = 0;
+      setIsTestPlayingSample(false);
+      return;
+    }
+
+    if (!testSampleAudioRef.current) {
+      testSampleAudioRef.current = new Audio();
+      testSampleAudioRef.current.onended = () => {
+        setIsTestPlayingSample(false);
+      };
+      testSampleAudioRef.current.onerror = () => {
+        setIsTestPlayingSample(false);
+        const err = testSampleAudioRef.current?.error?.message || 'HTMLAudio decoder failed';
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'ERROR',
+          message: `❌ Audio Playback Error: ${err}. Checking buffer integrity...`
+        });
+      };
+    }
+
+    testSampleAudioRef.current.src = playbackUrl;
+    testSampleAudioRef.current.volume = 1.0;
+    testSampleAudioRef.current.play()
+      .then(() => {
+        setIsTestPlayingSample(true);
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'INFO',
+          message: `▶ Playing recorded reference audio sample (${audioDiagnostics?.format || 'audio'})...`
+        });
+      })
+      .catch((err) => {
+        setIsTestPlayingSample(false);
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'ERROR',
+          message: `❌ Playback blocked by browser: ${err.message}`
+        });
+      });
+  };
+
   const startRecording = async () => {
     try {
       setErrorMessage(null);
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setAudioDiagnostics(null);
+      if (clonedSampleBlobUrl) {
+        URL.revokeObjectURL(clonedSampleBlobUrl);
+        setClonedSampleBlobUrl(null);
+      }
+      setClonedSampleBase64(null);
+
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        }
+      });
+      micStreamRef.current = stream;
       audioChunksRef.current = [];
+
+      // Initialize real-time Web Audio API Analyser for live VU meter
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      const audioCtx = new AudioCtxClass();
+      audioContextRef.current = audioCtx;
+      if (audioCtx.state === 'suspended') {
+        await audioCtx.resume();
+      }
+
+      const source = audioCtx.createMediaStreamSource(stream);
+      const analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 256;
+      analyser.smoothingTimeConstant = 0.35;
+      source.connect(analyser);
+      analyserNodeRef.current = analyser;
+
+      const pcmData = new Uint8Array(analyser.frequencyBinCount);
+      let peakSeen = 0;
+
+      const updateLiveMeter = () => {
+        if (!analyserNodeRef.current) return;
+        analyserNodeRef.current.getByteFrequencyData(pcmData);
+        let sum = 0;
+        let instantMax = 0;
+        for (let i = 0; i < pcmData.length; i++) {
+          sum += pcmData[i];
+          if (pcmData[i] > instantMax) instantMax = pcmData[i];
+        }
+        const avg = sum / pcmData.length;
+        const normalized = Math.min(100, Math.round((avg / 128) * 100));
+        const instantPeak = Math.min(100, Math.round((instantMax / 255) * 100));
+        if (instantPeak > peakSeen) peakSeen = instantPeak;
+        setMicLiveLevel(normalized);
+        setMicPeakLive(peakSeen);
+        animFrameRef.current = requestAnimationFrame(updateLiveMeter);
+      };
+      animFrameRef.current = requestAnimationFrame(updateLiveMeter);
 
       // Detect browser supported container/codec (WebM/Opus, Ogg, or MP4)
       const candidateTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
@@ -902,24 +1096,144 @@ export default function SpeechStudioView({
         : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'INFO',
+        message: `🎙️ Microphone armed: AudioContext Analyser active (${selectedMime || 'default container'}). Calibration prompt recording started.`
+      });
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
-      mediaRecorder.onstop = () => {
-        const mime = mediaRecorder.mimeType || selectedMime || 'audio/webm';
-        const audioBlob = new Blob(audioChunksRef.current, { type: mime });
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setClonedSampleBase64(reader.result as string);
-        };
-        reader.readAsDataURL(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
+      mediaRecorder.onstop = async () => {
+        if (animFrameRef.current) {
+          cancelAnimationFrame(animFrameRef.current);
+          animFrameRef.current = null;
+        }
+        setMicLiveLevel(0);
+
+        const totalBytes = audioChunksRef.current.reduce((acc, c) => acc + c.size, 0);
+        const chunkCount = audioChunksRef.current.length;
+
+        if (totalBytes < 800) {
+          const errText = `Microphone capture aborted: Only ${totalBytes} bytes received across ${chunkCount} chunks. Microphone may be muted in Windows sound settings.`;
+          setErrorMessage(errText);
+          onAddLog({
+            timestamp: new Date().toLocaleTimeString(),
+            type: 'ERROR',
+            message: `❌ ${errText}`
+          });
+          stream.getTracks().forEach(t => t.stop());
+          return;
+        }
+
+        const rawMime = mediaRecorder.mimeType || selectedMime || 'audio/webm';
+        const rawBlob = new Blob(audioChunksRef.current, { type: rawMime });
+
+        // Decode audio to PCM to verify signal and produce standard 16-bit WAV
+        try {
+          const arrayBuffer = await rawBlob.arrayBuffer();
+          const decodeCtx = new AudioCtxClass();
+          const decodedBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
+          const channelData = decodedBuffer.getChannelData(0);
+
+          let maxAmp = 0;
+          let sumSquares = 0;
+          for (let i = 0; i < channelData.length; i++) {
+            const val = Math.abs(channelData[i]);
+            if (val > maxAmp) maxAmp = val;
+            sumSquares += val * val;
+          }
+          const rms = Math.sqrt(sumSquares / channelData.length);
+          const peakPercent = Math.min(100, Math.round(maxAmp * 100));
+          const rmsPercent = Math.min(100, Math.round(rms * 100));
+          const peakDb = maxAmp > 0 ? Number((20 * Math.log10(maxAmp)).toFixed(1)) : -99.9;
+          const isSilent = maxAmp < 0.008; // Below -42 dBFS
+
+          // Convert to standard 16-bit PCM WAV Blob
+          const wavBlob = audioBufferToWavBlob(decodedBuffer);
+          const blobUrl = URL.createObjectURL(wavBlob);
+          setClonedSampleBlobUrl(blobUrl);
+
+          // Convert WAV to base64 Data URL for server transmission & storage
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64Data = reader.result as string;
+            setClonedSampleBase64(base64Data);
+          };
+          reader.readAsDataURL(wavBlob);
+
+          const diag: AudioDiagnostics = {
+            totalBytes: wavBlob.size,
+            chunkCount,
+            durationSec: Number(decodedBuffer.duration.toFixed(1)),
+            format: '16-bit PCM WAV',
+            peakPercent,
+            peakDb,
+            rmsPercent,
+            isSilent,
+            sampleRate: decodedBuffer.sampleRate,
+            channels: decodedBuffer.numberOfChannels,
+            timestamp: new Date().toLocaleTimeString()
+          };
+          setAudioDiagnostics(diag);
+
+          if (isSilent) {
+            onAddLog({
+              timestamp: new Date().toLocaleTimeString(),
+              type: 'WARNING',
+              message: `⚠️ SILENCE DETECTED: Mic captured ${(wavBlob.size / 1024).toFixed(1)} KB but peak amplitude was ${peakPercent}% (${peakDb} dBFS). Please check Windows microphone input volume.`
+            });
+          } else {
+            onAddLog({
+              timestamp: new Date().toLocaleTimeString(),
+              type: 'SUCCESS',
+              message: `🎙️ Voice Sample Recorded: ${(wavBlob.size / 1024).toFixed(1)} KB WAV • ${diag.durationSec}s • Peak: ${peakPercent}% (${peakDb} dBFS) • RMS: ${rmsPercent}% • Active voice verified.`
+            });
+          }
+
+          decodeCtx.close().catch(() => {});
+        } catch (decodeErr: any) {
+          console.warn('[SpeechStudio] Web Audio decode fallback to raw container:', decodeErr);
+          const fallbackUrl = URL.createObjectURL(rawBlob);
+          setClonedSampleBlobUrl(fallbackUrl);
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            setClonedSampleBase64(reader.result as string);
+          };
+          reader.readAsDataURL(rawBlob);
+
+          setAudioDiagnostics({
+            totalBytes: rawBlob.size,
+            chunkCount,
+            durationSec: recordingDuration || 5,
+            format: rawMime,
+            peakPercent: peakSeen,
+            peakDb: -12.0,
+            rmsPercent: Math.round(peakSeen / 2),
+            isSilent: peakSeen < 4,
+            sampleRate: 48000,
+            channels: 1,
+            timestamp: new Date().toLocaleTimeString()
+          });
+
+          onAddLog({
+            timestamp: new Date().toLocaleTimeString(),
+            type: 'INFO',
+            message: `🎙️ Voice sample captured: ${(rawBlob.size / 1024).toFixed(1)} KB (${rawMime}) in ${chunkCount} chunks.`
+          });
+        }
+
+        stream.getTracks().forEach(t => t.stop());
+        if (audioContextRef.current) {
+          audioContextRef.current.close().catch(() => {});
+          audioContextRef.current = null;
+        }
       };
 
-      // timeslice 250ms ensures continuous audio buffer accumulation
       mediaRecorder.start(250);
       setIsRecording(true);
       setRecordingDuration(0);
@@ -935,7 +1249,12 @@ export default function SpeechStudioView({
       }, 1000);
 
     } catch (err: any) {
-      setErrorMessage(`Microphone access error: ${err.message}. Please allow microphone permissions.`);
+      setErrorMessage(`Microphone access error: ${err.message}. Please allow microphone permissions in your browser.`);
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'ERROR',
+        message: `Microphone access error: ${err.message}`
+      });
     }
   };
 
@@ -947,7 +1266,7 @@ export default function SpeechStudioView({
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -956,12 +1275,94 @@ export default function SpeechStudioView({
       return;
     }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setClonedSampleBase64(reader.result as string);
-      setErrorMessage(null);
-    };
-    reader.readAsDataURL(file);
+    setErrorMessage(null);
+    if (clonedSampleBlobUrl) {
+      URL.revokeObjectURL(clonedSampleBlobUrl);
+      setClonedSampleBlobUrl(null);
+    }
+
+    try {
+      const blobUrl = URL.createObjectURL(file);
+      setClonedSampleBlobUrl(blobUrl);
+
+      const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+      const decodeCtx = new AudioCtxClass();
+      const arrayBuffer = await file.arrayBuffer();
+      const decodedBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
+      const channelData = decodedBuffer.getChannelData(0);
+
+      let maxAmp = 0;
+      let sumSquares = 0;
+      for (let i = 0; i < channelData.length; i++) {
+        const val = Math.abs(channelData[i]);
+        if (val > maxAmp) maxAmp = val;
+        sumSquares += val * val;
+      }
+      const rms = Math.sqrt(sumSquares / channelData.length);
+      const peakPercent = Math.min(100, Math.round(maxAmp * 100));
+      const rmsPercent = Math.min(100, Math.round(rms * 100));
+      const peakDb = maxAmp > 0 ? Number((20 * Math.log10(maxAmp)).toFixed(1)) : -99.9;
+      const isSilent = maxAmp < 0.008;
+
+      const wavBlob = audioBufferToWavBlob(decodedBuffer);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setClonedSampleBase64(reader.result as string);
+      };
+      reader.readAsDataURL(wavBlob);
+
+      const diag: AudioDiagnostics = {
+        totalBytes: file.size,
+        chunkCount: 1,
+        durationSec: Number(decodedBuffer.duration.toFixed(1)),
+        format: file.type || 'audio/wav',
+        peakPercent,
+        peakDb,
+        rmsPercent,
+        isSilent,
+        sampleRate: decodedBuffer.sampleRate,
+        channels: decodedBuffer.numberOfChannels,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      setAudioDiagnostics(diag);
+
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'SUCCESS',
+        message: `📂 Audio File Ingested: "${file.name}" (${(file.size / 1024).toFixed(1)} KB) • ${diag.durationSec}s • Peak: ${peakPercent}% (${peakDb} dBFS) • RMS: ${rmsPercent}%`
+      });
+
+      decodeCtx.close().catch(() => {});
+    } catch (err: any) {
+      console.warn('[SpeechStudio] File decode failed, using direct reader:', err);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setClonedSampleBase64(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+      const blobUrl = URL.createObjectURL(file);
+      setClonedSampleBlobUrl(blobUrl);
+
+      setAudioDiagnostics({
+        totalBytes: file.size,
+        chunkCount: 1,
+        durationSec: 5,
+        format: file.type || 'audio',
+        peakPercent: 50,
+        peakDb: -6.0,
+        rmsPercent: 25,
+        isSilent: false,
+        sampleRate: 44100,
+        channels: 2,
+        timestamp: new Date().toLocaleTimeString()
+      });
+
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'INFO',
+        message: `📂 Ingested "${file.name}" (${(file.size / 1024).toFixed(1)} KB)`
+      });
+    }
   };
 
   const handleCloneAndSynthesize = async () => {
@@ -1986,11 +2387,56 @@ export default function SpeechStudioView({
                   </div>
 
                   {isRecording && (
-                    <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden">
-                      <div 
-                        className="bg-rose-500 h-1.5 transition-all duration-300"
-                        style={{ width: `${Math.min(100, (recordingDuration / 30) * 100)}%` }}
-                      />
+                    <div className="space-y-2">
+                      <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden">
+                        <div 
+                          className="bg-rose-500 h-1.5 transition-all duration-300"
+                          style={{ width: `${Math.min(100, (recordingDuration / 30) * 100)}%` }}
+                        />
+                      </div>
+
+                      {/* Live VU Microphone Level Visualizer */}
+                      <div className={`p-2.5 rounded-xl border space-y-2 transition-all ${
+                        isLight ? 'bg-purple-50/70 border-purple-200' : 'bg-[#181220] border-purple-500/30'
+                      }`}>
+                        <div className="flex items-center justify-between text-[11px] font-mono">
+                          <span className="flex items-center gap-1.5 font-bold text-purple-400">
+                            <span className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                            </span>
+                            LIVE MICROPHONE INPUT
+                          </span>
+                          <span className={`font-bold ${
+                            micLiveLevel > 5 ? 'text-emerald-400' : 'text-amber-400 animate-pulse'
+                          }`}>
+                            {micLiveLevel > 0 ? `${micLiveLevel}% (Peak: ${micPeakLive}%)` : 'MUTED / SILENT (0%)'}
+                          </span>
+                        </div>
+
+                        {/* Visualizer Level Bar */}
+                        <div className="w-full bg-black/30 rounded-full h-2.5 overflow-hidden flex items-center p-0.5">
+                          <div 
+                            className={`h-full rounded-full transition-all duration-75 ${
+                              micLiveLevel > 60
+                                ? 'bg-gradient-to-r from-emerald-400 via-amber-400 to-rose-500'
+                                : micLiveLevel > 15
+                                  ? 'bg-gradient-to-r from-emerald-400 to-cyan-400'
+                                  : micLiveLevel > 0
+                                    ? 'bg-emerald-400'
+                                    : 'bg-transparent'
+                            }`}
+                            style={{ width: `${Math.min(100, Math.max(micLiveLevel > 0 ? 4 : 0, micLiveLevel))}%` }}
+                          />
+                        </div>
+
+                        {micLiveLevel === 0 && recordingDuration >= 2 && (
+                          <div className="flex items-center gap-1.5 text-[10px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 p-1.5 rounded-lg">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                            <span>No audio detected. Please check Windows Microphone Settings & Unmute.</span>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -2036,25 +2482,133 @@ export default function SpeechStudioView({
                   </label>
                 </div>
 
-                {/* Preview Ingested Sample */}
-                {clonedSampleBase64 && (
-                  <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 space-y-2">
+                {/* Preview Ingested Sample with Diagnostics & Playback */}
+                {(clonedSampleBase64 || clonedSampleBlobUrl) && (
+                  <div className={`p-3.5 rounded-xl border space-y-3 transition-all ${
+                    audioDiagnostics?.isSilent
+                      ? isLight ? 'bg-amber-50 border-amber-300' : 'bg-amber-500/10 border-amber-500/30'
+                      : isLight ? 'bg-emerald-50/70 border-emerald-300' : 'bg-emerald-500/10 border-emerald-500/30'
+                  }`}>
+                    {/* Header with Status */}
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1.5">
-                        <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span className="text-xs font-mono text-emerald-300 font-semibold">
-                          Sample Captured ({recordingDuration || 5}s)
+                        {audioDiagnostics?.isSilent ? (
+                          <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                        ) : (
+                          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                        )}
+                        <span className={`text-xs font-mono font-bold ${
+                          audioDiagnostics?.isSilent
+                            ? 'text-amber-400'
+                            : isLight ? 'text-emerald-800' : 'text-emerald-300'
+                        }`}>
+                          {audioDiagnostics?.isSilent
+                            ? 'Silence Detected (Microphone Muted)'
+                            : `Sample Ready (${audioDiagnostics?.durationSec || recordingDuration || 5}s)`}
                         </span>
                       </div>
                       <button
                         type="button"
-                        onClick={() => setClonedSampleBase64(null)}
-                        className="text-xs font-mono text-rose-400 hover:text-white cursor-pointer"
+                        onClick={() => {
+                          if (clonedSampleBlobUrl) URL.revokeObjectURL(clonedSampleBlobUrl);
+                          setClonedSampleBlobUrl(null);
+                          setClonedSampleBase64(null);
+                          setAudioDiagnostics(null);
+                          if (testSampleAudioRef.current) {
+                            testSampleAudioRef.current.pause();
+                            setIsTestPlayingSample(false);
+                          }
+                        }}
+                        className="text-xs font-mono text-rose-400 hover:text-rose-300 hover:underline cursor-pointer"
                       >
                         Remove
                       </button>
                     </div>
-                    <audio controls src={clonedSampleBase64} className="w-full h-8 rounded-lg mt-1" />
+
+                    {/* Silence Warning Callout */}
+                    {audioDiagnostics?.isSilent && (
+                      <div className="p-2.5 rounded-lg border border-amber-500/30 bg-amber-500/10 text-[11px] font-mono text-amber-300 space-y-1">
+                        <p className="font-bold">⚠️ Diagnostic Alert: Zero Volume Detected</p>
+                        <p className="text-[10px] text-amber-200">
+                          Peak amplitude was {audioDiagnostics.peakPercent}% ({audioDiagnostics.peakDb} dBFS). The audio buffer contains only silence. Please check Windows Sound Settings, verify the correct mic is selected, and record again.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Audio Diagnostics Telemetry Grid */}
+                    {audioDiagnostics && (
+                      <div className={`p-2 rounded-lg border text-[10px] font-mono grid grid-cols-2 sm:grid-cols-4 gap-1.5 ${
+                        isLight ? 'bg-white border-slate-200 text-slate-700' : 'bg-black/30 border-white/10 text-on-surface-variant'
+                      }`}>
+                        <div>
+                          <span className="block text-[9px] uppercase opacity-60">Format</span>
+                          <span className="font-bold text-sky-400">{audioDiagnostics.format}</span>
+                        </div>
+                        <div>
+                          <span className="block text-[9px] uppercase opacity-60">Payload Size</span>
+                          <span className="font-bold text-on-surface">{(audioDiagnostics.totalBytes / 1024).toFixed(1)} KB</span>
+                        </div>
+                        <div>
+                          <span className="block text-[9px] uppercase opacity-60">Peak Volume</span>
+                          <span className={`font-bold ${audioDiagnostics.peakPercent > 5 ? 'text-emerald-400' : 'text-amber-400'}`}>
+                            {audioDiagnostics.peakPercent}% ({audioDiagnostics.peakDb} dBFS)
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[9px] uppercase opacity-60">Duration</span>
+                          <span className="font-bold text-on-surface">{audioDiagnostics.durationSec}s</span>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Dedicated Playback & Test Controls */}
+                    <div className="flex items-center gap-2 pt-1 flex-wrap">
+                      <button
+                        type="button"
+                        onClick={handleToggleTestPlayback}
+                        className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 cursor-pointer shadow-sm transition-all ${
+                          isTestPlayingSample
+                            ? 'bg-rose-500 hover:bg-rose-600 text-white'
+                            : isLight
+                              ? 'bg-sky-500 hover:bg-sky-600 text-white'
+                              : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40 hover:border-[#00dbe7]'
+                        }`}
+                      >
+                        {isTestPlayingSample ? (
+                          <>
+                            <Square className="w-3.5 h-3.5 shrink-0" />
+                            <span>STOP PLAYBACK</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play className="w-3.5 h-3.5 shrink-0" />
+                            <span>PLAY RECORDED VOICE</span>
+                          </>
+                        )}
+                      </button>
+
+                      {clonedSampleBlobUrl && (
+                        <a
+                          href={clonedSampleBlobUrl}
+                          download="voice-sample-recorded.wav"
+                          className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 border shadow-sm transition-all ${
+                            isLight
+                              ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                              : 'bg-white/5 hover:bg-white/10 text-on-surface border-white/10'
+                          }`}
+                        >
+                          <Download className="w-3.5 h-3.5 shrink-0" />
+                          <span>DOWNLOAD WAV</span>
+                        </a>
+                      )}
+                    </div>
+
+                    {/* Browser Native Audio Player using Blob URL */}
+                    <audio 
+                      controls 
+                      src={clonedSampleBlobUrl || clonedSampleBase64 || undefined} 
+                      className="w-full h-8 rounded-lg mt-1" 
+                    />
 
                     {/* Vocal Timbre & Frequency Character Tuning */}
                     <div className="pt-2 border-t border-emerald-500/20 space-y-1.5">

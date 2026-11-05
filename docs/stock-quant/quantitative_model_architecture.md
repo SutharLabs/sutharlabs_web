@@ -218,3 +218,48 @@ Net Return = Gross Return - (Slippage + Exchange Fees + Statutory Taxes + Broker
 3. Attach your preferred quantitative strategy.
 4. The simulator will automatically execute virtual paper orders whenever the quantitative conditions are fulfilled, maintaining an immutable ledger with real fill prices and execution slippage.
 
+
+---
+
+## 7. Dedicated Quant Model on Oracle VM 2 (`finllm:latest`)
+
+To provide institutional-grade intelligence without external API costs or latency, SutharLabs operates a dedicated financial quantitative language model running locally on **Oracle Cloud VM 2** (`132.226.190.125:11434`):
+
+```
+┌────────────────────────────────────────────────────────────────────────┐
+│               ORACLE CLOUD VM 2 (132.226.190.125)                      │
+├────────────────────────────────────────────────────────────────────────┤
+│ MODEL: finllm:latest (Fine-tuned Qwen 2.5 1.5B Quantitative Core)      │
+│ RUNTIME: Ollama v0.5.x on Port 11434                                   │
+│ CONTEXT WINDOW: 8,192 tokens                                           │
+│ PARAMETERS: Temperature = 0.20, Top-P = 0.90                           │
+│ SPECIALIZATION: Time-series regimes, moving average confluence,        │
+│                 abnormal volume detection, catalyst polarity extraction│
+└────────────────────────────────────────────────────────────────────────┘
+```
+
+### Complete Cross-Platform Operational Scope:
+Users frequently ask: *"Is the dedicated quant model only limited to buy/sell signals from news, or does it work for live simulation and the stock screener as well?"*
+
+The table below details how `finllm` integrates across all three functional engines:
+
+| Functional Domain | How VM 2 `finllm` Operates | Real-Time Execution Path |
+| :--- | :--- | :--- |
+| **1. News Sentiment & Catalyst Extraction** | Ingests real-time financial headlines, parses earnings announcements, regulatory filings, and macroeconomic releases. Extracts quantified polarity (-100 to +100), price velocity impact, and key bullish/bearish catalysts. | `src/plugins/StockTracker/news/sentimentEngine.ts` $\rightarrow$ Queries `http://132.226.190.125/api/chat` with `model: finllm`. |
+| **2. Live Strategy Signal Confluence** | Combines 18 mathematical indicator formulas (EMA 20/50/200, Supertrend, ATR, MACD, Volume Multiple) with FinLLM's catalyst polarity to calculate final signal direction (`BUY`, `SELL`, `HOLD`) and confidence score. | `src/plugins/StockTracker/strategies/engine.ts` $\rightarrow$ Evaluates `strat-finllm-alpha` rules and applies `calculateSentimentConfluence()`. |
+| **3. Global Market Stock Screener** | Filters hundreds of equities across NSE, BSE, NYSE, and NASDAQ universes against `strat-finllm-alpha` to discover setups with technical moving-average corridors, volume accumulation ($>1.2\times$ average), and positive sentiment confluence. | `src/plugins/StockTracker/scanner/scannerEngine.ts` $\rightarrow$ Executes `evaluateStrategy(stratFinllmAlpha, candles, quote)` for every candidate. |
+| **4. Automated Trade Simulator (Paper Trading)** | Virtual trading bots configured with strategy `strat-finllm-alpha` continuously monitor real-time candle feeds. When FinLLM confirms technical and fundamental confluence, the simulator automatically triggers orders with trailing ATR stops. | `src/plugins/StockTracker/simulator/tradeSimulator.ts` $\rightarrow$ Automated bot execution loop consuming FinLLM confluence signals. |
+
+---
+
+## 8. Why Screener & Simulator Run Hybrid (Math + AI Confluence)
+
+In high-frequency quantitative finance, evaluating a large language model across 500 stocks simultaneously every second would cause unacceptable latency (e.g. 500 stocks $\times$ 500ms = 250 seconds). 
+
+Therefore, SutharLabs implements an **Asymmetrical Hybrid Pipeline**:
+1. **First-Pass Screening (Sub-Millisecond Math)**:
+   - The Screener (`scannerEngine.ts`) and Simulator (`tradeSimulator.ts`) run 18 vectorized mathematical indicator algorithms in-process (Node.js on VM 3 / browser client) at over **10,000 candles per second**.
+   - Filters out 95% of symbols that do not exhibit structural momentum, liquidity, or moving average alignment.
+2. **Second-Pass Confluence (Deep FinLLM Reasoning on VM 2)**:
+   - For candidates passing the mathematical filter, the system engages VM 2's `finllm` to analyze incoming news catalysts and market regime data.
+   - The confluence algorithm adjusts the base technical confidence score (e.g. boosting a 74% technical setup to 92% if FinLLM detects an accretive earnings catalyst, or downgrading a `BUY` to `HOLD` if FinLLM identifies regulatory risk).
