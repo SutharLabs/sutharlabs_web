@@ -1,7 +1,7 @@
 # Graph Report - website  (2026-11-05)
 
 ## Corpus Check
-- 164 files · ~296,394 words
+- 164 files · ~332,296 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `e6c48df4`
+- Built from commit: `8b68888e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -95,8 +95,8 @@
   server.ts → src/middleware/errorHandler.ts
 - `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
   server.ts → src/middleware/auth.ts
-- `packageAllPlugins()` --calls--> `encryptPluginPackage()`  [EXTRACTED]
-  scripts/package-plugins.ts → src/plugins/security/pluginCrypto.ts
+- `loadTenantData()` --calls--> `getPrismaClient()`  [EXTRACTED]
+  src/plugins/Accounting/storage.ts → api/_utils.ts
 
 ## Import Cycles
 - 2-file cycle: `src/components/LandingPage.tsx -> src/components/ProjectBrowserMockup.tsx -> src/components/LandingPage.tsx`
@@ -318,16 +318,16 @@ Nodes (4): OpenLocalWorkspaceModal(), OpenLocalWorkspaceModalProps, readDirector
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `react` to `App.tsx`, `TerminalLog`, `StockTrackerView.tsx`, `dependencies`, `StockTracker/routes.ts`, `MarkdownStudio.tsx`, `clientRegistry.ts`, `package.json`, `DocNexusStudio.tsx`, `LandingPage.tsx`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `FlowDesignerView.tsx`, `SlideDeckStudio.tsx`, `StorageVaultView.tsx`, `ManageDatabaseView.tsx`, `DocNexus/types.ts`, `DocNexus/types.ts`, `BugReportModal.tsx`, `SpeechStudioView.tsx`, `OpenLocalWorkspaceModal.tsx`?**
-  _High betweenness centrality (0.192) - this node is a cross-community bridge._
+  _High betweenness centrality (0.231) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `registerRoutes()` (e.g. with `authenticateToken()` and `optionalAuth()`) actually correct?**
   _`registerRoutes()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Should `react` be split into smaller, more focused modules?**
   _Cohesion score 0.052976658798846055 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `MarkdownStudio.tsx` to `App.tsx`, `TerminalLog`, `StockTrackerView.tsx`, `dependencies`, `StockTracker/routes.ts`, `clientRegistry.ts`, `package.json`, `DocNexusStudio.tsx`, `LandingPage.tsx`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `SlideDeckStudio.tsx`, `StorageVaultView.tsx`, `ManageDatabaseView.tsx`, `DocNexus/types.ts`, `DocNexus/types.ts`, `BugReportModal.tsx`, `SpeechStudioView.tsx`, `OpenLocalWorkspaceModal.tsx`?**
-  _High betweenness centrality (0.087) - this node is a cross-community bridge._
+  _High betweenness centrality (0.097) - this node is a cross-community bridge._
 - **Should `App.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.09246088193456614 - nodes in this community are weakly interconnected._
 - **Why does `express` connect `express` to `react`, `dependencies`, `serverRegistry.ts`, `StockTracker/routes.ts`, `package.json`, `server.ts`, `_utils.ts`, `SpeechStudioView.tsx`, `DocNexus/storage.ts`, `auth.ts`, `telemetryService.ts`?**
-  _High betweenness centrality (0.073) - this node is a cross-community bridge._
+  _High betweenness centrality (0.053) - this node is a cross-community bridge._
 - **Should `TerminalLog` be split into smaller, more focused modules?**
   _Cohesion score 0.07781649245063879 - nodes in this community are weakly interconnected._

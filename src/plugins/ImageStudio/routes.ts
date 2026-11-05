@@ -118,7 +118,9 @@ export function registerRoutes(router: Router) {
         model = "flux-schnell",
         aspectRatio = "1:1",
         stylePreset = "none",
-        seed = Math.floor(Math.random() * 1000000)
+        seed = Math.floor(Math.random() * 1000000),
+        hfToken: clientHfToken,
+        pollenKey: clientPollenKey
       } = req.body;
 
       if (!prompt || typeof prompt !== "string" || prompt.trim().length === 0) {
@@ -148,43 +150,125 @@ export function registerRoutes(router: Router) {
         finalPrompt = `${finalPrompt}, 3d render, octane render, unreal engine 5, raytraced volumetric lighting, highly detailed cgi`;
       }
 
-      // Map model to Pollinations / Hugging Face model key
-      let pollinationsModel = "flux";
-      if (model === "flux-realism") pollinationsModel = "flux-realism";
-      else if (model === "flux-anime") pollinationsModel = "flux-anime";
-      else if (model === "flux-3d") pollinationsModel = "flux-3d";
-      else if (model === "sdxl-turbo") pollinationsModel = "turbo";
-      else if (model === "sd-3.5") pollinationsModel = "flux"; // Pollinations uses FLUX for high-parameter tier
+      const activeHfToken = clientHfToken || process.env.HF_TOKEN || process.env.HUGGINGFACE_TOKEN;
+      const activePollenKey = clientPollenKey || process.env.POLLEN_API_KEY || process.env.POLLINATIONS_API_KEY;
 
-      const encodedPrompt = encodeURIComponent(finalPrompt);
-      const targetUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=${pollinationsModel}&width=${dimensions.width}&height=${dimensions.height}&seed=${seed}&nologo=true&enhance=false`;
+      let imageUrl = "";
+      let provider = "";
+      let executionTimeMs = 0;
 
-      const response = await fetch(targetUrl, {
-        method: "GET",
-        headers: {
-          "User-Agent": "SutharLabs-ImageStudio/0.2.0 (Mozilla/5.0)",
-          "Accept": "image/*"
-        },
-        signal: AbortSignal.timeout(35000)
-      });
+      // STRATEGY 1: Hugging Face Serverless Inference API (H100 GPU, Zero Watermark, Fast)
+      if (activeHfToken) {
+        try {
+          let hfModelRepo = "black-forest-labs/FLUX.1-schnell";
+          if (model === "sd-3.5") hfModelRepo = "stabilityai/stable-diffusion-3.5-large";
+          else if (model === "sdxl-turbo") hfModelRepo = "stabilityai/sdxl-turbo";
+          else if (model === "flux-realism" || model === "flux-anime" || model === "flux-3d") hfModelRepo = "black-forest-labs/FLUX.1-schnell";
 
-      const contentType = response.headers.get("content-type") || "";
-      const arrayBuf = await response.arrayBuffer();
+          const hfEndpoint = `https://router.huggingface.co/hf-inference/models/${hfModelRepo}`;
+          const hfRes = await fetch(hfEndpoint, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${activeHfToken}`,
+              "Content-Type": "application/json",
+              "Accept": "image/*"
+            },
+            body: JSON.stringify({
+              inputs: finalPrompt,
+              parameters: {
+                width: dimensions.width,
+                height: dimensions.height,
+                seed
+              }
+            }),
+            signal: AbortSignal.timeout(45000)
+          });
 
-      // Verify if valid image bytes were received (Pollinations sometimes returns HTTP 503 for non-priority queue while delivering valid JPEG)
-      const isImage = contentType.startsWith("image/") || 
-                      (arrayBuf.byteLength > 1000 && !contentType.includes("json") && !contentType.includes("text/html"));
-
-      if (!response.ok && !isImage) {
-        const errorText = Buffer.from(arrayBuf).toString("utf-8");
-        throw new Error(`Upstream image synthesis returned HTTP ${response.status}: ${errorText.slice(0, 150)}`);
+          if (hfRes.ok) {
+            const hfContentType = hfRes.headers.get("content-type") || "image/jpeg";
+            const hfBuffer = await hfRes.arrayBuffer();
+            if (hfBuffer.byteLength > 1000) {
+              const base64Data = Buffer.from(hfBuffer).toString("base64");
+              imageUrl = `data:${hfContentType};base64,${base64Data}`;
+              provider = `Hugging Face H100 Cloud (${hfModelRepo}) [Zero Watermark]`;
+              executionTimeMs = Date.now() - startTime;
+            }
+          } else {
+            const errTxt = await hfRes.text();
+            console.warn(`[ImageStudio] Hugging Face inference non-200 (${hfRes.status}):`, errTxt.slice(0, 120));
+          }
+        } catch (hfErr: any) {
+          console.warn("[ImageStudio] Hugging Face inference failed, falling back to sovereign cluster:", hfErr.message);
+        }
       }
 
-      const mimeType = contentType.startsWith("image/") ? contentType : "image/jpeg";
-      const base64Data = Buffer.from(arrayBuf).toString("base64");
-      const imageUrl = `data:${mimeType};base64,${base64Data}`;
+      // STRATEGY 2: Sovereign High-Speed Synthesis (Pollinations Cluster with nologo & nofeed)
+      if (!imageUrl) {
+        let pollinationsModel = "flux";
+        if (model === "flux-realism") pollinationsModel = "flux-realism";
+        else if (model === "flux-anime") pollinationsModel = "flux-anime";
+        else if (model === "flux-3d") pollinationsModel = "flux-3d";
+        else if (model === "sdxl-turbo") pollinationsModel = "turbo";
+        else if (model === "sd-3.5") pollinationsModel = "flux";
 
-      const executionTimeMs = Date.now() - startTime;
+        const encodedPrompt = encodeURIComponent(finalPrompt);
+        let targetUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?model=${pollinationsModel}&width=${dimensions.width}&height=${dimensions.height}&seed=${seed}&nologo=true&nofeed=true&private=true&referrer=sutharlabs`;
+        if (activePollenKey) {
+          targetUrl += `&key=${encodeURIComponent(activePollenKey)}`;
+        }
+
+        const headers: Record<string, string> = {
+          "User-Agent": "SutharLabs-ImageStudio/0.2.0 (Mozilla/5.0)",
+          "Accept": "image/*"
+        };
+        if (activePollenKey) {
+          headers["Authorization"] = `Bearer ${activePollenKey}`;
+        }
+
+        const response = await fetch(targetUrl, {
+          method: "GET",
+          headers,
+          signal: AbortSignal.timeout(40000)
+        });
+
+        const contentType = response.headers.get("content-type") || "";
+        const arrayBuf = await response.arrayBuffer();
+
+        // Handle strict IP Rate Limiting (HTTP 402 or 429)
+        if (response.status === 402 || response.status === 429) {
+          const rawText = Buffer.from(arrayBuf).toString("utf-8");
+          let retrySeconds = 45;
+          try {
+            const parsed = JSON.parse(rawText);
+            const msg = parsed?.error?.message || "";
+            const match = msg.match(/after\s+(\d+)s/i);
+            if (match) retrySeconds = parseInt(match[1], 10);
+          } catch {}
+
+          return res.status(429).json({
+            success: false,
+            isRateLimited: true,
+            retryAfterSeconds: retrySeconds,
+            error: "Free Limit Cooldown",
+            message: `Free tier rate limit reached: 1 generation every 45 seconds per IP. Please wait ${retrySeconds} seconds before generating again, or configure a free Hugging Face Token / Pollen API key in Settings to bypass all limits.`
+          });
+        }
+
+        // Verify if valid image bytes were received
+        const isImage = contentType.startsWith("image/") || 
+                        (arrayBuf.byteLength > 1000 && !contentType.includes("json") && !contentType.includes("text/html"));
+
+        if (!response.ok && !isImage) {
+          const errorText = Buffer.from(arrayBuf).toString("utf-8");
+          throw new Error(`Upstream image synthesis returned HTTP ${response.status}: ${errorText.slice(0, 150)}`);
+        }
+
+        const mimeType = contentType.startsWith("image/") ? contentType : "image/jpeg";
+        const base64Data = Buffer.from(arrayBuf).toString("base64");
+        imageUrl = `data:${mimeType};base64,${base64Data}`;
+        provider = activePollenKey ? `Pollinations VIP (${model.toUpperCase()})` : `Open-Source ${model.toUpperCase()} (Zero Cost)`;
+        executionTimeMs = Date.now() - startTime;
+      }
 
       return res.json({
         success: true,
@@ -194,7 +278,7 @@ export function registerRoutes(router: Router) {
         aspectRatio,
         dimensions,
         executionTimeMs,
-        provider: `Open-Source ${model.toUpperCase()} (Zero Cost)`,
+        provider,
         cost: "$0.00"
       });
     } catch (err: any) {

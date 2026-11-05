@@ -179,14 +179,17 @@ SutharLabs is styled using **Tailwind CSS v4**'s advanced CSS-variables-based `@
 
 ---
 
-## 5. Technical Architecture & Infrastructure Guides
+## 5. Technical Architecture & Categorized Systems Guides
 
-* [Oracle Cloud VMs Replication & Disaster Recovery Runbook](file:///d:/Code/SutharLabs/website/docs/oracle_vms_replication_and_disaster_recovery_runbook.md)
-* [Database Migration & Dual-Database Sync Architecture](file:///d:/Code/SutharLabs/website/docs/database_migration_guide.md)
-* [Private Storage Vault & Oracle Cloud Infrastructure Guide](file:///d:/Code/SutharLabs/website/docs/storage_vault_and_infrastructure_guide.md)
-* [Self-Hosted LLM Inference Node & Benchmarks](file:///d:/Code/SutharLabs/website/docs/llm_inference_node_setup_and_benchmarks.md)
-* [Data Segregation & Privacy Architecture](file:///d:/Code/SutharLabs/website/docs/data_segregation_and_privacy_architecture.md)
-* [UI Styling & Design System Guidelines](file:///d:/Code/SutharLabs/website/docs/ui_and_design_system_guidelines.md)
+For in-depth operational and architectural specifications, consult the categorized documentation directories:
+
+* **[Master Systems Documentation Catalog](file:///d:/Code/SutharLabs/website/docs/README.md)**: Central catalog and sitemap for all platform systems.
+* **[Quantitative Trading & Strategy Engine](file:///d:/Code/SutharLabs/website/docs/stock-quant/README.md)**: 18 technical indicators, algorithmic rule evaluator, backtesting engine, and paper trading simulator.
+* **[AI Image Studio & 4K Super-Resolution](file:///d:/Code/SutharLabs/website/docs/image-studio/README.md)**: FLUX.1 [schnell] 12B, SD 3.5 Large 8.1B, Real-ESRGAN super-resolution, GPU hardware sizing, and zero-watermark guide.
+* **[Neural Speech & Voice Cloning](file:///d:/Code/SutharLabs/website/docs/speech/README.md)**: Edge TTS daemon on VM 2, IndicParler/MeloTTS mapping, phonetic calibration prompt, and acoustic timbre fingerprinting.
+* **[Self-Hosted LLM Inference & Agents](file:///d:/Code/SutharLabs/website/docs/llm/README.md)**: VM 2 Ollama configuration, 6 models, 8192 context window, prompt tuning, and speculative decoding research.
+* **[Oracle Cloud Fleet & DevOps Runbook](file:///d:/Code/SutharLabs/website/docs/infrastructure/README.md)**: 3-VM Oracle topology, primary-standby database replication, storage vault, and zero-downtime deployment automation.
+* **[Sovereign Design System & UI Guidelines](file:///d:/Code/SutharLabs/website/docs/design-system/README.md)**: Zero native browser dialogs, icon badge standards, light/dark theme contrast, and code block styles.
 
 ---
 

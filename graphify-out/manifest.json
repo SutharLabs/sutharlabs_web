@@ -62,8 +62,8 @@
     "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1793883711.6560743,
-    "seen": 1793884436.9292564,
+    "mtime": 1793884829.2685745,
+    "seen": 1793886740.1462402,
     "ast_hash": "9e59e24dd24343ebfc80803e82604e4d",
     "semantic_hash": ""
   },
@@ -356,9 +356,9 @@
     "semantic_hash": "8dab1d2f4b290c72f4b09fe1b159d0b2"
   },
   "src/plugins/Accounting/manifest.json": {
-    "mtime": 1793884364.752908,
-    "seen": 1793884436.9293475,
-    "ast_hash": "43ec875d1a8496e4ef8ca55ff1e90f17",
+    "mtime": 1793886341.1980069,
+    "seen": 1793886740.1463337,
+    "ast_hash": "edbb835091bb69763424d01050f0ebe6",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/manifest.ts": {
@@ -470,9 +470,9 @@
     "semantic_hash": "2cf61e718991de61558a761f4a82f17b"
   },
   "src/plugins/DocNexus/manifest.json": {
-    "mtime": 1793884363.7392771,
-    "seen": 1793884436.9293802,
-    "ast_hash": "f25f3445ee215832aab7f40493b086c6",
+    "mtime": 1793886340.2389238,
+    "seen": 1793886740.1463668,
+    "ast_hash": "0d8c61f51ddc1f94544c56442e14fd7d",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/manifest.ts": {
@@ -536,9 +536,9 @@
     "semantic_hash": "60a8dc279c1c40a63b3d53988dbd2e61"
   },
   "src/plugins/FlowDesigner/manifest.json": {
-    "mtime": 1793884362.9373553,
-    "seen": 1793884436.929398,
-    "ast_hash": "85bbad433fcbdb9fa87d8e7c0cad517c",
+    "mtime": 1793886339.4935894,
+    "seen": 1793886740.146385,
+    "ast_hash": "775223ca4a718d588d0caa835f2b8b8b",
     "semantic_hash": ""
   },
   "src/plugins/FlowDesigner/manifest.ts": {
@@ -644,9 +644,9 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1793884361.1760647,
-    "seen": 1793884436.9294508,
-    "ast_hash": "139895470e3de1d4d25168f83229be22",
+    "mtime": 1793886338.070658,
+    "seen": 1793886740.1464381,
+    "ast_hash": "ef59890027e1f3790a966d397975cb33",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
@@ -848,9 +848,9 @@
     "semantic_hash": ""
   },
   "docs/DOCUMENTATION.md": {
-    "mtime": 1793798077.0126517,
-    "seen": 1793798088.8705976,
-    "ast_hash": "d31ecb727e7145e2597ac2de39d0b3ef",
+    "mtime": 1793886678.2150705,
+    "seen": 1793886740.146505,
+    "ast_hash": "f054ff248e1340f395ee56ca94015057",
     "semantic_hash": ""
   },
   "docs/accounting_plugin_architecture_and_logic.md": {
@@ -1112,8 +1112,8 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
-    "mtime": 1793883968.8691308,
-    "seen": 1793884436.9294171,
+    "mtime": 1793884831.7824025,
+    "seen": 1793886740.146405,
     "ast_hash": "34beeaadf931d5f4e36b6340c9ab6ac3",
     "semantic_hash": ""
   },
@@ -1130,8 +1130,8 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/routes.ts": {
-    "mtime": 1793883906.7903821,
-    "seen": 1793884436.9294238,
+    "mtime": 1793884832.0303822,
+    "seen": 1793886740.1464114,
     "ast_hash": "f33576f3adec439bb18b04d1f34acce5",
     "semantic_hash": ""
   },
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1793884365.668805,
-    "seen": 1793884436.9294205,
-    "ast_hash": "ee79cc877e7943c64583055596b8fdcb",
+    "mtime": 1793886342.1526732,
+    "seen": 1793886740.146408,
+    "ast_hash": "0079fbe506801434a2a99eb267ebf0a2",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {
@@ -1166,9 +1166,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/components/ImageStudioView.tsx": {
-    "mtime": 1793884222.5730712,
-    "seen": 1793884436.9294026,
-    "ast_hash": "8747a4bb25bf24f4b1c2da2f6c6bb94e",
+    "mtime": 1793886303.1425576,
+    "seen": 1793886740.14639,
+    "ast_hash": "4ccd0b32ac66b6dfe8b10dc01e213931",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/index.ts": {
@@ -1178,26 +1178,26 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.json": {
-    "mtime": 1793884366.5551934,
-    "seen": 1793884436.929406,
-    "ast_hash": "5d9ea0a1ec398465ce5fa9fbe57e681e",
+    "mtime": 1793886342.9617126,
+    "seen": 1793886740.1463933,
+    "ast_hash": "68130dc9287895fb911f17f0f110bf7d",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.ts": {
-    "mtime": 1793884240.2318656,
-    "seen": 1793884436.9294076,
+    "mtime": 1793884830.9506419,
+    "seen": 1793886740.146395,
     "ast_hash": "d922d25d9b08b0db371112dec5b6788e",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/routes.ts": {
-    "mtime": 1793884113.4852703,
-    "seen": 1793884436.929409,
-    "ast_hash": "4831a56f9498d4e24a3356d6e942de23",
+    "mtime": 1793886091.362796,
+    "seen": 1793886740.1463964,
+    "ast_hash": "b2da34ff1765489127ee94a9e9d80ab2",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/types.ts": {
-    "mtime": 1793884090.1384454,
-    "seen": 1793884436.9294105,
+    "mtime": 1793884831.2316227,
+    "seen": 1793886740.146398,
     "ast_hash": "b7f6c558e4bd5e52307c8b855c78244c",
     "semantic_hash": ""
   },
@@ -1235,6 +1235,180 @@
     "mtime": 1793880981.5093846,
     "seen": 1793884436.9295466,
     "ast_hash": "88483aa70107120e69357ee55fc9919e",
+    "semantic_hash": ""
+  },
+  "docs/README.md": {
+    "mtime": 1793886660.400854,
+    "seen": 1793886740.1465075,
+    "ast_hash": "df5d2b64149eaa9ec604be0344a67603",
+    "semantic_hash": ""
+  },
+  "docs/design-system/README.md": {
+    "mtime": 1793886613.753904,
+    "seen": 1793886740.1465182,
+    "ast_hash": "d7d196d57865109caf001c42801ff3c4",
+    "semantic_hash": ""
+  },
+  "docs/design-system/ui_styling_and_icons.md": {
+    "mtime": 1793787923.367748,
+    "seen": 1793886740.14652,
+    "ast_hash": "8e957d4fd9af5b62552dd6024e521717",
+    "semantic_hash": ""
+  },
+  "docs/image-studio/README.md": {
+    "mtime": 1793886475.7794847,
+    "seen": 1793886740.1465247,
+    "ast_hash": "a407ba5a2a6fb3b46c60ed9e8ad4f3a4",
+    "semantic_hash": ""
+  },
+  "docs/image-studio/diffusion_models_and_pipelines.md": {
+    "mtime": 1793886454.1085353,
+    "seen": 1793886740.146526,
+    "ast_hash": "6ba18b742b6c152932e279c7e019e45f",
+    "semantic_hash": ""
+  },
+  "docs/image-studio/inference_limits_and_gpu_sizing.md": {
+    "mtime": 1793886440.3645518,
+    "seen": 1793886740.1465275,
+    "ast_hash": "414471e7ca1a3eda18d3a70b6813b272",
+    "semantic_hash": ""
+  },
+  "docs/image-studio/super_resolution_and_clarity.md": {
+    "mtime": 1793886468.3544486,
+    "seen": 1793886740.146529,
+    "ast_hash": "4b64c60710ea345186735c863eebbbc7",
+    "semantic_hash": ""
+  },
+  "docs/infrastructure/README.md": {
+    "mtime": 1793886602.2994747,
+    "seen": 1793886740.1465306,
+    "ast_hash": "a74027ba20e8907cd7cf64b2a4e329d8",
+    "semantic_hash": ""
+  },
+  "docs/infrastructure/data_segregation_and_privacy.md": {
+    "mtime": 1791658037.3284354,
+    "seen": 1793886740.1465318,
+    "ast_hash": "cc0faef3aefbf3f3e3ba300b1f4d57db",
+    "semantic_hash": ""
+  },
+  "docs/infrastructure/database_migration_and_backup.md": {
+    "mtime": 1792509756.1089866,
+    "seen": 1793886740.1465335,
+    "ast_hash": "b79f1ede6b3b8a8b7a04e1dc437cdfab",
+    "semantic_hash": ""
+  },
+  "docs/infrastructure/oracle_fleet_and_replication.md": {
+    "mtime": 1793857793.4885726,
+    "seen": 1793886740.146535,
+    "ast_hash": "8a90a5cb4e4e00b9a34dbe231e5aae77",
+    "semantic_hash": ""
+  },
+  "docs/infrastructure/pre_commit_and_deployment.md": {
+    "mtime": 1793856405.455885,
+    "seen": 1793886740.146536,
+    "ast_hash": "bfd61a0c97ca99efadc8c36411694a53",
+    "semantic_hash": ""
+  },
+  "docs/infrastructure/storage_vault_and_security.md": {
+    "mtime": 1793809064.6908543,
+    "seen": 1793886740.1465378,
+    "ast_hash": "22b35e1fcaddfbabd5b4a887aa5c9d13",
+    "semantic_hash": ""
+  },
+  "docs/llm/README.md": {
+    "mtime": 1793886579.9855154,
+    "seen": 1793886740.1465409,
+    "ast_hash": "dfc2e485ba5f13aa1cc16bc98debac70",
+    "semantic_hash": ""
+  },
+  "docs/llm/inference_node_setup_and_benchmarks.md": {
+    "mtime": 1793880159.8915596,
+    "seen": 1793886740.1465423,
+    "ast_hash": "e28dd822c8602b4dbeddbb298c2750bc",
+    "semantic_hash": ""
+  },
+  "docs/llm/opencode_and_prompt_tuning.md": {
+    "mtime": 1793886573.209464,
+    "seen": 1793886740.146544,
+    "ast_hash": "635bb02f4edfc068a9836791bc2ba720",
+    "semantic_hash": ""
+  },
+  "docs/llm/speculative_decoding_and_speedups.md": {
+    "mtime": 1793886554.712298,
+    "seen": 1793886740.1465452,
+    "ast_hash": "3aca8f62700bede38cdcb157acbaec17",
+    "semantic_hash": ""
+  },
+  "docs/plugins/README.md": {
+    "mtime": 1793886637.6861582,
+    "seen": 1793886740.1465554,
+    "ast_hash": "829fce3865313d4d97d6d3db172d901a",
+    "semantic_hash": ""
+  },
+  "docs/plugins/image_studio_architecture_and_logic.md": {
+    "mtime": 1793886628.4336774,
+    "seen": 1793886740.1465619,
+    "ast_hash": "ba79210afba96bd2de7d795db7fc9938",
+    "semantic_hash": ""
+  },
+  "docs/plugins/publishing_and_versioning.md": {
+    "mtime": 1791181872.2230268,
+    "seen": 1793886740.1465633,
+    "ast_hash": "54799ec6e32899b3c61d10f4b25a4a57",
+    "semantic_hash": ""
+  },
+  "docs/plugins/state_of_plugin_dev.md": {
+    "mtime": 1791625128.9315524,
+    "seen": 1793886740.1465664,
+    "ast_hash": "c034f38f490718b4072557b736bb53c6",
+    "semantic_hash": ""
+  },
+  "docs/speech/README.md": {
+    "mtime": 1793886534.9591622,
+    "seen": 1793886740.1465733,
+    "ast_hash": "6c5c2da0f1763b6ec4d872a028e7cd6b",
+    "semantic_hash": ""
+  },
+  "docs/speech/tts_architecture_and_models.md": {
+    "mtime": 1793880981.5093846,
+    "seen": 1793886740.1465745,
+    "ast_hash": "88483aa70107120e69357ee55fc9919e",
+    "semantic_hash": ""
+  },
+  "docs/speech/voice_cloning_and_calibration.md": {
+    "mtime": 1793886515.8512833,
+    "seen": 1793886740.146576,
+    "ast_hash": "a4a3ff57ef7df05cf3b0bedeaddfdb96",
+    "semantic_hash": ""
+  },
+  "docs/stock-quant/README.md": {
+    "mtime": 1793886417.4517922,
+    "seen": 1793886740.1465795,
+    "ast_hash": "bb90a700ae24e1f4bc0ac847ee52b759",
+    "semantic_hash": ""
+  },
+  "docs/stock-quant/algo_review_and_roadmap.md": {
+    "mtime": 1791473976.3136027,
+    "seen": 1793886740.146581,
+    "ast_hash": "f52d30a131b7306b974ded6ca330910b",
+    "semantic_hash": ""
+  },
+  "docs/stock-quant/live_trading_execution_guide.md": {
+    "mtime": 1791473976.3120325,
+    "seen": 1793886740.1465826,
+    "ast_hash": "fd4942bd993fcc2f09f62c73c02402c3",
+    "semantic_hash": ""
+  },
+  "docs/stock-quant/quantitative_model_architecture.md": {
+    "mtime": 1793886401.0183668,
+    "seen": 1793886740.1465838,
+    "ast_hash": "b2b7ef14640ee0c033331af2c0154d13",
+    "semantic_hash": ""
+  },
+  "docs/stock-quant/top_rated_quant_algorithms_backtested.md": {
+    "mtime": 1791303066.4012837,
+    "seen": 1793886740.146585,
+    "ast_hash": "30dd60bb41250c6354be7f484018d0a0",
     "semantic_hash": ""
   },
   "package-lock.json": {

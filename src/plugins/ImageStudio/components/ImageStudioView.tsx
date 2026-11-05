@@ -20,7 +20,9 @@ import {
   Image as ImageIcon,
   ArrowRight,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Key,
+  Clock
 } from 'lucide-react';
 import { WorkspacePluginViewProps } from '../../types.js';
 import { UpscaleEngineType, ImageGenModel, AspectRatio, StylePreset, ImageHistoryItem } from '../types.js';
@@ -73,7 +75,37 @@ export default function ImageStudioView({
     model: string;
     durationMs: number;
     dimensions: { width: number; height: number };
+    provider?: string;
   } | null>(null);
+
+  // --- Rate Limiting & Custom API Keys ---
+  const [cooldownSeconds, setCooldownSeconds] = useState<number>(0);
+  const [showSettingsModal, setShowSettingsModal] = useState<boolean>(false);
+  const [hfToken, setHfToken] = useState<string>(() => {
+    try {
+      return localStorage.getItem('sutharlabs_hf_token') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [pollenKey, setPollenKey] = useState<string>(() => {
+    try {
+      return localStorage.getItem('sutharlabs_pollen_key') || '';
+    } catch {
+      return '';
+    }
+  });
+  const [tempHfToken, setTempHfToken] = useState<string>(hfToken);
+  const [tempPollenKey, setTempPollenKey] = useState<string>(pollenKey);
+
+  // Free Tier Rate limit countdown effect
+  useEffect(() => {
+    if (cooldownSeconds <= 0) return;
+    const interval = setInterval(() => {
+      setCooldownSeconds(prev => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [cooldownSeconds]);
 
   // --- Image Upscaler State ---
   const [originalImage, setOriginalImage] = useState<string | null>(SAMPLE_IMAGES[0].url);
@@ -158,6 +190,11 @@ export default function ImageStudioView({
       return;
     }
 
+    if (!hfToken && !pollenKey && cooldownSeconds > 0) {
+      setErrorMessage(`Free tier cooldown active: Please wait ${cooldownSeconds}s before generating again, or configure a Hugging Face API Token in Settings to bypass all limits.`);
+      return;
+    }
+
     setErrorMessage(null);
     setSuccessNotice(null);
     setIsGenerating(true);
@@ -173,12 +210,17 @@ export default function ImageStudioView({
           model: selectedModel,
           aspectRatio: selectedAspectRatio,
           stylePreset: selectedStyle,
-          seed
+          seed,
+          hfToken: hfToken.trim() || undefined,
+          pollenKey: pollenKey.trim() || undefined
         })
       });
 
       const data = await res.json();
       if (!res.ok) {
+        if (data.isRateLimited) {
+          setCooldownSeconds(data.retryAfterSeconds || 45);
+        }
         throw new Error(data.message || data.error || 'Failed to generate image.');
       }
 
@@ -186,8 +228,14 @@ export default function ImageStudioView({
       setGenerationTelemetry({
         model: data.model,
         durationMs: data.executionTimeMs || (Date.now() - startTime),
-        dimensions: data.dimensions || { width: 1024, height: 1024 }
+        dimensions: data.dimensions || { width: 1024, height: 1024 },
+        provider: data.provider
       });
+
+      // Start 45s cooldown for anonymous free tier to prevent rate limit triggers
+      if (!hfToken && !pollenKey) {
+        setCooldownSeconds(45);
+      }
 
       onAddLog({
         timestamp: new Date().toLocaleTimeString(),
@@ -363,8 +411,32 @@ export default function ImageStudioView({
           </div>
         </div>
 
-        {/* Sub-Tab Navigation Switcher conforming to Section 6.A */}
+        {/* Sub-Tab Navigation Switcher & API Settings conforming to Section 6.A */}
         <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          {/* Custom API / HF Key Configuration Button */}
+          <button
+            type="button"
+            onClick={() => {
+              setTempHfToken(hfToken);
+              setTempPollenKey(pollenKey);
+              setShowSettingsModal(true);
+            }}
+            className={`h-8 px-2.5 sm:px-3 rounded-lg border font-mono text-xs font-semibold transition-all cursor-pointer shadow-sm flex items-center gap-1.5 shrink-0 ${
+              hfToken
+                ? isLight
+                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-bold'
+                  : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-bold'
+                : isLight
+                  ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                  : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
+            }`}
+            title="Configure Hugging Face Token (Zero Watermark / No Cooldown)"
+          >
+            <Key className="w-3.5 h-3.5 shrink-0 text-[#00dbe7]" />
+            <span className="hidden sm:inline">{hfToken ? 'HF H100 (Active)' : 'API Settings'}</span>
+            <span className="sm:hidden">{hfToken ? 'HF' : 'API'}</span>
+          </button>
+
           <div className={`flex rounded-lg p-0.5 border text-xs ${
             isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
           }`}>
@@ -581,7 +653,7 @@ export default function ImageStudioView({
               <button
                 type="button"
                 onClick={handleGenerate}
-                disabled={isGenerating || !prompt.trim()}
+                disabled={isGenerating || !prompt.trim() || (!hfToken && !pollenKey && cooldownSeconds > 0)}
                 className={`w-full h-10 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 leading-none border shadow-sm ${
                   isLight
                     ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-sm font-bold'
@@ -593,13 +665,49 @@ export default function ImageStudioView({
                     <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
                     <span>SYNTHESIZING WITH {selectedModel.toUpperCase()}...</span>
                   </>
+                ) : !hfToken && !pollenKey && cooldownSeconds > 0 ? (
+                  <>
+                    <Clock className="w-4 h-4 shrink-0 text-amber-400" />
+                    <span>FREE COOLDOWN ({cooldownSeconds}S REMAINING)</span>
+                  </>
                 ) : (
                   <>
                     <Wand2 className="w-4 h-4 shrink-0" />
-                    <span>GENERATE IMAGE (FREE)</span>
+                    <span>GENERATE IMAGE {hfToken ? '(HF H100 GPU)' : '(FREE)'}</span>
                   </>
                 )}
               </button>
+
+              {/* Free Tier Rate Limit Notice & Settings Shortcut */}
+              {!hfToken && !pollenKey && (
+                <div className={`p-2.5 rounded-xl border text-[11px] font-mono flex items-center justify-between gap-2 transition-colors ${
+                  cooldownSeconds > 0
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                    : isLight
+                      ? 'bg-slate-50 border-slate-200 text-slate-600'
+                      : 'bg-[#121215] border-[#3a494b]/30 text-on-surface-variant'
+                }`}>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Clock className="w-3.5 h-3.5 shrink-0 text-amber-400" />
+                    <span className="truncate">
+                      {cooldownSeconds > 0
+                        ? `Cooldown active: ${cooldownSeconds}s left (1 img/45s per IP)`
+                        : 'Free tier: 1 img / 45s'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTempHfToken(hfToken);
+                      setTempPollenKey(pollenKey);
+                      setShowSettingsModal(true);
+                    }}
+                    className="underline text-sky-400 hover:text-sky-300 font-bold shrink-0 cursor-pointer"
+                  >
+                    Bypass Limit
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -617,7 +725,7 @@ export default function ImageStudioView({
                     <h3 className="text-sm font-bold text-on-surface">Synthesis Canvas</h3>
                     <p className="text-[10px] text-on-surface-variant font-mono">
                       {generationTelemetry 
-                        ? `${generationTelemetry.dimensions.width}×${generationTelemetry.dimensions.height} • ${generationTelemetry.model} • ${(generationTelemetry.durationMs / 1000).toFixed(1)}s` 
+                        ? `${generationTelemetry.dimensions.width}×${generationTelemetry.dimensions.height} • ${generationTelemetry.model} • ${(generationTelemetry.durationMs / 1000).toFixed(1)}s${generationTelemetry.provider ? ` • ${generationTelemetry.provider}` : ''}` 
                         : 'Awaiting generation request'}
                     </p>
                   </div>
@@ -1010,6 +1118,170 @@ export default function ImageStudioView({
         variant="warning"
         theme={theme}
       />
+
+      {/* Inference & API Credentials Settings Modal conforming to Section 4 */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+          <div className={`relative w-full max-w-lg rounded-2xl border shadow-2xl overflow-hidden transition-all animate-in fade-in zoom-in-95 duration-150 ${
+            isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]'
+          }`}>
+            {/* Top Accent Bar conforming to Section 4.B */}
+            <div className="h-1 w-full bg-[#00dbe7]" />
+
+            <div className="p-6 space-y-5">
+              {/* Header with Icon Badge conforming to Section 1 & Section 4.B */}
+              <div className="flex items-center gap-3.5">
+                <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 shadow-sm">
+                  <Key className="w-5 h-5 text-[#00dbe7] shrink-0" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold tracking-tight text-on-surface font-sans">
+                    Inference & GPU Acceleration Settings
+                  </h3>
+                  <p className="text-xs text-on-surface-variant font-mono mt-0.5">
+                    Zero-watermark synthesis & rate limit bypass
+                  </p>
+                </div>
+              </div>
+
+              {/* Informational Advisory Block */}
+              <div className={`p-3 rounded-xl border text-xs font-mono space-y-1.5 ${
+                isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-[#18181b] border-[#3a494b]/30 text-on-surface-variant'
+              }`}>
+                <div className="font-bold text-on-surface flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>Why configure an API Token?</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  The default anonymous cluster imposes a <strong>1 generation per 45 seconds</strong> rate limit per IP. Adding a <strong>free Hugging Face Token</strong> routes requests to dedicated serverless NVIDIA H100 clusters with <strong>zero watermarks</strong>, sub-4s synthesis, and zero cooldown delays.
+                </p>
+              </div>
+
+              {/* Form Input: Hugging Face Token */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface flex items-center gap-1.5">
+                    <span>Hugging Face Access Token</span>
+                    <span className="text-[10px] text-emerald-400 font-normal">(Recommended / Free)</span>
+                  </label>
+                  <a
+                    href="https://huggingface.co/settings/tokens"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] font-mono text-sky-400 hover:underline flex items-center gap-1"
+                  >
+                    <span>Get free token</span>
+                    <ExternalLink className="w-3 h-3 shrink-0" />
+                  </a>
+                </div>
+                <input
+                  type="password"
+                  value={tempHfToken}
+                  onChange={(e) => setTempHfToken(e.target.value)}
+                  placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                  className={`w-full px-3 py-2 rounded-xl text-xs font-mono border focus:outline-none focus:ring-1 focus:ring-[#00dbe7] transition-colors ${
+                    isLight ? 'bg-slate-100 border-slate-300 text-slate-900' : 'bg-[#0a0a0c] border-[#3a494b]/50 text-white'
+                  }`}
+                />
+                <p className="text-[10px] font-mono text-on-surface-variant">
+                  Stored securely in your local browser storage (<code className="text-[#00dbe7]">localStorage</code>). Never logged.
+                </p>
+              </div>
+
+              {/* Form Input: Pollinations Pollen Key (Optional) */}
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface flex items-center gap-1.5">
+                    <span>Pollinations Pollen Key</span>
+                    <span className="text-[10px] text-on-surface-variant font-normal">(Optional)</span>
+                  </label>
+                  <a
+                    href="https://enter.pollinations.ai/?ref=classic"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="text-[11px] font-mono text-sky-400 hover:underline flex items-center gap-1"
+                  >
+                    <span>Get pollen key</span>
+                    <ExternalLink className="w-3 h-3 shrink-0" />
+                  </a>
+                </div>
+                <input
+                  type="password"
+                  value={tempPollenKey}
+                  onChange={(e) => setTempPollenKey(e.target.value)}
+                  placeholder="Optional Pollinations VIP key"
+                  className={`w-full px-3 py-2 rounded-xl text-xs font-mono border focus:outline-none focus:ring-1 focus:ring-[#00dbe7] transition-colors ${
+                    isLight ? 'bg-slate-100 border-slate-300 text-slate-900' : 'bg-[#0a0a0c] border-[#3a494b]/50 text-white'
+                  }`}
+                />
+              </div>
+
+              {/* Action Buttons conforming to Section 2 & Section 4.B */}
+              <div className="flex items-center justify-between pt-2 border-t border-outline/20">
+                {(hfToken || pollenKey) ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      localStorage.removeItem('sutharlabs_hf_token');
+                      localStorage.removeItem('sutharlabs_pollen_key');
+                      setHfToken('');
+                      setPollenKey('');
+                      setTempHfToken('');
+                      setTempPollenKey('');
+                      setSuccessNotice('Custom API credentials cleared. Reverted to anonymous cluster.');
+                      setShowSettingsModal(false);
+                      setTimeout(() => setSuccessNotice(null), 5000);
+                    }}
+                    className="h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider text-rose-400 hover:text-rose-300 transition-colors cursor-pointer"
+                  >
+                    Clear Credentials
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => setShowSettingsModal(false)}
+                    className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer ${
+                      isLight
+                        ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                        : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
+                    }`}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const trimmedHf = tempHfToken.trim();
+                      const trimmedPollen = tempPollenKey.trim();
+                      if (trimmedHf) localStorage.setItem('sutharlabs_hf_token', trimmedHf);
+                      else localStorage.removeItem('sutharlabs_hf_token');
+
+                      if (trimmedPollen) localStorage.setItem('sutharlabs_pollen_key', trimmedPollen);
+                      else localStorage.removeItem('sutharlabs_pollen_key');
+
+                      setHfToken(trimmedHf);
+                      setPollenKey(trimmedPollen);
+                      setCooldownSeconds(0);
+                      setShowSettingsModal(false);
+                      setSuccessNotice(trimmedHf ? 'Hugging Face H100 inference engine configured successfully!' : 'Settings updated.');
+                      setTimeout(() => setSuccessNotice(null), 5000);
+                    }}
+                    className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer ${
+                      isLight
+                        ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-sm font-bold'
+                        : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border-[#00dbe7]/50 hover:border-[#00dbe7] font-bold'
+                    }`}
+                  >
+                    Save & Apply
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
