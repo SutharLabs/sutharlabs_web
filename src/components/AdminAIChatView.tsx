@@ -259,6 +259,10 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
     });
   };
 
+  const [inputPrompt, setInputPrompt] = useState<string>('');
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [streamBuffer, setStreamBuffer] = useState<string>('');
+
   // Active Context Calculations
   const contextStats = useMemo(() => {
     const turns = messages.length;
