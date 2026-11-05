@@ -36,7 +36,8 @@ const INSTALLED_PLUGINS: { name: WorkspaceTab; icon: string; size: string }[] = 
   { name: 'Custom Flow', icon: 'account_tree', size: '4.8 KB' },
   { name: 'Accounting', icon: 'currency_exchange', size: '18.2 KB' },
   { name: 'Doc Nexus', icon: 'menu_book', size: '15.6 KB' },
-  { name: 'Speech Studio', icon: 'record_voice_over', size: '14.8 KB' }
+  { name: 'Speech Studio', icon: 'record_voice_over', size: '14.8 KB' },
+  { name: 'Image Studio', icon: 'photo_filter', size: '16.5 KB' }
 ];
 
 const ADMIN_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
@@ -70,6 +71,7 @@ const ROUTE_MAP: Record<WorkspaceTab, string> = {
   'Contact Inquiries': '/admin/contact-inquiries',
   'Doc Nexus': '/workspace/docnexus',
   'Speech Studio': '/workspace/speech-studio',
+  'Image Studio': '/workspace/image-studio',
   'Manage Plugins': '/admin/manage-plugins',
   'Manage Apps': '/admin/manage-apps',
   'Manage Portfolios': '/admin/manage-portfolios',

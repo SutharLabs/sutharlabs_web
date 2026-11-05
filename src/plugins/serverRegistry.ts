@@ -9,13 +9,16 @@ import { manifest as accountingManifest } from "./Accounting/manifest.js";
 import { registerRoutes as registerAccountingRoutes } from "./Accounting/routes.js";
 import { manifest as speechStudioManifest } from "./SpeechStudio/manifest.js";
 import { registerRoutes as registerSpeechStudioRoutes } from "./SpeechStudio/routes.js";
+import { manifest as imageStudioManifest } from "./ImageStudio/manifest.js";
+import { registerRoutes as registerImageStudioRoutes } from "./ImageStudio/routes.js";
 
 export const SERVER_PLUGIN_ENTRIES = [
   { manifest: stockManifest, registerRoutes: registerStockRoutes },
   { manifest: flowManifest, registerRoutes: registerFlowRoutes },
   { manifest: docNexusManifest, registerRoutes: registerDocNexusRoutes },
   { manifest: accountingManifest, registerRoutes: registerAccountingRoutes },
-  { manifest: speechStudioManifest, registerRoutes: registerSpeechStudioRoutes }
+  { manifest: speechStudioManifest, registerRoutes: registerSpeechStudioRoutes },
+  { manifest: imageStudioManifest, registerRoutes: registerImageStudioRoutes }
 ];
 
 /**
@@ -51,4 +54,14 @@ export function registerAllPluginRoutes(app: Application) {
   const accountingRouter = Router();
   registerAccountingRoutes(accountingRouter);
   app.use("/api", accountingRouter);
+
+  // Speech Studio routes: /api/speech
+  const speechRouter = Router();
+  registerSpeechStudioRoutes(speechRouter);
+  app.use("/api/speech", speechRouter);
+
+  // Image Studio routes: /api/image
+  const imageRouter = Router();
+  registerImageStudioRoutes(imageRouter);
+  app.use("/api/image", imageRouter);
 }

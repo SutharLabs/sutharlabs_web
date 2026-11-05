@@ -78,11 +78,22 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'SpeechStudio',
     id: 'speech-studio',
     name: 'Speech Studio',
-    version: '0.1.1',
+    version: '0.2.0',
     category: 'AI & Multimedia',
     type: 'Native',
     description: 'Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting.',
     iconSymbol: 'record_voice_over',
+    minEngineVersion: '0.1.0'
+  },
+  {
+    dirName: 'ImageStudio',
+    id: 'image-studio',
+    name: 'Image Studio & 4K Upscaler',
+    version: '0.1.0',
+    category: 'AI & Multimedia',
+    type: 'Native',
+    description: 'Dual-mode AI image upscaler and enhancement studio. Features free mathematical super-resolution (Real-ESRGAN) by default with optional generative 4K/8K Clarity upscaling.',
+    iconSymbol: 'photo_filter',
     minEngineVersion: '0.1.0'
   }
 ];

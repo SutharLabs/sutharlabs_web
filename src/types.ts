@@ -26,6 +26,7 @@ export type WorkspaceTab =
   | 'Reported Bugs'
   | 'Doc Nexus'
   | 'Speech Studio' 
+  | 'Image Studio'
   | 'README' 
   | 'Plugin Store' 
   | 'Profile & Settings';

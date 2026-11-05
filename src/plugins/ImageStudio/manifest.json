@@ -1,0 +1,12 @@
+{
+  "id": "image-studio",
+  "name": "Image Studio & 4K Upscaler",
+  "version": "0.1.0",
+  "category": "AI & Multimedia",
+  "type": "Native",
+  "description": "Dual-mode AI image upscaler and enhancement studio. Features free mathematical super-resolution (Real-ESRGAN) by default with optional generative 4K/8K Clarity upscaling.",
+  "iconSymbol": "photo_filter",
+  "main": "index.ts",
+  "minEngineVersion": "0.1.0",
+  "packagedAt": "2026-11-05T04:50:00.000Z"
+}

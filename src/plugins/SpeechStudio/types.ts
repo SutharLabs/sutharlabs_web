@@ -6,6 +6,17 @@ export interface TTSVoiceOption {
   gender: 'female' | 'male' | 'neutral';
   accent?: string;
   isNeural?: boolean;
+  engine?: 'neural' | 'cloned' | 'browser';
+  description?: string;
+  previewSample?: string;
+}
+
+export interface ClonedVoiceProfile {
+  id: string;
+  name: string;
+  createdAt: string;
+  sampleDurationSec: number;
+  sampleAudioDataUrl?: string;
 }
 
 export interface TTSQuotaStatus {
@@ -20,10 +31,13 @@ export interface TTSQuotaStatus {
 export interface TTSSynthesizePayload {
   text: string;
   lang: string;
+  voiceId?: string;
   voiceName?: string;
   rate?: number;
   pitch?: number;
   volume?: number;
+  engine?: 'neural' | 'cloned' | 'browser';
+  referenceAudio?: string; // Base64 audio for voice cloning
 }
 
 export interface SpeechHistoryItem {
@@ -34,5 +48,8 @@ export interface SpeechHistoryItem {
   charCount: number;
   timestamp: string;
   durationEstimateSec: number;
+  audioUrl?: string;
+  engine?: string;
 }
+
 
