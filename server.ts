@@ -1989,6 +1989,23 @@ app.get("/api/ai/health", async (_req: any, res: any) => {
   }
 });
 
+// GET /api/ai/opencode-info - OpenCode engine and tunnel discovery endpoint
+app.get("/api/ai/opencode-info", async (_req: any, res: any) => {
+  try {
+    const publicUrl = process.env.OPENCODE_PUBLIC_URL || "https://basin-engine-expensive-innocent.trycloudflare.com";
+    const directUrl = process.env.OPENCODE_DIRECT_URL || "http://132.226.190.125/";
+    res.json({
+      url: publicUrl,
+      directUrl,
+      status: "online",
+      node: "VM 2 (132.226.190.125)",
+      version: "1.19.5"
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // GET /api/ai/models - List local LLM models
 app.get("/api/ai/models", authenticateToken, requireAdmin, async (_req: any, res: any) => {
   try {

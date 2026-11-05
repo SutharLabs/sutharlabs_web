@@ -28,7 +28,10 @@ import {
   ShieldCheck,
   PanelRightClose,
   PanelRightOpen,
-  RefreshCw
+  RefreshCw,
+  Globe,
+  Lock,
+  Settings
 } from 'lucide-react';
 import { AIChatMessage, AIAgentPersona, AIArtifactItem, TerminalLog } from '../types';
 import { 
@@ -39,6 +42,7 @@ import {
   OllamaModelTag 
 } from '../services/aiChatService';
 import ConfirmModal, { ModalVariant } from './ConfirmModal';
+import MarkdownMessage from './MarkdownMessage';
 
 interface AdminAIChatViewProps {
   logs?: TerminalLog[];
@@ -98,6 +102,13 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   // OpenCode SOTA Agent vs Custom Chat Studio Mode
   const [studioMode, setStudioMode] = useState<'opencode' | 'custom-chat'>('opencode');
   const [iframeKey, setIframeKey] = useState<number>(0);
+  const [opencodeUrl, setOpencodeUrl] = useState<string>(() => {
+    return localStorage.getItem('sutharlabs_opencode_url') || 'https://basin-engine-expensive-innocent.trycloudflare.com';
+  });
+  const [directVmUrl, setDirectVmUrl] = useState<string>('http://132.226.190.125/');
+  const [isSecureContext, setIsSecureContext] = useState<boolean>(true);
+  const [customUrlInput, setCustomUrlInput] = useState<string>('');
+  const [isEditingUrl, setIsEditingUrl] = useState<boolean>(false);
 
   // UI Helpers
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -147,6 +158,29 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
       }
     }
     init();
+
+    // 2. Discover active OpenCode URL
+    async function discoverOpencode() {
+      const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
+      setIsSecureContext(isHttps);
+
+      try {
+        const res = await fetch('/api/ai/opencode-info');
+        if (res.ok) {
+          const info = await res.json();
+          const savedUrl = localStorage.getItem('sutharlabs_opencode_url');
+          if (!savedUrl && info.url) {
+            setOpencodeUrl(isHttps ? info.url : (info.directUrl || info.url));
+          }
+          if (info.directUrl) {
+            setDirectVmUrl(info.directUrl);
+          }
+        }
+      } catch (err) {
+        console.warn('OpenCode discovery failed, using fallback:', err);
+      }
+    }
+    discoverOpencode();
   }, [userToken]);
 
   // Auto-scroll chat
@@ -437,7 +471,21 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                 <span className="hidden sm:inline">Reload</span>
               </button>
               <a
-                href="http://132.226.190.125/"
+                href={directVmUrl}
+                target="_blank"
+                rel="noreferrer"
+                className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                    : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                }`}
+                title="Open Direct VM Node IP in New Window"
+              >
+                <Globe className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                <span className="hidden md:inline">Direct Node IP</span>
+              </a>
+              <a
+                href={opencodeUrl}
                 target="_blank"
                 rel="noreferrer"
                 className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none ${
@@ -648,9 +696,19 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                           ? 'bg-white border border-slate-200 text-slate-800 rounded-tl-xs shadow-sm'
                           : 'bg-surface-container-low/60 border border-outline/15 text-[#e5e1e4] rounded-tl-xs'
                     }`}>
-                      <div className="whitespace-pre-wrap font-sans text-xs">
-                        {msg.content}
-                      </div>
+                      {isUser ? (
+                        <div className="whitespace-pre-wrap font-sans text-xs">
+                          {msg.content}
+                        </div>
+                      ) : (
+                        <MarkdownMessage
+                          content={msg.content}
+                          theme={theme}
+                          onExtractArtifact={(code, lang) => {
+                            extractArtifactsFromContent(`\`\`\`${lang}\n${code}\n\`\`\``, msg.id);
+                          }}
+                        />
+                      )}
 
                       {/* Code Block Artifact Extract Action */}
                       {msg.content.includes('```') && (
@@ -711,8 +769,11 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                   <div className={`p-4 rounded-2xl text-xs leading-relaxed transition-colors rounded-tl-xs ${
                     isLight ? 'bg-white border border-slate-200 text-slate-800' : 'bg-surface-container-low/60 border border-outline/15 text-[#e5e1e4]'
                   }`}>
-                    <div className="whitespace-pre-wrap font-sans text-xs">
-                      {streamBuffer || 'Thinking...'}
+                    <div className="text-xs">
+                      <MarkdownMessage
+                        content={streamBuffer || 'Thinking...'}
+                        theme={theme}
+                      />
                     </div>
                   </div>
                 </div>
@@ -917,8 +978,8 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
       </>
       ) : (
         <div className="flex-1 flex flex-col min-h-0 bg-background p-3 sm:p-5 gap-3.5">
-          {/* Quick Engine Telemetry Banner */}
-          <div className={`px-4 py-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs font-mono transition-colors shadow-xs ${
+          {/* Quick Engine Telemetry Banner & Bridge Controls */}
+          <div className={`px-4 py-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs font-mono transition-colors shadow-xs flex-wrap ${
             isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-[#151518] border-[#3a494b]/40 text-[#e5e1e4]'
           }`}>
             <div className="flex items-center gap-2.5 flex-wrap">
@@ -927,11 +988,28 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                 OpenCode v1.19.5 Engine Online
               </span>
               <span className="text-on-surface-variant">•</span>
-              <span className="text-on-surface-variant">Host: <code className={`px-1.5 py-0.5 rounded text-[10px] border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>132.226.190.125 (VM2)</code></span>
-              <span className="text-on-surface-variant">•</span>
-              <span className="text-on-surface-variant">Workspace: <code className={`px-1.5 py-0.5 rounded text-[10px] border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>/home/ubuntu/workspace</code></span>
-              <span className="text-on-surface-variant">•</span>
-              <span className="text-sky-400 font-semibold">Local Model: ollama/qwen2.5:7b ($0.00)</span>
+              <span className="text-on-surface-variant">Active Bridge:</span>
+              <code className={`px-1.5 py-0.5 rounded text-[10px] border flex items-center gap-1 font-mono ${
+                isLight ? 'bg-slate-100 text-slate-800 border-slate-300' : 'bg-white/5 text-[#00dbe7] border-white/10'
+              }`}>
+                {opencodeUrl.startsWith('https://') ? (
+                  <Lock className="w-2.5 h-2.5 text-emerald-400 shrink-0" />
+                ) : (
+                  <Globe className="w-2.5 h-2.5 text-purple-400 shrink-0" />
+                )}
+                <span>{opencodeUrl}</span>
+              </code>
+              <button
+                type="button"
+                onClick={() => {
+                  setCustomUrlInput(opencodeUrl);
+                  setIsEditingUrl(!isEditingUrl);
+                }}
+                className="text-[10px] text-on-surface-variant hover:text-on-surface underline flex items-center gap-1 cursor-pointer"
+              >
+                <Settings className="w-3 h-3 shrink-0" />
+                <span>{isEditingUrl ? 'Cancel' : 'Configure Bridge'}</span>
+              </button>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/30 font-bold hidden md:inline">
@@ -940,13 +1018,70 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
             </div>
           </div>
 
+          {/* Optional Endpoint Configuration Drawer */}
+          {isEditingUrl && (
+            <div className={`p-3.5 rounded-xl border flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 text-xs font-mono transition-all animate-in fade-in duration-150 ${
+              isLight ? 'bg-white border-slate-300 shadow-sm' : 'bg-[#161619] border-[#3a494b]/50 shadow-md'
+            }`}>
+              <div className="flex-1 flex items-center gap-2">
+                <span className="text-on-surface-variant shrink-0 text-[11px]">Bridge URL:</span>
+                <input
+                  type="text"
+                  value={customUrlInput}
+                  onChange={(e) => setCustomUrlInput(e.target.value)}
+                  placeholder="https://...trycloudflare.com or http://132.226.190.125/"
+                  className={`flex-1 h-8 px-3 rounded-lg border text-xs font-mono transition-colors ${
+                    isLight
+                      ? 'bg-slate-100 border-slate-300 text-slate-800 focus:border-sky-500'
+                      : 'bg-[#111114] border-[#3a494b]/60 text-white focus:border-[#00dbe7]'
+                  }`}
+                />
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (customUrlInput.trim()) {
+                      const trimmed = customUrlInput.trim();
+                      setOpencodeUrl(trimmed);
+                      localStorage.setItem('sutharlabs_opencode_url', trimmed);
+                      setIsEditingUrl(false);
+                      setIframeKey((k) => k + 1);
+                    }
+                  }}
+                  className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                    isLight
+                      ? 'bg-sky-500 hover:bg-sky-600 text-white border border-sky-600'
+                      : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40'
+                  }`}
+                >
+                  Save & Connect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    localStorage.removeItem('sutharlabs_opencode_url');
+                    setOpencodeUrl('https://basin-engine-expensive-innocent.trycloudflare.com');
+                    setIsEditingUrl(false);
+                    setIframeKey((k) => k + 1);
+                  }}
+                  className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-all cursor-pointer ${
+                    isLight ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-white/5 text-on-surface-variant border-white/10'
+                  }`}
+                >
+                  Reset Default
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Embedded OpenCode Web View */}
           <div className={`flex-1 min-h-[550px] rounded-2xl border overflow-hidden relative shadow-xl ${
             isLight ? 'bg-white border-slate-200' : 'bg-[#111114] border-[#3a494b]/40'
           }`}>
             <iframe
               key={iframeKey}
-              src="http://132.226.190.125/"
+              src={opencodeUrl}
               title="OpenCode AI Coding Agent Studio"
               className="w-full h-full border-0 absolute inset-0"
               allow="clipboard-read; clipboard-write;"
