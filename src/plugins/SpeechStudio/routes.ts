@@ -548,6 +548,7 @@ export function registerRoutes(router: Router) {
         sampleAudio, // Base64 audio sample or data URL
         referenceText = "", // Standardized phonetic calibration transcript
         speakerName = "User Voice",
+        timbrePreference = "auto",
         rate = 1.0, 
         pitch = 1.0, 
         volume = 1.0 
@@ -577,7 +578,7 @@ export function registerRoutes(router: Router) {
         const vmResponse = await fetch(`${ORACLE_TTS_URL}/api/clone`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, sampleAudio, referenceText, speakerName, rate, pitch }),
+          body: JSON.stringify({ text, sampleAudio, referenceText, speakerName, timbrePreference, rate, pitch }),
           signal: AbortSignal.timeout(30000)
         });
 

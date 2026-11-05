@@ -1,4 +1,4 @@
-import fs from 'fs';
+﻿import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import { execSync } from 'child_process';
@@ -45,7 +45,7 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'FlowDesigner',
     id: 'wp_flow_designer',
     name: 'Interactive System Architecture Canvas',
-    version: '0.1.0',
+    version: '0.2.0',
     category: 'Architecture',
     type: 'Native',
     description: 'Interactive canvas for architectural node topologies, microservices modeling, and JSON state import/export.',
@@ -89,10 +89,10 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'ImageStudio',
     id: 'image-studio',
     name: 'Image Studio',
-    version: '0.1.0',
+    version: '0.2.0',
     category: 'AI & Multimedia',
     type: 'Native',
-    description: 'Dual-mode AI image upscaler and enhancement studio. Features free mathematical super-resolution (Real-ESRGAN) by default with optional generative 4K/8K Clarity upscaling.',
+    description: 'Dual-mode AI image studio: Top-rated open-source text-to-image generation (FLUX.1 & SD 3.5) and 4K super-resolution upscaling.',
     iconSymbol: 'photo_filter',
     minEngineVersion: '0.1.0'
   }

@@ -482,6 +482,7 @@ export default function SpeechStudioView({
   const [recordingDuration, setRecordingDuration] = useState<number>(0);
   const [clonedSampleBase64, setClonedSampleBase64] = useState<string | null>(null);
   const [clonedSpeakerName, setClonedSpeakerName] = useState<string>('My Replicated Voice');
+  const [timbrePreference, setTimbrePreference] = useState<'auto' | 'male' | 'female'>('auto');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
@@ -885,17 +886,31 @@ export default function SpeechStudioView({
       setErrorMessage(null);
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       audioChunksRef.current = [];
-      const mediaRecorder = new MediaRecorder(stream);
+
+      // Detect browser supported container/codec (WebM/Opus, Ogg, or MP4)
+      const candidateTypes = ['audio/webm;codecs=opus', 'audio/webm', 'audio/ogg;codecs=opus', 'audio/mp4'];
+      let selectedMime = '';
+      for (const t of candidateTypes) {
+        if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(t)) {
+          selectedMime = t;
+          break;
+        }
+      }
+
+      const mediaRecorder = selectedMime 
+        ? new MediaRecorder(stream, { mimeType: selectedMime }) 
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
 
       mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
+        if (event.data && event.data.size > 0) {
           audioChunksRef.current.push(event.data);
         }
       };
 
       mediaRecorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        const mime = mediaRecorder.mimeType || selectedMime || 'audio/webm';
+        const audioBlob = new Blob(audioChunksRef.current, { type: mime });
         const reader = new FileReader();
         reader.onloadend = () => {
           setClonedSampleBase64(reader.result as string);
@@ -904,7 +919,8 @@ export default function SpeechStudioView({
         stream.getTracks().forEach(track => track.stop());
       };
 
-      mediaRecorder.start();
+      // timeslice 250ms ensures continuous audio buffer accumulation
+      mediaRecorder.start(250);
       setIsRecording(true);
       setRecordingDuration(0);
 
@@ -973,7 +989,9 @@ export default function SpeechStudioView({
         body: JSON.stringify({
           text,
           sampleAudio: clonedSampleBase64,
+          referenceText: referenceTranscript,
           speakerName: clonedSpeakerName,
+          timbrePreference,
           rate,
           pitch,
           volume
@@ -2036,7 +2054,35 @@ export default function SpeechStudioView({
                         Remove
                       </button>
                     </div>
-                    <audio controls src={clonedSampleBase64} className="w-full h-7" />
+                    <audio controls src={clonedSampleBase64} className="w-full h-8 rounded-lg mt-1" />
+
+                    {/* Vocal Timbre & Frequency Character Tuning */}
+                    <div className="pt-2 border-t border-emerald-500/20 space-y-1.5">
+                      <div className="flex items-center justify-between text-[10px] font-mono uppercase font-bold text-on-surface-variant">
+                        <span>Vocal Timbre Profile</span>
+                        <span className="text-emerald-400 font-bold">{timbrePreference.toUpperCase()}</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-1.5">
+                        {(['auto', 'male', 'female'] as const).map((pref) => (
+                          <button
+                            key={pref}
+                            type="button"
+                            onClick={() => setTimbrePreference(pref)}
+                            className={`py-1 px-2 rounded-lg text-[10px] font-mono font-bold uppercase transition-all border cursor-pointer ${
+                              timbrePreference === pref
+                                ? isLight
+                                  ? 'bg-sky-500 text-white border-sky-600 shadow-sm'
+                                  : 'bg-[#00dbe7]/20 text-[#00dbe7] border-[#00dbe7]/50 shadow-sm'
+                                : isLight
+                                  ? 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                                  : 'bg-white/5 text-on-surface-variant border-white/10 hover:text-white'
+                            }`}
+                          >
+                            {pref === 'auto' ? '✨ Auto-Detect' : pref === 'male' ? '👨 Male' : '👩 Female'}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   </div>
                 )}
 

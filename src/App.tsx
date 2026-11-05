@@ -707,6 +707,8 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 'Accounting',
                 'Doc Nexus',
                 'Speech Studio',
+                'Image Studio',
+                'Image Studio & 4K Upscaler',
                 'Plugin Store',
                 'Profile & Settings',
                 'Admin Console',
@@ -719,13 +721,13 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 'Manage Plugins',
                 'Manage Portfolios',
                 'README'
-              ].includes(activeTab) && (
+              ].includes(activeTab) && !getClientPluginByName(activeTab) && !getClientPluginByRoute(location.pathname) && (
                 <StockTrackerView 
                   logs={logs} 
                   onAddLog={addLog} 
-                  userEmail={user.email}
-                  userToken={user.token || ''}
-                  userRole={user.role}
+                  userEmail={user.email} 
+                  userToken={user.token || ''} 
+                  userRole={user.role} 
                 />
               )}
             </ErrorBoundary>

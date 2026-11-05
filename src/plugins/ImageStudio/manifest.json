@@ -1,12 +1,12 @@
 {
   "id": "image-studio",
   "name": "Image Studio",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "category": "AI & Multimedia",
   "type": "Native",
-  "description": "Dual-mode AI image upscaler and enhancement studio. Features free mathematical super-resolution (Real-ESRGAN) by default with optional generative 4K/8K Clarity upscaling.",
+  "description": "Dual-mode AI image studio: Top-rated open-source text-to-image generation (FLUX.1 & SD 3.5) and 4K super-resolution upscaling.",
   "iconSymbol": "photo_filter",
   "main": "index.ts",
   "minEngineVersion": "0.1.0",
-  "packagedAt": "2026-11-05T11:59:53.747Z"
+  "packagedAt": "2026-11-05T13:12:46.554Z"
 }
