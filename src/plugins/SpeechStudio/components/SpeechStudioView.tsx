@@ -954,23 +954,45 @@ export default function SpeechStudioView({
           }
         : (neuralVoices.find(v => v.id === selectedVoiceId) || neuralVoices[0]);
 
-      const res = await fetch('/api/plugins/speech-studio/synthesize', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          text,
-          lang: activeVoice.lang,
-          voiceId: activeVoice.id,
-          voiceName: activeVoice.name,
-          rate,
-          pitch,
-          volume,
-          architecture: isCloned ? 'f5-tts' : selectedArchitecture,
-          emotion: selectedEmotion,
-          cfgStrength,
-          referenceAudio: isCloned ? (activeVoice as any).referenceAudio : undefined
-        })
-      });
+      // If voice is a saved server profile (cloned-xxx), do NOT re-upload multi-megabyte audio over the wire.
+      // The backend retrieves the reference WAV sample directly from its server vault in sub-milliseconds.
+      const shouldSendClientAudio = isCloned && !activeVoice.id.startsWith('cloned-');
+
+      const payload = {
+        text,
+        lang: activeVoice.lang,
+        voiceId: activeVoice.id,
+        voiceName: activeVoice.name,
+        rate,
+        pitch,
+        volume,
+        architecture: isCloned ? 'f5-tts' : selectedArchitecture,
+        emotion: selectedEmotion,
+        cfgStrength,
+        referenceAudio: shouldSendClientAudio ? (activeVoice as any).referenceAudio : undefined
+      };
+
+      // Resilient fetch with automatic retry on transient network drops or "Failed to fetch"
+      let res: Response;
+      try {
+        res = await fetch('/api/plugins/speech-studio/synthesize', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
+      } catch (firstErr: any) {
+        if (firstErr?.name === 'TypeError' || firstErr?.message?.includes('fetch')) {
+          console.warn('[SpeechStudio] Transient synthesis network glitch, retrying once...', firstErr);
+          await new Promise(r => setTimeout(r, 750));
+          res = await fetch('/api/plugins/speech-studio/synthesize', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(payload)
+          });
+        } else {
+          throw firstErr;
+        }
+      }
 
       const data = await res.json();
       if (!res.ok) {
@@ -1446,20 +1468,37 @@ export default function SpeechStudioView({
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (userToken) headers['Authorization'] = `Bearer ${userToken}`;
 
-      const res = await fetch('/api/plugins/speech-studio/clone-voice', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          text,
-          sampleAudio: clonedSampleBase64,
-          referenceText: referenceTranscript,
-          speakerName: clonedSpeakerName,
-          timbrePreference,
-          rate,
-          pitch,
-          volume
-        })
-      });
+      const clonePayload = {
+        text,
+        sampleAudio: clonedSampleBase64,
+        referenceText: referenceTranscript,
+        speakerName: clonedSpeakerName,
+        timbrePreference,
+        rate,
+        pitch,
+        volume
+      };
+
+      let res: Response;
+      try {
+        res = await fetch('/api/plugins/speech-studio/clone-voice', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(clonePayload)
+        });
+      } catch (firstErr: any) {
+        if (firstErr?.name === 'TypeError' || firstErr?.message?.includes('fetch')) {
+          console.warn('[SpeechStudio] Transient clone network glitch, retrying once...', firstErr);
+          await new Promise(r => setTimeout(r, 750));
+          res = await fetch('/api/plugins/speech-studio/clone-voice', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify(clonePayload)
+          });
+        } else {
+          throw firstErr;
+        }
+      }
 
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || data.error || data.details || 'Voice cloning failed.');

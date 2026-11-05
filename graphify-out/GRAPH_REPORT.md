@@ -1,7 +1,7 @@
 # Graph Report - website  (2026-11-05)
 
 ## Corpus Check
-- 165 files · ~337,114 words
+- 165 files · ~337,453 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `acca11bd`
+- Built from commit: `c2f48b30`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -95,8 +95,8 @@
   server.ts → src/middleware/errorHandler.ts
 - `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
   server.ts → src/middleware/auth.ts
-- `startServer()` --calls--> `generateToken()`  [EXTRACTED]
-  server.ts → api/_utils.ts
+- `startServer()` --calls--> `PluginEngine`  [EXTRACTED]
+  server.ts → src/plugins/PluginEngine.ts
 
 ## Import Cycles
 - 2-file cycle: `src/components/LandingPage.tsx -> src/components/ProjectBrowserMockup.tsx -> src/components/LandingPage.tsx`
@@ -322,13 +322,13 @@ Nodes (4): OpenLocalWorkspaceModal(), OpenLocalWorkspaceModalProps, readDirector
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `react` to `App.tsx`, `TerminalLog`, `indicatorEngine.ts`, `dependencies`, `StockTracker/routes.ts`, `MarkdownStudio.tsx`, `clientRegistry.ts`, `package.json`, `DocNexusStudio.tsx`, `LandingPage.tsx`, `StockTrackerView.tsx`, `BugReportModal.tsx`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `backtest/engine.ts`, `SlideDeckStudio.tsx`, `ManageDatabaseView.tsx`, `ImageStudioView.tsx`, `DocNexusStudio`, `DocNexus/types.ts`, `SpeechStudioView.tsx`, `strategies/types.ts`, `OpenLocalWorkspaceModal.tsx`?**
-  _High betweenness centrality (0.231) - this node is a cross-community bridge._
+  _High betweenness centrality (0.238) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `registerRoutes()` (e.g. with `authenticateToken()` and `optionalAuth()`) actually correct?**
   _`registerRoutes()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Should `react` be split into smaller, more focused modules?**
   _Cohesion score 0.052976658798846055 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `LandingPage.tsx` to `App.tsx`, `TerminalLog`, `indicatorEngine.ts`, `dependencies`, `StockTracker/routes.ts`, `MarkdownStudio.tsx`, `package.json`, `DocNexusStudio.tsx`, `StockTrackerView.tsx`, `BugReportModal.tsx`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `backtest/engine.ts`, `SlideDeckStudio.tsx`, `ManageDatabaseView.tsx`, `ImageStudioView.tsx`, `DocNexus/types.ts`, `SpeechStudioView.tsx`, `strategies/types.ts`, `OpenLocalWorkspaceModal.tsx`?**
-  _High betweenness centrality (0.100) - this node is a cross-community bridge._
+  _High betweenness centrality (0.085) - this node is a cross-community bridge._
 - **Should `App.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.07400555041628122 - nodes in this community are weakly interconnected._
 - **Why does `express` connect `serverRegistry.ts` to `react`, `dependencies`, `StockTracker/routes.ts`, `package.json`, `server.ts`, `SpeechStudioView.tsx`, `DocNexus/storage.ts`, `_utils.ts`, `telemetryService.ts`?**

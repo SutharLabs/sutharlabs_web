@@ -217,18 +217,34 @@ export function getClonedAudioSample(profileId: string): { buffer: Buffer; mimeT
   }
 
   const profile = cachedProfiles.find(p => p.id === profileId);
-  if (!profile || !profile.audioSampleFile) return null;
+  if (!profile) return null;
 
-  try {
-    const samplesDir = getSamplesDirectory();
-    const filePath = path.join(samplesDir, profile.audioSampleFile);
-    if (fs.existsSync(filePath)) {
-      const buffer = fs.readFileSync(filePath);
-      const ext = path.extname(profile.audioSampleFile).toLowerCase();
-      const mimeType = ext === '.mp3' ? 'audio/mpeg' : ext === '.ogg' ? 'audio/ogg' : 'audio/wav';
-      return { buffer, mimeType };
-    }
-  } catch {}
+  if (profile.audioSampleFile) {
+    try {
+      const samplesDir = getSamplesDirectory();
+      const filePath = path.join(samplesDir, profile.audioSampleFile);
+      if (fs.existsSync(filePath)) {
+        const buffer = fs.readFileSync(filePath);
+        const ext = path.extname(profile.audioSampleFile).toLowerCase();
+        const mimeType = ext === '.mp3' ? 'audio/mpeg' : ext === '.ogg' ? 'audio/ogg' : 'audio/wav';
+        return { buffer, mimeType };
+      }
+    } catch {}
+  }
+
+  // Fallback: extract directly from sampleAudioDataUrl if available
+  if (profile.sampleAudioDataUrl && profile.sampleAudioDataUrl.startsWith('data:audio/')) {
+    try {
+      const parts = profile.sampleAudioDataUrl.split(',');
+      if (parts.length === 2) {
+        const mimeMatch = parts[0].match(/data:(audio\/[a-zA-Z0-9_-]+)/);
+        const mimeType = mimeMatch ? mimeMatch[1] : 'audio/wav';
+        const buffer = Buffer.from(parts[1], 'base64');
+        return { buffer, mimeType };
+      }
+    } catch {}
+  }
 
   return null;
 }
+

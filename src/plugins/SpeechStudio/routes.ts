@@ -490,16 +490,33 @@ export function registerRoutes(router: Router) {
           ? { text, sampleAudio: effectiveSampleAudio, speakerName: voiceName, rate, pitch }
           : { text, voiceId, rate, pitch, volume, architecture, emotion, cfgStrength };
 
-        const vmResponse = await fetch(targetUrl, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          signal: AbortSignal.timeout(30000)
-        });
+        let vmResponse: Response | null = null;
+        let lastError: any = null;
 
-        if (!vmResponse.ok) {
-          const errorMsg = await vmResponse.text().catch(() => "");
-          throw new Error(`VM2 Neural TTS service returned HTTP ${vmResponse.status}: ${errorMsg || vmResponse.statusText}`);
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            vmResponse = await fetch(targetUrl, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(payload),
+              signal: AbortSignal.timeout(45000)
+            });
+
+            if (vmResponse.ok) break;
+
+            const errorMsg = await vmResponse.text().catch(() => "");
+            lastError = new Error(`VM2 Neural TTS service returned HTTP ${vmResponse.status}: ${errorMsg || vmResponse.statusText}`);
+          } catch (netErr: any) {
+            lastError = netErr;
+          }
+
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, 600));
+          }
+        }
+
+        if (!vmResponse || !vmResponse.ok) {
+          throw lastError || new Error("Failed to communicate with Neural TTS service on VM 2.");
         }
 
         const arrayBuf = await vmResponse.arrayBuffer();
@@ -599,16 +616,33 @@ export function registerRoutes(router: Router) {
       let audioBuffer: Buffer;
 
       try {
-        const vmResponse = await fetch(`${ORACLE_TTS_URL}/api/clone`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, sampleAudio, referenceText, speakerName, timbrePreference, rate, pitch }),
-          signal: AbortSignal.timeout(30000)
-        });
+        let vmResponse: Response | null = null;
+        let lastError: any = null;
 
-        if (!vmResponse.ok) {
-          const errorMsg = await vmResponse.text().catch(() => "");
-          throw new Error(`VM2 Voice Cloning service returned HTTP ${vmResponse.status}: ${errorMsg || vmResponse.statusText}`);
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            vmResponse = await fetch(`${ORACLE_TTS_URL}/api/clone`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ text, sampleAudio, referenceText, speakerName, timbrePreference, rate, pitch }),
+              signal: AbortSignal.timeout(45000)
+            });
+
+            if (vmResponse.ok) break;
+
+            const errorMsg = await vmResponse.text().catch(() => "");
+            lastError = new Error(`VM2 Voice Cloning service returned HTTP ${vmResponse.status}: ${errorMsg || vmResponse.statusText}`);
+          } catch (netErr: any) {
+            lastError = netErr;
+          }
+
+          if (attempt < 2) {
+            await new Promise(r => setTimeout(r, 600));
+          }
+        }
+
+        if (!vmResponse || !vmResponse.ok) {
+          throw lastError || new Error("Failed to communicate with Voice Cloning service on VM 2.");
         }
 
         const audioStatus = vmResponse.headers.get("x-audio-status") || "ACTIVE_SPEECH";
