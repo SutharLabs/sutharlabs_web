@@ -876,10 +876,18 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
       {/* 3. Split-Pane Main Body (Sessions Sidebar + Chat + Claude Artifacts) */}
       <div className="flex-1 flex overflow-hidden relative">
 
+        {/* Mobile Backdrop for Sessions Sidebar */}
+        {isSessionsSidebarOpen && (
+          <div
+            onClick={() => setIsSessionsSidebarOpen(false)}
+            className="sm:hidden fixed inset-0 bg-black/60 z-20 backdrop-blur-xs animate-in fade-in"
+          />
+        )}
+
         {/* Sessions History Sidebar (OpenCode Style) */}
         {isSessionsSidebarOpen && (
-          <div className={`w-64 sm:w-72 shrink-0 border-r flex flex-col h-full transition-all duration-200 z-10 ${
-            isLight ? 'bg-slate-50/90 border-slate-200' : 'bg-[#121215] border-outline/10'
+          <div className={`w-72 shrink-0 border-r flex flex-col h-full transition-all duration-200 z-30 absolute inset-y-0 left-0 sm:relative shadow-2xl sm:shadow-none ${
+            isLight ? 'bg-slate-50/95 border-slate-200 backdrop-blur-md' : 'bg-[#121215]/95 border-outline/10 backdrop-blur-md'
           }`}>
             {/* Sidebar Header */}
             <div className="p-3 border-b flex items-center justify-between gap-2 border-inherit">
@@ -887,19 +895,29 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                 <MessageSquare className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
                 <span>Chat History</span>
               </div>
-              <button
-                type="button"
-                onClick={handleCreateNewSession}
-                className={`h-7 px-2.5 rounded-lg text-[11px] font-mono font-bold uppercase transition-all flex items-center gap-1 cursor-pointer shadow-xs leading-none ${
-                  isLight
-                    ? 'bg-sky-500 hover:bg-sky-600 text-white'
-                    : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40'
-                }`}
-                title="Start a new chat session"
-              >
-                <Plus className="w-3 h-3 shrink-0" />
-                <span>New</span>
-              </button>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleCreateNewSession}
+                  className={`h-7 px-2.5 rounded-lg text-[11px] font-mono font-bold uppercase transition-all flex items-center gap-1 cursor-pointer shadow-xs leading-none ${
+                    isLight
+                      ? 'bg-sky-500 hover:bg-sky-600 text-white'
+                      : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40'
+                  }`}
+                  title="Start a new chat session"
+                >
+                  <Plus className="w-3 h-3 shrink-0" />
+                  <span>New</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsSessionsSidebarOpen(false)}
+                  className="sm:hidden h-7 w-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface cursor-pointer"
+                  title="Close Sidebar"
+                >
+                  <X className="w-4 h-4 shrink-0" />
+                </button>
+              </div>
             </div>
 
             {/* Sessions Scroll List */}
@@ -910,7 +928,10 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                 return (
                   <div
                     key={sess.id}
-                    onClick={() => handleSelectSession(sess.id)}
+                    onClick={() => {
+                      handleSelectSession(sess.id);
+                      if (window.innerWidth < 640) setIsSessionsSidebarOpen(false);
+                    }}
                     className={`group relative p-2.5 rounded-xl border text-xs font-mono transition-all cursor-pointer flex items-start justify-between gap-2 select-none ${
                       isActive
                         ? isLight
@@ -948,7 +969,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         
         {/* Left Column: Chat Conversation */}
         <div className={`flex-1 flex flex-col h-full overflow-hidden transition-all duration-200 ${
-          isArtifactPanelOpen && !isArtifactFullscreen ? 'lg:w-3/5' : 'w-full'
+          isArtifactPanelOpen && !isArtifactFullscreen ? 'hidden lg:flex lg:w-3/5' : 'w-full'
         }`}>
           
           {/* Messages Scroll Area */}

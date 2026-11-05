@@ -450,7 +450,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
         </div>
 
         {/* Action Buttons: Unified with Theme Selector styling */}
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+        <div className="flex items-center gap-2 max-w-full overflow-x-auto [scrollbar-width:none] shrink-0 pb-0.5">
           {/* Probe Health Button */}
           <button
             type="button"
@@ -464,7 +464,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
             title="Probe real-time connection status and latency for both database instances"
           >
             <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${loading ? 'animate-spin text-[#00dbe7]' : ''}`} />
-            <span>Probe Health</span>
+            <span className="hidden sm:inline">Probe Health</span><span className="sm:hidden">Probe</span>
           </button>
 
           {/* Export Snapshot Button */}
@@ -480,7 +480,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
             title="Download full JSON snapshot backup of primary database"
           >
             <Download className={`w-3.5 h-3.5 shrink-0 ${exporting ? 'animate-bounce text-[#00dbe7]' : ''}`} />
-            <span>Export Snapshot</span>
+            <span className="hidden sm:inline">Export Snapshot</span><span className="sm:hidden">Export</span>
           </button>
 
           {/* Trigger Sync Now (Primary Action Button) */}
@@ -500,7 +500,7 @@ export default function ManageDatabaseView({ logs, onAddLog, userToken, theme = 
             ) : (
               <ArrowRightLeft className="w-3.5 h-3.5 shrink-0" />
             )}
-            <span>{syncing ? `Syncing (${Math.round(syncProgress.percent)}%)...` : 'Trigger Sync Now'}</span>
+            <span>{syncing ? `Syncing (${Math.round(syncProgress.percent)}%)...` : <><span className="hidden sm:inline">Trigger Sync Now</span><span className="sm:hidden">Sync Now</span></>}</span>
           </button>
         </div>
       </div>

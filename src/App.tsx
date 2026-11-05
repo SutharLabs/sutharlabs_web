@@ -287,22 +287,64 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
   const [isPluginsOpen, setIsPluginsOpen] = React.useState(true);
   const [isAdminOpen, setIsAdminOpen] = React.useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
+  const [isMobileDrawerOpen, setIsMobileDrawerOpen] = React.useState(false);
   const [isBugReportOpen, setIsBugReportOpen] = React.useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Auto-close mobile drawer when navigation tab changes
+  React.useEffect(() => {
+    setIsMobileDrawerOpen(false);
+  }, [activeTab, location.pathname]);
+
+  // Compute mobile scroller tabs dynamically based on user role (includes Admin tools if admin)
+  const mobileNavTabs = React.useMemo(() => {
+    const base = [
+      ...STORE_TOOLS,
+      ...activeInstalledPlugins,
+      { name: 'Profile & Settings' as WorkspaceTab, icon: 'manage_accounts', size: '' }
+    ];
+    if (user.role === 'Admin') {
+      return [...base, ...ADMIN_TOOLS];
+    }
+    return base;
+  }, [activeInstalledPlugins, user.role]);
   
   if (!user.isLoggedIn) return <Navigate to="/auth" />;
 
   return (
-    <div className="min-h-screen bg-[#050505] text-[#e5e1e4] flex flex-col font-sans overflow-hidden">
+    <div className={`min-h-screen flex flex-col font-sans overflow-hidden transition-colors ${
+      theme === 'light' ? 'bg-slate-50 text-slate-800' : 'bg-[#050505] text-[#e5e1e4]'
+    }`}>
       {/* SutharLabs App Workspace Top Navigation Header */}
-      <header className="h-14 bg-[#131315] border-b border-[#3a494b]/10 px-6 flex items-center justify-between z-10 select-none">
-        <div className="flex items-center gap-4">
+      <header className={`h-14 border-b px-3 sm:px-6 flex items-center justify-between z-20 select-none relative transition-colors ${
+        theme === 'light'
+          ? 'bg-white/95 border-slate-200 text-slate-800 backdrop-blur-md shadow-xs'
+          : 'bg-[#131315]/95 border-[#3a494b]/20 text-[#e5e1e4] backdrop-blur-md'
+      }`}>
+        <div className="flex items-center gap-2 sm:gap-3.5 min-w-0">
+          {/* Mobile Hamburger Drawer Trigger */}
+          <button
+            type="button"
+            onClick={() => setIsMobileDrawerOpen(true)}
+            className={`md:hidden w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 transition-all cursor-pointer ${
+              theme === 'light'
+                ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                : 'bg-[#201f21] hover:bg-[#28272a] text-[#74f5ff] border-[#00dbe7]/30'
+            }`}
+            aria-label="Open mobile navigation menu"
+            title="Open Menu"
+          >
+            <span className="material-symbols-outlined text-lg leading-none select-none">menu</span>
+          </button>
+
           {/* Logo brand home return */}
           <div 
             onClick={() => navigate('/')}
-            className="flex items-center gap-2 cursor-pointer group"
+            className="flex items-center gap-1.5 sm:gap-2 cursor-pointer group shrink-0"
+            title="Return to Home"
           >
-            <svg className="w-5.5 h-5.5 transition-transform duration-300 group-hover:rotate-12" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-5 h-5 sm:w-5.5 sm:h-5.5 transition-transform duration-300 group-hover:rotate-12 shrink-0" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id="sutharGlowWorkNav" x1="0%" y1="0%" x2="100%" y2="100%">
                   <stop offset="0%" stopColor="#00dbe7" />
@@ -313,24 +355,25 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               <path d="M50 5 L90 28 L90 72 L50 95 L10 72 L10 28 Z" stroke="url(#sutharGlowWorkNav)" strokeWidth="6" strokeLinejoin="round" fill="none" />
               <path d="M65 32 C65 25, 35 25, 35 37 C35 49, 65 51, 65 63 C65 75, 35 75, 35 68" stroke="url(#sutharGlowWorkNav)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
             </svg>
-            <span className="text-lg font-bold text-[#74f5ff] tracking-tight neon-text-glow">
+            <span className="text-base sm:text-lg font-bold text-[#74f5ff] tracking-tight neon-text-glow truncate">
               SutharLabs
             </span>
           </div>
-          <div className="h-4 w-[1px] bg-[#3a494b]/30"></div>
+
+          <div className="hidden md:block h-4 w-[1px] bg-[#3a494b]/30"></div>
           {/* WorkPath Breadcrumbs (shown on tablet/desktop to preserve space for header controls) */}
           <div className="hidden md:flex items-center gap-1.5 font-mono text-[10px] text-[#b9cacb]/80">
-            <span className="hover:text-white transition-all cursor-pointer">sutharlabs-core</span>
+            <span className="hover:text-white transition-all cursor-pointer">sutharlabs</span>
             <span className="text-[#849495] select-none">/</span>
-            <span className="hover:text-white transition-all cursor-pointer">app-workspace</span>
+            <span className="hover:text-white transition-all cursor-pointer">workspace</span>
             <span className="text-[#849495] select-none">/</span>
             <span className="text-[#00dbe7] font-semibold">{activeTab}</span>
           </div>
         </div>
 
         {/* Action Widgets & controls */}
-        <div className="flex items-center gap-4 font-mono text-[11px] text-[#b9cacb]">
-          <div className="hidden md:flex items-center gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 font-mono text-[11px] shrink-0">
+          <div className="hidden lg:flex items-center gap-3 text-[#b9cacb] mr-2">
             <div className="flex items-center gap-1">
               <span className="text-gray-500">Node Speed:</span>
               <span className="text-[#00e476] font-bold">14ms</span>
@@ -342,53 +385,339 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             </div>
           </div>
 
+          {/* Admin Rank Badge (visible on tablet/desktop) */}
+          {user.role === 'Admin' && (
+            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase font-mono bg-rose-500/10 text-rose-400 border border-rose-500/30">
+              <span className="material-symbols-outlined text-xs leading-none">admin_panel_settings</span>
+              <span>ADMIN</span>
+            </span>
+          )}
+
           {/* User Profile Button */}
           <button
             type="button"
             onClick={() => setActiveTab('Profile & Settings')}
-            className={`py-1 px-2.5 rounded border transition-all flex items-center gap-1.5 font-mono text-[10px] cursor-pointer ${
+            className={`h-8 px-2 sm:px-2.5 rounded-lg border transition-all flex items-center gap-1.5 font-mono text-[10px] cursor-pointer ${
               activeTab === 'Profile & Settings'
                 ? 'bg-[#00dbe7]/15 border-[#00dbe7]/50 text-[#00dbe7] font-bold shadow-sm shadow-[#00dbe7]/10'
-                : 'bg-[#201f21] border-[#3a494b]/30 text-[#e5e1e4] hover:text-[#00dbe7] hover:border-[#00dbe7]/50'
+                : theme === 'light'
+                  ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300'
+                  : 'bg-[#201f21] hover:bg-[#28272a] border-[#3a494b]/30 text-[#e5e1e4] hover:text-[#00dbe7]'
             }`}
             title="Profile, Data Governance & Security Settings"
           >
             <span className="material-symbols-outlined text-sm select-none leading-none">person</span>
-            <span className="hidden sm:inline">Profile</span>
+            <span className="hidden md:inline">Profile</span>
           </button>
 
           {/* Quick Bug Report & Live Telemetry Trigger */}
           <button
             type="button"
             onClick={() => setIsBugReportOpen(true)}
-            className="py-1 px-2.5 rounded border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/50 transition-all flex items-center gap-1.5 font-mono text-[10px] cursor-pointer"
+            className="hidden sm:flex h-8 px-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 hover:border-rose-500/50 transition-all items-center gap-1.5 font-mono text-[10px] cursor-pointer"
             title="Report an issue or submit live telemetry diagnostics"
           >
             <span className="material-symbols-outlined text-sm select-none leading-none">bug_report</span>
-            <span className="hidden sm:inline">Report Issue</span>
+            <span className="hidden md:inline">Report Issue</span>
           </button>
 
           {/* Theme Toggle Button */}
           <button
             type="button"
             onClick={toggleTheme}
-            className="py-1 px-2 bg-[#201f21] border border-[#3a494b]/30 rounded text-[#e5e1e4] hover:text-[#00dbe7] hover:border-[#00dbe7]/50 transition-all flex items-center justify-center cursor-pointer"
+            className={`w-8 h-8 rounded-lg border transition-all flex items-center justify-center cursor-pointer shrink-0 ${
+              theme === 'light'
+                ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 hover:text-sky-600'
+                : 'bg-[#201f21] hover:bg-[#28272a] border-[#3a494b]/30 text-[#e5e1e4] hover:text-[#00dbe7]'
+            }`}
             title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
+            aria-label="Toggle visual theme"
           >
             <span className="material-symbols-outlined text-sm select-none leading-none">
               {theme === 'light' ? 'dark_mode' : 'light_mode'}
             </span>
           </button>
 
+          {/* Leave Workspace Button */}
           <button 
             type="button"
             onClick={handleLogout}
-            className="py-1 px-3 bg-[#201f21] border border-[#3a494b]/30 rounded text-[#e5e1e4] hover:text-[#ffb4ab] hover:border-[#ffb4ab]/50 transition-all font-mono text-[10px] uppercase font-bold tracking-wider cursor-pointer"
+            className={`h-8 px-2 sm:px-3 rounded-lg border transition-all font-mono text-[10px] uppercase font-bold tracking-wider cursor-pointer flex items-center gap-1 shrink-0 ${
+              theme === 'light'
+                ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300'
+                : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30'
+            }`}
+            title="Leave Workspace & Log out"
           >
-            Leave Workspace
+            <span className="material-symbols-outlined text-sm select-none leading-none">logout</span>
+            <span className="hidden md:inline">Leave Workspace</span>
           </button>
         </div>
       </header>
+
+      {/* Mobile Navigation Slide-Over Drawer */}
+      {isMobileDrawerOpen && (
+        <div 
+          className="fixed inset-0 z-50 md:hidden flex"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Mobile Navigation Menu"
+        >
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-200"
+            onClick={() => setIsMobileDrawerOpen(false)}
+            aria-hidden="true"
+          />
+
+          {/* Drawer Content */}
+          <div className={`relative w-80 max-w-[85vw] flex flex-col h-full shadow-2xl z-10 border-r animate-in slide-in-from-left duration-200 select-none ${
+            theme === 'light'
+              ? 'bg-white border-slate-200 text-slate-800'
+              : 'bg-[#131315] border-[#3a494b]/30 text-[#e5e1e4]'
+          }`}>
+            {/* Drawer Header */}
+            <div className={`p-4 border-b flex items-center justify-between gap-3 shrink-0 ${
+              theme === 'light' ? 'border-slate-200 bg-slate-50/80' : 'border-[#3a494b]/20 bg-[#0e0e10]/80'
+            }`}>
+              <div 
+                onClick={() => { navigate('/'); setIsMobileDrawerOpen(false); }}
+                className="flex items-center gap-2 cursor-pointer group"
+              >
+                <svg className="w-5 h-5 shrink-0" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <defs>
+                    <linearGradient id="sutharGlowWorkNavMob" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#00dbe7" />
+                      <stop offset="50%" stopColor="#ce5dff" />
+                      <stop offset="100%" stopColor="#00e476" />
+                    </linearGradient>
+                  </defs>
+                  <path d="M50 5 L90 28 L90 72 L50 95 L10 72 L10 28 Z" stroke="url(#sutharGlowWorkNavMob)" strokeWidth="6" strokeLinejoin="round" fill="none" />
+                  <path d="M65 32 C65 25, 35 25, 35 37 C35 49, 65 51, 65 63 C65 75, 35 75, 35 68" stroke="url(#sutharGlowWorkNavMob)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
+                </svg>
+                <span className="text-base font-bold text-[#74f5ff] tracking-tight neon-text-glow">
+                  SutharLabs
+                </span>
+                {user.role === 'Admin' ? (
+                  <span className="ml-1 px-1.5 py-0.2 rounded text-[9px] font-bold font-mono bg-rose-500/15 text-rose-400 border border-rose-500/30">
+                    ADMIN
+                  </span>
+                ) : (
+                  <span className="ml-1 px-1.5 py-0.2 rounded text-[9px] font-bold font-mono bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                    DEV
+                  </span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsMobileDrawerOpen(false)}
+                className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 cursor-pointer transition-colors ${
+                  theme === 'light'
+                    ? 'border-slate-300 hover:bg-slate-200 text-slate-700'
+                    : 'border-[#3a494b]/40 hover:bg-white/5 text-[#b9cacb]'
+                }`}
+                aria-label="Close menu"
+              >
+                <span className="material-symbols-outlined text-base leading-none">close</span>
+              </button>
+            </div>
+
+            {/* Drawer Scrollable Navigation Tree */}
+            <div className="flex-1 py-3 px-2.5 overflow-y-auto custom-scrollbar space-y-4">
+              
+              {/* SECTION 1: PLUGIN STORE */}
+              <div>
+                <div 
+                  className="flex items-center px-2 mb-1.5 text-[10px] font-mono text-[#849495] tracking-widest uppercase justify-between cursor-pointer select-none"
+                  onClick={() => setIsStoreOpen(!isStoreOpen)}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className={`material-symbols-outlined text-sm transition-transform duration-200 ${isStoreOpen ? 'rotate-90' : ''}`}>chevron_right</span>
+                    <span>PLUGIN STORE</span>
+                  </div>
+                  <span className="material-symbols-outlined text-sm text-gray-500">storefront</span>
+                </div>
+                {isStoreOpen && (
+                  <div className="space-y-1">
+                    {STORE_TOOLS.map((file) => {
+                      const isSelected = activeTab === file.name;
+                      return (
+                        <button
+                          key={file.name}
+                          type="button"
+                          onClick={() => { setActiveTab(file.name); setIsMobileDrawerOpen(false); }}
+                          className={`w-full flex items-center justify-between p-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30 font-bold shadow-sm'
+                              : theme === 'light'
+                                ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                                : 'text-[#b9cacb] hover:text-white hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <span className={`material-symbols-outlined text-base shrink-0 ${isSelected ? 'text-[#00dbe7]' : 'text-gray-500'}`}>
+                              {file.icon}
+                            </span>
+                            <span className="truncate">{file.name}</span>
+                          </div>
+                          <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/20">
+                            Explore
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION 2: INSTALLED PLUGINS */}
+              <div>
+                <div 
+                  className="flex items-center px-2 mb-1.5 text-[10px] font-mono text-[#849495] tracking-widest uppercase justify-between cursor-pointer select-none"
+                  onClick={() => setIsPluginsOpen(!isPluginsOpen)}
+                >
+                  <div className="flex items-center gap-1.5">
+                    <span className={`material-symbols-outlined text-sm transition-transform duration-200 ${isPluginsOpen ? 'rotate-90' : ''}`}>chevron_right</span>
+                    <span>INSTALLED PLUGINS</span>
+                  </div>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-surface-container-low text-on-surface-variant border border-outline/30">
+                    {activeInstalledPlugins.length}
+                  </span>
+                </div>
+                {isPluginsOpen && (
+                  <div className="space-y-1">
+                    {activeInstalledPlugins.map((file) => {
+                      const isSelected = activeTab === file.name;
+                      return (
+                        <button
+                          key={file.name}
+                          type="button"
+                          onClick={() => { setActiveTab(file.name); setIsMobileDrawerOpen(false); }}
+                          className={`w-full flex items-center justify-between p-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30 font-bold shadow-sm'
+                              : theme === 'light'
+                                ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                                : 'text-[#b9cacb] hover:text-white hover:bg-white/[0.04]'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5 truncate">
+                            <span className={`material-symbols-outlined text-base shrink-0 ${isSelected ? 'text-[#00dbe7]' : 'text-gray-500'}`}>
+                              {file.icon}
+                            </span>
+                            <span className="truncate">{file.name}</span>
+                          </div>
+                          {(file as any).isBeta && (
+                            <span className="text-[8px] font-mono font-bold uppercase px-1 py-0.2 rounded bg-amber-400/15 text-amber-500 border border-amber-400/30 shrink-0">
+                              Beta
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* SECTION 3: ADMINISTRATION (VISIBLE IF USER IS ADMIN) */}
+              {user.role === 'Admin' && (
+                <div className="pt-2 border-t border-outline/10">
+                  <div 
+                    className="flex items-center px-2 mb-1.5 text-[10px] font-mono text-[#ffb4ab] tracking-widest uppercase justify-between cursor-pointer select-none"
+                    onClick={() => setIsAdminOpen(!isAdminOpen)}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      <span className={`material-symbols-outlined text-sm transition-transform duration-200 ${isAdminOpen ? 'rotate-90' : ''}`}>chevron_right</span>
+                      <span className="font-bold">ADMINISTRATION</span>
+                    </div>
+                    <span className="material-symbols-outlined text-sm text-[#ffb4ab]">admin_panel_settings</span>
+                  </div>
+                  {isAdminOpen && (
+                    <div className="space-y-1">
+                      {ADMIN_TOOLS.map((file) => {
+                        const isSelected = activeTab === file.name;
+                        return (
+                          <button
+                            key={file.name}
+                            type="button"
+                            onClick={() => { setActiveTab(file.name); setIsMobileDrawerOpen(false); }}
+                            className={`w-full flex items-center justify-between p-2.5 rounded-lg font-mono text-xs text-left transition-all cursor-pointer ${
+                              isSelected
+                                ? 'bg-[#ffb4ab]/15 text-[#ffb4ab] border border-[#ffb4ab]/40 font-bold shadow-sm'
+                                : theme === 'light'
+                                  ? 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                                  : 'text-[#b9cacb] hover:text-white hover:bg-white/[0.04]'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5 truncate">
+                              <span className={`material-symbols-outlined text-base shrink-0 ${isSelected ? 'text-[#ffb4ab]' : 'text-gray-500'}`}>
+                                {file.icon}
+                              </span>
+                              <span className="truncate">{file.name}</span>
+                            </div>
+                            {file.name === 'Manage Plugins' && (
+                              <span className="text-[8px] font-mono uppercase px-1 py-0.2 rounded bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/20 shrink-0">
+                                Upload
+                              </span>
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Quick Actions & Utilities */}
+              <div className="pt-2 border-t border-outline/10 space-y-1">
+                <button
+                  type="button"
+                  onClick={() => { setIsBugReportOpen(true); setIsMobileDrawerOpen(false); }}
+                  className="w-full flex items-center gap-2.5 p-2 rounded-lg font-mono text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 transition-all cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-base shrink-0">bug_report</span>
+                  <span>Report Issue / Diagnostics</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Drawer Footer (User Card & Logout) */}
+            <div className={`p-3 border-t shrink-0 flex flex-col gap-2.5 ${
+              theme === 'light' ? 'border-slate-200 bg-slate-50/80' : 'border-[#3a494b]/20 bg-[#0e0e10]/80'
+            }`}>
+              <div 
+                onClick={() => { setActiveTab('Profile & Settings'); setIsMobileDrawerOpen(false); }}
+                className={`p-2.5 rounded-lg border flex items-center gap-2.5 cursor-pointer transition-colors ${
+                  activeTab === 'Profile & Settings'
+                    ? 'bg-[#00dbe7]/15 border-[#00dbe7]/40 text-[#00dbe7]'
+                    : theme === 'light'
+                      ? 'bg-white border-slate-200 hover:bg-slate-100 text-slate-800'
+                      : 'bg-[#18181b] border-[#3a494b]/30 hover:bg-[#222228] text-[#e5e1e4]'
+                }`}
+              >
+                <div className="w-8 h-8 rounded-full bg-[#ce5dff]/15 border border-[#ce5dff]/40 flex items-center justify-center text-xs font-bold text-[#ebb2ff] uppercase select-none shrink-0">
+                  {user.name.charAt(0)}
+                </div>
+                <div className="flex-grow min-w-0">
+                  <span className="font-sans text-xs font-bold block truncate">{user.name}</span>
+                  <span className="font-mono text-[9px] text-[#849495] block truncate">{user.email}</span>
+                </div>
+                <span className="material-symbols-outlined text-base text-[#849495] shrink-0">settings</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="w-full py-2 px-3 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-400 hover:bg-rose-500/20 transition-all font-mono text-xs uppercase font-bold tracking-wider flex items-center justify-center gap-2 cursor-pointer shadow-xs"
+              >
+                <span className="material-symbols-outlined text-sm leading-none">logout</span>
+                <span>Leave Workspace</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Main split dashboard panel layout */}
       <div className="flex-1 flex overflow-hidden relative">
@@ -414,7 +743,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
         </button>
 
         {/* Left Hand Sidebar Explorer directory tree */}
-        <aside className={`${isSidebarOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 pointer-events-none border-r-0'} transition-all duration-300 ease-in-out bg-[#131315]/95 border-r border-[#3a494b]/10 flex flex-col justify-between select-none shrink-0 hidden md:flex overflow-hidden`}>
+        <aside className={`${isSidebarOpen ? 'w-64 opacity-100' : 'w-0 opacity-0 pointer-events-none border-r-0'} transition-all duration-300 ease-in-out border-r flex flex-col justify-between select-none shrink-0 hidden md:flex overflow-hidden ${
+          theme === 'light' ? 'bg-white/95 border-slate-200 text-slate-800' : 'bg-[#131315]/95 border-[#3a494b]/10 text-[#e5e1e4]'
+        }`}>
           <div className="w-64 flex flex-col h-full justify-between shrink-0">
             {/* Main folder tree structure */}
             <div className="flex-1 py-4 flex flex-col overflow-y-auto custom-scrollbar">
@@ -443,7 +774,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                       className={`w-full flex items-center justify-between p-2.5 rounded font-mono text-xs text-left transition-all cursor-pointer ${
                         isSelected 
                           ? 'bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/20 font-bold shadow-[inset_0_0_8px_rgba(0,219,231,0.05)]' 
-                          : 'text-[#b9cacb]/95 hover:text-[#e5e1e4] hover:bg-white/[0.02]'
+                          : theme === 'light'
+                            ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                            : 'text-[#b9cacb]/95 hover:text-[#e5e1e4] hover:bg-white/[0.02]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -490,7 +823,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                       className={`w-full flex items-center justify-between p-2.5 rounded font-mono text-xs text-left transition-all cursor-pointer ${
                         isSelected 
                           ? 'bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/20 font-bold shadow-[inset_0_0_8px_rgba(0,219,231,0.05)]' 
-                          : 'text-[#b9cacb]/95 hover:text-[#e5e1e4] hover:bg-white/[0.02]'
+                          : theme === 'light'
+                            ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                            : 'text-[#b9cacb]/95 hover:text-[#e5e1e4] hover:bg-white/[0.02]'
                       }`}
                     >
                       <div className="flex items-center gap-2.5">
@@ -536,7 +871,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                           className={`w-full flex items-center justify-between p-2.5 rounded font-mono text-xs text-left transition-all cursor-pointer ${
                             isSelected 
                               ? 'bg-[#ffb4ab]/10 text-[#ffb4ab] border border-[#ffb4ab]/30 font-bold shadow-[inset_0_0_8px_rgba(255,180,171,0.05)]' 
-                              : 'text-[#b9cacb]/95 hover:text-[#e5e1e4] hover:bg-white/[0.02]'
+                              : theme === 'light'
+                                ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                                : 'text-[#b9cacb]/95 hover:text-[#e5e1e4] hover:bg-white/[0.02]'
                           }`}
                         >
                           <div className="flex items-center gap-2.5">
@@ -562,10 +899,12 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
           {/* User authenticated credentials footer card */}
           <div 
             onClick={() => setActiveTab('Profile & Settings')}
-            className={`p-3.5 border-t border-[#3a494b]/10 flex items-center gap-3 cursor-pointer transition-colors ${
+            className={`p-3.5 border-t flex items-center gap-3 cursor-pointer transition-colors ${
               activeTab === 'Profile & Settings'
                 ? 'bg-[#00dbe7]/10 border-l-2 border-l-[#00dbe7]'
-                : 'bg-[#0e0e10]/80 hover:bg-[#1a191d]'
+                : theme === 'light'
+                  ? 'bg-slate-50 border-slate-200 hover:bg-slate-100'
+                  : 'bg-[#0e0e10]/80 border-[#3a494b]/10 hover:bg-[#1a191d]'
             }`}
             title="Manage Profile, Sovereign Data, & Settings"
           >
@@ -573,7 +912,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
               {user.name.charAt(0)}
             </div>
             <div className="flex-grow min-w-0">
-              <span className="font-sans text-xs font-bold text-[#e5e1e4] block truncate">{user.name}</span>
+              <span className="font-sans text-xs font-bold text-on-surface block truncate">{user.name}</span>
               <span className="font-mono text-[9px] text-[#849495] block truncate">{user.email}</span>
             </div>
             <span className={`material-symbols-outlined text-sm transition-transform ${
@@ -587,27 +926,48 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
         </aside>
 
         {/* Right main dynamic Workspace display screen */}
-        <div className="flex-1 flex flex-col overflow-y-auto custom-scrollbar bg-[#050505] p-4 md:p-6 pb-12">
+        <div className={`flex-1 flex flex-col overflow-y-auto custom-scrollbar p-2.5 sm:p-4 md:p-6 pb-16 transition-colors ${
+          theme === 'light' ? 'bg-slate-50 text-slate-800' : 'bg-[#050505] text-[#e5e1e4]'
+        }`}>
           
           {/* Top responsive filename tabs drawer for touch/mobile devices */}
           <div className="flex md:hidden gap-1.5 mb-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden shrink-0 pb-1 px-1 -mx-1 pr-6">
-            {ALL_TABS.map((file) => (
-              <button
-                key={file.name}
-                type="button"
-                onClick={() => setActiveTab(file.name)}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs shrink-0 cursor-pointer transition-all whitespace-nowrap shadow-sm ${
-                  activeTab === file.name
-                    ? 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.2)]'
-                    : 'bg-[#131315] text-[#b9cacb] border border-[#3a494b]/30 hover:text-white hover:border-[#00dbe7]/30'
-                }`}
-              >
-                <span className="material-symbols-outlined text-sm select-none leading-none">
-                  {file.icon}
-                </span>
-                <span>{file.name}</span>
-              </button>
-            ))}
+            {mobileNavTabs.map((file) => {
+              const isAdmin = ADMIN_TOOLS.some(a => a.name === file.name);
+              const isSelected = activeTab === file.name;
+              return (
+                <button
+                  key={file.name}
+                  type="button"
+                  onClick={() => setActiveTab(file.name)}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs shrink-0 cursor-pointer transition-all whitespace-nowrap shadow-xs ${
+                    isSelected
+                      ? isAdmin
+                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 font-bold shadow-[0_0_8px_rgba(244,63,94,0.25)]'
+                        : 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.2)]'
+                      : theme === 'light'
+                        ? isAdmin
+                          ? 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
+                          : 'bg-white text-slate-700 border border-slate-200 hover:text-slate-900'
+                        : isAdmin
+                          ? 'bg-[#1e1315] text-[#ffb4ab]/80 border border-rose-500/20 hover:text-[#ffb4ab]'
+                          : 'bg-[#131315] text-[#b9cacb] border border-[#3a494b]/30 hover:text-white hover:border-[#00dbe7]/30'
+                  }`}
+                >
+                  <span className={`material-symbols-outlined text-sm select-none leading-none ${
+                    isAdmin && isSelected ? 'text-rose-400' : ''
+                  }`}>
+                    {file.icon}
+                  </span>
+                  <span>{file.name}</span>
+                  {isAdmin && (
+                    <span className="text-[8px] px-1 py-0.2 rounded font-bold uppercase bg-rose-500/20 text-rose-400 border border-rose-500/30">
+                      Admin
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
 
           {/* Render Active Component File Workspace Panel */}

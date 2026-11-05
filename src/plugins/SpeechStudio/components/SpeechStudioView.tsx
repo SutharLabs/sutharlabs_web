@@ -1611,13 +1611,13 @@ export default function SpeechStudioView({
 
       {/* Navigation Sub-Tabs */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className={`flex rounded-lg p-0.5 border text-[11px] ${
+        <div className={`flex rounded-lg p-0.5 border text-[11px] overflow-x-auto [scrollbar-width:none] max-w-full shrink-0 pb-0.5 ${
           isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
         }`}>
           <button
             type="button"
             onClick={() => setActiveTab('synthesize')}
-            className={`px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               activeTab === 'synthesize'
                 ? isLight
                   ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'
@@ -1632,7 +1632,7 @@ export default function SpeechStudioView({
           <button
             type="button"
             onClick={() => setActiveTab('clone')}
-            className={`px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               activeTab === 'clone'
                 ? isLight
                   ? 'bg-white text-purple-700 font-bold shadow-sm border border-slate-300'
@@ -1647,7 +1647,7 @@ export default function SpeechStudioView({
           <button
             type="button"
             onClick={() => setActiveTab('models')}
-            className={`px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               activeTab === 'models'
                 ? isLight
                   ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'
@@ -1662,7 +1662,7 @@ export default function SpeechStudioView({
           <button
             type="button"
             onClick={() => setActiveTab('history')}
-            className={`px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+            className={`px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
               activeTab === 'history'
                 ? isLight
                   ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'

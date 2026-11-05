@@ -412,7 +412,7 @@ export default function ImageStudioView({
         </div>
 
         {/* Sub-Tab Navigation Switcher & API Settings conforming to Section 6.A */}
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+        <div className="flex items-center gap-2 max-w-full overflow-x-auto [scrollbar-width:none] shrink-0 pb-0.5">
           {/* Custom API / HF Key Configuration Button */}
           <button
             type="button"
@@ -437,13 +437,13 @@ export default function ImageStudioView({
             <span className="sm:hidden">{hfToken ? 'HF' : 'API'}</span>
           </button>
 
-          <div className={`flex rounded-lg p-0.5 border text-xs ${
+          <div className={`flex rounded-lg p-0.5 border text-xs shrink-0 ${
             isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
           }`}>
             <button
               type="button"
               onClick={() => setActiveSubTab('generate')}
-              className={`px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                 activeSubTab === 'generate'
                   ? isLight
                     ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'
@@ -452,12 +452,13 @@ export default function ImageStudioView({
               }`}
             >
               <Sparkles className="w-3.5 h-3.5 shrink-0" />
-              <span>AI Image Generator</span>
+              <span className="hidden sm:inline">AI Image Generator</span>
+              <span className="sm:hidden">Generate</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveSubTab('upscale')}
-              className={`px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+              className={`px-2.5 sm:px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
                 activeSubTab === 'upscale'
                   ? isLight
                     ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'
@@ -466,7 +467,8 @@ export default function ImageStudioView({
               }`}
             >
               <Maximize2 className="w-3.5 h-3.5 shrink-0" />
-              <span>4K Super-Resolution</span>
+              <span className="hidden sm:inline">4K Super-Resolution</span>
+              <span className="sm:hidden">4K Upscale</span>
             </button>
           </div>
         </div>
@@ -587,7 +589,7 @@ export default function ImageStudioView({
                 <label className="text-xs font-mono uppercase font-bold text-on-surface-variant">
                   Aspect Ratio
                 </label>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                   {[
                     { id: '1:1', label: '1:1 Square', sub: '1024×1024' },
                     { id: '16:9', label: '16:9 Wide', sub: '1280×720' },
@@ -620,7 +622,7 @@ export default function ImageStudioView({
                 <label className="text-xs font-mono uppercase font-bold text-on-surface-variant">
                   Aesthetic Style Preset
                 </label>
-                <div className="grid grid-cols-3 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                   {[
                     { id: 'photorealistic', label: '📸 Photo 8K' },
                     { id: 'cinematic', label: '🎬 Cinematic' },

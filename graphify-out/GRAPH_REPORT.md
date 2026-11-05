@@ -1,17 +1,17 @@
 # Graph Report - website  (2026-11-05)
 
 ## Corpus Check
-- 165 files · ~337,453 words
+- 165 files · ~338,923 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
 ## Summary
-- 1125 nodes · 2781 edges · 58 communities (53 shown, 5 thin omitted)
+- 1125 nodes · 2784 edges · 58 communities (53 shown, 5 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 18 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c2f48b30`
+- Built from commit: `b7c5777f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -108,8 +108,8 @@ Cohesion: 0.05
 Nodes (82): react, AccountingView(), CompanySettingsModal(), CompanySettingsModalProps, CreateInvoiceDrawer(), CreateInvoiceDrawerProps, DraftLineItem, DayBookView() (+74 more)
 
 ### Community 1 - "App.tsx"
-Cohesion: 0.07
-Nodes (33): @react-oauth/google@^0.13.5, react-router-dom@^7.15.1, @react-oauth/google, react-router-dom, ADMIN_TOOLS, ALL_TABS, App(), INSTALLED_PLUGINS (+25 more)
+Cohesion: 0.09
+Nodes (30): react-router-dom@^7.15.1, react-router-dom, ADMIN_TOOLS, ALL_TABS, App(), INSTALLED_PLUGINS, PasswordResetModal(), ROUTE_MAP (+22 more)
 
 ### Community 2 - "TerminalLog"
 Cohesion: 0.07
@@ -196,8 +196,8 @@ Cohesion: 0.06
 Nodes (20): StockTrackerAlertModalProps, StockTrackerAlertState, Analysis, Candle, CANDLE_INTERVAL_OPTIONS, CandleInterval, DEFAULT_CANDLE_FOR_SCALE, DEFAULT_UNIVERSES (+12 more)
 
 ### Community 24 - "BugReportModal.tsx"
-Cohesion: 0.20
-Nodes (11): BugReportModalProps, MODULE_OPTIONS, SEVERITY_LEVELS, Props, State, EnvironmentSnapshot, LogLevel, LogListener (+3 more)
+Cohesion: 0.11
+Nodes (14): @react-oauth/google@^0.13.5, @react-oauth/google, BugReportModalProps, MODULE_OPTIONS, SEVERITY_LEVELS, ErrorBoundary, Props, State (+6 more)
 
 ### Community 25 - "DocNexusDocument"
 Cohesion: 0.19
@@ -322,7 +322,7 @@ Nodes (4): OpenLocalWorkspaceModal(), OpenLocalWorkspaceModalProps, readDirector
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `react` to `App.tsx`, `TerminalLog`, `indicatorEngine.ts`, `dependencies`, `StockTracker/routes.ts`, `MarkdownStudio.tsx`, `clientRegistry.ts`, `package.json`, `DocNexusStudio.tsx`, `LandingPage.tsx`, `StockTrackerView.tsx`, `BugReportModal.tsx`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `backtest/engine.ts`, `SlideDeckStudio.tsx`, `ManageDatabaseView.tsx`, `ImageStudioView.tsx`, `DocNexusStudio`, `DocNexus/types.ts`, `SpeechStudioView.tsx`, `strategies/types.ts`, `OpenLocalWorkspaceModal.tsx`?**
-  _High betweenness centrality (0.238) - this node is a cross-community bridge._
+  _High betweenness centrality (0.201) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `registerRoutes()` (e.g. with `authenticateToken()` and `optionalAuth()`) actually correct?**
   _`registerRoutes()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Should `react` be split into smaller, more focused modules?**
@@ -330,8 +330,8 @@ _Questions this graph is uniquely positioned to answer:_
 - **Why does `lucide-react` connect `LandingPage.tsx` to `App.tsx`, `TerminalLog`, `indicatorEngine.ts`, `dependencies`, `StockTracker/routes.ts`, `MarkdownStudio.tsx`, `package.json`, `DocNexusStudio.tsx`, `StockTrackerView.tsx`, `BugReportModal.tsx`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `backtest/engine.ts`, `SlideDeckStudio.tsx`, `ManageDatabaseView.tsx`, `ImageStudioView.tsx`, `DocNexus/types.ts`, `SpeechStudioView.tsx`, `strategies/types.ts`, `OpenLocalWorkspaceModal.tsx`?**
   _High betweenness centrality (0.085) - this node is a cross-community bridge._
 - **Should `App.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.07400555041628122 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.09388335704125178 - nodes in this community are weakly interconnected._
 - **Why does `express` connect `serverRegistry.ts` to `react`, `dependencies`, `StockTracker/routes.ts`, `package.json`, `server.ts`, `SpeechStudioView.tsx`, `DocNexus/storage.ts`, `_utils.ts`, `telemetryService.ts`?**
-  _High betweenness centrality (0.063) - this node is a cross-community bridge._
+  _High betweenness centrality (0.085) - this node is a cross-community bridge._
 - **Should `TerminalLog` be split into smaller, more focused modules?**
   _Cohesion score 0.06862745098039216 - nodes in this community are weakly interconnected._

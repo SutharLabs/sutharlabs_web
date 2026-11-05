@@ -535,17 +535,22 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
 
       {/* View Title */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-outline/20 pb-4 gap-4">
-        <div>
-          <h2 className="text-xl font-bold tracking-tight text-on-surface flex items-center gap-2.5">
-            <span className="relative flex h-2.5 w-2.5 shrink-0" title="Admin Session Live • Real-time Telemetry Connected">
+        <div className="flex items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center shrink-0 shadow-sm relative">
+            <Bot className="w-5 h-5 text-purple-400 shrink-0" />
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5" title="Admin Session Live • Real-time Telemetry Connected">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#ce5dff] opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#ce5dff]"></span>
             </span>
-            <span>Admin Command Center</span>
-          </h2>
-          <p className="text-xs text-on-surface-variant font-mono mt-1">
-            System coordinates, server orchestration, and secure credentials management.
-          </p>
+          </div>
+          <div>
+            <h2 className="text-xl font-bold tracking-tight text-on-surface font-sans">
+              Admin Command Center
+            </h2>
+            <p className="text-xs text-on-surface-variant font-mono mt-0.5">
+              System coordinates, server orchestration, and secure credentials management.
+            </p>
+          </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 mt-4 sm:mt-0">
           <button
@@ -791,7 +796,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       </div>
 
           {/* Main Panel Content (Split User List + Add User Form) */}
-          <div className="grid grid-cols-1 lg:grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 items-start">
             
             {/* User Management List Directory Block */}
             <div className="lg:col-span-2 glass-panel p-5 rounded-xl border border-outline/15 bg-surface-container-low/20 flex flex-col space-y-4">
