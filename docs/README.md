@@ -87,3 +87,4 @@ docs/
 
 ### F. Design System & UI Guidelines (`docs/design-system/`)
 * **[UI Styling, Icon Alignment & Modals Specification](file:///d:/Code/SutharLabs/website/docs/design-system/ui_styling_and_icons.md)**: Strict rules: Zero native browser dialogs (`<ConfirmModal />`), container icon badges, `shrink-0` rules, light/dark theme contrast matrices, and code highlight block standards.
+

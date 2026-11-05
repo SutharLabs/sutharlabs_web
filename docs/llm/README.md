@@ -18,3 +18,4 @@ Welcome to the **SutharLabs Sovereign LLM & AI Inference** documentation.
 - **Inference Node**: Oracle Cloud VM 2 (`132.226.190.125`)
 - **Ollama Gateway**: Port `11434`
 - **OpenCode Agent Server**: Port `4096` (PM2 `opencode-server`)
+

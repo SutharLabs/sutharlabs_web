@@ -41,3 +41,4 @@ PARAMETER stop "<|endoftext|>"
 4. `smollm2:1.7b` (High-density summarization model)
 5. `qwen2.5-coder:1.5b` (Dedicated code synthesis & review model)
 6. `granite3-moe:1b` (Mixture-of-Experts high-efficiency model)
+

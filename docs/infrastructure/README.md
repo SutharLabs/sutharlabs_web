@@ -43,3 +43,4 @@ Welcome to the **SutharLabs Cloud Infrastructure & DevOps** documentation.
 | **[Storage Vault & Security](file:///d:/Code/SutharLabs/website/docs/infrastructure/storage_vault_and_security.md)** | VM 1 Encrypted Storage Vault, AES-256-GCM encryption at rest, JWT authentication, and pre-signed upload URLs. |
 | **[Data Segregation & Privacy](file:///d:/Code/SutharLabs/website/docs/infrastructure/data_segregation_and_privacy.md)** | Multi-tenant tenant isolation, organization data scoping, workspace privacy boundaries, and cryptographic protection. |
 | **[Pre-Commit & Deployment Automation](file:///d:/Code/SutharLabs/website/docs/infrastructure/pre_commit_and_deployment.md)** | Pre-commit checklist, packaging verification, deploy.sh automation on VM 3, and zero-downtime rolling restart. |
+

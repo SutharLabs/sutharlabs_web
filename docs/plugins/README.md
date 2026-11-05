@@ -20,3 +20,4 @@ Welcome to the **SutharLabs Plugin Ecosystem** documentation.
 ## Developer Guides & Standards
 - **[Plugin Publishing & Versioning](file:///d:/Code/SutharLabs/website/docs/plugins/publishing_and_versioning.md)**: SemVer standards, ZIP archive packaging, SHA-256 checksums, and database sync.
 - **[State of Plugin Development](file:///d:/Code/SutharLabs/website/docs/plugins/state_of_plugin_dev.md)**: In-tree vs dynamic plugins roadmap.
+

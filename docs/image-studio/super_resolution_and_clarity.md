@@ -41,3 +41,4 @@ Image Studio features a seamless workflow connecting Text-to-Image synthesis wit
 5. Click **"Upscale Image"**.
 6. Use the interactive before/after split slider to inspect the enhanced microscopic sharpness.
 7. Download the uncompressed PNG.
+

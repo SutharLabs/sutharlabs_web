@@ -18,3 +18,4 @@ Welcome to the **SutharLabs Speech Studio** documentation suite.
 - **Host**: Oracle Cloud VM 2 (`132.226.190.125:5050`)
 - **Process Manager**: PM2 (`pm2 status neural-tts`)
 - **Reverse Proxy**: Nginx on VM 2 proxying `/tts/api/` $\rightarrow$ `http://127.0.0.1:5050/api/`
+

@@ -25,3 +25,4 @@ src/plugins/ImageStudio/
 └── components/
     └── ImageStudioView.tsx      (Dual-tab React UI: Generator & 4K Upscaler with slider)
 ```
+

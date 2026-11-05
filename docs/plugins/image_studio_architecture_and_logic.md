@@ -46,3 +46,4 @@ flowchart TD
 - `GET /api/plugins/image-studio/engines`: Lists upscaling engines (Free vs Clarity 4K).
 - `POST /api/plugins/image-studio/generate`: Generates image from prompt with aspect ratio and style presets.
 - `POST /api/plugins/image-studio/upscale`: Enhances resolution by $2\times$ or $4\times$.
+

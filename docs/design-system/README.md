@@ -17,3 +17,4 @@ Welcome to the **SutharLabs Design System** documentation.
 2. **Never Naked Icons in Headers**: Top-level titles and section cards must always nest icons inside styled container badges (`w-10 h-10 rounded-xl` or `w-8 h-8 rounded-lg`).
 3. **Always `shrink-0` on Icons**: Prevents flexbox distortion when text wraps or viewports narrow.
 4. **Theme Parity**: Every component must adapt seamlessly between dark (`#131315`, `#00dbe7`) and light (`bg-white`, `border-slate-300`, `text-slate-800`).
+

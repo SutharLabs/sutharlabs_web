@@ -217,3 +217,4 @@ Net Return = Gross Return - (Slippage + Exchange Fees + Statutory Taxes + Broker
 2. Allocate virtual capital to your simulation portfolio.
 3. Attach your preferred quantitative strategy.
 4. The simulator will automatically execute virtual paper orders whenever the quantitative conditions are fulfilled, maintaining an immutable ledger with real fill prices and execution slippage.
+

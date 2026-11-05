@@ -64,3 +64,4 @@ Users can replicate and save multiple distinct voices (e.g. *"CEO Pitch Voice"*,
 - **Labeling**: Each replicated voice profile can be given a custom name and description.
 - **Storage**: Profiles are persisted in the user's secure workspace preferences (`localStorage` and database profile store).
 - **Instant Switching**: Selecting any profile immediately sets the timbre, pitch offsets, and rate modifiers for subsequent speech synthesis.
+

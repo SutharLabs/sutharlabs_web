@@ -43,3 +43,4 @@ Given VM 2's 12GB RAM and 2-vCPU ARM architecture:
    - For agent tool calls and structured outputs in OpenCode and Custom Studio, enforce GBNF grammar constraints in Ollama. This skips sampling overhead for JSON brackets and field names.
 2. **Phase 2: Draft Model Pairing**:
    - Pair `qwen2.5:1.5b` with `qwen2.5:0.5b` as draft model in Ollama. Both models share the exact same tokenizer vocabulary, yielding an acceptance rate $\alpha \approx 72\%$.
+

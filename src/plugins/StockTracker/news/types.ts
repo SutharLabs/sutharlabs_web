@@ -40,7 +40,7 @@ export interface StockSentimentReport {
   primaryCatalyst: NewsCatalystType;
   circuitBreakerRecommended: boolean;
   circuitBreakerReason?: string;
-  analyzedBy: 'GEMINI_AI' | 'AUTONOMOUS_RULE_ENGINE';
+  analyzedBy: 'GEMINI_AI' | 'AUTONOMOUS_RULE_ENGINE' | 'ORACLE_VM2_FINLLM';
   analyzedAt: string;
   articleCount: number;
   headlines: HeadlineSentimentAnalysis[];

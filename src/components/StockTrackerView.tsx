@@ -1777,11 +1777,16 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
         setNewsArticles(data.articles || []);
         setSentimentReport(data.sentiment || null);
         if (data.sentiment) {
-          recordAiUsage(data.sentiment.analyzedBy === 'GEMINI_AI' ? 'GEMINI' : 'LEXICON');
+          recordAiUsage(data.sentiment.analyzedBy === 'GEMINI_AI' ? 'GEMINI' : data.sentiment.analyzedBy === 'ORACLE_VM2_FINLLM' ? 'GEMINI' : 'LEXICON');
+          const sourceLabel = data.sentiment.analyzedBy === 'GEMINI_AI'
+            ? 'Gemini AI'
+            : data.sentiment.analyzedBy === 'ORACLE_VM2_FINLLM'
+              ? 'Oracle VM 2 FinLLM'
+              : 'Autonomous Engine';
           onAddLogRef.current({
             timestamp: new Date().toLocaleTimeString(),
             type: data.sentiment.verdict === 'BULLISH' ? 'SUCCESS' : data.sentiment.verdict === 'BEARISH' ? 'ALERT' : 'INFO',
-            message: `AI SENTIMENT [${data.sentiment.analyzedBy === 'GEMINI_AI' ? 'Gemini AI' : 'Autonomous Engine'}]: ${data.sentiment.cleanSymbol} → ${data.sentiment.verdict} (${data.sentiment.score > 0 ? '+' : ''}${data.sentiment.score}) | Catalyst: ${data.sentiment.primaryCatalyst}`
+            message: `AI SENTIMENT [${sourceLabel}]: ${data.sentiment.cleanSymbol} → ${data.sentiment.verdict} (${data.sentiment.score > 0 ? '+' : ''}${data.sentiment.score}) | Catalyst: ${data.sentiment.primaryCatalyst}`
           });
         }
       }
@@ -4299,6 +4304,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                             <Sparkles className="w-3 h-3 text-[#00dbe7]" />
                             <span className="font-bold">Gemini AI</span>
                           </>
+                        ) : sentimentReport.analyzedBy === 'ORACLE_VM2_FINLLM' ? (
+                          <>
+                            <Cpu className="w-3 h-3 text-[#00dbe7]" />
+                            <span className="font-bold text-[#00dbe7]">Oracle VM 2 FinLLM</span>
+                          </>
                         ) : (
                           <>
                             <Zap className="w-3 h-3 text-amber-400" />
@@ -6420,6 +6430,11 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                             <>
                               <Sparkles className="w-3 h-3 text-[#00dbe7]" />
                               <span>Gemini 2.5 Flash</span>
+                            </>
+                          ) : sentimentReport.analyzedBy === 'ORACLE_VM2_FINLLM' ? (
+                            <>
+                              <Cpu className="w-3 h-3 text-[#00dbe7]" />
+                              <span className="text-[#00dbe7]">Oracle VM 2 FinLLM (Dedicated)</span>
                             </>
                           ) : (
                             <>

@@ -102,3 +102,4 @@ For anonymous users who do not configure a Hugging Face token:
 - During the cooldown, the Generate button displays: `FREE COOLDOWN (32S REMAINING)`.
 - If an upstream 429/402 is returned, the exact remaining wait time (e.g., `32s`) is parsed and synchronized automatically.
 - Users are never served a surprise "rate limit reached" burned-in placeholder image.
+

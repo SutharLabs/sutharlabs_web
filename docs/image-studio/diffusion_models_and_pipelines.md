@@ -81,3 +81,4 @@ if (stylePreset === "photorealistic") {
     "cost": "$0.00"
   }
   ```
+

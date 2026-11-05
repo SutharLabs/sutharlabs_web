@@ -384,6 +384,104 @@ Analyze the qualitative catalysts and financial polarity. Respond ONLY with a va
     }
   }
 
+  // 2. Query Sovereign Financial Quant Model on Oracle Cloud VM 2 (finllm)
+  const ORACLE_AI_URL = process.env.ORACLE_AI_URL || 'http://132.226.190.125';
+  const ORACLE_AI_SECRET = process.env.ORACLE_AI_SECRET || 'sutharlabs-matrix-ai-prod-2026';
+
+  try {
+    const headlineSummaries = articles.slice(0, 7).map((a, i) =>
+      `${i + 1}. Title: "${a.title}" | Publisher: ${a.publisher} | Summary: "${a.summary.slice(0, 150)}"`
+    ).join('\n');
+
+    const prompt = `You are the Sovereign Financial Quantitative Model on SutharLabs Oracle Cloud VM 2.
+Analyze the following recent news headlines for stock ticker "${cleanSymbol}" (${symbol}):
+
+${headlineSummaries}
+
+Analyze the qualitative catalysts and financial polarity. Respond ONLY with a valid JSON object matching this exact schema:
+{
+  "score": number between -1.0 (most bearish) and 1.0 (most bullish),
+  "verdict": "BULLISH" | "BEARISH" | "NEUTRAL",
+  "confidence": number between 0.0 and 1.0,
+  "primaryCatalyst": "EARNINGS" | "REGULATORY_LEGAL" | "MERGERS_ACQUISITIONS" | "MANAGEMENT" | "MACRO_RATES" | "PRODUCT_INNOVATION" | "GENERAL",
+  "catalystSummary": "1 to 2 concise sentences summarizing the key catalyst and market drivers",
+  "circuitBreakerRecommended": boolean,
+  "circuitBreakerReason": "reason string or empty if false",
+  "headlines": [
+    {
+      "title": "exact title",
+      "score": number between -1.0 and 1.0,
+      "verdict": "BULLISH" | "BEARISH" | "NEUTRAL",
+      "catalyst": "EARNINGS" | "REGULATORY_LEGAL" | "MERGERS_ACQUISITIONS" | "MANAGEMENT" | "MACRO_RATES" | "PRODUCT_INNOVATION" | "GENERAL"
+    }
+  ]
+}`;
+
+    const vmRes = await fetch(`${ORACLE_AI_URL}/api/chat`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-ai-secret': ORACLE_AI_SECRET
+      },
+      body: JSON.stringify({
+        model: 'finllm',
+        messages: [{ role: 'user', content: prompt }],
+        stream: false
+      }),
+      signal: AbortSignal.timeout(9000)
+    });
+
+    if (vmRes.ok) {
+      const vmData = await vmRes.json();
+      const rawText = vmData.message?.content || '';
+      const cleanJsonMatch = rawText.match(/\{[\s\S]*\}/);
+
+      if (cleanJsonMatch) {
+        const parsed = JSON.parse(cleanJsonMatch[0]);
+
+        const mappedHeadlines = Array.isArray(parsed.headlines)
+          ? parsed.headlines.map((h, idx) => {
+              const rawH = String(h.title || '').toLowerCase();
+              const matchedArticle =
+                articles.find(a => a.title.toLowerCase().includes(rawH.slice(0, 25)) || rawH.includes(a.title.slice(0, 25).toLowerCase())) ||
+                articles[idx];
+
+              return {
+                title: h.title || matchedArticle?.title || '',
+                score: Number(h.score) || 0.0,
+                verdict: ['BULLISH', 'BEARISH', 'NEUTRAL'].includes(h.verdict) ? h.verdict : 'NEUTRAL',
+                catalyst: h.catalyst || 'GENERAL',
+                keyPhrases: [],
+                url: matchedArticle?.url,
+                publisher: matchedArticle?.publisher
+              };
+            })
+          : [];
+
+        const report = {
+          symbol,
+          cleanSymbol,
+          score: Math.max(-1.0, Math.min(1.0, Number(parsed.score) || 0.0)),
+          verdict: ['BULLISH', 'BEARISH', 'NEUTRAL'].includes(parsed.verdict) ? parsed.verdict : 'NEUTRAL',
+          confidence: Math.max(0.1, Math.min(1.0, Number(parsed.confidence) || 0.8)),
+          catalystSummary: parsed.catalystSummary || `Oracle VM 2 FinLLM evaluated news catalysts for ${cleanSymbol}.`,
+          primaryCatalyst: parsed.primaryCatalyst || 'GENERAL',
+          circuitBreakerRecommended: Boolean(parsed.circuitBreakerRecommended),
+          circuitBreakerReason: parsed.circuitBreakerReason || undefined,
+          analyzedBy: 'ORACLE_VM2_FINLLM',
+          analyzedAt: new Date().toISOString(),
+          articleCount: articles.length,
+          headlines: mappedHeadlines
+        };
+
+        SENTIMENT_CACHE.set(cacheKey, { timestamp: now, report });
+        return report;
+      }
+    }
+  } catch (err) {
+    console.warn('[Sentiment Engine] Oracle VM 2 FinLLM unavailable, falling back:', err.message);
+  }
+
   // Fallback to autonomous rule engine
   const report = analyzeAutonomousFallback(symbol, cleanSymbol, articles);
   SENTIMENT_CACHE.set(cacheKey, { timestamp: now, report });
