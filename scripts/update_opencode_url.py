@@ -25,3 +25,4 @@ with open('/home/ubuntu/.pm2/opencode_url.json', 'w') as f:
     json.dump(data, f, indent=2)
 
 print('Updated URL:', url)
+

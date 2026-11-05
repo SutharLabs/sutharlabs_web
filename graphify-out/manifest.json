@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1793858785.5329435,
-    "seen": 1793859015.4466815,
-    "ast_hash": "b6371da28781db6a1a3b4f6eef450438",
+    "mtime": 1793859822.0159602,
+    "seen": 1793860093.887838,
+    "ast_hash": "20d5985ff7cf01510843727d2439627c",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -1100,9 +1100,9 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1793858972.614629,
-    "seen": 1793859015.4466884,
-    "ast_hash": "9910c817f28471b2a6d41923271190dd",
+    "mtime": 1793859902.8035214,
+    "seen": 1793860093.887844,
+    "ast_hash": "a1fa8cfac3c7582c7731ea1fda5bb92c",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
@@ -1226,9 +1226,9 @@
     "semantic_hash": ""
   },
   "src/components/MarkdownMessage.tsx": {
-    "mtime": 1793858763.1217592,
-    "seen": 1793859015.4467278,
-    "ast_hash": "5003e6fd48e3ea05c84a0de3d9760c82",
+    "mtime": 1793859262.3935955,
+    "seen": 1793860093.8878772,
+    "ast_hash": "8e4307950534a20d8e0d1b7d39ed9393",
     "semantic_hash": ""
   },
   "package-lock.json": {

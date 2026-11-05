@@ -2034,6 +2034,7 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
       options: {
         temperature: options.temperature ?? 0.7,
         num_predict: options.num_predict ?? 2048,
+        num_ctx: options.num_ctx ?? 8192,
         ...options
       }
     };

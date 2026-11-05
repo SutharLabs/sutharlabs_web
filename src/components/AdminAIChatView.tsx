@@ -87,11 +87,34 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const [selectedAgent, setSelectedAgent] = useState<AIAgentPersona>(AGENT_PERSONAS[0]);
   const [fleetHealth, setFleetHealth] = useState<{ status: string; node: string; engine: string; memory: string } | null>(null);
 
-  // Chat State
-  const [messages, setMessages] = useState<AIChatMessage[]>([]);
+  // Chat State with localStorage multi-turn persistence
+  const [messages, setMessages] = useState<AIChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem('sutharlabs_ai_chat_history');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) return parsed;
+      }
+    } catch {}
+    return [];
+  });
   const [inputPrompt, setInputPrompt] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [streamBuffer, setStreamBuffer] = useState<string>('');
+
+  // Persist conversation history to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('sutharlabs_ai_chat_history', JSON.stringify(messages));
+    } catch {}
+  }, [messages]);
+
+  // Active Context Calculations
+  const contextStats = useMemo(() => {
+    const turns = messages.length;
+    const estTokens = messages.reduce((acc, m) => acc + Math.ceil(m.content.length / 4), 0);
+    return { turns, estTokens };
+  }, [messages]);
 
   // Claude Artifacts State
   const [artifacts, setArtifacts] = useState<AIArtifactItem[]>([]);
@@ -337,6 +360,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         setArtifacts([]);
         setActiveArtifact(null);
         setIsArtifactPanelOpen(false);
+        localStorage.removeItem('sutharlabs_ai_chat_history');
         setModalConfig(null);
         addLog('AGENT', 'Chat history and artifacts cleared.', 'INFO');
       }
@@ -500,6 +524,26 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
             </>
           ) : (
             <>
+              {/* Context Memory Pill */}
+              <div 
+                className={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-[11px] font-mono select-none ${
+                  contextStats.turns > 0
+                    ? isLight
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold'
+                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-semibold'
+                    : isLight
+                      ? 'bg-slate-100 text-slate-500 border-slate-200'
+                      : 'bg-white/5 text-on-surface-variant border-white/10'
+                }`}
+                title={`Multi-turn memory: ${contextStats.turns} messages saved (~${contextStats.estTokens.toLocaleString()} tokens within 8,192 context window)`}
+              >
+                <Layers className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Context:</span>
+                <span>
+                  {contextStats.turns > 0 ? `${contextStats.turns} msgs (~${contextStats.estTokens} tok)` : 'Empty'}
+                </span>
+              </div>
+
               {/* Model Selector Dropdown */}
               <div className="flex items-center gap-1.5 text-xs font-mono">
                 <span className="text-on-surface-variant hidden sm:inline">Model:</span>
@@ -513,10 +557,12 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                       : 'bg-[#201f21] border-[#3a494b]/40 text-[#00dbe7] focus:border-[#00dbe7]/60'
                   }`}
                 >
-                  <option value="qwen2.5:7b">Qwen 2.5 (7.6B Deep Reasoning)</option>
-                  <option value="gemma2:2b">Gemma 2 (2.6B Fast Synthesizer)</option>
+                  <option value="qwen2.5:1.5b">Qwen 2.5 1.5B (⚡ Ultra-Fast ~50 t/s)</option>
+                  <option value="gemma2:2b">Gemma 2 2B (⚡ Fast Synthesizer ~35 t/s)</option>
+                  <option value="qwen2.5-coder:3b">Qwen 2.5 Coder 3B (🚀 Fast Code ~35 t/s)</option>
+                  <option value="qwen2.5:7b">Qwen 2.5 7B (🧠 Deep Reasoning ~12 t/s)</option>
                   {availableModels
-                    .filter(m => m.name !== 'qwen2.5:7b' && m.name !== 'gemma2:2b')
+                    .filter(m => !['qwen2.5:1.5b', 'gemma2:2b', 'qwen2.5-coder:3b', 'qwen2.5:7b'].includes(m.name))
                     .map(m => (
                       <option key={m.name} value={m.name}>{m.name}</option>
                     ))}

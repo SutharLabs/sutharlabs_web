@@ -478,3 +478,4 @@ export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({
 };
 
 export default MarkdownMessage;
+
