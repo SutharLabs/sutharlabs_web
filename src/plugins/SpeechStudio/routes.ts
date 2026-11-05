@@ -1,7 +1,6 @@
 import { Router, Request, Response } from "express";
 import { verifyToken } from "../../../api/_utils.js";
 import { TTSQuotaStatus, TTSVoiceOption } from "./types.js";
-import { generateNeuralAudioWaveform } from "./audioSynth.js";
 
 // In-memory rate limiting store (Window: 1 hour)
 interface UserQuotaEntry {
@@ -183,34 +182,32 @@ export function registerRoutes(router: Router) {
         });
       }
 
-      // Check if VM 2 Neural TTS daemon is active
+      // Synthesize audio using VM 2 Neural Edge TTS daemon
       const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://132.226.190.125/tts";
       let audioBuffer: Buffer;
-      let usedRemoteVM = false;
 
       try {
         const vmResponse = await fetch(`${ORACLE_TTS_URL}/api/tts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text, voiceId, rate, pitch, volume }),
-          signal: AbortSignal.timeout(12000)
+          signal: AbortSignal.timeout(15000)
         });
 
-        if (vmResponse.ok) {
-          const arrayBuf = await vmResponse.arrayBuffer();
-          audioBuffer = Buffer.from(arrayBuf);
-          usedRemoteVM = true;
-        } else {
-          throw new Error("VM2 TTS returned non-200");
+        if (!vmResponse.ok) {
+          const errorMsg = await vmResponse.text().catch(() => "");
+          throw new Error(`VM2 Neural TTS service returned HTTP ${vmResponse.status}: ${errorMsg || vmResponse.statusText}`);
         }
-      } catch {
-        // High-Fidelity Neural Formant Generator (Zero-latency fallback)
-        audioBuffer = generateNeuralAudioWaveform({
-          text,
-          voiceId,
-          rate: Number(rate) || 1.0,
-          pitch: Number(pitch) || 1.0,
-          volume: Number(volume) || 1.0
+
+        const arrayBuf = await vmResponse.arrayBuffer();
+        audioBuffer = Buffer.from(arrayBuf);
+      } catch (ttsErr: any) {
+        console.error("[SpeechStudio] Remote Neural TTS failed:", ttsErr.message);
+        return res.status(503).json({
+          success: false,
+          error: "Neural Voice Engine Unavailable",
+          message: "Failed to connect to the Neural Voice Synthesizer on VM 2 (132.226.190.125). Please ensure the neural-tts service is online.",
+          details: ttsErr.message
         });
       }
 
@@ -223,7 +220,7 @@ export function registerRoutes(router: Router) {
       const updatedQuota = getQuotaStatus(identifier, role);
       const words = text.trim().split(/\s+/).length;
       const estimatedDurationSec = Number((words / (2.6 * Number(rate || 1))).toFixed(1));
-      const mimeType = usedRemoteVM ? "audio/mpeg" : "audio/wav";
+      const mimeType = "audio/mpeg";
       const audioBase64 = `data:${mimeType};base64,${audioBuffer.toString("base64")}`;
 
       return res.json({
@@ -233,7 +230,7 @@ export function registerRoutes(router: Router) {
         voiceId,
         voiceName,
         audioUrl: audioBase64,
-        engine: usedRemoteVM ? "Oracle VM2 Neural Studio (Natural Human Voice)" : "SutharLabs Sovereign Neural Synthesizer",
+        engine: "Oracle VM2 Neural Studio (Natural Human Voice)",
         telemetry: {
           characterCount: text.length,
           wordCount: words,
@@ -282,33 +279,29 @@ export function registerRoutes(router: Router) {
       // Check if VM 2 Voice Cloning Engine is available
       const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://132.226.190.125/tts";
       let audioBuffer: Buffer;
-      let usedRemoteVM = false;
 
       try {
         const vmResponse = await fetch(`${ORACLE_TTS_URL}/api/clone`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text, sampleAudio, speakerName, rate, pitch }),
-          signal: AbortSignal.timeout(12000)
+          signal: AbortSignal.timeout(15000)
         });
 
-        if (vmResponse.ok) {
-          const arrayBuf = await vmResponse.arrayBuffer();
-          audioBuffer = Buffer.from(arrayBuf);
-          usedRemoteVM = true;
-        } else {
-          throw new Error("VM2 Clone service returned non-200");
+        if (!vmResponse.ok) {
+          const errorMsg = await vmResponse.text().catch(() => "");
+          throw new Error(`VM2 Voice Cloning service returned HTTP ${vmResponse.status}: ${errorMsg || vmResponse.statusText}`);
         }
-      } catch {
-        // High-Fidelity Adaptive Cloned Waveform Synthesis
-        audioBuffer = generateNeuralAudioWaveform({
-          text,
-          voiceId: "cloned-user",
-          rate: Number(rate) || 1.0,
-          pitch: Number(pitch) || 1.0,
-          volume: Number(volume) || 1.0,
-          isCloned: true,
-          sampleAudio
+
+        const arrayBuf = await vmResponse.arrayBuffer();
+        audioBuffer = Buffer.from(arrayBuf);
+      } catch (cloneErr: any) {
+        console.error("[SpeechStudio] Remote voice clone failed:", cloneErr.message);
+        return res.status(503).json({
+          success: false,
+          error: "Voice Cloning Engine Unavailable",
+          message: "Failed to connect to the Voice Cloning Engine on VM 2 (132.226.190.125). Please ensure the neural-tts service is online.",
+          details: cloneErr.message
         });
       }
 
@@ -321,7 +314,7 @@ export function registerRoutes(router: Router) {
       const updatedQuota = getQuotaStatus(identifier, role);
       const words = text.trim().split(/\s+/).length;
       const estimatedDurationSec = Number((words / (2.6 * Number(rate || 1))).toFixed(1));
-      const mimeType = usedRemoteVM ? "audio/mpeg" : "audio/wav";
+      const mimeType = "audio/mpeg";
       const audioBase64 = `data:${mimeType};base64,${audioBuffer.toString("base64")}`;
 
       return res.json({
@@ -329,7 +322,7 @@ export function registerRoutes(router: Router) {
         speakerName,
         text,
         audioUrl: audioBase64,
-        engine: usedRemoteVM ? "Oracle VM2 Neural Studio (Natural Voice Replicator)" : "SutharLabs Adaptive Voice Replicator",
+        engine: "Oracle VM2 Neural Studio (Natural Voice Replicator)",
         isCloned: true,
         telemetry: {
           characterCount: text.length,

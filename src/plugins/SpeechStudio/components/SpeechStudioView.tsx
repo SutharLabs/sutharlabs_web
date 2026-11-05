@@ -25,7 +25,8 @@ import {
   MicOff,
   Radio,
   Upload,
-  UserCheck
+  UserCheck,
+  X
 } from 'lucide-react';
 import { WorkspacePluginViewProps } from '../../types.js';
 import { TTSQuotaStatus, SpeechHistoryItem, TTSVoiceOption } from '../types.js';
@@ -273,9 +274,61 @@ export default function SpeechStudioView({
       audio.pause();
       audio.currentTime = 0;
     }
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
     setIsPlaying(false);
     setIsPaused(false);
     setPlaybackProgress(0);
+  };
+
+  // Client Browser Speech Fallback (Zero-Dependency Web Speech API)
+  const handleBrowserFallbackSpeech = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+      setErrorMessage('Browser speech synthesis is not supported in this browser environment.');
+      return;
+    }
+
+    try {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = rate;
+      utterance.pitch = pitch;
+      utterance.volume = volume;
+
+      const voices = window.speechSynthesis.getVoices();
+      const activeVoice = neuralVoices.find(v => v.id === selectedVoiceId);
+      const targetLang = activeVoice?.lang || (selectedLang === 'hi' ? 'hi-IN' : 'en-US');
+
+      const matchedVoice = voices.find(v => v.lang.toLowerCase().startsWith(targetLang.slice(0, 2).toLowerCase()));
+      if (matchedVoice) {
+        utterance.voice = matchedVoice;
+      }
+
+      utterance.onstart = () => {
+        setIsPlaying(true);
+        setIsPaused(false);
+      };
+      utterance.onend = () => {
+        setIsPlaying(false);
+        setIsPaused(false);
+      };
+      utterance.onerror = (e) => {
+        setIsPlaying(false);
+        setIsPaused(false);
+        console.warn('SpeechSynthesis error:', e);
+      };
+
+      window.speechSynthesis.speak(utterance);
+
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'INFO',
+        message: `TTS: Using client browser speech synthesis fallback for "${text.slice(0, 30)}..."`
+      });
+    } catch (err: any) {
+      setErrorMessage(`Browser speech fallback failed: ${err.message}`);
+    }
   };
 
   // Handle Studio Synthesis
@@ -311,7 +364,7 @@ export default function SpeechStudioView({
           if (data.quota) setQuota(data.quota);
           return;
         }
-        throw new Error(data.error || 'Speech synthesis failed.');
+        throw new Error(data.message || data.error || data.details || 'Speech synthesis failed.');
       }
 
       if (data.quota) setQuota(data.quota);
@@ -357,6 +410,11 @@ export default function SpeechStudioView({
 
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to synthesize neural speech.');
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'ERROR',
+        message: `TTS Error: ${err.message || 'Speech synthesis failed.'}`
+      });
     } finally {
       setIsSynthesizing(false);
     }
@@ -464,7 +522,7 @@ export default function SpeechStudioView({
       });
 
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Voice cloning failed.');
+      if (!res.ok) throw new Error(data.message || data.error || data.details || 'Voice cloning failed.');
 
       if (data.quota) setQuota(data.quota);
 
@@ -505,6 +563,11 @@ export default function SpeechStudioView({
 
     } catch (err: any) {
       setErrorMessage(err.message || 'Voice cloning synthesis failed.');
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'ERROR',
+        message: `Voice Cloning Error: ${err.message || 'Voice cloning failed.'}`
+      });
     } finally {
       setIsSynthesizing(false);
     }
@@ -676,18 +739,53 @@ export default function SpeechStudioView({
 
       {/* Error Alert Box */}
       {errorMessage && (
-        <div className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 text-xs font-mono flex items-center justify-between gap-2 animate-in fade-in">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-            <span>{errorMessage}</span>
+        <div className={`p-3.5 sm:p-4 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 animate-in fade-in transition-all ${
+          isLight
+            ? 'bg-rose-50 border-rose-300 text-rose-800'
+            : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+        }`}>
+          <div className="flex items-start gap-2.5">
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+              isLight ? 'bg-rose-100 border-rose-300' : 'bg-rose-500/20 border-rose-500/40'
+            }`}>
+              <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+            </div>
+            <div>
+              <p className="text-xs font-mono font-bold">{errorMessage}</p>
+              <p className="text-[11px] opacity-80 mt-0.5">
+                The neural voice engine is unavailable. You can retry synthesis or hear the text via your device's built-in browser speech engine.
+              </p>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={() => setErrorMessage(null)}
-            className="text-rose-400 hover:text-white cursor-pointer"
-          >
-            ✕
-          </button>
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            {typeof window !== 'undefined' && 'speechSynthesis' in window && (
+              <button
+                type="button"
+                onClick={handleBrowserFallbackSpeech}
+                className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all shadow-sm ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 hover:text-sky-600 hover:border-sky-400'
+                    : 'bg-[#201f21] hover:bg-[#28272a] text-[#00dbe7] border border-[#00dbe7]/40 hover:border-[#00dbe7]'
+                }`}
+                title="Speak text locally using your browser's native speech engine"
+              >
+                <Volume2 className="w-3.5 h-3.5 shrink-0" />
+                <span>Browser Speech Fallback</span>
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setErrorMessage(null)}
+              className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                isLight
+                  ? 'border-rose-200 hover:bg-rose-100 text-rose-700'
+                  : 'border-rose-500/30 hover:bg-rose-500/20 text-rose-300'
+              }`}
+              aria-label="Dismiss error banner"
+            >
+              <X className="w-3.5 h-3.5 shrink-0" />
+            </button>
+          </div>
         </div>
       )}
 

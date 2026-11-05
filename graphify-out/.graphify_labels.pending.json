@@ -51,7 +51,7 @@
   "49": "ImageStudio/manifest.json",
   "50": "deploy.sh",
   "51": "_utils.ts",
-  "52": "rateLimiter.ts",
+  "52": "audioSynth.ts",
   "53": "StockSimulatorPanel.tsx",
   "54": "vite",
   "55": "deploy-fleet.ps1",

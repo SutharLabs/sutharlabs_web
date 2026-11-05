@@ -1,17 +1,17 @@
 # Graph Report - website  (2026-11-05)
 
 ## Corpus Check
-- 164 files · ~283,775 words
+- 164 files · ~284,134 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
 ## Summary
-- 1091 nodes · 2729 edges · 61 communities (56 shown, 5 thin omitted)
+- 1091 nodes · 2726 edges · 61 communities (56 shown, 5 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 18 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `43d7a524`
+- Built from commit: `c65ccb19`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -68,7 +68,7 @@
 - ImageStudio/manifest.json
 - deploy.sh
 - _utils.ts
-- rateLimiter.ts
+- audioSynth.ts
 - StockSimulatorPanel.tsx
 - vite
 - ManageContactInquiriesView.tsx
@@ -92,14 +92,14 @@
 ## Surprising Connections (you probably didn't know these)
 - `startServer()` --indirect_call--> `requireAdmin()`  [INFERRED]
   server.ts → src/middleware/auth.ts
-- `main()` --calls--> `getPrismaClient()`  [EXTRACTED]
-  scripts/setup-simulation-table.ts → api/_utils.ts
 - `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
   server.ts → src/middleware/auth.ts
 - `startServer()` --indirect_call--> `errorHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
 - `startServer()` --indirect_call--> `notFoundHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
+- `main()` --calls--> `getPrismaClient()`  [EXTRACTED]
+  scripts/setup-simulation-table.ts → api/_utils.ts
 
 ## Import Cycles
 - 2-file cycle: `src/components/LandingPage.tsx -> src/components/ProjectBrowserMockup.tsx -> src/components/LandingPage.tsx`
@@ -135,8 +135,8 @@ Cohesion: 0.31
 Nodes (7): lucide-react, MarkdownStudio(), MarkdownStudioProps, COMMAND_LIST, CommandItem, SlashCommandMenu(), SlashCommandMenuProps
 
 ### Community 7 - "clientRegistry.ts"
-Cohesion: 0.11
-Nodes (16): AccountingPlugin, manifest, CLIENT_PLUGIN_REGISTRY, ClientPluginEntry, getClientPluginByName(), DocNexusPlugin, manifest, FlowDesignerPlugin (+8 more)
+Cohesion: 0.10
+Nodes (19): AccountingPlugin, manifest, CLIENT_PLUGIN_REGISTRY, ClientPluginEntry, getClientPluginByName(), DocNexusPlugin, manifest, FlowDesignerPlugin (+11 more)
 
 ### Community 8 - "storageUtils.ts"
 Cohesion: 0.39
@@ -167,8 +167,8 @@ Cohesion: 0.23
 Nodes (11): IN_TREE_PLUGINS, packageAllPlugins(), PluginConfig, decryptPluginPackage(), encryptPluginPackage(), getEncryptionKey(), isEncryptedPluginPackage(), isRawZipArchive() (+3 more)
 
 ### Community 16 - "databaseSyncService.ts"
-Cohesion: 0.22
-Nodes (14): runCronSync(), DatabaseSyncHistoryEntry, executeDatabaseSync(), getBackupPrismaClient(), getDatabaseStatus(), getSyncHistorySummary(), HISTORY_FILE, inMemoryHistory (+6 more)
+Cohesion: 0.20
+Nodes (15): runCronSync(), DatabaseSyncHistoryEntry, executeDatabaseSync(), exportDatabaseDump(), getBackupPrismaClient(), getDatabaseStatus(), getSyncHistorySummary(), HISTORY_FILE (+7 more)
 
 ### Community 17 - "SlideDeckStudio.tsx"
 Cohesion: 0.29
@@ -223,8 +223,8 @@ Cohesion: 0.18
 Nodes (10): category, description, iconSymbol, id, main, minEngineVersion, name, packagedAt (+2 more)
 
 ### Community 30 - "serverRegistry.ts"
-Cohesion: 0.19
-Nodes (13): express, AuthenticatedRequest, AuthenticatedUser, authenticateToken(), requireAdmin(), getDefaultUserNodes(), getUserFlowFilePath(), prisma (+5 more)
+Cohesion: 0.12
+Nodes (15): express, AuthenticatedRequest, AuthenticatedUser, authenticateToken(), requireAdmin(), authLimiter, generalApiLimiter, RateLimitOptions (+7 more)
 
 ### Community 31 - "DocNexus/manifest.json"
 Cohesion: 0.18
@@ -239,16 +239,16 @@ Cohesion: 0.18
 Nodes (10): category, description, iconSymbol, id, main, minEngineVersion, name, packagedAt (+2 more)
 
 ### Community 34 - "ImageStudioView.tsx"
-Cohesion: 0.24
-Nodes (7): SAMPLE_IMAGES, ImageStudioPlugin, manifest, ImageHistoryItem, ImageUpscalePayload, ImageUpscaleResult, UpscaleEngineType
+Cohesion: 0.29
+Nodes (7): SAMPLE_IMAGES, registerRoutes(), ImageHistoryItem, ImageUpscalePayload, ImageUpscaleResult, UpscaleEngineType, processImageUpscale()
 
 ### Community 35 - "_utils.ts"
 Cohesion: 0.22
 Nodes (9): pg@^8.23.0, @prisma/adapter-pg@^7.9.1, @prisma/client@^7.8.0, pg, @prisma/adapter-pg, @prisma/client, defaultPlugins, hashPassword() (+1 more)
 
 ### Community 36 - "startServer"
-Cohesion: 0.18
-Nodes (11): hashPassword(), seedDatabase(), startServer(), errorHandler(), notFoundHandler(), BlobUploadOptions, deleteFromBlob(), listStoredBlobs() (+3 more)
+Cohesion: 0.20
+Nodes (10): hashPassword(), seedDatabase(), startServer(), errorHandler(), notFoundHandler(), BlobUploadOptions, deleteFromBlob(), listStoredBlobs() (+2 more)
 
 ### Community 37 - "StorageVaultView.tsx"
 Cohesion: 0.33
@@ -271,8 +271,8 @@ Cohesion: 0.18
 Nodes (12): DEFAULT_DOC_STATE, RichDocStudio(), RichDocStudioProps, DEFAULT_SHEET, SpreadsheetStudioProps, DocNexusMetadata, DocNexusStudioProps, RichDocPage (+4 more)
 
 ### Community 42 - "server.ts"
-Cohesion: 0.08
-Nodes (12): BACKEND_TARGET, handler(), ORACLE_BACKEND_URL, app, defaultPlugins, prisma, startPromise, upload (+4 more)
+Cohesion: 0.09
+Nodes (11): BACKEND_TARGET, handler(), ORACLE_BACKEND_URL, app, defaultPlugins, prisma, startPromise, upload (+3 more)
 
 ### Community 43 - "DocNexus/types.ts"
 Cohesion: 0.22
@@ -287,8 +287,8 @@ Cohesion: 0.20
 Nodes (11): BugReportModalProps, MODULE_OPTIONS, SEVERITY_LEVELS, Props, State, EnvironmentSnapshot, LogLevel, LogListener (+3 more)
 
 ### Community 46 - "SpeechStudio/routes.ts"
-Cohesion: 0.15
-Nodes (17): verifyToken(), createWavBuffer(), generateNeuralAudioWaveform(), SynthesizeOptions, DEFAULT_NEURAL_VOICES, SAMPLE_PROMPTS, getQuotaStatus(), getUserIdentifierAndRole() (+9 more)
+Cohesion: 0.16
+Nodes (15): verifyToken(), registerAllPluginRoutes(), DEFAULT_NEURAL_VOICES, SAMPLE_PROMPTS, getQuotaStatus(), getUserIdentifierAndRole(), quotaStore, registerRoutes() (+7 more)
 
 ### Community 47 - "vercel.json"
 Cohesion: 0.50
@@ -306,9 +306,9 @@ Nodes (10): category, description, iconSymbol, id, main, minEngineVersion, name,
 Cohesion: 0.15
 Nodes (11): generateToken(), SECRET_KEY, dotenv@^16.4.5, @neondatabase/serverless@^1.1.0, @prisma/adapter-neon@^7.9.1, ws@^8.21.3, dotenv, @neondatabase/serverless (+3 more)
 
-### Community 52 - "rateLimiter.ts"
-Cohesion: 0.29
-Nodes (5): authLimiter, generalApiLimiter, RateLimitOptions, RateLimitRecord, stockApiLimiter
+### Community 52 - "audioSynth.ts"
+Cohesion: 0.67
+Nodes (3): createWavBuffer(), generateNeuralAudioWaveform(), SynthesizeOptions
 
 ### Community 53 - "StockSimulatorPanel.tsx"
 Cohesion: 0.27
@@ -337,16 +337,16 @@ Nodes (4): better-sqlite3@^12.10.0, @types/ws@^8.18.1, better-sqlite3, @types/ws
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `react` to `lucide-react`, `StockTrackerView.tsx`, `dependencies`, `backtest/engine.ts`, `MarkdownStudio.tsx`, `clientRegistry.ts`, `package.json`, `App.tsx`, `DocNexusStudio.tsx`, `SlideDeckStudio.tsx`, `LandingPage.tsx`, `WorkspaceLayout`, `strategies/types.ts`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `ImageStudioView.tsx`, `StorageVaultView.tsx`, `ManageDatabaseView.tsx`, `DocNexus/types.ts`, `DocNexus/types.ts`, `BugReportModal.tsx`, `SpeechStudio/routes.ts`, `StockSimulatorPanel.tsx`, `ManageContactInquiriesView.tsx`, `OpenLocalWorkspaceModal.tsx`?**
-  _High betweenness centrality (0.213) - this node is a cross-community bridge._
+  _High betweenness centrality (0.202) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `registerRoutes()` (e.g. with `authenticateToken()` and `optionalAuth()`) actually correct?**
   _`registerRoutes()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Should `react` be split into smaller, more focused modules?**
   _Cohesion score 0.052976658798846055 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `MarkdownStudio.tsx` to `lucide-react`, `StockTrackerView.tsx`, `dependencies`, `backtest/engine.ts`, `package.json`, `App.tsx`, `DocNexusStudio.tsx`, `SlideDeckStudio.tsx`, `LandingPage.tsx`, `strategies/types.ts`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `ImageStudioView.tsx`, `StorageVaultView.tsx`, `ManageDatabaseView.tsx`, `DocNexus/types.ts`, `DocNexus/types.ts`, `BugReportModal.tsx`, `SpeechStudio/routes.ts`, `StockSimulatorPanel.tsx`, `ManageContactInquiriesView.tsx`, `OpenLocalWorkspaceModal.tsx`?**
-  _High betweenness centrality (0.086) - this node is a cross-community bridge._
+  _High betweenness centrality (0.082) - this node is a cross-community bridge._
 - **Should `lucide-react` be split into smaller, more focused modules?**
   _Cohesion score 0.09365079365079365 - nodes in this community are weakly interconnected._
-- **Why does `express` connect `serverRegistry.ts` to `react`, `dependencies`, `startServer`, `StockTracker/routes.ts`, `package.json`, `server.ts`, `SpeechStudio/routes.ts`, `DocNexus/storage.ts`, `rateLimiter.ts`, `telemetryService.ts`?**
-  _High betweenness centrality (0.064) - this node is a cross-community bridge._
+- **Why does `express` connect `serverRegistry.ts` to `react`, `ImageStudioView.tsx`, `dependencies`, `startServer`, `clientRegistry.ts`, `StockTracker/routes.ts`, `package.json`, `server.ts`, `SpeechStudio/routes.ts`, `DocNexus/storage.ts`, `telemetryService.ts`?**
+  _High betweenness centrality (0.056) - this node is a cross-community bridge._
 - **Should `StockTrackerView.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.059673659673659674 - nodes in this community are weakly interconnected._
