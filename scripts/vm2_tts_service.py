@@ -94,7 +94,13 @@ async def clone(request: Request):
     if not text:
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
 
-    voice = "en-US-ChristopherNeural"
+    reference_text = data.get("referenceText", "").strip()
+    sample_audio = data.get("sampleAudio", "")
+    speaker_name = data.get("speakerName", "User Voice")
+
+    # Detect language: if target text or reference text contains Devanagari script, use Hindi neural base
+    is_hindi = any('\u0900' <= char <= '\u097F' for char in text + reference_text)
+    voice = "hi-IN-MadhurNeural" if is_hindi else "en-US-ChristopherNeural"
     rate = float(data.get("rate", 1.0))
     pitch = float(data.get("pitch", 1.0))
 

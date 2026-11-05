@@ -78,7 +78,7 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     dirName: 'SpeechStudio',
     id: 'speech-studio',
     name: 'Speech Studio',
-    version: '0.3.1',
+    version: '0.3.2',
     category: 'AI & Multimedia',
     type: 'Native',
     description: 'Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting.',
@@ -88,7 +88,7 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
   {
     dirName: 'ImageStudio',
     id: 'image-studio',
-    name: 'Image Studio & 4K Upscaler',
+    name: 'Image Studio',
     version: '0.1.0',
     category: 'AI & Multimedia',
     type: 'Native',

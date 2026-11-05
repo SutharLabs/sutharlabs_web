@@ -169,10 +169,19 @@ export async function streamAIChat({
 
       for (const line of lines) {
         const trimmed = line.trim();
-        if (!trimmed) continue;
+        if (!trimmed || trimmed.startsWith(':')) continue; // Ignore SSE keep-alive heartbeats
+
+        let payloadStr = trimmed;
+        if (payloadStr.startsWith('data:')) {
+          payloadStr = payloadStr.replace(/^data:\s*/, '').trim();
+        }
+        if (!payloadStr) continue;
 
         try {
-          const parsed = JSON.parse(trimmed);
+          const parsed = JSON.parse(payloadStr);
+          if (parsed.error) {
+            throw new Error(parsed.error);
+          }
           if (parsed.message && parsed.message.content) {
             onChunk(parsed.message.content);
           }
@@ -180,8 +189,11 @@ export async function streamAIChat({
             finalEvalCount = parsed.eval_count || 0;
             finalEvalDurationNs = parsed.eval_duration || 0;
           }
-        } catch {
-          // Ignore partial JSON lines in stream
+        } catch (jsonErr: any) {
+          if (jsonErr.message && !jsonErr.message.includes('JSON')) {
+            throw jsonErr;
+          }
+          // Ignore partial or malformed JSON chunks in stream
         }
       }
     }

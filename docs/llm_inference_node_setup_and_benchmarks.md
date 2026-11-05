@@ -375,3 +375,63 @@ If SutharLabs packages SpeechStudio as a commercially sold SaaS, enterprise on-p
 ```
 
 For staging, internal studio narration, and rapid experimentation, the **Edge-TTS Neural Fleet** provides zero-GPU sovereign delivery across all 13 voices.
+
+---
+
+## 9. Troubleshooting & Production Inference Diagnostic Ledger
+
+### Issue 1: "Inference Error: Failed to fetch" / "network error" in Custom AI Studio
+* **Symptoms:**
+  * User sends query (e.g. `What is 2+2`), and after 60s to 220s, the UI displays `⚠️ Inference Error: Failed to fetch` or `⚠️ Inference Error: network error`.
+* **Root Causes Identified:**
+  1. **Cold-Load / Prompt Evaluation Latency on ARM64 CPU:**
+     * `AdminAIChatView` defaulted to `qwen2.5:7b` (a 4.7 GB model).
+     * On VM 2's 2-vCPU ARM instance with standard block storage, cold-loading 4.7 GB into RAM takes **45 to 65 seconds**.
+     * With `num_ctx: 8192` hardcoded in `server.ts`, allocating and zeroing the 8K KV cache took an additional 15+ seconds.
+     * Total time to first token exceeded 100 seconds.
+  2. **Proxy / CDN Socket Reset (Cloudflare 100s Timeout):**
+     * `server.ts` awaited `fetch(`${ORACLE_AI_URL}/api/chat`)` *before* sending HTTP status or SSE headers back to the browser.
+     * Because no HTTP headers or bytes were written to the connection during model loading, Cloudflare/Nginx dropped the connection with `524 Gateway Timeout` or socket reset, causing browser `fetch()` to reject with `TypeError: Failed to fetch` or `network error`.
+* **Permanent Fix Applied:**
+  1. **Proactive SSE Keep-Alive in `server.ts`:**
+     * Immediately upon receiving `/api/ai/chat` with `stream: true`, `server.ts` flushes HTTP 200 headers (`res.writeHead(200, ...)`) and sends `: keep-alive\n\n` within 5ms.
+     * A 15-second heartbeat timer (`res.write(": keep-alive\n\n")`) maintains an active TCP stream through Cloudflare and reverse proxies while the LLM cold-loads and evaluates.
+  2. **Dynamic Context Sizing by Model Parameter Tier:**
+     * 7B Models (`:7b`): Default `num_ctx` reduced to `2048` (cutting KV memory by 4x and prompt eval time by 3.5x).
+     * 1.5B/3B Models: Default `num_ctx` set to `4096`.
+  3. **Default Model Adjusted to Sub-Second Tier:**
+     * `AdminAIChatView` defaults to `qwen2.5:1.5b` (986 MB footprint, ~48 tokens/sec, response in 1.0 second).
+     * Visual speed tags added to model selector with a prominent warning banner when 7B models are active.
+
+### Issue 2: OpenCode 6,408-Token Agent Prompt Truncation & 500 Error
+* **Symptoms:**
+  * OpenCode autonomous agent failed inference when communicating with local Ollama (`500 Internal Server Error` in Ollama logs).
+* **Root Causes Identified:**
+  1. OpenCode's comprehensive system prompt with all function tool definitions (bash, read, edit, grep, lsp) consumes **6,408 tokens**.
+  2. By default in Ollama, models without a specified `PARAMETER num_ctx` inherit `num_ctx 2048`.
+  3. When Ollama attempted to truncate the 6,408-token prompt down to 2,050 tokens (`limit=2050 prompt=6408 keep=4 new=2050`), the prompt was sliced in the middle of a JSON function tool schema, causing `llama-server` to crash or return 500.
+* **Permanent Fix Applied:**
+  1. Rebuilt all local Ollama models (`qwen2.5-coder:3b`, `qwen2.5:1.5b`, `deepseek-r1:1.5b`, `gemma2:2b`, `qwen2.5:7b`, `deepseek-r1:7b`) with `PARAMETER num_ctx 8192` in their Modelfiles.
+  2. Updated `~/.config/opencode/opencode.jsonc` on VM 2 with `timeout: 600000` (10 minutes) and `chunkTimeout: 600000`.
+
+### Issue 3: Image Studio Plugin Fails to Load in Workspace
+* **Symptoms:**
+  * Clicking "Image Studio" rendered a blank screen or `undefined` route.
+* **Root Causes Identified:**
+  1. Manifest name was `"Image Studio & 4K Upscaler"`, while `src/App.tsx` and `types.ts` registered `'Image Studio'`.
+  2. `getClientPluginByName` performed strict string matching, returning `undefined`.
+* **Permanent Fix Applied:**
+  1. Standardized `manifest.name` to `"Image Studio"` in `manifest.ts`, `manifest.json`, and database catalogs.
+  2. Enhanced `getClientPluginByName` with case-insensitive, prefix, and ID fallback matching.
+  3. Added multi-tier plugin view resolution in `App.tsx`: `getClientPluginByName(activeTab) || getClientPluginByRoute(location.pathname) || getClientPluginById(...)`.
+
+### Issue 4: Voice Replication Optimization & Phonetic Calibration
+* **Research Working Steps (F5-TTS & Neural Zero-Shot):**
+  1. **Optimal Audio Duration:** 10 to 30 seconds is the empirical sweet spot. <5s lacks formant stability; >40s causes mel-spectrogram attention drift and memory overhead.
+  2. **Phonetic Balancing:** Requires scripts with complete phonetic coverage (all English phonemes in Harvard/Rainbow passages; all swar, vyanjan, and conjuncts in Hindi Panchatantra).
+  3. **Exact Reference Transcript:** Flow matching requires knowing the exact text spoken in the reference clip to decouple timbre from phonetic content.
+* **Permanent Fix Applied:**
+  1. Extended recording window from 15s to **30 seconds** with live progress bar.
+  2. Added **Standardized Phonetic Calibration Test Prompts** panel in Step 1 (English Rainbow, Hindi Panchatantra, Hinglish Corporate, and Quick 10s).
+  3. Auto-synchronized `referenceTranscript` state with selected script.
+  4. Automatically selects language-appropriate neural base voice on VM 2 backend (Hindi Devanagari script routing).

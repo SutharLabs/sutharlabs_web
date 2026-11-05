@@ -26,7 +26,10 @@ import {
   Radio,
   Upload,
   UserCheck,
-  X
+  X,
+  Eye,
+  BookOpen,
+  FileText
 } from 'lucide-react';
 import { WorkspacePluginViewProps } from '../../types.js';
 import { TTSQuotaStatus, SpeechHistoryItem, TTSVoiceOption, TTSArchitectureOption, ClonedVoiceProfile } from '../types.js';
@@ -52,6 +55,50 @@ const SAMPLE_PROMPTS = [
     label: 'Hindi AI Greeter (हिंदी)',
     lang: 'hi-IN',
     text: 'नमस्ते! मैं सुथारलैब्स का न्यूरल स्पीच असिस्टेंट हूँ। मैं हिंदी और अंग्रेजी दोनों भाषाओं में प्राकृतिक रूप से संवाद करने में सक्षम हूँ।'
+  }
+];
+
+export interface CalibrationPromptItem {
+  id: string;
+  title: string;
+  lang: string;
+  badge: string;
+  durationEst: string;
+  text: string;
+}
+
+export const CALIBRATION_PROMPTS: CalibrationPromptItem[] = [
+  {
+    id: 'rainbow-en',
+    title: 'English (The Rainbow Passage)',
+    lang: 'en-US',
+    badge: 'Phonetically Balanced',
+    durationEst: '~18–25s',
+    text: 'When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow. The rainbow is a division of white light into many beautiful colors. These take the shape of a long round arch, with its path high above, and its two ends apparently beyond the horizon.'
+  },
+  {
+    id: 'panchatantra-hi',
+    title: 'Hindi (हिंदी ध्वन्यात्मक पाठ)',
+    lang: 'hi-IN',
+    badge: 'पूर्ण स्वर व व्यंजन',
+    durationEst: '~20–25s',
+    text: 'सफलता का रहस्य निरंतर अभ्यास और दृढ़ संकल्प में छिपा है। ज्ञान और विवेक से ही मनुष्य कठिन परिस्थितियों में भी सही मार्ग चुन सकता है। हमारे विचार ही हमारे भविष्य का निर्माण करते हैं।'
+  },
+  {
+    id: 'hinglish-corp',
+    title: 'Bilingual (Hinglish Corporate)',
+    lang: 'en-IN',
+    badge: 'Code-Switching',
+    durationEst: '~15–20s',
+    text: 'Technology aur modern AI systems mein continuous learning sabse critical parameter hai. Sovereign neural engineering se hum high-accuracy speech models build kar rahe hain.'
+  },
+  {
+    id: 'quick-test',
+    title: 'Quick 10-Second Test',
+    lang: 'en-US',
+    badge: 'Tone Fingerprint',
+    durationEst: '~8–10s',
+    text: 'Hello, I am testing my sovereign voice clone on SutharLabs speech studio. This sample captures my natural tone, pitch, and cadence.'
   }
 ];
 
@@ -405,10 +452,11 @@ export default function SpeechStudioView({
   // New Voice Profile Ingestion Form State
   const [profileName, setProfileName] = useState<string>('Custom Studio Voice');
   const [profileGender, setProfileGender] = useState<'female' | 'male' | 'neutral'>('neutral');
-  const [profileLang, setProfileLang] = useState<string>('hi-IN');
+  const [profileLang, setProfileLang] = useState<string>('en-US');
   const [profileEmotion, setProfileEmotion] = useState<string>('Warm & Authoritative');
   const [profileDesc, setProfileDesc] = useState<string>('');
-  const [referenceTranscript, setReferenceTranscript] = useState<string>('');
+  const [selectedCalibrationPrompt, setSelectedCalibrationPrompt] = useState<CalibrationPromptItem | null>(CALIBRATION_PROMPTS[0]);
+  const [referenceTranscript, setReferenceTranscript] = useState<string>(CALIBRATION_PROMPTS[0].text);
 
   // Architecture & Emotion State
   const [architectures, setArchitectures] = useState<TTSArchitectureOption[]>(DEFAULT_ARCHITECTURES);
@@ -862,9 +910,9 @@ export default function SpeechStudioView({
 
       recordingTimerRef.current = setInterval(() => {
         setRecordingDuration(prev => {
-          if (prev >= 15) {
+          if (prev >= 30) {
             stopRecording();
-            return 15;
+            return 30;
           }
           return prev + 1;
         });
@@ -1795,6 +1843,105 @@ export default function SpeechStudioView({
                   />
                 </div>
 
+                {/* Standardized Phonetic Calibration Test Prompts */}
+                <div className={`p-3.5 rounded-xl border space-y-2.5 ${
+                  isLight ? 'bg-sky-50/70 border-sky-200' : 'bg-[#121216] border-[#3a494b]/40'
+                }`}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                      <span className="text-[11px] font-mono uppercase font-bold text-on-surface">
+                        Phonetic Calibration Prompt
+                      </span>
+                    </div>
+                    <span className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-sky-500/15 text-sky-400 border border-sky-500/30 font-bold uppercase">
+                      Recommended
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-on-surface-variant font-mono leading-relaxed">
+                    Read a phonetically balanced passage aloud while recording. Covers all phonemes, pitch variations, and vowels for state-of-the-art voice replication.
+                  </p>
+
+                  {/* Calibration Script Buttons */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {CALIBRATION_PROMPTS.map((prompt) => {
+                      const isSelected = selectedCalibrationPrompt?.id === prompt.id;
+                      return (
+                        <button
+                          key={prompt.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedCalibrationPrompt(prompt);
+                            setReferenceTranscript(prompt.text);
+                            setProfileLang(prompt.lang);
+                          }}
+                          className={`p-2 rounded-lg text-left border transition-all cursor-pointer ${
+                            isSelected
+                              ? isLight
+                                ? 'bg-white border-sky-500 text-sky-800 shadow-sm font-bold'
+                                : 'bg-[#00dbe7]/15 border-[#00dbe7]/60 text-[#74f5ff] font-bold shadow-xs'
+                              : isLight
+                                ? 'bg-white/80 hover:bg-white text-slate-700 border-slate-200'
+                                : 'bg-white/5 hover:bg-white/10 text-on-surface-variant border-white/5'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1 mb-0.5">
+                            <span className="text-[10px] font-mono font-bold truncate">{prompt.title}</span>
+                            <span className="text-[8px] font-mono px-1 rounded bg-black/20 text-on-surface-variant shrink-0">{prompt.durationEst}</span>
+                          </div>
+                          <span className="text-[9px] text-on-surface-variant line-clamp-1 opacity-80">{prompt.badge}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Teleprompter Script Card */}
+                  {selectedCalibrationPrompt && (
+                    <div className={`p-2.5 rounded-lg border space-y-1.5 ${
+                      isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-black/40 border-white/10 text-[#e5e1e4]'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] font-mono font-bold text-on-surface-variant uppercase flex items-center gap-1">
+                          <BookOpen className="w-3 h-3 text-sky-400 shrink-0" />
+                          Teleprompter Reading Passage:
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => copyToClipboard(selectedCalibrationPrompt.text, 'calib-prompt')}
+                          className="text-[10px] font-mono text-sky-400 hover:underline flex items-center gap-1 cursor-pointer"
+                        >
+                          {copiedKey === 'calib-prompt' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          <span>{copiedKey === 'calib-prompt' ? 'Copied' : 'Copy'}</span>
+                        </button>
+                      </div>
+                      <p className="text-xs font-sans leading-relaxed select-all italic bg-black/5 dark:bg-black/25 p-2 rounded border border-white/5">
+                        "{selectedCalibrationPrompt.text}"
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Reference Transcript Input */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-[10px] font-mono uppercase font-bold text-on-surface-variant">
+                        Reference Audio Transcript (Text Spoken in Sample)
+                      </label>
+                      <span className="text-[9px] font-mono text-on-surface-variant">
+                        {referenceTranscript.trim().split(/\s+/).filter(Boolean).length} words
+                      </span>
+                    </div>
+                    <textarea
+                      rows={2}
+                      value={referenceTranscript}
+                      onChange={(e) => setReferenceTranscript(e.target.value)}
+                      placeholder="Paste or edit the exact text spoken in the reference audio sample..."
+                      className={`w-full p-2 rounded-lg border font-mono text-[11px] focus:outline-none transition-colors resize-none ${
+                        isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#121215] border-[#3a494b]/50 text-white'
+                      }`}
+                    />
+                  </div>
+                </div>
+
                 {/* Record via Browser Mic */}
                 <div className={`p-4 rounded-xl border text-center space-y-3 ${
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-black/30 border-white/5'
@@ -1811,12 +1958,23 @@ export default function SpeechStudioView({
 
                   <div>
                     <div className="text-xs font-mono font-bold">
-                      {isRecording ? `Recording Audio: ${recordingDuration}s / 15s max` : 'Record via Microphone'}
+                      {isRecording ? `Recording Audio: ${recordingDuration}s / 30s max` : 'Record via Microphone'}
                     </div>
                     <p className="text-[10px] text-on-surface-variant mt-0.5 font-mono">
-                      Speak clearly for 5–10 seconds into your microphone.
+                      {isRecording
+                        ? 'Read the teleprompter passage clearly at your natural pace.'
+                        : 'Read the calibration prompt above into your microphone (15–25s recommended).'}
                     </p>
                   </div>
+
+                  {isRecording && (
+                    <div className="w-full bg-black/20 rounded-full h-1.5 overflow-hidden">
+                      <div 
+                        className="bg-rose-500 h-1.5 transition-all duration-300"
+                        style={{ width: `${Math.min(100, (recordingDuration / 30) * 100)}%` }}
+                      />
+                    </div>
+                  )}
 
                   <div className="flex items-center justify-center gap-2">
                     {!isRecording ? (
@@ -1826,7 +1984,7 @@ export default function SpeechStudioView({
                         className="h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-purple-500 hover:bg-purple-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer"
                       >
                         <Radio className="w-3.5 h-3.5 shrink-0" />
-                        <span>START RECORDING</span>
+                        <span>START RECORDING (30s)</span>
                       </button>
                     ) : (
                       <button
@@ -1835,7 +1993,7 @@ export default function SpeechStudioView({
                         className="h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer animate-pulse"
                       >
                         <Square className="w-3.5 h-3.5 shrink-0" />
-                        <span>STOP RECORDING</span>
+                        <span>FINISH RECORDING ({recordingDuration}s)</span>
                       </button>
                     )}
                   </div>

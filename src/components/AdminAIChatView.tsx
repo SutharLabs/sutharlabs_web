@@ -89,7 +89,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
 
   // AI Fleet State
   const [availableModels, setAvailableModels] = useState<OllamaModelTag[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>('qwen2.5:7b');
+  const [selectedModel, setSelectedModel] = useState<string>('qwen2.5:1.5b');
   const [selectedAgent, setSelectedAgent] = useState<AIAgentPersona>(AGENT_PERSONAS[0]);
   const [fleetHealth, setFleetHealth] = useState<{ status: string; node: string; engine: string; memory: string } | null>(null);
 
@@ -328,7 +328,8 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         setAvailableModels(models);
         setFleetHealth(health);
         if (models.length > 0 && !models.some(m => m.name === selectedModel)) {
-          setSelectedModel(models[0].name);
+          const preferred = models.find(m => m.name.includes('1.5b')) || models.find(m => m.name.includes('3b')) || models[0];
+          setSelectedModel(preferred.name);
         }
       } catch (err: any) {
         console.error('Failed to init AI chat:', err);
@@ -752,19 +753,15 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                       : 'bg-[#201f21] border-[#3a494b]/40 text-[#00dbe7] focus:border-[#00dbe7]/60'
                   }`}
                 >
-                  <optgroup label="🧠 Mathematical & Reasoning">
-                    <option value="deepseek-r1:7b">DeepSeek R1 7B (🧠 Deep CoT ~12 t/s)</option>
-                    <option value="deepseek-r1:1.5b">DeepSeek R1 1.5B (⚡ Fast Math CoT ~50 t/s)</option>
-                  </optgroup>
-                  <optgroup label="🚀 Code & Development">
-                    <option value="qwen2.5-coder:3b">Qwen 2.5 Coder 3B (🚀 SOTA Code ~35 t/s)</option>
-                  </optgroup>
-                  <optgroup label="⚡ Ultra-Fast Response">
-                    <option value="qwen2.5:1.5b">Qwen 2.5 1.5B (⚡ Sub-Second ~55 t/s)</option>
-                  </optgroup>
-                  <optgroup label="🌐 General Synthesis">
+                  <optgroup label="⚡ Ultra-Fast & Instant (Recommended for CPU)">
+                    <option value="qwen2.5:1.5b">Qwen 2.5 1.5B (⚡ Sub-Second ~48 t/s - Recommended)</option>
+                    <option value="deepseek-r1:1.5b">DeepSeek R1 1.5B (🧠 Fast Reasoning ~40 t/s)</option>
                     <option value="gemma2:2b">Gemma 2 2B (⚡ Fast Synthesizer ~35 t/s)</option>
-                    <option value="qwen2.5:7b">Qwen 2.5 7B (🧠 Deep Knowledge ~12 t/s)</option>
+                    <option value="qwen2.5-coder:3b">Qwen 2.5 Coder 3B (💻 SOTA Code ~28 t/s)</option>
+                  </optgroup>
+                  <optgroup label="🐢 7B Deep Models (Heavier CPU Footprint ~45s Cold Load)">
+                    <option value="qwen2.5:7b">Qwen 2.5 7B (🧠 Deep Knowledge 4.7GB ~8 t/s)</option>
+                    <option value="deepseek-r1:7b">DeepSeek R1 7B (🧠 Frontier Reasoning 4.7GB ~6 t/s)</option>
                   </optgroup>
                   {availableModels
                     .filter(m => !['deepseek-r1:7b', 'deepseek-r1:1.5b', 'qwen2.5:1.5b', 'gemma2:2b', 'qwen2.5-coder:3b', 'qwen2.5:7b'].includes(m.name))
@@ -857,6 +854,24 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
           );
         })}
       </div>
+
+      {selectedModel.includes(':7b') && (
+        <div className={`px-4 sm:px-6 py-1.5 border-b text-[11px] font-mono flex items-center justify-between gap-2 shrink-0 ${
+          isLight ? 'bg-amber-50 border-amber-200 text-amber-900' : 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+        }`}>
+          <div className="flex items-center gap-1.5">
+            <span className="font-bold">⚠️ High-Parameter 7B Model Selected:</span>
+            <span>Evaluating prompts on ARM CPU may take 30–60s for first token. For instant responses, switch to Qwen 2.5 1.5B.</span>
+          </div>
+          <button
+            type="button"
+            onClick={() => setSelectedModel('qwen2.5:1.5b')}
+            className="px-2 py-0.5 rounded text-[10px] font-bold uppercase underline cursor-pointer hover:opacity-80 shrink-0"
+          >
+            Switch to 1.5B (Instant)
+          </button>
+        </div>
+      )}
 
       {/* 3. Split-Pane Main Body (Sessions Sidebar + Chat + Claude Artifacts) */}
       <div className="flex-1 flex overflow-hidden relative">

@@ -1,12 +1,12 @@
 {
   "id": "speech-studio",
   "name": "Speech Studio",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "category": "AI & Multimedia",
   "type": "Native",
   "description": "Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting.",
   "iconSymbol": "record_voice_over",
   "main": "index.ts",
   "minEngineVersion": "0.1.0",
-  "packagedAt": "2026-11-05T11:15:54.937Z"
+  "packagedAt": "2026-11-05T11:59:52.807Z"
 }

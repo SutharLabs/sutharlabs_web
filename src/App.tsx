@@ -24,7 +24,7 @@ import CookieConsentBanner from './components/CookieConsentBanner';
 import PrivacyPolicyView from './components/PrivacyPolicyView';
 import CopyrightView from './components/CopyrightView';
 import UserProfileView from './components/UserProfileView';
-import { getClientPluginByName } from './plugins/clientRegistry.js';
+import { getClientPluginByName, getClientPluginByRoute, getClientPluginById } from './plugins/clientRegistry.js';
 
 
 const STORE_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
@@ -59,7 +59,7 @@ const ALL_TABS: { name: WorkspaceTab; icon: string; size: string }[] = [
 ];
 
 
-const ROUTE_MAP: Record<WorkspaceTab, string> = {
+const ROUTE_MAP: Record<string, string> = {
   'Stock Tracker': '/workspace/stock-tracker',
   'Custom Flow': '/workspace/flow',
   'Accounting': '/workspace/accounting',
@@ -72,6 +72,7 @@ const ROUTE_MAP: Record<WorkspaceTab, string> = {
   'Doc Nexus': '/workspace/docnexus',
   'Speech Studio': '/workspace/speech-studio',
   'Image Studio': '/workspace/image-studio',
+  'Image Studio & 4K Upscaler': '/workspace/image-studio',
   'Manage Plugins': '/admin/manage-plugins',
   'Manage Apps': '/admin/manage-apps',
   'Manage Portfolios': '/admin/manage-portfolios',
@@ -614,7 +615,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             <ErrorBoundary fallbackTitle="Active View Encountered An Error">
               {/* Dynamic In-Tree Modular Plugin Views */}
               {(() => {
-                const activePlugin = getClientPluginByName(activeTab);
+                const activePlugin = getClientPluginByName(activeTab) || 
+                                     getClientPluginByRoute(location.pathname) || 
+                                     (activeTab === 'Image Studio' ? getClientPluginById('image-studio') : undefined);
                 if (activePlugin) {
                   const Component = activePlugin.View;
                   return (

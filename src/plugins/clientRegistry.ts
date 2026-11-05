@@ -34,7 +34,17 @@ export function getClientPluginByRoute(route: string): ClientPluginEntry | undef
 }
 
 export function getClientPluginByName(name: string): ClientPluginEntry | undefined {
-  return Object.values(CLIENT_PLUGIN_REGISTRY).find(p => p.manifest.name === name);
+  if (!name) return undefined;
+  const lower = name.toLowerCase().trim();
+  return Object.values(CLIENT_PLUGIN_REGISTRY).find(p => {
+    const pName = p.manifest.name.toLowerCase();
+    const pId = p.manifest.id.toLowerCase();
+    return pName === lower || 
+           pId === lower || 
+           pName.startsWith(lower) || 
+           lower.startsWith(pName) ||
+           (lower.includes('image') && pId === 'image-studio');
+  });
 }
 
 export * from "./types.js";

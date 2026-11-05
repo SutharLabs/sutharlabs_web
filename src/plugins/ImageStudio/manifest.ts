@@ -2,7 +2,7 @@ import { WorkspacePluginManifest } from "../types.js";
 
 export const manifest: WorkspacePluginManifest = {
   id: "image-studio",
-  name: "Image Studio & 4K Upscaler",
+  name: "Image Studio",
   version: "0.1.0",
   category: "AI & Multimedia",
   type: "tool",

@@ -180,11 +180,11 @@ async function seedDatabase() {
         type: "Native",
         description: "Studio-grade Neural Text-to-Speech & Zero-Shot Voice Cloning engine. Supports replicating user voices, human narrator voices, Hindi and English synthesis, and audio downloads.",
         iconSymbol: "record_voice_over",
-        version: "0.3.1"
+        version: "0.3.2"
       },
       {
         id: "image-studio",
-        name: "Image Studio & 4K Upscaler",
+        name: "Image Studio",
         category: "AI & Multimedia",
         type: "Native",
         description: "Dual-mode AI image upscaler. Features free mathematical super-resolution (Real-ESRGAN) by default with optional generative 4K/8K Clarity upscaling.",
@@ -2019,26 +2019,53 @@ app.get("/api/ai/models", authenticateToken, requireAdmin, async (_req: any, res
   }
 });
 
-// POST /api/ai/chat - Streaming conversational inference
+// POST /api/ai/chat - Streaming conversational inference with proactive SSE keep-alive
 app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: any) => {
-  try {
-    const { model = "gemma2:2b", messages = [], stream = true, options = {} } = req.body;
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      return res.status(400).json({ error: "Messages array is required." });
+  const { model = "qwen2.5:1.5b", messages = [], stream = true, options = {} } = req.body;
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    return res.status(400).json({ error: "Messages array is required." });
+  }
+
+  // Optimize context size and token prediction based on model parameter count for CPU speed
+  const is7B = typeof model === "string" && model.includes(":7b");
+  const is3B = typeof model === "string" && model.includes(":3b");
+  const defaultCtx = is7B ? 2048 : (is3B ? 4096 : 4096);
+  const defaultPredict = is7B ? 1024 : 2048;
+
+  const payload = {
+    model,
+    messages,
+    stream,
+    options: {
+      temperature: options.temperature ?? 0.7,
+      num_predict: options.num_predict ?? defaultPredict,
+      num_ctx: options.num_ctx ?? defaultCtx,
+      ...options
     }
+  };
 
-    const payload = {
-      model,
-      messages,
-      stream,
-      options: {
-        temperature: options.temperature ?? 0.7,
-        num_predict: options.num_predict ?? 2048,
-        num_ctx: options.num_ctx ?? 8192,
-        ...options
+  // If streaming, send SSE headers immediately so Cloudflare/Nginx proxy does not timeout!
+  let keepAliveInterval: any = null;
+  if (stream) {
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream; charset=utf-8",
+      "Cache-Control": "no-cache, no-transform",
+      "Connection": "keep-alive",
+      "X-Accel-Buffering": "no"
+    });
+    // Send immediate initial comment so TCP stream starts flowing
+    res.write(": keep-alive\n\n");
+    // Heartbeat every 15s to prevent Cloudflare 100s timeout while LLM loads/evals
+    keepAliveInterval = setInterval(() => {
+      try {
+        res.write(": keep-alive\n\n");
+      } catch {
+        if (keepAliveInterval) clearInterval(keepAliveInterval);
       }
-    };
+    }, 15000);
+  }
 
+  try {
     const targetUrl = `${ORACLE_AI_URL}/api/chat`;
     const response = await fetch(targetUrl, {
       method: "POST",
@@ -2050,25 +2077,57 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
     });
 
     if (!response.ok) {
+      if (keepAliveInterval) clearInterval(keepAliveInterval);
       const errText = await response.text();
+      if (stream) {
+        res.write(`data: ${JSON.stringify({ error: `Ollama error: ${errText}`, done: true })}\n\n`);
+        return res.end();
+      }
       return res.status(response.status).json({ error: `Ollama error: ${errText}` });
     }
 
     if (stream && response.body) {
-      res.setHeader("Content-Type", "text/event-stream; charset=utf-8");
-      res.setHeader("Cache-Control", "no-cache, no-transform");
-      res.setHeader("Connection", "keep-alive");
-      res.setHeader("X-Accel-Buffering", "no");
-
       const { Readable } = await import("stream");
-      Readable.fromWeb(response.body as any).pipe(res);
+      const webStream = Readable.fromWeb(response.body as any);
+
+      webStream.on("data", (chunk: Buffer) => {
+        res.write(chunk);
+      });
+
+      webStream.on("end", () => {
+        if (keepAliveInterval) clearInterval(keepAliveInterval);
+        res.end();
+      });
+
+      webStream.on("error", (err: any) => {
+        if (keepAliveInterval) clearInterval(keepAliveInterval);
+        console.error("[AI Chat Stream] Error:", err);
+        try {
+          res.write(`data: ${JSON.stringify({ error: err.message, done: true })}\n\n`);
+          res.end();
+        } catch {}
+      });
+
+      req.on("close", () => {
+        if (keepAliveInterval) clearInterval(keepAliveInterval);
+        webStream.destroy();
+      });
     } else {
+      if (keepAliveInterval) clearInterval(keepAliveInterval);
       const data = await response.json();
       res.json(data);
     }
   } catch (err: any) {
+    if (keepAliveInterval) clearInterval(keepAliveInterval);
     console.error("[AI Chat Proxy] Error:", err);
-    res.status(500).json({ error: "Inference request failed", details: err.message });
+    if (stream) {
+      try {
+        res.write(`data: ${JSON.stringify({ error: "Inference node connection failed: " + err.message, done: true })}\n\n`);
+        res.end();
+      } catch {}
+    } else {
+      res.status(500).json({ error: "Inference request failed", details: err.message });
+    }
   }
 });
 

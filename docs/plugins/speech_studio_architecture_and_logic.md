@@ -170,3 +170,30 @@ curl -s http://127.0.0.1:5050/health
 # Response: {"status":"healthy","service":"SutharLabs Neural Edge TTS","port":5050}
 ```
 
+
+
+---
+
+## 7. Voice Replication & Phonetic Calibration Standards (v0.3.2)
+
+### A. The 10–30s Audio Window Sweet Spot
+In flow-matching diffusion models (F5-TTS, CosyVoice 2) and neural vocoders:
+* **<5 seconds**: Fails to provide sufficient formant stability ($F_1, F_2, F_3$), resulting in timbre drift or robotic timbre artifacts.
+* **10–30 seconds**: Optimal empirical window. Captures complete prosody, vocal tract resonance, cadence, and pitch range without excessive GPU memory allocation or repetition artifacts.
+* **>40 seconds**: Exceeds the standard mel-spectrogram attention frame window, increasing risk of memory overhead and hallucination loops.
+
+### B. Standardized Phonetic Calibration Passages
+To ensure consistent replication quality, Speech Studio provides pre-tested phonetic calibration scripts:
+1. **English (The Rainbow Passage - Phonetically Balanced)**:
+   * *Text*: *"When the sunlight strikes raindrops in the air, they act as a prism and form a rainbow. The rainbow is a division of white light into many beautiful colors. These take the shape of a long round arch, with its path high above, and its two ends apparently beyond the horizon."*
+   * *Phonetic Value*: Contains every vowel, diphthong, fricative, plosive, and nasal consonant in the English language.
+2. **Hindi (हिंदी ध्वन्यात्मक पाठ - पंचतंत्र मानक)**:
+   * *Text*: *"सफलता का रहस्य निरंतर अभ्यास और दृढ़ संकल्प में छिपा है। ज्ञान और विवेक से ही मनुष्य कठिन परिस्थितियों में भी सही मार्ग चुन सकता है। हमारे विचार ही हमारे भविष्य का निर्माण करते हैं।"*
+   * *Phonetic Value*: Full coverage of Devanagari swar, vyanjan, matras, retroflexes, and conjuncts.
+3. **Bilingual (Hinglish Corporate)**:
+   * *Text*: *"Technology aur modern AI systems mein continuous learning sabse critical parameter hai. Sovereign neural engineering se hum high-accuracy speech models build kar rahe hain."*
+4. **Quick 10-Second Test**:
+   * *Text*: *"Hello, I am testing my sovereign voice clone on SutharLabs speech studio. This sample captures my natural tone, pitch, and cadence."*
+
+### C. Reference Transcript Synchronization
+Neural zero-shot cloning requires exact phonetic conditioning. When the user selects a calibration script, Speech Studio automatically populates the `referenceTranscript` field. The backend passes this exact text alongside the audio payload, guaranteeing 100% phonetic alignment without hallucination.
