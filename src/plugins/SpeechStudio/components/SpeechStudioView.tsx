@@ -29,7 +29,7 @@ import {
   X
 } from 'lucide-react';
 import { WorkspacePluginViewProps } from '../../types.js';
-import { TTSQuotaStatus, SpeechHistoryItem, TTSVoiceOption } from '../types.js';
+import { TTSQuotaStatus, SpeechHistoryItem, TTSVoiceOption, TTSArchitectureOption } from '../types.js';
 import ConfirmModal from '../../../components/ConfirmModal.js';
 
 const SAMPLE_PROMPTS = [
@@ -58,35 +58,158 @@ const SAMPLE_PROMPTS = [
 const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
   {
     id: 'aarav-neural',
-    name: 'Aarav (Hindi / Indic)',
+    name: 'Aarav (Hindi Narrator)',
     lang: 'hi-IN',
     languageLabel: 'Hindi (हिंदी)',
     gender: 'male',
     accent: 'Delhi Studio',
     isNeural: true,
     engine: 'neural',
-    description: 'Deep, warm studio narrator voice tuned for Hindi and Indian English cadence.'
+    emotionTag: 'Warm & Authoritative',
+    architecture: 'edge-tts',
+    description: 'Deep, resonant studio narrator voice tuned for Hindi financial and technical cadence.'
   },
   {
     id: 'priya-neural',
-    name: 'Priya (Hindi / Indic)',
+    name: 'Priya (Hindi Conversational)',
     lang: 'hi-IN',
     languageLabel: 'Hindi (हिंदी)',
     gender: 'female',
     accent: 'Mumbai Conversational',
     isNeural: true,
     engine: 'neural',
-    description: 'Clear, conversational studio voice with natural prosody and emotional warmth.'
+    emotionTag: 'Natural & Melodic',
+    architecture: 'edge-tts',
+    description: 'Clear, conversational studio voice with emotional prosody and natural pauses.'
+  },
+  {
+    id: 'ava-expressive',
+    name: 'Ava (Expressive & Empathetic)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'female',
+    accent: 'Natural Conversational',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Empathetic & Warm',
+    architecture: 'edge-tts',
+    description: 'State-of-the-art multilingual neural voice with gentle breathing dynamics, empathy, and natural pacing.'
+  },
+  {
+    id: 'andrew-warm',
+    name: 'Andrew (Warm & Confident)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'male',
+    accent: 'Conversational Baritone',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Authentic & Reassuring',
+    architecture: 'edge-tts',
+    description: 'Authentic, warm masculine tone with confident conversational articulation.'
+  },
+  {
+    id: 'neerja-expressive',
+    name: 'Neerja (Indian English Expressive)',
+    lang: 'en-IN',
+    languageLabel: 'English (India)',
+    gender: 'female',
+    accent: 'Pan-Indian Expressive',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Bright & Positive',
+    architecture: 'edge-tts',
+    description: 'Fluent Indian English voice with lively expressive inflection, perfect for market reports.'
+  },
+  {
+    id: 'prabhat-executive',
+    name: 'Prabhat (Indian English Executive)',
+    lang: 'en-IN',
+    languageLabel: 'English (India)',
+    gender: 'male',
+    accent: 'Executive Broadcast',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Authoritative & Dignified',
+    architecture: 'edge-tts',
+    description: 'Authoritative, dignified baritone for corporate briefs, governance, and market updates.'
+  },
+  {
+    id: 'aria-confident',
+    name: 'Aria (Dynamic Broadcaster)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'female',
+    accent: 'American Broadcast',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Confident & Engaging',
+    architecture: 'edge-tts',
+    description: 'Dynamic news and novel narrator with crisp pronunciation and engaging energy.'
+  },
+  {
+    id: 'brian-sincere',
+    name: 'Brian (Sincere & Casual)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'male',
+    accent: 'Casual West Coast',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Casual & Approachable',
+    architecture: 'edge-tts',
+    description: 'Approachable, conversational tone ideal for podcasts, dialogues, and tutorials.'
+  },
+  {
+    id: 'emma-cheerful',
+    name: 'Emma (Cheerful & Upbeat)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'female',
+    accent: 'Upbeat Conversational',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Cheerful & Joyful',
+    architecture: 'edge-tts',
+    description: 'Lively, optimistic conversationalist voice with bright emotional energy.'
+  },
+  {
+    id: 'sonia-british',
+    name: 'Sonia (British Classical)',
+    lang: 'en-GB',
+    languageLabel: 'English (UK)',
+    gender: 'female',
+    accent: 'BBC Received Pronunciation',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Sophisticated & Elegant',
+    architecture: 'edge-tts',
+    description: 'Polished, sophisticated British English narrator for audiobooks and documentaries.'
+  },
+  {
+    id: 'ryan-documentary',
+    name: 'Ryan (British Documentary)',
+    lang: 'en-GB',
+    languageLabel: 'English (UK)',
+    gender: 'male',
+    accent: 'London Documentary',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Deep & Narrative',
+    architecture: 'edge-tts',
+    description: 'Deep, compelling documentary style voice with rich timbre and dramatic pause control.'
   },
   {
     id: 'marcus-neural',
-    name: 'Marcus (English Studio)',
+    name: 'Marcus (American Broadcast)',
     lang: 'en-US',
     languageLabel: 'English (US)',
     gender: 'male',
     accent: 'American Broadcast',
     isNeural: true,
     engine: 'neural',
+    emotionTag: 'Passionate & Direct',
+    architecture: 'edge-tts',
     description: 'Rich, resonant broadcaster voice suitable for tutorials, news, and technical overviews.'
   },
   {
@@ -98,7 +221,82 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     accent: 'Natural Audiobook',
     isNeural: true,
     engine: 'neural',
+    emotionTag: 'Melodic & Emotional',
+    architecture: 'edge-tts',
     description: 'Expressive, melodic narrator voice with subtle breathing pauses and vocal dynamics.'
+  }
+];
+
+const DEFAULT_ARCHITECTURES: TTSArchitectureOption[] = [
+  {
+    id: 'edge-tts',
+    name: 'Neural Edge Fleet',
+    badge: 'Active Cloud Fleet',
+    badgeColor: 'cyan',
+    description: 'Ultra-low latency edge neural network on VM 2. Features 13+ expressive voices across Hindi, English US, UK, and India with natural formant contours and zero GPU overhead.',
+    status: 'online',
+    speed: '~0.30s (Real-Time)',
+    emotionCapability: 'Nuanced Formants, Pitch & Modulation',
+    keyFeature: 'Instant sub-second synthesis with 100% uptime and multi-accent prosody.',
+    parameters: 'Cloud SOTA',
+    license: 'Sovereign Engine',
+    supportedEmotions: ['Empathetic & Warm', 'Confident & Direct', 'Bright & Positive', 'Authoritative', 'Storyteller']
+  },
+  {
+    id: 'f5-tts',
+    name: 'F5-TTS (Flow-Matching)',
+    badge: 'Diffusion Flow • SOTA Zero-Shot',
+    badgeColor: 'purple',
+    description: 'Leading non-autoregressive flow matching framework with ConvNeXt backbone. Transfers vocal identity and acoustic emotions (whispers, laughter, grief, excitement) directly from 3–10s reference audio. Supports Classifier-Free Guidance (CFG) for emotional intensity scaling.',
+    status: 'ready',
+    speed: '~0.35s (RTF 0.15)',
+    emotionCapability: 'In-Context Audio Transfer + CFG Guidance',
+    keyFeature: 'Zero-shot voice cloning matching user audio in 3-10s with rich emotional inflection.',
+    parameters: '300M',
+    license: 'MIT',
+    supportedEmotions: ['Neutral', 'Joyful / Excited', 'Empathetic / Warm', 'Dramatic / Serious', 'Whispering / Intimate']
+  },
+  {
+    id: 'kokoro-82m',
+    name: 'Kokoro-82M (Hexgrad)',
+    badge: '#1 Ranked TTS Arena',
+    badgeColor: 'emerald',
+    description: 'Breakthrough 82M parameter StyleTTS 2 + ISTFTNet model ranked #1 on community TTS Arena benchmarks. Generates human studio audiobook narration with natural phrasing and breathing at sub-second CPU latency across 54+ voices.',
+    status: 'ready',
+    speed: '~0.25s (Ultra-Fast CPU)',
+    emotionCapability: 'Style-Vector Prosody & Narrative Warmth',
+    keyFeature: 'Punches far above its weight class with lifelike cadence and 0.3s generation.',
+    parameters: '82M',
+    license: 'Apache 2.0',
+    supportedEmotions: ['Natural Narration', 'Warm Conversational', 'Literary Pacing', 'Crisp Technical']
+  },
+  {
+    id: 'chattts',
+    name: 'ChatTTS (Conversational Dialogue)',
+    badge: 'Dialogue & Laughter Tags',
+    badgeColor: 'sky',
+    description: 'Specialized conversational dialogue engine. Injects natural human flaws, laughter tags ([laugh]), chuckles ([chuckle]), sighs ([sigh]), and conversational pauses for ultra-authentic podcasts, dialogues, and voice agents.',
+    status: 'ready',
+    speed: '~0.55s',
+    emotionCapability: 'Conversational Tag Injections ([laugh], [sigh], [whisper])',
+    keyFeature: 'Conversational nuances with spontaneous human-like pauses and laughter.',
+    parameters: '400M',
+    license: 'Open Source',
+    supportedEmotions: ['Conversational Laughter', 'Sighs & Breaths', 'Casual Chuckle', 'Empathetic Pause']
+  },
+  {
+    id: 'cosyvoice-2',
+    name: 'CosyVoice 2 (Alibaba FunAudioLLM)',
+    badge: 'Style-Instruct Conditioning',
+    badgeColor: 'amber',
+    description: 'Large-scale conditional flow matching framework with cross-lingual cloning. Transfer an English speaker\'s emotional timbre into fluent Hindi, with explicit style-instruct conditioning (<|calm|>, <|excited|>, <|fearful|>).',
+    status: 'ready',
+    speed: '~0.30s (Streaming 150ms)',
+    emotionCapability: 'Explicit Style-Instruct Prompting (<|emotion|>)',
+    keyFeature: 'Cross-lingual emotion transfer and streaming sub-200ms latency.',
+    parameters: '500M',
+    license: 'Apache 2.0',
+    supportedEmotions: ['Calm', 'Excited', 'Serious', 'Dramatic', 'Surprised']
   }
 ];
 
@@ -120,6 +318,12 @@ export default function SpeechStudioView({
   const [selectedLang, setSelectedLang] = useState<'all' | 'en' | 'hi'>('all');
   const [neuralVoices, setNeuralVoices] = useState<TTSVoiceOption[]>(DEFAULT_NEURAL_VOICES);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('aarav-neural');
+
+  // Architecture & Emotion State
+  const [architectures, setArchitectures] = useState<TTSArchitectureOption[]>(DEFAULT_ARCHITECTURES);
+  const [selectedArchitecture, setSelectedArchitecture] = useState<string>('edge-tts');
+  const [selectedEmotion, setSelectedEmotion] = useState<string>('Neutral');
+  const [cfgStrength, setCfgStrength] = useState<number>(1.5);
 
   // Modulation sliders
   const [rate, setRate] = useState<number>(1.0);
@@ -166,7 +370,7 @@ export default function SpeechStudioView({
     return [];
   });
 
-  // Fetch neural voices from backend
+  // Fetch neural voices and model architectures from backend
   useEffect(() => {
     const fetchVoices = async () => {
       try {
@@ -181,7 +385,23 @@ export default function SpeechStudioView({
         // Fallback to defaults
       }
     };
+
+    const fetchModels = async () => {
+      try {
+        const res = await fetch('/api/plugins/speech-studio/models');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.openSourceModels && Array.isArray(data.openSourceModels)) {
+            setArchitectures(data.openSourceModels);
+          }
+        }
+      } catch {
+        // Fallback to defaults
+      }
+    };
+
     fetchVoices();
+    fetchModels();
   }, []);
 
   // Fetch quota
@@ -353,7 +573,10 @@ export default function SpeechStudioView({
           voiceName: activeVoice.name,
           rate,
           pitch,
-          volume
+          volume,
+          architecture: selectedArchitecture,
+          emotion: selectedEmotion,
+          cfgStrength
         })
       });
 
@@ -399,7 +622,9 @@ export default function SpeechStudioView({
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         durationEstimateSec: data.telemetry?.estimatedDurationSec || 3,
         audioUrl: data.audioUrl,
-        engine: data.engine
+        engine: data.engine,
+        architecture: selectedArchitecture,
+        emotion: selectedEmotion
       };
 
       setHistory(prev => {
@@ -797,6 +1022,138 @@ export default function SpeechStudioView({
             <div className={`p-4 rounded-2xl border shadow-sm ${
               isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
             }`}>
+              {/* Architecture Switcher Bar */}
+              <div className="mb-4 pb-3.5 border-b border-outline/15">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-mono font-semibold uppercase text-on-surface-variant flex items-center gap-1.5">
+                    <Cpu className="w-3.5 h-3.5 shrink-0 text-[#00dbe7]" />
+                    Speech Engine Architecture
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('models')}
+                    className="text-[10px] font-mono text-[#00dbe7] hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <span>View Architecture Specs</span>
+                    <Layers className="w-3 h-3 shrink-0" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
+                  {architectures.map(arch => {
+                    const isSelected = selectedArchitecture === arch.id;
+                    return (
+                      <button
+                        key={arch.id}
+                        type="button"
+                        onClick={() => setSelectedArchitecture(arch.id)}
+                        className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                          isSelected
+                            ? isLight
+                              ? 'bg-sky-50 border-sky-400 text-slate-900 shadow-sm ring-1 ring-sky-300'
+                              : 'bg-[#00dbe7]/15 border-[#00dbe7] text-[#00dbe7] shadow-sm ring-1 ring-[#00dbe7]/30'
+                            : isLight
+                              ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                              : 'bg-[#201f21] hover:bg-[#28272a] border-[#3a494b]/40 text-on-surface-variant hover:text-on-surface'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1 mb-1">
+                          <span className="text-[11px] font-bold font-sans truncate">{arch.name.split(' ')[0]}</span>
+                          {isSelected && <Check className="w-3 h-3 text-[#00dbe7] shrink-0" />}
+                        </div>
+                        <span className="text-[9px] font-mono opacity-80 truncate">{arch.badge.split('•')[0].trim()}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* F5-TTS In-Context Emotion & CFG Controls */}
+              {selectedArchitecture === 'f5-tts' && (
+                <div className={`p-3 rounded-xl border mb-3.5 animate-in fade-in transition-colors ${
+                  isLight ? 'bg-purple-50/70 border-purple-200' : 'bg-purple-950/20 border-purple-500/30'
+                }`}>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-mono font-bold text-purple-400 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 shrink-0 text-purple-400" />
+                      F5-TTS Emotion Dynamics & Guidance
+                    </span>
+                    <span className="text-[10px] font-mono text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/30">
+                      CFG: {cfgStrength.toFixed(1)}x
+                    </span>
+                  </div>
+                  <p className="text-[11px] font-mono text-on-surface-variant mb-2.5 leading-relaxed">
+                    F5-TTS uses flow matching to replicate emotions in-context. Select an emotion preset or upload an emotional reference sample in the Voice Cloning tab.
+                  </p>
+                  <div className="flex items-center gap-1.5 flex-wrap mb-2">
+                    {['Neutral', 'Joyful / Excited', 'Empathetic / Warm', 'Dramatic / Serious', 'Whispering / Intimate'].map(emo => (
+                      <button
+                        key={emo}
+                        type="button"
+                        onClick={() => setSelectedEmotion(emo)}
+                        className={`h-6 px-2.5 rounded text-[10px] font-mono font-bold uppercase transition-all cursor-pointer ${
+                          selectedEmotion === emo
+                            ? 'bg-purple-500 text-white shadow-xs'
+                            : isLight
+                              ? 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-200'
+                              : 'bg-white/5 hover:bg-white/10 text-on-surface-variant'
+                        }`}
+                      >
+                        {emo}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-mono text-on-surface-variant shrink-0">Emotion Intensity:</span>
+                    <input
+                      type="range"
+                      min={1.0}
+                      max={2.5}
+                      step={0.1}
+                      value={cfgStrength}
+                      onChange={(e) => setCfgStrength(parseFloat(e.target.value))}
+                      className="w-full accent-purple-500 h-1.5 bg-purple-500/20 rounded-lg cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* ChatTTS Conversational Realism Tokens */}
+              {selectedArchitecture === 'chattts' && (
+                <div className={`p-3 rounded-xl border mb-3.5 animate-in fade-in transition-colors ${
+                  isLight ? 'bg-sky-50/70 border-sky-200' : 'bg-sky-950/20 border-sky-500/30'
+                }`}>
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <span className="text-xs font-mono font-bold text-sky-400 flex items-center gap-1.5">
+                      <Radio className="w-3.5 h-3.5 shrink-0 text-sky-400" />
+                      ChatTTS Conversational Nuance Tokens
+                    </span>
+                    <span className="text-[10px] font-mono text-sky-300">Click to insert into script</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { tag: '[laugh]', label: '😂 Laughter' },
+                      { tag: '[chuckle]', label: '😊 Chuckle' },
+                      { tag: '[sigh]', label: '😮‍💨 Sigh' },
+                      { tag: '[whisper]', label: '🤫 Whisper' },
+                      { tag: '[pause]', label: '⏱️ Pause' }
+                    ].map(token => (
+                      <button
+                        key={token.tag}
+                        type="button"
+                        onClick={() => setText(prev => prev + ` ${token.tag} `)}
+                        className={`h-6 px-2 rounded text-[10px] font-mono font-bold transition-all cursor-pointer border ${
+                          isLight
+                            ? 'bg-white hover:bg-sky-100 text-sky-700 border-sky-300'
+                            : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border-sky-500/30'
+                        }`}
+                      >
+                        + {token.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Language Filter Pills */}
               <div className="flex items-center justify-between gap-2 mb-3">
                 <span className="text-xs font-mono font-semibold uppercase text-on-surface-variant flex items-center gap-1.5">
@@ -955,15 +1312,26 @@ export default function SpeechStudioView({
                           : 'bg-white/5 hover:bg-white/10 border-white/5 text-on-surface-variant'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold font-sans">{voice.name}</span>
-                      <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase ${
-                        voice.gender === 'female'
-                          ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20'
-                          : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
-                      }`}>
-                        {voice.gender}
-                      </span>
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-xs font-bold font-sans truncate">{voice.name}</span>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {voice.emotionTag && (
+                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold truncate max-w-[110px] ${
+                            isLight
+                              ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                              : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
+                          }`}>
+                            {voice.emotionTag}
+                          </span>
+                        )}
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase ${
+                          voice.gender === 'female'
+                            ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20'
+                            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20'
+                        }`}>
+                          {voice.gender}
+                        </span>
+                      </div>
                     </div>
                     <p className="text-[10px] text-on-surface-variant mt-1 leading-tight font-mono">
                       {voice.description || voice.accent}
@@ -1219,57 +1587,129 @@ export default function SpeechStudioView({
         </div>
       )}
 
-      {/* TAB 3: MODEL ARCHITECTURES */}
+      {/* TAB 3: MODEL ARCHITECTURES (INTERACTIVE & SELECTABLE) */}
       {activeTab === 'models' && (
-        <div className="space-y-4">
+        <div className="space-y-5">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-base font-bold text-on-surface flex items-center gap-2">
+                <Cpu className="w-4 h-4 text-[#00dbe7] shrink-0" />
+                Selectable Neural TTS Model Architectures
+              </h3>
+              <p className="text-xs text-on-surface-variant font-mono mt-0.5">
+                Switch active synthesis engine or inspect architectural emotion capabilities, parameter counts, and latency.
+              </p>
+            </div>
+            <span className="text-xs font-mono px-3 py-1 rounded-lg border bg-[#00dbe7]/10 text-[#00dbe7] border-[#00dbe7]/30 shrink-0 font-bold">
+              Active: {architectures.find(a => a.id === selectedArchitecture)?.name.split(' ')[0] || 'Edge-TTS'}
+            </span>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className={`p-4 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-bold text-on-surface">F5-TTS (Flow-Matching)</h4>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-purple-500/10 text-purple-400 border border-purple-500/30">
-                  Zero-Shot Cloning
-                </span>
-              </div>
-              <p className="text-xs text-on-surface-variant font-mono leading-relaxed">
-                State-of-the-art non-autoregressive flow matching model. Generates natural speech in English and Hindi, matching pitch, cadence, and vocal timbre from a 3–10s audio sample.
-              </p>
-            </div>
+            {architectures.map(arch => {
+              const isSelected = selectedArchitecture === arch.id;
+              return (
+                <div
+                  key={arch.id}
+                  className={`p-4 rounded-2xl border transition-all flex flex-col justify-between ${
+                    isSelected
+                      ? isLight
+                        ? 'bg-sky-50/80 border-sky-400 shadow-md ring-2 ring-sky-300'
+                        : 'bg-[#18181b] border-[#00dbe7] shadow-lg ring-1 ring-[#00dbe7]/40 shadow-[#00dbe7]/5'
+                      : isLight
+                        ? 'bg-white hover:bg-slate-50 border-slate-200'
+                        : 'bg-[#18181b] hover:bg-[#201f21] border-[#3a494b]/40'
+                  }`}
+                >
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                          isSelected ? 'bg-[#00dbe7]/20 border-[#00dbe7]' : isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/10'
+                        }`}>
+                          <Cpu className={`w-4 h-4 shrink-0 ${isSelected ? 'text-[#00dbe7]' : 'text-on-surface-variant'}`} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-on-surface">{arch.name}</h4>
+                          <span className="text-[10px] font-mono text-on-surface-variant">
+                            {arch.parameters} • {arch.license} • {arch.speed}
+                          </span>
+                        </div>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                        isSelected
+                          ? 'bg-[#00dbe7]/20 text-[#00dbe7] border-[#00dbe7]/50'
+                          : 'bg-white/5 text-on-surface-variant border-white/10'
+                      }`}>
+                        {isSelected ? '✓ ACTIVE' : arch.badge}
+                      </span>
+                    </div>
 
-            <div className={`p-4 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-bold text-on-surface">Kokoro-82M</h4>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                  Sub-Second Narrator
-                </span>
-              </div>
-              <p className="text-xs text-on-surface-variant font-mono leading-relaxed">
-                Lightweight 82M parameter neural synthesizer running at ~0.3s on CPU. Generates natural studio audiobook narration without robotic artifacting.
-              </p>
-            </div>
+                    <p className="text-xs text-on-surface-variant font-mono leading-relaxed mt-2.5 mb-3">
+                      {arch.description}
+                    </p>
 
-            <div className={`p-4 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-bold text-on-surface">ChatTTS</h4>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-sky-500/10 text-sky-400 border border-sky-500/30">
-                  Conversational Realism
-                </span>
-              </div>
-              <p className="text-xs text-on-surface-variant font-mono leading-relaxed">
-                Designed for dialogue agents. Inserts laughter tags, natural breathing sounds, and conversational pauses for ultra-realistic human rhythm.
-              </p>
-            </div>
+                    {/* Emotion capabilities */}
+                    <div className={`p-2.5 rounded-xl border text-xs font-mono mb-3 ${
+                      isLight ? 'bg-slate-100 border-slate-200' : 'bg-black/30 border-white/5'
+                    }`}>
+                      <div className="text-[10px] font-bold text-on-surface uppercase mb-1 flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-[#00dbe7] shrink-0" />
+                        <span>Emotion Delivery: {arch.emotionCapability}</span>
+                      </div>
+                      <div className="flex items-center gap-1 flex-wrap mt-1.5">
+                        {arch.supportedEmotions.map(emo => (
+                          <span
+                            key={emo}
+                            className={`px-1.5 py-0.5 rounded text-[9px] font-mono border ${
+                              isLight ? 'bg-white border-slate-300 text-slate-700' : 'bg-white/5 border-white/10 text-on-surface-variant'
+                            }`}
+                          >
+                            {emo}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
 
-            <div className={`p-4 rounded-xl border ${isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <h4 className="text-sm font-bold text-on-surface">CosyVoice 2 (Alibaba)</h4>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
-                  Cross-Lingual
-                </span>
-              </div>
-              <p className="text-xs text-on-surface-variant font-mono leading-relaxed">
-                Transfers an English voice sample to speak fluent Hindi, and enables fine-grained emotional modulation (calm, joyful, serious).
-              </p>
-            </div>
+                  {/* Action buttons */}
+                  <div className="flex items-center justify-end gap-2 pt-2 border-t border-outline/10">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedArchitecture(arch.id);
+                        onAddLog({
+                          timestamp: new Date().toLocaleTimeString(),
+                          type: 'INFO',
+                          message: `Speech Engine: Switched active architecture to ${arch.name}`
+                        });
+                      }}
+                      className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
+                        isSelected
+                          ? isLight
+                            ? 'bg-sky-500 text-white border-sky-600 shadow-sm font-bold'
+                            : 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/50 font-bold'
+                          : isLight
+                            ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 hover:text-sky-600'
+                            : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border border-[#3a494b]/40 hover:text-[#00dbe7]'
+                      }`}
+                    >
+                      {isSelected ? '✓ Selected Engine' : 'Select Architecture'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedArchitecture(arch.id);
+                        setActiveTab('synthesize');
+                      }}
+                      className="h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-sky-500 hover:bg-sky-600 text-white border border-sky-600 shadow-sm cursor-pointer"
+                    >
+                      Synthesize →
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

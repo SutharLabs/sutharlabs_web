@@ -9,6 +9,23 @@ export interface TTSVoiceOption {
   engine?: 'neural' | 'cloned' | 'browser';
   description?: string;
   previewSample?: string;
+  emotionTag?: string;
+  architecture?: string;
+}
+
+export interface TTSArchitectureOption {
+  id: string;
+  name: string;
+  badge: string;
+  badgeColor: string;
+  description: string;
+  status: 'online' | 'ready' | 'experimental';
+  speed: string;
+  emotionCapability: string;
+  keyFeature: string;
+  parameters: string;
+  license: string;
+  supportedEmotions: string[];
 }
 
 export interface ClonedVoiceProfile {
@@ -37,6 +54,9 @@ export interface TTSSynthesizePayload {
   pitch?: number;
   volume?: number;
   engine?: 'neural' | 'cloned' | 'browser';
+  architecture?: string;
+  emotion?: string;
+  cfgStrength?: number;
   referenceAudio?: string; // Base64 audio for voice cloning
 }
 
@@ -50,6 +70,8 @@ export interface SpeechHistoryItem {
   durationEstimateSec: number;
   audioUrl?: string;
   engine?: string;
+  architecture?: string;
+  emotion?: string;
 }
 
 

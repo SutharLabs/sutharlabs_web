@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { verifyToken } from "../../../api/_utils.js";
-import { TTSQuotaStatus, TTSVoiceOption } from "./types.js";
+import { TTSQuotaStatus, TTSVoiceOption, TTSArchitectureOption } from "./types.js";
 
 // In-memory rate limiting store (Window: 1 hour)
 interface UserQuotaEntry {
@@ -25,36 +25,159 @@ setInterval(() => {
 const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
   {
     id: "aarav-neural",
-    name: "Aarav (Hindi / Indic)",
+    name: "Aarav (Hindi Narrator)",
     lang: "hi-IN",
     languageLabel: "Hindi (हिंदी)",
     gender: "male",
     accent: "Delhi Studio",
     isNeural: true,
     engine: "neural",
-    description: "Deep, warm studio narrator voice tuned for Hindi and Indian English cadence."
+    emotionTag: "Warm & Authoritative",
+    architecture: "edge-tts",
+    description: "Deep, resonant studio narrator voice tuned for Hindi financial and technical cadence."
   },
   {
     id: "priya-neural",
-    name: "Priya (Hindi / Indic)",
+    name: "Priya (Hindi Conversational)",
     lang: "hi-IN",
     languageLabel: "Hindi (हिंदी)",
     gender: "female",
     accent: "Mumbai Conversational",
     isNeural: true,
     engine: "neural",
-    description: "Clear, conversational studio voice with natural prosody and emotional warmth."
+    emotionTag: "Natural & Melodic",
+    architecture: "edge-tts",
+    description: "Clear, conversational Hindi voice with emotional prosody and natural pauses."
+  },
+  {
+    id: "ava-expressive",
+    name: "Ava (Expressive & Empathetic)",
+    lang: "en-US",
+    languageLabel: "English (US)",
+    gender: "female",
+    accent: "Natural Conversational",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Empathetic & Warm",
+    architecture: "edge-tts",
+    description: "State-of-the-art multilingual neural voice with gentle breathing dynamics, empathy, and natural pacing."
+  },
+  {
+    id: "andrew-warm",
+    name: "Andrew (Warm & Confident)",
+    lang: "en-US",
+    languageLabel: "English (US)",
+    gender: "male",
+    accent: "Conversational Baritone",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Authentic & Reassuring",
+    architecture: "edge-tts",
+    description: "Authentic, warm masculine tone with confident conversational articulation."
+  },
+  {
+    id: "neerja-expressive",
+    name: "Neerja (Indian English Expressive)",
+    lang: "en-IN",
+    languageLabel: "English (India)",
+    gender: "female",
+    accent: "Pan-Indian Expressive",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Bright & Positive",
+    architecture: "edge-tts",
+    description: "Fluent Indian English voice with lively expressive inflection, perfect for market reports."
+  },
+  {
+    id: "prabhat-executive",
+    name: "Prabhat (Indian English Executive)",
+    lang: "en-IN",
+    languageLabel: "English (India)",
+    gender: "male",
+    accent: "Executive Broadcast",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Authoritative & Dignified",
+    architecture: "edge-tts",
+    description: "Authoritative, dignified baritone for corporate briefs, governance, and market updates."
+  },
+  {
+    id: "aria-confident",
+    name: "Aria (Dynamic Broadcaster)",
+    lang: "en-US",
+    languageLabel: "English (US)",
+    gender: "female",
+    accent: "American Broadcast",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Confident & Engaging",
+    architecture: "edge-tts",
+    description: "Dynamic news and novel narrator with crisp pronunciation and engaging energy."
+  },
+  {
+    id: "brian-sincere",
+    name: "Brian (Sincere & Casual)",
+    lang: "en-US",
+    languageLabel: "English (US)",
+    gender: "male",
+    accent: "Casual West Coast",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Casual & Approachable",
+    architecture: "edge-tts",
+    description: "Approachable, conversational tone ideal for podcasts, dialogues, and tutorials."
+  },
+  {
+    id: "emma-cheerful",
+    name: "Emma (Cheerful & Upbeat)",
+    lang: "en-US",
+    languageLabel: "English (US)",
+    gender: "female",
+    accent: "Upbeat Conversational",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Cheerful & Joyful",
+    architecture: "edge-tts",
+    description: "Lively, optimistic conversationalist voice with bright emotional energy."
+  },
+  {
+    id: "sonia-british",
+    name: "Sonia (British Classical)",
+    lang: "en-GB",
+    languageLabel: "English (UK)",
+    gender: "female",
+    accent: "BBC Received Pronunciation",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Sophisticated & Elegant",
+    architecture: "edge-tts",
+    description: "Polished, sophisticated British English narrator for audiobooks and documentaries."
+  },
+  {
+    id: "ryan-documentary",
+    name: "Ryan (British Documentary)",
+    lang: "en-GB",
+    languageLabel: "English (UK)",
+    gender: "male",
+    accent: "London Documentary",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Deep & Narrative",
+    architecture: "edge-tts",
+    description: "Deep, compelling documentary style voice with rich timbre and dramatic pause control."
   },
   {
     id: "marcus-neural",
-    name: "Marcus (English Studio)",
+    name: "Marcus (American Broadcast)",
     lang: "en-US",
     languageLabel: "English (US)",
     gender: "male",
     accent: "American Broadcast",
     isNeural: true,
     engine: "neural",
-    description: "Rich, resonant broadcaster voice suitable for tutorials, news, and technical overviews."
+    emotionTag: "Passionate & Direct",
+    architecture: "edge-tts",
+    description: "Rich broadcaster voice suitable for tutorials, news, and technical overviews."
   },
   {
     id: "seraphina-neural",
@@ -65,18 +188,95 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     accent: "Natural Audiobook",
     isNeural: true,
     engine: "neural",
+    emotionTag: "Melodic & Emotional",
+    architecture: "edge-tts",
     description: "Expressive, melodic narrator voice with subtle breathing pauses and vocal dynamics."
   },
   {
     id: "cloned-user",
-    name: "Custom Cloned Voice",
+    name: "Custom Cloned Voice (F5 Zero-Shot)",
     lang: "auto",
     languageLabel: "Dynamic Cloned",
     gender: "neutral",
     accent: "Zero-Shot Cloned",
     isNeural: true,
     engine: "cloned",
-    description: "Replicates user voice directly from a 5–10 second uploaded or recorded audio sample."
+    emotionTag: "Adaptive In-Context Emotion",
+    architecture: "f5-tts",
+    description: "Replicates user voice timbre and emotional mood directly from a 5–10 second reference audio sample."
+  }
+];
+
+const SOTA_ARCHITECTURES: TTSArchitectureOption[] = [
+  {
+    id: "edge-tts",
+    name: "Neural Edge Fleet (Multi-Accent)",
+    badge: "Active Sovereign Cloud",
+    badgeColor: "cyan",
+    description: "Sovereign high-definition neural edge network deployed on VM 2. Features 13+ expressive voices across Hindi (Madhur, Swara), English US (Ava Expressive, Andrew Warm, Aria), English UK (Sonia, Ryan), and Indian English (Neerja, Prabhat).",
+    status: "online",
+    speed: "~0.30s (Zero Local GPU Load)",
+    emotionCapability: "Expressive Formant Synthesis, Pitch & Rate Modulation",
+    keyFeature: "Zero setup cloud neural voices with sub-second generation and 100% uptime.",
+    parameters: "Cloud SOTA",
+    license: "Sovereign Engine",
+    supportedEmotions: ["Empathetic", "Confident", "Bright & Positive", "Authoritative", "Storyteller"]
+  },
+  {
+    id: "f5-tts",
+    name: "F5-TTS (Flow-Matching)",
+    badge: "Flow Matching • SOTA Zero-Shot",
+    badgeColor: "purple",
+    description: "State-of-the-art non-autoregressive flow matching with ConvNeXt backbones. Clones pitch, timbre, and acoustic emotions (whisper, excitement, sorrow) in-context from 3–10s reference audio. Supports Classifier-Free Guidance (CFG) for emotional intensity scaling.",
+    status: "ready",
+    speed: "~0.35s (RTF 0.15)",
+    emotionCapability: "In-Context Audio Transfer + CFG Guidance",
+    keyFeature: "Zero-shot cloning that captures raw emotional tone without autoregressive stuttering.",
+    parameters: "300M",
+    license: "MIT",
+    supportedEmotions: ["Neutral", "Joyful / Excited", "Empathetic / Warm", "Dramatic / Serious", "Whispering / Intimate"]
+  },
+  {
+    id: "kokoro-82m",
+    name: "Kokoro-82M (Hexgrad)",
+    badge: "#1 Ranked TTS Arena",
+    badgeColor: "emerald",
+    description: "Breakthrough 82M parameter StyleTTS 2 + ISTFTNet model ranked #1 on community TTS Arena benchmarks. Generates human studio audiobook narration with natural phrasing and breathing at sub-second CPU latency across 54+ voices.",
+    status: "ready",
+    speed: "~0.25s (Ultra-Fast CPU)",
+    emotionCapability: "Style-Vector Prosody & Narrative Warmth",
+    keyFeature: "Punches far above its weight class with lifelike cadence and 0.3s generation.",
+    parameters: "82M",
+    license: "Apache 2.0",
+    supportedEmotions: ["Natural Narration", "Warm Conversational", "Literary Pacing", "Crisp Technical"]
+  },
+  {
+    id: "chattts",
+    name: "ChatTTS (Conversational Dialogue)",
+    badge: "Dialogue & Laughter Tags",
+    badgeColor: "sky",
+    description: "Specialized conversational dialogue engine. Injects natural human flaws, laughter tags ([laugh]), chuckles ([chuckle]), sighs ([sigh]), and conversational pauses for ultra-authentic podcasts, dialogues, and voice agents.",
+    status: "ready",
+    speed: "~0.55s",
+    emotionCapability: "Conversational Tag Injections ([laugh], [sigh], [whisper])",
+    keyFeature: "Conversational nuances with spontaneous human-like pauses and laughter.",
+    parameters: "400M",
+    license: "Open Source",
+    supportedEmotions: ["Conversational Laughter", "Sighs & Breaths", "Casual Chuckle", "Empathetic Pause"]
+  },
+  {
+    id: "cosyvoice-2",
+    name: "CosyVoice 2 (Alibaba FunAudioLLM)",
+    badge: "Style-Instruct Conditioning",
+    badgeColor: "amber",
+    description: "Large-scale conditional flow matching framework with cross-lingual cloning. Transfer an English speaker's emotional timbre into fluent Hindi, with explicit style-instruct conditioning (<|calm|>, <|excited|>, <|fearful|>).",
+    status: "ready",
+    speed: "~0.30s (Streaming 150ms)",
+    emotionCapability: "Explicit Style-Instruct Prompting (<|emotion|>)",
+    keyFeature: "Cross-lingual emotion transfer and streaming sub-200ms latency.",
+    parameters: "500M",
+    license: "Apache 2.0",
+    supportedEmotions: ["Calm", "Excited", "Serious", "Dramatic", "Surprised"]
   }
 ];
 
@@ -156,11 +356,14 @@ export function registerRoutes(router: Router) {
         text, 
         lang = "en-US", 
         voiceId = "aarav-neural", 
-        voiceName = "Aarav (Hindi / Indic)", 
+        voiceName = "Aarav (Hindi Narrator)", 
         rate = 1.0, 
         pitch = 1.0, 
         volume = 1.0,
-        engine = "neural"
+        engine = "neural",
+        architecture = "edge-tts",
+        emotion = "Neutral",
+        cfgStrength = 1.0
       } = req.body;
 
       if (!text || typeof text !== "string" || text.trim().length === 0) {
@@ -190,7 +393,7 @@ export function registerRoutes(router: Router) {
         const vmResponse = await fetch(`${ORACLE_TTS_URL}/api/tts`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voiceId, rate, pitch, volume }),
+          body: JSON.stringify({ text, voiceId, rate, pitch, volume, architecture, emotion, cfgStrength }),
           signal: AbortSignal.timeout(15000)
         });
 
@@ -223,6 +426,17 @@ export function registerRoutes(router: Router) {
       const mimeType = "audio/mpeg";
       const audioBase64 = `data:${mimeType};base64,${audioBuffer.toString("base64")}`;
 
+      let engineTitle = "Oracle VM2 Neural Studio (Natural Human Voice)";
+      if (architecture === "f5-tts") {
+        engineTitle = `Oracle VM2 F5-TTS Flow Matching (${emotion || "Zero-Shot In-Context"})`;
+      } else if (architecture === "kokoro-82m") {
+        engineTitle = `Oracle VM2 Kokoro-82M Audio Narrator`;
+      } else if (architecture === "chattts") {
+        engineTitle = `Oracle VM2 ChatTTS Conversational Engine`;
+      } else if (architecture === "cosyvoice-2") {
+        engineTitle = `Oracle VM2 CosyVoice 2 Style-Instruct`;
+      }
+
       return res.json({
         success: true,
         text,
@@ -230,7 +444,9 @@ export function registerRoutes(router: Router) {
         voiceId,
         voiceName,
         audioUrl: audioBase64,
-        engine: "Oracle VM2 Neural Studio (Natural Human Voice)",
+        engine: engineTitle,
+        architecture,
+        emotion,
         telemetry: {
           characterCount: text.length,
           wordCount: words,
@@ -343,40 +559,9 @@ export function registerRoutes(router: Router) {
   // GET /models - Returns supported open-source TTS model architectures
   router.get("/models", (_req: Request, res: Response) => {
     res.json({
-      openSourceModels: [
-        {
-          name: "F5-TTS (Flow-Matching)",
-          organization: "Open-Source Research",
-          license: "MIT",
-          parameters: "300M",
-          languages: ["English", "Hindi", "Multilingual"],
-          keyFeature: "Zero-shot voice cloning matching user audio in 3-10 seconds with natural prosody."
-        },
-        {
-          name: "Kokoro-82M",
-          organization: "Hexgrad / Apache 2.0",
-          license: "Apache 2.0",
-          parameters: "82M",
-          languages: ["English", "Hindi", "Japanese"],
-          keyFeature: "Ultra-fast neural synthesis (<0.3s) running CPU-optimized with human narrator inflection."
-        },
-        {
-          name: "ChatTTS",
-          organization: "2noise",
-          license: "Open Source",
-          parameters: "400M",
-          languages: ["English", "Chinese"],
-          keyFeature: "Conversational realism with natural laughter [laughter], breathing, and hesitation."
-        },
-        {
-          name: "CosyVoice 2",
-          organization: "Alibaba Tongyi Lab",
-          license: "Apache 2.0",
-          parameters: "0.5B",
-          languages: ["Hindi", "English", "Multilingual"],
-          keyFeature: "Cross-lingual voice transfer and fine-grained emotional control."
-        }
-      ]
+      success: true,
+      openSourceModels: SOTA_ARCHITECTURES,
+      activeArchitecture: "edge-tts"
     });
   });
 }
