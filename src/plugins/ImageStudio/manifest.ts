@@ -10,3 +10,4 @@ export const manifest: WorkspacePluginManifest = {
   route: "/workspace/image-studio",
   description: "Dual-mode AI image upscaler and enhancement studio. Features free mathematical super-resolution (Real-ESRGAN) by default with optional generative 4K/8K Clarity upscaling."
 };
+

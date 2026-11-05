@@ -53,5 +53,6 @@
   "51": "_utils.ts",
   "52": "OpenLocalWorkspaceModal.tsx",
   "53": "SpeechStudioView.tsx",
-  "54": "@google/genai"
+  "54": "@google/genai",
+  "55": "deploy-fleet.ps1"
 }

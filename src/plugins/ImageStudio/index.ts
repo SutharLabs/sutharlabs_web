@@ -8,3 +8,4 @@ export const ImageStudioPlugin = {
 
 export { manifest, ImageStudioView, ImageStudioView as View };
 export default ImageStudioPlugin;
+

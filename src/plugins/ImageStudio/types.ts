@@ -29,3 +29,4 @@ export interface ImageHistoryItem {
   cost: string;
   durationMs: number;
 }
+

@@ -1,17 +1,17 @@
 # Graph Report - website  (2026-11-05)
 
 ## Corpus Check
-- 162 files · ~278,170 words
+- 163 files · ~279,066 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
 ## Summary
-- 1086 nodes · 2720 edges · 55 communities (52 shown, 3 thin omitted)
+- 1087 nodes · 2720 edges · 56 communities (52 shown, 4 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 18 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `592a8e4c`
+- Built from commit: `54e5e74f`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -91,15 +91,15 @@
   server.ts → src/middleware/errorHandler.ts
 - `startServer()` --indirect_call--> `notFoundHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
-- `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
-  server.ts → src/middleware/auth.ts
 - `main()` --calls--> `getPrismaClient()`  [EXTRACTED]
   scripts/setup-simulation-table.ts → api/_utils.ts
+- `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
+  server.ts → src/middleware/auth.ts
 
 ## Import Cycles
 - 2-file cycle: `src/components/LandingPage.tsx -> src/components/ProjectBrowserMockup.tsx -> src/components/LandingPage.tsx`
 
-## Communities (55 total, 3 thin omitted)
+## Communities (56 total, 4 thin omitted)
 
 ### Community 0 - "react"
 Cohesion: 0.05
@@ -310,22 +310,22 @@ Cohesion: 0.33
 Nodes (4): @google/genai@^2.4.0, motion@^12.23.24, @google/genai, motion
 
 ## Knowledge Gaps
-- **3 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **4 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `react` to `indicatorEngine.ts`, `lucide-react`, `StockTrackerView.tsx`, `dependencies`, `MarkdownStudio.tsx`, `clientRegistry.ts`, `package.json`, `App.tsx`, `DocNexusStudio.tsx`, `DocNexus/types.ts`, `LandingPage.tsx`, `BugReportModal.tsx`, `StockTracker/routes.ts`, `strategies/types.ts`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `ImageStudioView.tsx`, `StorageVaultView.tsx`, `ManageDatabaseView.tsx`, `CanvasStudio.tsx`, `OpenLocalWorkspaceModal.tsx`, `SpeechStudioView.tsx`?**
-  _High betweenness centrality (0.228) - this node is a cross-community bridge._
+  _High betweenness centrality (0.230) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `registerRoutes()` (e.g. with `authenticateToken()` and `optionalAuth()`) actually correct?**
   _`registerRoutes()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Should `react` be split into smaller, more focused modules?**
   _Cohesion score 0.052976658798846055 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `lucide-react` to `indicatorEngine.ts`, `StockTrackerView.tsx`, `dependencies`, `MarkdownStudio.tsx`, `package.json`, `App.tsx`, `DocNexusStudio.tsx`, `DocNexus/types.ts`, `LandingPage.tsx`, `BugReportModal.tsx`, `StockTracker/routes.ts`, `strategies/types.ts`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `ImageStudioView.tsx`, `StorageVaultView.tsx`, `ManageDatabaseView.tsx`, `CanvasStudio.tsx`, `OpenLocalWorkspaceModal.tsx`, `SpeechStudioView.tsx`?**
-  _High betweenness centrality (0.083) - this node is a cross-community bridge._
+  _High betweenness centrality (0.080) - this node is a cross-community bridge._
 - **Should `indicatorEngine.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.14532019704433496 - nodes in this community are weakly interconnected._
 - **Why does `express` connect `DocNexus/storage.ts` to `react`, `ImageStudioView.tsx`, `package.json`, `server.ts`, `SpeechStudio/routes.ts`, `StockTracker/routes.ts`, `telemetryService.ts`, `serverRegistry.ts`?**
-  _High betweenness centrality (0.075) - this node is a cross-community bridge._
+  _High betweenness centrality (0.052) - this node is a cross-community bridge._
 - **Should `lucide-react` be split into smaller, more focused modules?**
   _Cohesion score 0.07729468599033816 - nodes in this community are weakly interconnected._

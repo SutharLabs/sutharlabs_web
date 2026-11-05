@@ -47,7 +47,12 @@ Before executing any `git commit`, the following sequence MUST be completed in o
 4. **Step 4: Update Knowledge Graph (`graphify update .`)**
    * **Mandatory**: Keep the codebase AST graph synchronized after any code modifications.
 
-5. **Step 5: Stage and Commit**
+5. **Step 5: Stage, Commit and Push**
    * Stage all modified manifests and source files (`git add ...`).
-   * Commit with a descriptive conventional commit message (`feat: ...`, `fix: ...`).
+   * Commit with a descriptive conventional commit message (`feat: ...`, `fix: ...`) and push (`git push origin main`).
 
+6. **Step 6: Mandatory Automated Fleet Deployment**
+   * **Mandatory**: Immediately deploy to all applicable Oracle Cloud VMs without waiting for user instruction:
+     * **Web / API code**: Deploy to VM 3 (`ssh ... ubuntu@130.210.37.199 "bash /home/ubuntu/website/scripts/deploy.sh"`).
+     * **Database schema**: Deploy to VM 1 (`DATABASE_URL=... npx prisma migrate deploy`).
+     * **AI / compute scripts**: Deploy to VM 2 (`ssh ... ubuntu@132.226.190.125 "cd /home/ubuntu/website && git pull origin main"`).

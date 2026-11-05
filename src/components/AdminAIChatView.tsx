@@ -27,7 +27,8 @@ import {
   LineChart,
   ShieldCheck,
   PanelRightClose,
-  PanelRightOpen
+  PanelRightOpen,
+  RefreshCw
 } from 'lucide-react';
 import { AIChatMessage, AIAgentPersona, AIArtifactItem, TerminalLog } from '../types';
 import { 
@@ -93,6 +94,10 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const [activeArtifact, setActiveArtifact] = useState<AIArtifactItem | null>(null);
   const [isArtifactPanelOpen, setIsArtifactPanelOpen] = useState<boolean>(false);
   const [isArtifactFullscreen, setIsArtifactFullscreen] = useState<boolean>(false);
+
+  // OpenCode SOTA Agent vs Custom Chat Studio Mode
+  const [studioMode, setStudioMode] = useState<'opencode' | 'custom-chat'>('opencode');
+  const [iframeKey, setIframeKey] = useState<number>(0);
 
   // UI Helpers
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -357,90 +362,164 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
       }`}>
         <div className="flex items-center gap-3.5">
           <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 shadow-sm">
-            <Sparkles className="w-5 h-5 text-[#00dbe7] shrink-0" />
+            {studioMode === 'opencode' ? (
+              <Bot className="w-5 h-5 text-[#00dbe7] shrink-0" />
+            ) : (
+              <Sparkles className="w-5 h-5 text-[#00dbe7] shrink-0" />
+            )}
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold tracking-tight text-on-surface font-sans">
-                AI Agent Studio
+                {studioMode === 'opencode' ? 'OpenCode AI Studio' : 'AI Agent Studio'}
               </h2>
               <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                132.226.190.125 (Live)
+                VM2 132.226.190.125 (Live)
               </span>
             </div>
             <p className="text-xs text-on-surface-variant font-mono mt-0.5">
-              Open-source Claude-style multi-agent aggregator on Ampere ARM A1 (12 GB RAM + 4 GB Swap)
+              {studioMode === 'opencode' 
+                ? 'Autonomous open-source coding agent on Ampere ARM A1 (12 GB RAM) · Local Ollama Models' 
+                : 'Claude-style multi-agent aggregator on Ampere ARM A1 (12 GB RAM + 4 GB Swap)'}
             </p>
           </div>
         </div>
 
-        {/* Action Controls & Model Switcher */}
+        {/* Sub-Tab Switcher: OpenCode vs Custom Chat */}
+        <div className={`flex rounded-lg p-0.5 border text-[11px] shrink-0 ${
+          isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
+        }`}>
+          <button
+            type="button"
+            onClick={() => setStudioMode('opencode')}
+            className={`px-3 py-1 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+              studioMode === 'opencode'
+                ? isLight
+                  ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'
+                  : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            <Bot className="w-3.5 h-3.5 shrink-0" />
+            <span>OpenCode Studio</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setStudioMode('custom-chat')}
+            className={`px-3 py-1 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+              studioMode === 'custom-chat'
+                ? isLight
+                  ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'
+                  : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5 shrink-0" />
+            <span>Telemetry & Chat</span>
+          </button>
+        </div>
+
+        {/* Action Controls */}
         <div className="flex items-center gap-2.5 shrink-0 flex-nowrap">
-          
-          {/* Model Selector Dropdown */}
-          <div className="flex items-center gap-1.5 text-xs font-mono">
-            <span className="text-on-surface-variant hidden sm:inline">Model:</span>
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              disabled={isGenerating}
-              className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold border transition-colors cursor-pointer ${
-                isLight
-                  ? 'bg-slate-100 border-slate-300 text-slate-800 focus:border-sky-500'
-                  : 'bg-[#201f21] border-[#3a494b]/40 text-[#00dbe7] focus:border-[#00dbe7]/60'
-              }`}
-            >
-              <option value="qwen2.5:7b">Qwen 2.5 (7.6B Deep Reasoning)</option>
-              <option value="gemma2:2b">Gemma 2 (2.6B Fast Synthesizer)</option>
-              {availableModels
-                .filter(m => m.name !== 'qwen2.5:7b' && m.name !== 'gemma2:2b')
-                .map(m => (
-                  <option key={m.name} value={m.name}>{m.name}</option>
-                ))}
-            </select>
-          </div>
+          {studioMode === 'opencode' ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setIframeKey((k) => k + 1)}
+                className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 hover:text-sky-600'
+                    : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
+                }`}
+                title="Reload OpenCode Session"
+              >
+                <RefreshCw className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Reload</span>
+              </button>
+              <a
+                href="http://132.226.190.125/"
+                target="_blank"
+                rel="noreferrer"
+                className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none ${
+                  isLight
+                    ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                    : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border-[#00dbe7]/50'
+                }`}
+              >
+                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                <span>Launch Fullscreen</span>
+              </a>
+            </>
+          ) : (
+            <>
+              {/* Model Selector Dropdown */}
+              <div className="flex items-center gap-1.5 text-xs font-mono">
+                <span className="text-on-surface-variant hidden sm:inline">Model:</span>
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  disabled={isGenerating}
+                  className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold border transition-colors cursor-pointer ${
+                    isLight
+                      ? 'bg-slate-100 border-slate-300 text-slate-800 focus:border-sky-500'
+                      : 'bg-[#201f21] border-[#3a494b]/40 text-[#00dbe7] focus:border-[#00dbe7]/60'
+                  }`}
+                >
+                  <option value="qwen2.5:7b">Qwen 2.5 (7.6B Deep Reasoning)</option>
+                  <option value="gemma2:2b">Gemma 2 (2.6B Fast Synthesizer)</option>
+                  {availableModels
+                    .filter(m => m.name !== 'qwen2.5:7b' && m.name !== 'gemma2:2b')
+                    .map(m => (
+                      <option key={m.name} value={m.name}>{m.name}</option>
+                    ))}
+                </select>
+              </div>
 
-          {/* Toggle Artifacts Drawer */}
-          {artifacts.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setIsArtifactPanelOpen(!isArtifactPanelOpen)}
-              className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
-                isArtifactPanelOpen
-                  ? isLight
-                    ? 'bg-sky-500 text-white border-sky-600'
-                    : 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/50'
-                  : isLight
-                    ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-                    : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
-              }`}
-            >
-              <Code2 className="w-3.5 h-3.5 shrink-0" />
-              <span>Artifacts ({artifacts.length})</span>
-            </button>
-          )}
+              {/* Toggle Artifacts Drawer */}
+              {artifacts.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsArtifactPanelOpen(!isArtifactPanelOpen)}
+                  className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                    isArtifactPanelOpen
+                      ? isLight
+                        ? 'bg-sky-500 text-white border-sky-600'
+                        : 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/50'
+                      : isLight
+                        ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                        : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                  }`}
+                >
+                  <Code2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Artifacts ({artifacts.length})</span>
+                </button>
+              )}
 
-          {/* Clear Chat Button */}
-          {messages.length > 0 && (
-            <button
-              type="button"
-              onClick={promptClearChat}
-              disabled={isGenerating}
-              className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-all flex items-center gap-1 cursor-pointer shadow-sm ${
-                isLight
-                  ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300'
-                  : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30'
-              }`}
-              title="Clear Conversation"
-            >
-              <Trash2 className="w-3.5 h-3.5 shrink-0" />
-            </button>
+              {/* Clear Chat Button */}
+              {messages.length > 0 && (
+                <button
+                  type="button"
+                  onClick={promptClearChat}
+                  disabled={isGenerating}
+                  className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-all flex items-center gap-1 cursor-pointer shadow-sm ${
+                    isLight
+                      ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300'
+                      : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30'
+                  }`}
+                  title="Clear Conversation"
+                >
+                  <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                </button>
+              )}
+            </>
           )}
 
         </div>
       </div>
 
-      {/* 2. Agent Personas Aggregator Bar */}
+      {studioMode === 'custom-chat' ? (
+        <>
+          {/* 2. Agent Personas Aggregator Bar */}
       <div className={`px-4 sm:px-6 py-2.5 border-b shrink-0 flex items-center gap-2 overflow-x-auto scrollbar-none transition-colors ${
         isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#121215] border-outline/10'
       }`}>
@@ -835,6 +914,46 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         )}
 
       </div>
+      </>
+      ) : (
+        <div className="flex-1 flex flex-col min-h-0 bg-background p-3 sm:p-5 gap-3.5">
+          {/* Quick Engine Telemetry Banner */}
+          <div className={`px-4 py-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs font-mono transition-colors shadow-xs ${
+            isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-[#151518] border-[#3a494b]/40 text-[#e5e1e4]'
+          }`}>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <span className="flex items-center gap-1.5 text-emerald-400 font-bold">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                OpenCode v1.19.5 Engine Online
+              </span>
+              <span className="text-on-surface-variant">•</span>
+              <span className="text-on-surface-variant">Host: <code className={`px-1.5 py-0.5 rounded text-[10px] border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>132.226.190.125 (VM2)</code></span>
+              <span className="text-on-surface-variant">•</span>
+              <span className="text-on-surface-variant">Workspace: <code className={`px-1.5 py-0.5 rounded text-[10px] border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>/home/ubuntu/workspace</code></span>
+              <span className="text-on-surface-variant">•</span>
+              <span className="text-sky-400 font-semibold">Local Model: ollama/qwen2.5:7b ($0.00)</span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase tracking-wider bg-purple-500/10 text-purple-400 border border-purple-500/30 font-bold hidden md:inline">
+                Zero Cloud API Cost
+              </span>
+            </div>
+          </div>
+
+          {/* Embedded OpenCode Web View */}
+          <div className={`flex-1 min-h-[550px] rounded-2xl border overflow-hidden relative shadow-xl ${
+            isLight ? 'bg-white border-slate-200' : 'bg-[#111114] border-[#3a494b]/40'
+          }`}>
+            <iframe
+              key={iframeKey}
+              src="http://132.226.190.125/"
+              title="OpenCode AI Coding Agent Studio"
+              className="w-full h-full border-0 absolute inset-0"
+              allow="clipboard-read; clipboard-write;"
+            />
+          </div>
+        </div>
+      )}
 
       {/* Clear Confirmation Modal */}
       {modalConfig && (

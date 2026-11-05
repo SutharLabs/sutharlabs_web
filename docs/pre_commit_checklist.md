@@ -127,3 +127,25 @@ npm run package:plugins && npm run lint && npm run build
 ```
 
 If all three steps pass cleanly, your code is safe to commit.
+
+---
+
+## 4. Mandatory Post-Push Fleet Deployment Automation
+
+Whenever commits are pushed to `origin main`, all AI agents and developers must immediately trigger deployment across the applicable Oracle Cloud fleet:
+
+1. **Deploy to VM 3 (`sutharlabs-backend` — 130.210.37.199):**
+   ```powershell
+   ssh -o StrictHostKeyChecking=no -i "D:\Code\SutharLabs\OracleFreeTier\ssh-key-2026-11-03.key" ubuntu@130.210.37.199 "bash /home/ubuntu/website/scripts/deploy.sh"
+   ```
+
+2. **If Database Schema Changed (`prisma/schema.prisma`):**
+   ```powershell
+   DATABASE_URL="postgres://sutharlabs_admin:SutharLabsSecretPassword2026!@137.23.61.191:5432/sutharlabs_production" npx prisma migrate deploy
+   ```
+
+3. **If AI Models / Crontabs on VM 2 Changed (`132.226.190.125`):**
+   ```powershell
+   ssh -o StrictHostKeyChecking=no -i "D:\Code\SutharLabs\OracleFreeTier\ssh-key-2026-11-03.key" ubuntu@132.226.190.125 "cd /home/ubuntu/website && git pull origin main"
+   ```
+

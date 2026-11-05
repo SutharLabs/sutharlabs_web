@@ -141,3 +141,4 @@ export function generateNeuralAudioWaveform(options: SynthesizeOptions): Buffer 
 
   return createWavBuffer(samples, sampleRate);
 }
+

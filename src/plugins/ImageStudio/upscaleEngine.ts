@@ -101,3 +101,4 @@ export async function processImageUpscale(payload: ImageUpscalePayload): Promise
 
   throw new Error(`Unsupported upscaling engine: ${engine}`);
 }
+
