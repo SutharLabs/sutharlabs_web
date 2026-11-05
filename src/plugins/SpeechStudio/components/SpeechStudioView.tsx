@@ -662,7 +662,7 @@ export default function SpeechStudioView({
 
             <a
               href={currentAudioUrl}
-              download="sutharlabs-neural-speech.wav"
+              download={currentAudioUrl?.startsWith('data:audio/mpeg') ? "sutharlabs-neural-speech.mp3" : "sutharlabs-neural-speech.wav"}
               className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 leading-none border shadow-sm ${
                 isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
               }`}

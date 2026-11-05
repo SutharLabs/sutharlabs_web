@@ -1,12 +1,12 @@
 {
   "id": "speech-studio",
   "name": "Speech Studio",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "category": "AI & Multimedia",
   "type": "Native",
-  "description": "Studio-grade Neural Text-to-Speech & Zero-Shot Voice Cloning engine. Supports replicating user voices, human narrator voices, Hindi and English synthesis, and audio downloads.",
+  "description": "Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting.",
   "iconSymbol": "record_voice_over",
   "main": "index.ts",
   "minEngineVersion": "0.1.0",
-  "packagedAt": "2026-11-05T04:45:00.000Z"
+  "packagedAt": "2026-11-05T07:10:58.568Z"
 }

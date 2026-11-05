@@ -77,7 +77,17 @@ export interface AIAgentPersona {
   badge: string;
   description: string;
   systemPrompt: string;
-  recommendedModel: 'gemma2:2b' | 'qwen2.5:7b';
+  recommendedModel: string;
+}
+
+export interface ChatSession {
+  id: string;
+  title: string;
+  createdAt: number;
+  updatedAt: number;
+  messages: AIChatMessage[];
+  model?: string;
+  agentId?: string;
 }
 
 export interface AIArtifactItem {

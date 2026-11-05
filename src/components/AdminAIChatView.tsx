@@ -31,9 +31,15 @@ import {
   RefreshCw,
   Globe,
   Lock,
-  Settings
+  Settings,
+  Plus,
+  MessageSquare,
+  ChevronDown,
+  Brain,
+  History,
+  CheckCircle2
 } from 'lucide-react';
-import { AIChatMessage, AIAgentPersona, AIArtifactItem, TerminalLog } from '../types';
+import { AIChatMessage, AIAgentPersona, AIArtifactItem, TerminalLog, ChatSession } from '../types';
 import { 
   AGENT_PERSONAS, 
   fetchAIModels, 
@@ -87,27 +93,171 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const [selectedAgent, setSelectedAgent] = useState<AIAgentPersona>(AGENT_PERSONAS[0]);
   const [fleetHealth, setFleetHealth] = useState<{ status: string; node: string; engine: string; memory: string } | null>(null);
 
-  // Chat State with localStorage multi-turn persistence
-  const [messages, setMessages] = useState<AIChatMessage[]>(() => {
+  // Multi-Session Chat State with localStorage persistence (OpenCode-style)
+  const [sessions, setSessions] = useState<ChatSession[]>(() => {
     try {
-      const saved = localStorage.getItem('sutharlabs_ai_chat_history');
+      const saved = localStorage.getItem('sutharlabs_ai_chat_sessions');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
-    return [];
+    // Seed initial session from legacy history if exists
+    let legacyMsgs: AIChatMessage[] = [];
+    try {
+      const legacy = localStorage.getItem('sutharlabs_ai_chat_history');
+      if (legacy) legacyMsgs = JSON.parse(legacy);
+    } catch {}
+    const initId = 'session-' + Date.now();
+    return [{
+      id: initId,
+      title: legacyMsgs.length > 0 ? (legacyMsgs[0]?.content.slice(0, 32) + '...') : 'New Conversation',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      messages: legacyMsgs,
+      model: 'qwen2.5-coder:3b',
+      agentId: AGENT_PERSONAS[0].id
+    }];
   });
-  const [inputPrompt, setInputPrompt] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
-  const [streamBuffer, setStreamBuffer] = useState<string>('');
 
-  // Persist conversation history to localStorage
+  const [activeSessionId, setActiveSessionId] = useState<string>(() => {
+    try {
+      const savedId = localStorage.getItem('sutharlabs_ai_active_session_id');
+      if (savedId) return savedId;
+    } catch {}
+    return 'default-session';
+  });
+
+  const [isSessionsSidebarOpen, setIsSessionsSidebarOpen] = useState<boolean>(true);
+  const [isAgentModalOpen, setIsAgentModalOpen] = useState<boolean>(false);
+
+  // Ensure activeSessionId points to a valid session
+  useEffect(() => {
+    if (!sessions.some(s => s.id === activeSessionId) && sessions.length > 0) {
+      setActiveSessionId(sessions[0].id);
+    }
+  }, [sessions, activeSessionId]);
+
   useEffect(() => {
     try {
+      localStorage.setItem('sutharlabs_ai_active_session_id', activeSessionId);
+    } catch {}
+  }, [activeSessionId]);
+
+  const activeSession = useMemo(() => {
+    return sessions.find(s => s.id === activeSessionId) || sessions[0] || {
+      id: 'fallback',
+      title: 'New Conversation',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      messages: [],
+      model: 'qwen2.5-coder:3b',
+      agentId: AGENT_PERSONAS[0].id
+    };
+  }, [sessions, activeSessionId]);
+
+  const messages = activeSession.messages;
+
+  // Persist sessions to localStorage
+  useEffect(() => {
+    try {
+      localStorage.setItem('sutharlabs_ai_chat_sessions', JSON.stringify(sessions));
       localStorage.setItem('sutharlabs_ai_chat_history', JSON.stringify(messages));
     } catch {}
-  }, [messages]);
+  }, [sessions, messages]);
+
+  const setMessages = (updater: AIChatMessage[] | ((prev: AIChatMessage[]) => AIChatMessage[])) => {
+    setSessions(prevSessions => {
+      return prevSessions.map(sess => {
+        if (sess.id === activeSession.id) {
+          const nextMsgs = typeof updater === 'function' ? updater(sess.messages) : updater;
+          let title = sess.title;
+          if ((title === 'New Conversation' || !title) && nextMsgs.length > 0) {
+            const firstUser = nextMsgs.find(m => m.role === 'user');
+            if (firstUser) {
+              title = firstUser.content.slice(0, 32) + (firstUser.content.length > 32 ? '...' : '');
+            }
+          }
+          return {
+            ...sess,
+            title,
+            messages: nextMsgs,
+            updatedAt: Date.now(),
+            model: selectedModel,
+            agentId: selectedAgent.id
+          };
+        }
+        return sess;
+      });
+    });
+  };
+
+  const handleCreateNewSession = () => {
+    const newId = 'session-' + Date.now();
+    const newSession: ChatSession = {
+      id: newId,
+      title: 'New Conversation',
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+      messages: [],
+      model: selectedModel,
+      agentId: selectedAgent.id
+    };
+    setSessions(prev => [newSession, ...prev]);
+    setActiveSessionId(newId);
+    setArtifacts([]);
+    setActiveArtifact(null);
+    setIsArtifactPanelOpen(false);
+    addLog('AGENT', 'Started new conversation session.', 'INFO');
+  };
+
+  const handleSelectSession = (id: string) => {
+    setActiveSessionId(id);
+    const target = sessions.find(s => s.id === id);
+    if (target) {
+      if (target.model) setSelectedModel(target.model);
+      if (target.agentId) {
+        const ag = AGENT_PERSONAS.find(a => a.id === target.agentId);
+        if (ag) setSelectedAgent(ag);
+      }
+    }
+  };
+
+  const promptDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const targetSession = sessions.find(s => s.id === sessionId);
+    setModalConfig({
+      isOpen: true,
+      title: 'Delete Conversation',
+      message: `Delete "${targetSession?.title || 'this conversation'}"?`,
+      subtext: 'This action is irreversible and will remove all messages from storage.',
+      confirmLabel: 'Delete Session',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+      onConfirm: () => {
+        setModalConfig(null);
+        if (sessions.length <= 1) {
+          setSessions([{
+            id: 'session-' + Date.now(),
+            title: 'New Conversation',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            messages: [],
+            model: selectedModel,
+            agentId: selectedAgent.id
+          }]);
+          setArtifacts([]);
+          setActiveArtifact(null);
+          return;
+        }
+        const remaining = sessions.filter(s => s.id !== sessionId);
+        setSessions(remaining);
+        if (activeSessionId === sessionId) {
+          setActiveSessionId(remaining[0].id);
+        }
+      }
+    });
+  };
 
   // Active Context Calculations
   const contextStats = useMemo(() => {
@@ -407,6 +557,8 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
       case 'database': return <Database className="w-3.5 h-3.5 shrink-0" />;
       case 'code': return <Code2 className="w-3.5 h-3.5 shrink-0" />;
       case 'line-chart': return <TrendingUp className="w-3.5 h-3.5 shrink-0" />;
+      case 'cpu': return <Cpu className="w-3.5 h-3.5 shrink-0" />;
+      case 'globe': return <Globe className="w-3.5 h-3.5 shrink-0" />;
       default: return <Sparkles className="w-3.5 h-3.5 shrink-0" />;
     }
   };
@@ -524,6 +676,45 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
             </>
           ) : (
             <>
+              {/* Sessions Sidebar Toggle Button */}
+              <button
+                type="button"
+                onClick={() => setIsSessionsSidebarOpen(!isSessionsSidebarOpen)}
+                className={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm select-none ${
+                  isSessionsSidebarOpen
+                    ? isLight
+                      ? 'bg-sky-50 text-sky-700 border-sky-300'
+                      : 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/40'
+                    : isLight
+                      ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                      : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                }`}
+                title={isSessionsSidebarOpen ? "Hide Sessions Sidebar" : "Show Sessions Sidebar"}
+              >
+                <History className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Sessions</span>
+                <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/10 dark:bg-white/10">{sessions.length}</span>
+              </button>
+
+              {/* Agent Persona Menu Button */}
+              <button
+                type="button"
+                onClick={() => setIsAgentModalOpen(true)}
+                className={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm select-none ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
+                    : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
+                }`}
+                title="Open Agent Persona Selector"
+              >
+                <div className="w-4 h-4 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
+                  {getAgentIcon(selectedAgent.icon)}
+                </div>
+                <span className="hidden md:inline">{selectedAgent.name}</span>
+                <span className="text-[10px] px-1 py-0.2 rounded bg-purple-500/10 text-purple-400 uppercase tracking-wider">{selectedAgent.badge}</span>
+                <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
+              </button>
+
               {/* Context Memory Pill */}
               <div 
                 className={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-[11px] font-mono select-none ${
@@ -544,7 +735,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                 </span>
               </div>
 
-              {/* Model Selector Dropdown */}
+              {/* Model Selector Dropdown with Categories */}
               <div className="flex items-center gap-1.5 text-xs font-mono">
                 <span className="text-on-surface-variant hidden sm:inline">Model:</span>
                 <select
@@ -557,12 +748,22 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                       : 'bg-[#201f21] border-[#3a494b]/40 text-[#00dbe7] focus:border-[#00dbe7]/60'
                   }`}
                 >
-                  <option value="qwen2.5:1.5b">Qwen 2.5 1.5B (⚡ Ultra-Fast ~50 t/s)</option>
-                  <option value="gemma2:2b">Gemma 2 2B (⚡ Fast Synthesizer ~35 t/s)</option>
-                  <option value="qwen2.5-coder:3b">Qwen 2.5 Coder 3B (🚀 Fast Code ~35 t/s)</option>
-                  <option value="qwen2.5:7b">Qwen 2.5 7B (🧠 Deep Reasoning ~12 t/s)</option>
+                  <optgroup label="🧠 Mathematical & Reasoning">
+                    <option value="deepseek-r1:7b">DeepSeek R1 7B (🧠 Deep CoT ~12 t/s)</option>
+                    <option value="deepseek-r1:1.5b">DeepSeek R1 1.5B (⚡ Fast Math CoT ~50 t/s)</option>
+                  </optgroup>
+                  <optgroup label="🚀 Code & Development">
+                    <option value="qwen2.5-coder:3b">Qwen 2.5 Coder 3B (🚀 SOTA Code ~35 t/s)</option>
+                  </optgroup>
+                  <optgroup label="⚡ Ultra-Fast Response">
+                    <option value="qwen2.5:1.5b">Qwen 2.5 1.5B (⚡ Sub-Second ~55 t/s)</option>
+                  </optgroup>
+                  <optgroup label="🌐 General Synthesis">
+                    <option value="gemma2:2b">Gemma 2 2B (⚡ Fast Synthesizer ~35 t/s)</option>
+                    <option value="qwen2.5:7b">Qwen 2.5 7B (🧠 Deep Knowledge ~12 t/s)</option>
+                  </optgroup>
                   {availableModels
-                    .filter(m => !['qwen2.5:1.5b', 'gemma2:2b', 'qwen2.5-coder:3b', 'qwen2.5:7b'].includes(m.name))
+                    .filter(m => !['deepseek-r1:7b', 'deepseek-r1:1.5b', 'qwen2.5:1.5b', 'gemma2:2b', 'qwen2.5-coder:3b', 'qwen2.5:7b'].includes(m.name))
                     .map(m => (
                       <option key={m.name} value={m.name}>{m.name}</option>
                     ))}
@@ -653,8 +854,78 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         })}
       </div>
 
-      {/* 3. Split-Pane Main Body (Chat + Claude Artifacts) */}
-      <div className="flex-1 flex overflow-hidden">
+      {/* 3. Split-Pane Main Body (Sessions Sidebar + Chat + Claude Artifacts) */}
+      <div className="flex-1 flex overflow-hidden relative">
+
+        {/* Sessions History Sidebar (OpenCode Style) */}
+        {isSessionsSidebarOpen && (
+          <div className={`w-64 sm:w-72 shrink-0 border-r flex flex-col h-full transition-all duration-200 z-10 ${
+            isLight ? 'bg-slate-50/90 border-slate-200' : 'bg-[#121215] border-outline/10'
+          }`}>
+            {/* Sidebar Header */}
+            <div className="p-3 border-b flex items-center justify-between gap-2 border-inherit">
+              <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-on-surface">
+                <MessageSquare className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+                <span>Chat History</span>
+              </div>
+              <button
+                type="button"
+                onClick={handleCreateNewSession}
+                className={`h-7 px-2.5 rounded-lg text-[11px] font-mono font-bold uppercase transition-all flex items-center gap-1 cursor-pointer shadow-xs leading-none ${
+                  isLight
+                    ? 'bg-sky-500 hover:bg-sky-600 text-white'
+                    : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40'
+                }`}
+                title="Start a new chat session"
+              >
+                <Plus className="w-3 h-3 shrink-0" />
+                <span>New</span>
+              </button>
+            </div>
+
+            {/* Sessions Scroll List */}
+            <div className="flex-1 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
+              {sessions.map((sess) => {
+                const isActive = sess.id === activeSessionId;
+                const msgCount = sess.messages.length;
+                return (
+                  <div
+                    key={sess.id}
+                    onClick={() => handleSelectSession(sess.id)}
+                    className={`group relative p-2.5 rounded-xl border text-xs font-mono transition-all cursor-pointer flex items-start justify-between gap-2 select-none ${
+                      isActive
+                        ? isLight
+                          ? 'bg-white border-sky-400 text-slate-900 shadow-xs'
+                          : 'bg-[#00dbe7]/15 border-[#00dbe7]/50 text-[#00dbe7] shadow-xs'
+                        : isLight
+                          ? 'bg-white/60 hover:bg-white border-slate-200/60 hover:border-slate-300 text-slate-700'
+                          : 'bg-white/3 hover:bg-white/7 border-white/5 hover:border-white/10 text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-semibold truncate text-[11px] leading-tight">
+                        {sess.title || 'New Conversation'}
+                      </div>
+                      <div className="flex items-center gap-2 text-[10px] text-on-surface-variant/70 mt-1">
+                        <span>{new Date(sess.updatedAt || sess.createdAt).toLocaleDateString([], { month: 'short', day: 'numeric' })}</span>
+                        <span>•</span>
+                        <span>{msgCount} {msgCount === 1 ? 'msg' : 'msgs'}</span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => promptDeleteSession(sess.id, e)}
+                      className="opacity-0 group-hover:opacity-100 hover:text-rose-400 p-1 rounded transition-opacity"
+                      title="Delete Session"
+                    >
+                      <Trash2 className="w-3 h-3 shrink-0" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
         
         {/* Left Column: Chat Conversation */}
         <div className={`flex-1 flex flex-col h-full overflow-hidden transition-all duration-200 ${
@@ -1132,6 +1403,92 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
               className="w-full h-full border-0 absolute inset-0"
               allow="clipboard-read; clipboard-write;"
             />
+          </div>
+        </div>
+      )}
+
+      {/* OpenCode-Style Agent Persona Modal */}
+      {isAgentModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+          <div className={`relative w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden transition-all ${
+            isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]'
+          }`}>
+            <div className="h-1 w-full bg-[#00dbe7]" />
+            <div className="p-5 border-b flex items-center justify-between gap-3 border-inherit">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center shrink-0">
+                  <Bot className="w-5 h-5 text-purple-400 shrink-0" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-on-surface">Agent Personas & Capabilities</h3>
+                  <p className="text-xs text-on-surface-variant font-mono">Select an autonomous role for specialized reasoning</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsAgentModalOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-on-surface-variant hover:text-on-surface cursor-pointer"
+              >
+                <X className="w-4 h-4 shrink-0" />
+              </button>
+            </div>
+
+            <div className="p-4 sm:p-5 max-h-[65vh] overflow-y-auto space-y-2.5">
+              {AGENT_PERSONAS.map((agent) => {
+                const isSelected = selectedAgent.id === agent.id;
+                return (
+                  <div
+                    key={agent.id}
+                    onClick={() => {
+                      handleAgentSelect(agent);
+                      setIsAgentModalOpen(false);
+                    }}
+                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3.5 select-none ${
+                      isSelected
+                        ? isLight
+                          ? 'bg-sky-50 border-sky-400 text-slate-900 shadow-xs'
+                          : 'bg-[#00dbe7]/10 border-[#00dbe7]/50 text-[#e5e1e4] shadow-xs'
+                        : isLight
+                          ? 'bg-slate-50 hover:bg-white border-slate-200 text-slate-700'
+                          : 'bg-white/3 hover:bg-white/6 border-white/5 text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 mt-0.5">
+                      {getAgentIcon(agent.icon)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-bold text-sm text-on-surface">{agent.name}</span>
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 uppercase font-semibold">
+                          {agent.badge}
+                        </span>
+                      </div>
+                      <p className="text-xs text-on-surface-variant font-mono mt-0.5">{agent.title}</p>
+                      <p className="text-xs mt-1.5 leading-relaxed text-on-surface-variant/90">{agent.description}</p>
+                      <div className="mt-2 flex items-center gap-2 text-[10px] font-mono">
+                        <span className="text-on-surface-variant">Recommended Model:</span>
+                        <span className="text-emerald-400 font-bold">{agent.recommendedModel}</span>
+                      </div>
+                    </div>
+                    {isSelected && (
+                      <CheckCircle2 className="w-5 h-5 text-[#00dbe7] shrink-0 mt-1" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="p-3.5 border-t border-inherit flex justify-end">
+              <button
+                type="button"
+                onClick={() => setIsAgentModalOpen(false)}
+                className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer ${
+                  isLight ? 'bg-slate-200 text-slate-800' : 'bg-white/10 text-white'
+                }`}
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

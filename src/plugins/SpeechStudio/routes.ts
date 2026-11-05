@@ -184,7 +184,7 @@ export function registerRoutes(router: Router) {
       }
 
       // Check if VM 2 Neural TTS daemon is active
-      const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://10.0.0.188:5050";
+      const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://132.226.190.125/tts";
       let audioBuffer: Buffer;
       let usedRemoteVM = false;
 
@@ -193,7 +193,7 @@ export function registerRoutes(router: Router) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text, voiceId, rate, pitch, volume }),
-          signal: AbortSignal.timeout(2500)
+          signal: AbortSignal.timeout(12000)
         });
 
         if (vmResponse.ok) {
@@ -223,7 +223,8 @@ export function registerRoutes(router: Router) {
       const updatedQuota = getQuotaStatus(identifier, role);
       const words = text.trim().split(/\s+/).length;
       const estimatedDurationSec = Number((words / (2.6 * Number(rate || 1))).toFixed(1));
-      const audioBase64 = `data:audio/wav;base64,${audioBuffer.toString("base64")}`;
+      const mimeType = usedRemoteVM ? "audio/mpeg" : "audio/wav";
+      const audioBase64 = `data:${mimeType};base64,${audioBuffer.toString("base64")}`;
 
       return res.json({
         success: true,
@@ -232,7 +233,7 @@ export function registerRoutes(router: Router) {
         voiceId,
         voiceName,
         audioUrl: audioBase64,
-        engine: usedRemoteVM ? "Oracle VM2 Neural Engine (F5-TTS)" : "SutharLabs Sovereign Neural Synthesizer",
+        engine: usedRemoteVM ? "Oracle VM2 Neural Studio (Natural Human Voice)" : "SutharLabs Sovereign Neural Synthesizer",
         telemetry: {
           characterCount: text.length,
           wordCount: words,
@@ -279,7 +280,7 @@ export function registerRoutes(router: Router) {
       }
 
       // Check if VM 2 Voice Cloning Engine is available
-      const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://10.0.0.188:5050";
+      const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://132.226.190.125/tts";
       let audioBuffer: Buffer;
       let usedRemoteVM = false;
 
@@ -288,7 +289,7 @@ export function registerRoutes(router: Router) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ text, sampleAudio, speakerName, rate, pitch }),
-          signal: AbortSignal.timeout(3500)
+          signal: AbortSignal.timeout(12000)
         });
 
         if (vmResponse.ok) {
@@ -320,14 +321,15 @@ export function registerRoutes(router: Router) {
       const updatedQuota = getQuotaStatus(identifier, role);
       const words = text.trim().split(/\s+/).length;
       const estimatedDurationSec = Number((words / (2.6 * Number(rate || 1))).toFixed(1));
-      const audioBase64 = `data:audio/wav;base64,${audioBuffer.toString("base64")}`;
+      const mimeType = usedRemoteVM ? "audio/mpeg" : "audio/wav";
+      const audioBase64 = `data:${mimeType};base64,${audioBuffer.toString("base64")}`;
 
       return res.json({
         success: true,
         speakerName,
         text,
         audioUrl: audioBase64,
-        engine: usedRemoteVM ? "Oracle VM2 F5-TTS Zero-Shot Engine" : "SutharLabs Adaptive Voice Replicator",
+        engine: usedRemoteVM ? "Oracle VM2 Neural Studio (Natural Voice Replicator)" : "SutharLabs Adaptive Voice Replicator",
         isCloned: true,
         telemetry: {
           characterCount: text.length,
