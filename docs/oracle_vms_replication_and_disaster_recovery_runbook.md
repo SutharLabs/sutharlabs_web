@@ -711,5 +711,150 @@ flowchart TD
     VM3Gateway --> UI
 ```
 
+---
+
+## 13. OpenCode AI Coding Agent Studio (VM 2 Setup & Operations)
+
+### A. Overview & Architecture
+OpenCode (`opencode-ai`) is an open-source, state-of-the-art autonomous coding agent providing terminal, web UI, and ACP/MCP interfaces. On VM 2 (`132.226.190.125`), OpenCode runs as a persistent service managed by PM2 and proxied through Nginx on port 80.
+
+```mermaid
+flowchart TD
+    ClientBrowser([Developer Browser]) -->|HTTP / WebSocket :80| NginxVM2[VM 2 Nginx Reverse Proxy :80]
+    
+    subgraph VM2Compute ["VM 2: sutharlabs-prod (Ampere ARM64 - 12 GB RAM)"]
+        NginxVM2 -->|location /| OpenCodeWeb[OpenCode Web Server :4096]
+        NginxVM2 -->|location /api/ & /v1/ (with x-ai-secret)| OllamaLocal[Ollama LLM Engine :11434]
+        
+        OpenCodeWeb -->|OpenAI Adapter :11434/v1| OllamaLocal
+        OpenCodeWeb -->|File Operations & Shell| WorkspaceDir["Workspace: /home/ubuntu/workspace"]
+    end
+    
+    subgraph SutharLabsPlatform ["SutharLabs Web Platform (VM 3)"]
+        AgentStudio[AI Agent Studio /admin/ai-studio] -->|Embeds Iframe| ClientBrowser
+    end
+```
+
+### B. VM 2 Resource Budget & Capacity Analysis
+* **Total Physical RAM:** 12 GB (Ampere Altra A1 ARM64) + 4 GB NVMe Swap
+* **Ollama (`qwen2.5:7b`):** Consumes ~4.7 GB RAM when active.
+* **OpenCode Web Server:** Consumes ~243 MB RAM.
+* **Available Free RAM:** ~6.5 GB.
+* **Concurrent Workload Capacity:** VM 2 comfortably runs Ollama, OpenCode, Neural Speech Studio, and batch quantitative screener jobs simultaneously without memory pressure or Out-Of-Memory (OOM) triggers.
+
+### C. OpenCode Configuration (`~/.config/opencode/opencode.jsonc`)
+OpenCode uses Ollama as its primary local inference provider via Ollama's OpenAI-compatible endpoint:
+
+```json
+{
+  "schema": "https://opencode.ai/config.json",
+  "provider": {
+    "ollama": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "Ollama Sovereign Engine",
+      "options": {
+        "baseURL": "http://127.0.0.1:11434/v1"
+      },
+      "models": {
+        "qwen2.5:7b": {
+          "name": "Qwen 2.5 7B"
+        },
+        "gemma2:2b": {
+          "name": "Gemma 2 2B"
+        }
+      }
+    }
+  },
+  "model": "ollama/qwen2.5:7b"
+}
+```
+
+### D. Nginx Routing on VM 2 (`/etc/nginx/sites-available/default`)
+Nginx routes both OpenCode (Web UI + WebSockets) and Ollama API through port 80:
+
+```nginx
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+
+    server_name _;
+    client_max_body_size 100M;
+
+    # Health probe
+    location = /health {
+        add_header Content-Type application/json;
+        return 200 '{"status":"healthy","node":"sutharlabs-prod (Ampere ARM A1)","engine":"Ollama v0.40.14 + OpenCode v1.19.5","memory":"12GB RAM + 4GB Swap"}';
+    }
+
+    # Ollama native API routes
+    location /api/ {
+        if ($http_x_ai_secret != 'sutharlabs-matrix-ai-prod-2026') {
+            add_header Content-Type application/json;
+            return 401 '{"error":"Unauthorized: Invalid or missing x-ai-secret header"}';
+        }
+        proxy_pass http://127.0.0.1:11434/api/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host 127.0.0.1;
+        proxy_buffering off;
+        proxy_read_timeout 600s;
+    }
+
+    # Ollama OpenAI-compatible routes
+    location /v1/ {
+        if ($http_x_ai_secret != 'sutharlabs-matrix-ai-prod-2026') {
+            add_header Content-Type application/json;
+            return 401 '{"error":"Unauthorized: Invalid or missing x-ai-secret header"}';
+        }
+        proxy_pass http://127.0.0.1:11434/v1/;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host 127.0.0.1;
+        proxy_buffering off;
+        proxy_read_timeout 600s;
+    }
+
+    # OpenCode Web UI & WebSocket Gateway
+    location / {
+        proxy_pass http://127.0.0.1:4096;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 86400s;
+        proxy_send_timeout 86400s;
+        proxy_buffering off;
+
+        # Allow iframe embedding inside SutharLabs platform
+        proxy_hide_header X-Frame-Options;
+        proxy_hide_header Content-Security-Policy;
+        add_header X-Frame-Options "ALLOWALL";
+    }
+}
+```
+
+### E. Service Management & Troubleshooting Commands
+```bash
+# Check OpenCode status
+pm2 status opencode
+
+# View OpenCode real-time logs
+pm2 logs opencode --lines 50
+
+# Restart OpenCode
+pm2 restart opencode
+
+# Test OpenCode web probe
+curl -I http://127.0.0.1:4096/
+curl -I http://132.226.190.125/
+
+# Verify Ollama OpenAI models endpoint
+curl -s http://127.0.0.1:11434/v1/models
+```
+
+
 
 
