@@ -334,8 +334,9 @@ app.use(securityHeaders);
 // 2. High-precision request performance & latency logger
 app.use(requestLogger);
 
-// 3. Request body parsing
-app.use(express.json());
+// 3. Request body parsing (50MB payload limit for audio/image datasets, studio voice clones, and tenant backups)
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // 4. In-memory Rate Limiters (100% Free, zero third-party dependencies)
 app.use("/api/auth/signin", authLimiter);

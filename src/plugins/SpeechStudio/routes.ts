@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { verifyToken } from "../../../api/_utils.js";
 import { TTSQuotaStatus, TTSVoiceOption, TTSArchitectureOption, ClonedVoiceProfile } from "./types.js";
+import { getClonedVoiceProfiles, saveClonedVoiceProfile, deleteClonedVoiceProfile, getClonedAudioSample } from "./storage.js";
 
 // In-memory rate limiting store (Window: 1 hour)
 interface UserQuotaEntry {
@@ -12,8 +13,6 @@ const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const NON_ADMIN_LIMIT = 20; // 20 queries per hour for non-admins
 const quotaStore = new Map<string, UserQuotaEntry>();
 
-// Cloned voice profiles store keyed by user identifier
-const userClonedProfilesStore = new Map<string, ClonedVoiceProfile[]>();
 
 // Periodic cleanup of expired rate limit windows
 setInterval(() => {
@@ -461,16 +460,41 @@ export function registerRoutes(router: Router) {
         });
       }
 
-      // Synthesize audio using VM 2 Neural Edge TTS daemon
+      const { referenceAudio } = req.body;
+      const isClonedVoice = Boolean(
+        referenceAudio ||
+        voiceId.startsWith("cloned-") ||
+        architecture === "f5-tts" ||
+        engine === "cloned"
+      );
+
+      // If reference audio is missing from payload, retrieve from persistent server storage
+      let effectiveSampleAudio = referenceAudio;
+      if (!effectiveSampleAudio && voiceId.startsWith("cloned-")) {
+        const storedSample = getClonedAudioSample(voiceId);
+        if (storedSample) {
+          effectiveSampleAudio = `data:${storedSample.mimeType};base64,${storedSample.buffer.toString("base64")}`;
+        }
+      }
+
+      // Synthesize audio using VM 2 Neural Studio daemon
       const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://132.226.190.125/tts";
       let audioBuffer: Buffer;
 
       try {
-        const vmResponse = await fetch(`${ORACLE_TTS_URL}/api/tts`, {
+        const targetUrl = (isClonedVoice && effectiveSampleAudio)
+          ? `${ORACLE_TTS_URL}/api/clone`
+          : `${ORACLE_TTS_URL}/api/tts`;
+
+        const payload = (isClonedVoice && effectiveSampleAudio)
+          ? { text, sampleAudio: effectiveSampleAudio, speakerName: voiceName, rate, pitch }
+          : { text, voiceId, rate, pitch, volume, architecture, emotion, cfgStrength };
+
+        const vmResponse = await fetch(targetUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text, voiceId, rate, pitch, volume, architecture, emotion, cfgStrength }),
-          signal: AbortSignal.timeout(15000)
+          body: JSON.stringify(payload),
+          signal: AbortSignal.timeout(30000)
         });
 
         if (!vmResponse.ok) {
@@ -649,17 +673,27 @@ export function registerRoutes(router: Router) {
     });
   });
 
-  // GET /cloned-voices - Retrieve all saved replicated voice profiles for user
+  // GET /cloned-voices - Retrieve all saved replicated voice profiles for user (persistent across browsers)
   router.get("/cloned-voices", (req: Request, res: Response) => {
     const { identifier } = getUserIdentifierAndRole(req);
-    const profiles = userClonedProfilesStore.get(identifier) || [];
+    const profiles = getClonedVoiceProfiles(identifier);
     return res.json({
       success: true,
       voices: profiles
     });
   });
 
-  // POST /cloned-voices - Save a newly replicated voice profile
+  // GET /cloned-voices/sample/:id - Stream reference audio sample from server disk
+  router.get("/cloned-voices/sample/:id", (req: Request, res: Response) => {
+    const sample = getClonedAudioSample(req.params.id);
+    if (!sample) {
+      return res.status(404).json({ error: "Reference audio sample not found." });
+    }
+    res.setHeader("Content-Type", sample.mimeType);
+    return res.send(sample.buffer);
+  });
+
+  // POST /cloned-voices - Save a newly replicated voice profile permanently to server storage
   router.post("/cloned-voices", (req: Request, res: Response) => {
     try {
       const { identifier } = getUserIdentifierAndRole(req);
@@ -686,7 +720,7 @@ export function registerRoutes(router: Router) {
       const newProfile: ClonedVoiceProfile = {
         id: voiceId,
         name: name.trim(),
-        description: description.trim(),
+        description: description.trim() || `${emotionTag} custom replicated voice`,
         createdAt: new Date().toISOString(),
         sampleDurationSec: Number(sampleDurationSec) || 5,
         sampleAudioDataUrl,
@@ -699,14 +733,13 @@ export function registerRoutes(router: Router) {
         commercialLabel
       };
 
-      const existing = userClonedProfilesStore.get(identifier) || [];
-      const updated = [newProfile, ...existing.filter(p => p.id !== voiceId)];
-      userClonedProfilesStore.set(identifier, updated);
+      const saved = saveClonedVoiceProfile(newProfile, identifier);
+      const allProfiles = getClonedVoiceProfiles(identifier);
 
       return res.json({
         success: true,
-        voice: newProfile,
-        total: updated.length
+        voice: saved,
+        total: allProfiles.length
       });
     } catch (err: any) {
       console.error("[SpeechStudio] Save cloned voice error:", err);
@@ -714,19 +747,17 @@ export function registerRoutes(router: Router) {
     }
   });
 
-  // DELETE /cloned-voices/:id - Remove a saved replicated voice profile
+  // DELETE /cloned-voices/:id - Remove a saved replicated voice profile permanently
   router.delete("/cloned-voices/:id", (req: Request, res: Response) => {
     const { identifier } = getUserIdentifierAndRole(req);
     const voiceId = req.params.id;
-
-    const existing = userClonedProfilesStore.get(identifier) || [];
-    const updated = existing.filter(p => p.id !== voiceId);
-    userClonedProfilesStore.set(identifier, updated);
+    const success = deleteClonedVoiceProfile(voiceId, identifier);
+    const remaining = getClonedVoiceProfiles(identifier);
 
     return res.json({
-      success: true,
+      success,
       deletedId: voiceId,
-      remaining: updated.length
+      remaining: remaining.length
     });
   });
-}
+};

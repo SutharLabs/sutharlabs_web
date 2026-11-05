@@ -116,14 +116,39 @@ export interface AudioDiagnostics {
   timestamp: string;
 }
 
-export function audioBufferToWavBlob(buffer: AudioBuffer): Blob {
-  const numChannels = Math.min(buffer.numberOfChannels, 2);
-  const sampleRate = buffer.sampleRate;
-  const format = 1; // PCM
+export function audioBufferToWavBlob(buffer: AudioBuffer, targetSampleRate = 24000): Blob {
+  // Voice replication reference samples are optimal at 24kHz mono (16-bit PCM)
+  const numChannels = 1;
   const bitDepth = 16;
   const bytesPerSample = bitDepth / 8;
   const blockAlign = numChannels * bytesPerSample;
-  const dataLength = buffer.length * blockAlign;
+
+  const inRate = buffer.sampleRate;
+  const ratio = targetSampleRate / inRate;
+  const inLength = buffer.length;
+  const outLength = Math.max(1, Math.round(inLength * ratio));
+
+  // Mix down multi-channel inputs to mono
+  const monoIn = new Float32Array(inLength);
+  const chCount = buffer.numberOfChannels;
+  for (let c = 0; c < chCount; c++) {
+    const chData = buffer.getChannelData(c);
+    for (let i = 0; i < inLength; i++) {
+      monoIn[i] += chData[i] / chCount;
+    }
+  }
+
+  // Band-limited linear interpolation resampling to targetSampleRate (24,000 Hz)
+  const monoOut = new Float32Array(outLength);
+  for (let i = 0; i < outLength; i++) {
+    const srcIdx = i / ratio;
+    const idx0 = Math.floor(srcIdx);
+    const idx1 = Math.min(idx0 + 1, inLength - 1);
+    const frac = srcIdx - idx0;
+    monoOut[i] = monoIn[idx0] * (1 - frac) + monoIn[idx1] * frac;
+  }
+
+  const dataLength = outLength * blockAlign;
   const bufferLength = 44 + dataLength;
   const arrayBuffer = new ArrayBuffer(bufferLength);
   const view = new DataView(arrayBuffer);
@@ -141,29 +166,23 @@ export function audioBufferToWavBlob(buffer: AudioBuffer): Blob {
   // fmt sub-chunk
   writeString(12, 'fmt ');
   view.setUint32(16, 16, true);
-  view.setUint16(20, format, true);
+  view.setUint16(20, 1, true); // PCM format
   view.setUint16(22, numChannels, true);
-  view.setUint32(24, sampleRate, true);
-  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint32(24, targetSampleRate, true);
+  view.setUint32(28, targetSampleRate * blockAlign, true);
   view.setUint16(32, blockAlign, true);
   view.setUint16(34, bitDepth, true);
   // data sub-chunk
   writeString(36, 'data');
   view.setUint32(40, dataLength, true);
 
-  // Interleave and pack 16-bit PCM samples
+  // Pack 16-bit PCM samples
   let offset = 44;
-  const channels: Float32Array[] = [];
-  for (let c = 0; c < numChannels; c++) {
-    channels.push(buffer.getChannelData(c));
-  }
-  for (let i = 0; i < buffer.length; i++) {
-    for (let c = 0; c < numChannels; c++) {
-      let sample = channels[c][i];
-      sample = Math.max(-1, Math.min(1, sample));
-      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-      offset += 2;
-    }
+  for (let i = 0; i < outLength; i++) {
+    let sample = monoOut[i];
+    sample = Math.max(-1, Math.min(1, sample));
+    view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+    offset += 2;
   }
 
   return new Blob([view], { type: 'audio/wav' });
@@ -642,16 +661,26 @@ export default function SpeechStudioView({
         const res = await fetch('/api/plugins/speech-studio/cloned-voices', { headers });
         if (res.ok) {
           const data = await res.json();
-          if (data.voices && Array.isArray(data.voices) && data.voices.length > 0) {
+          if (data.voices && Array.isArray(data.voices)) {
             setClonedProfiles(prev => {
               const map = new Map<string, ClonedVoiceProfile>();
+              // Load persistent server profiles first (available across all browser instances)
               data.voices.forEach((v: ClonedVoiceProfile) => map.set(v.id, v));
-              prev.forEach(v => map.set(v.id, v));
-              return Array.from(map.values());
+              // Merge local profiles if not present on server yet
+              prev.forEach(v => {
+                if (!map.has(v.id)) map.set(v.id, v);
+              });
+              const combined = Array.from(map.values());
+              try {
+                localStorage.setItem('sutharlabs_cloned_voice_profiles', JSON.stringify(combined));
+              } catch {}
+              return combined;
             });
           }
         }
-      } catch { }
+      } catch (err) {
+        console.warn('[SpeechStudio] Could not fetch cloned profiles:', err);
+      }
     };
 
     fetchVoices();
@@ -659,7 +688,7 @@ export default function SpeechStudioView({
     fetchClonedProfiles();
   }, [userToken]);
 
-  // Save new cloned profile
+  // Save new cloned profile to both persistent server vault and browser storage
   const handleSaveClonedProfile = async () => {
     if (!profileName.trim()) {
       setErrorMessage('Please enter a name for your voice profile.');
@@ -689,18 +718,51 @@ export default function SpeechStudioView({
     const updated = [newProfile, ...clonedProfiles.filter(p => p.id !== newProfile.id)];
     setClonedProfiles(updated);
 
+    let serverSaved = false;
     try {
-      localStorage.setItem('sutharlabs_cloned_voice_profiles', JSON.stringify(updated));
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (userToken) headers['Authorization'] = `Bearer ${userToken}`;
-      await fetch('/api/plugins/speech-studio/cloned-voices', {
+      const res = await fetch('/api/plugins/speech-studio/cloned-voices', {
         method: 'POST',
         headers,
         body: JSON.stringify(newProfile)
       });
-    } catch { }
+      if (res.ok) {
+        serverSaved = true;
+      }
+    } catch (err: any) {
+      console.warn('[SpeechStudio] Remote profile sync error:', err);
+    }
 
-    setSaveSuccessMsg(`Replicated voice "${newProfile.name}" successfully saved to your library!`);
+    try {
+      localStorage.setItem('sutharlabs_cloned_voice_profiles', JSON.stringify(updated));
+    } catch (lsErr) {
+      // LocalStorage quota protection: store lightweight metadata copy
+      try {
+        const lightweight = updated.map(p => ({
+          ...p,
+          sampleAudioDataUrl: p.id === newProfile.id ? '' : p.sampleAudioDataUrl
+        }));
+        localStorage.setItem('sutharlabs_cloned_voice_profiles', JSON.stringify(lightweight));
+      } catch {}
+    }
+
+    if (serverSaved) {
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'SUCCESS',
+        message: `✅ Replicated voice "${newProfile.name}" permanently saved to server vault (visible in all browsers)!`
+      });
+      setSaveSuccessMsg(`Replicated voice "${newProfile.name}" saved! (Visible across all browsers & tabs)`);
+    } else {
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'INFO',
+        message: `Voice "${newProfile.name}" saved to local library.`
+      });
+      setSaveSuccessMsg(`Replicated voice "${newProfile.name}" saved!`);
+    }
+
     setTimeout(() => setSaveSuccessMsg(null), 4000);
     setProfileName(`Custom Studio Voice ${updated.length + 1}`);
     setClonedSampleBase64(null);
