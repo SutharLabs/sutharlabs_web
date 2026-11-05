@@ -2,7 +2,7 @@
 
 > **Standard:** SutharLabs Sovereign Engine Specification  
 > **Plugin Identifier:** `speech-studio` (`wp_speech_studio`)  
-> **Current Version:** `v0.3.0`  
+> **Current Version:** `v0.3.1`  
 > **Classification:** High-Definition Neural Text-to-Speech (TTS), Expressive Voice Synthesis & Zero-Shot Cloning
 
 ---
@@ -169,3 +169,4 @@ pm2 save
 curl -s http://127.0.0.1:5050/health
 # Response: {"status":"healthy","service":"SutharLabs Neural Edge TTS","port":5050}
 ```
+

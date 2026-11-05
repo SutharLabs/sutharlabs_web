@@ -1,6 +1,6 @@
 import { Router, Request, Response } from "express";
 import { verifyToken } from "../../../api/_utils.js";
-import { TTSQuotaStatus, TTSVoiceOption, TTSArchitectureOption } from "./types.js";
+import { TTSQuotaStatus, TTSVoiceOption, TTSArchitectureOption, ClonedVoiceProfile } from "./types.js";
 
 // In-memory rate limiting store (Window: 1 hour)
 interface UserQuotaEntry {
@@ -11,6 +11,9 @@ interface UserQuotaEntry {
 const RATE_LIMIT_WINDOW_MS = 60 * 60 * 1000; // 1 hour
 const NON_ADMIN_LIMIT = 20; // 20 queries per hour for non-admins
 const quotaStore = new Map<string, UserQuotaEntry>();
+
+// Cloned voice profiles store keyed by user identifier
+const userClonedProfilesStore = new Map<string, ClonedVoiceProfile[]>();
 
 // Periodic cleanup of expired rate limit windows
 setInterval(() => {
@@ -34,6 +37,8 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Warm & Authoritative",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Deep, resonant studio narrator voice tuned for Hindi financial and technical cadence."
   },
   {
@@ -47,7 +52,24 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Natural & Melodic",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Clear, conversational Hindi voice with emotional prosody and natural pauses."
+  },
+  {
+    id: "indic-parler-hindi",
+    name: "Indic Parler (AI4Bharat Hindi)",
+    lang: "hi-IN",
+    languageLabel: "Hindi (हिंदी)",
+    gender: "female",
+    accent: "Native Devanagari Studio",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Native Hindi Studio",
+    architecture: "indic-tts",
+    commercialUse: "commercial_safe",
+    commercialLabel: "Commercial Safe",
+    description: "AI4Bharat (IIT Madras) open-source Hindi model. 100% Apache 2.0 / MIT commercial safe."
   },
   {
     id: "ava-expressive",
@@ -60,6 +82,8 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Empathetic & Warm",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "State-of-the-art multilingual neural voice with gentle breathing dynamics, empathy, and natural pacing."
   },
   {
@@ -73,7 +97,24 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Authentic & Reassuring",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Authentic, warm masculine tone with confident conversational articulation."
+  },
+  {
+    id: "kokoro-heart",
+    name: "Kokoro Heart (SOTA Arena #1)",
+    lang: "en-US",
+    languageLabel: "English (US)",
+    gender: "female",
+    accent: "American Studio",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Natural & Warm",
+    architecture: "kokoro-82m",
+    commercialUse: "commercial_safe",
+    commercialLabel: "Commercial Safe",
+    description: "Ranked #1 on Hugging Face TTS Arena. Apache 2.0 open weights. Sub-second CPU latency."
   },
   {
     id: "neerja-expressive",
@@ -86,6 +127,8 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Bright & Positive",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Fluent Indian English voice with lively expressive inflection, perfect for market reports."
   },
   {
@@ -99,7 +142,24 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Authoritative & Dignified",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Authoritative, dignified baritone for corporate briefs, governance, and market updates."
+  },
+  {
+    id: "melotts-indian-en",
+    name: "MeloTTS (Indian English)",
+    lang: "en-IN",
+    languageLabel: "English (India)",
+    gender: "female",
+    accent: "Pan-Indian Natural",
+    isNeural: true,
+    engine: "neural",
+    emotionTag: "Accurate Indian Accent",
+    architecture: "melotts",
+    commercialUse: "commercial_safe",
+    commercialLabel: "Commercial Safe",
+    description: "MyShell MeloTTS. 100% MIT License commercial safe with fast execution."
   },
   {
     id: "aria-confident",
@@ -112,6 +172,8 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Confident & Engaging",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Dynamic news and novel narrator with crisp pronunciation and engaging energy."
   },
   {
@@ -125,6 +187,8 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Casual & Approachable",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Approachable, conversational tone ideal for podcasts, dialogues, and tutorials."
   },
   {
@@ -138,6 +202,8 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Cheerful & Joyful",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Lively, optimistic conversationalist voice with bright emotional energy."
   },
   {
@@ -151,6 +217,8 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Sophisticated & Elegant",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Polished, sophisticated British English narrator for audiobooks and documentaries."
   },
   {
@@ -164,6 +232,8 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Deep & Narrative",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Deep, compelling documentary style voice with rich timbre and dramatic pause control."
   },
   {
@@ -177,6 +247,8 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Passionate & Direct",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Rich broadcaster voice suitable for tutorials, news, and technical overviews."
   },
   {
@@ -190,6 +262,8 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "neural",
     emotionTag: "Melodic & Emotional",
     architecture: "edge-tts",
+    commercialUse: "personal_non_commercial",
+    commercialLabel: "Personal / Staging",
     description: "Expressive, melodic narrator voice with subtle breathing pauses and vocal dynamics."
   },
   {
@@ -203,6 +277,8 @@ const SOTA_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: "cloned",
     emotionTag: "Adaptive In-Context Emotion",
     architecture: "f5-tts",
+    commercialUse: "commercial_safe",
+    commercialLabel: "Commercial Safe (Self-Owned)",
     description: "Replicates user voice timbre and emotional mood directly from a 5–10 second reference audio sample."
   }
 ];
@@ -562,6 +638,87 @@ export function registerRoutes(router: Router) {
       success: true,
       openSourceModels: SOTA_ARCHITECTURES,
       activeArchitecture: "edge-tts"
+    });
+  });
+
+  // GET /cloned-voices - Retrieve all saved replicated voice profiles for user
+  router.get("/cloned-voices", (req: Request, res: Response) => {
+    const { identifier } = getUserIdentifierAndRole(req);
+    const profiles = userClonedProfilesStore.get(identifier) || [];
+    return res.json({
+      success: true,
+      voices: profiles
+    });
+  });
+
+  // POST /cloned-voices - Save a newly replicated voice profile
+  router.post("/cloned-voices", (req: Request, res: Response) => {
+    try {
+      const { identifier } = getUserIdentifierAndRole(req);
+      const {
+        id,
+        name,
+        description = "",
+        sampleDurationSec = 5,
+        sampleAudioDataUrl = "",
+        referenceText = "",
+        language = "en-US",
+        languageLabel = "English (US)",
+        gender = "neutral",
+        emotionTag = "Warm & Natural",
+        commercialUse = "commercial_safe",
+        commercialLabel = "Commercial Safe (Self-Owned)"
+      } = req.body;
+
+      if (!name || typeof name !== "string" || name.trim().length === 0) {
+        return res.status(400).json({ error: "Voice profile name is required." });
+      }
+
+      const voiceId = id || `cloned-${Date.now()}`;
+      const newProfile: ClonedVoiceProfile = {
+        id: voiceId,
+        name: name.trim(),
+        description: description.trim(),
+        createdAt: new Date().toISOString(),
+        sampleDurationSec: Number(sampleDurationSec) || 5,
+        sampleAudioDataUrl,
+        referenceText: referenceText.trim(),
+        language,
+        languageLabel,
+        gender,
+        emotionTag,
+        commercialUse,
+        commercialLabel
+      };
+
+      const existing = userClonedProfilesStore.get(identifier) || [];
+      const updated = [newProfile, ...existing.filter(p => p.id !== voiceId)];
+      userClonedProfilesStore.set(identifier, updated);
+
+      return res.json({
+        success: true,
+        voice: newProfile,
+        total: updated.length
+      });
+    } catch (err: any) {
+      console.error("[SpeechStudio] Save cloned voice error:", err);
+      return res.status(500).json({ error: "Failed to save voice profile", details: err.message });
+    }
+  });
+
+  // DELETE /cloned-voices/:id - Remove a saved replicated voice profile
+  router.delete("/cloned-voices/:id", (req: Request, res: Response) => {
+    const { identifier } = getUserIdentifierAndRole(req);
+    const voiceId = req.params.id;
+
+    const existing = userClonedProfilesStore.get(identifier) || [];
+    const updated = existing.filter(p => p.id !== voiceId);
+    userClonedProfilesStore.set(identifier, updated);
+
+    return res.json({
+      success: true,
+      deletedId: voiceId,
+      remaining: updated.length
     });
   });
 }

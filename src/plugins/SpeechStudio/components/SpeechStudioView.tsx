@@ -29,7 +29,7 @@ import {
   X
 } from 'lucide-react';
 import { WorkspacePluginViewProps } from '../../types.js';
-import { TTSQuotaStatus, SpeechHistoryItem, TTSVoiceOption, TTSArchitectureOption } from '../types.js';
+import { TTSQuotaStatus, SpeechHistoryItem, TTSVoiceOption, TTSArchitectureOption, ClonedVoiceProfile } from '../types.js';
 import ConfirmModal from '../../../components/ConfirmModal.js';
 
 const SAMPLE_PROMPTS = [
@@ -67,6 +67,8 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Warm & Authoritative',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Deep, resonant studio narrator voice tuned for Hindi financial and technical cadence.'
   },
   {
@@ -80,7 +82,24 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Natural & Melodic',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Clear, conversational studio voice with emotional prosody and natural pauses.'
+  },
+  {
+    id: 'indic-parler-hindi',
+    name: 'Indic Parler (AI4Bharat Hindi)',
+    lang: 'hi-IN',
+    languageLabel: 'Hindi (हिंदी)',
+    gender: 'female',
+    accent: 'Native Devanagari Studio',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Native Hindi Studio',
+    architecture: 'indic-tts',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'AI4Bharat (IIT Madras) open-source Hindi model. 100% Apache 2.0 / MIT commercial safe.'
   },
   {
     id: 'ava-expressive',
@@ -93,6 +112,8 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Empathetic & Warm',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'State-of-the-art multilingual neural voice with gentle breathing dynamics, empathy, and natural pacing.'
   },
   {
@@ -106,7 +127,24 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Authentic & Reassuring',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Authentic, warm masculine tone with confident conversational articulation.'
+  },
+  {
+    id: 'kokoro-heart',
+    name: 'Kokoro Heart (SOTA Arena #1)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'female',
+    accent: 'American Studio',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Natural & Warm',
+    architecture: 'kokoro-82m',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'Ranked #1 on Hugging Face TTS Arena. Apache 2.0 open weights. Sub-second CPU latency.'
   },
   {
     id: 'neerja-expressive',
@@ -119,6 +157,8 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Bright & Positive',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Fluent Indian English voice with lively expressive inflection, perfect for market reports.'
   },
   {
@@ -132,7 +172,24 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Authoritative & Dignified',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Authoritative, dignified baritone for corporate briefs, governance, and market updates.'
+  },
+  {
+    id: 'melotts-indian-en',
+    name: 'MeloTTS (Indian English)',
+    lang: 'en-IN',
+    languageLabel: 'English (India)',
+    gender: 'female',
+    accent: 'Pan-Indian Natural',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Accurate Indian Accent',
+    architecture: 'melotts',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'MyShell MeloTTS. 100% MIT License commercial safe with fast execution.'
   },
   {
     id: 'aria-confident',
@@ -145,6 +202,8 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Confident & Engaging',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Dynamic news and novel narrator with crisp pronunciation and engaging energy.'
   },
   {
@@ -158,6 +217,8 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Casual & Approachable',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Approachable, conversational tone ideal for podcasts, dialogues, and tutorials.'
   },
   {
@@ -171,6 +232,8 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Cheerful & Joyful',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Lively, optimistic conversationalist voice with bright emotional energy.'
   },
   {
@@ -184,6 +247,8 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Sophisticated & Elegant',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Polished, sophisticated British English narrator for audiobooks and documentaries.'
   },
   {
@@ -197,6 +262,8 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Deep & Narrative',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Deep, compelling documentary style voice with rich timbre and dramatic pause control.'
   },
   {
@@ -210,6 +277,8 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Passionate & Direct',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Rich, resonant broadcaster voice suitable for tutorials, news, and technical overviews.'
   },
   {
@@ -223,6 +292,8 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     engine: 'neural',
     emotionTag: 'Melodic & Emotional',
     architecture: 'edge-tts',
+    commercialUse: 'personal_non_commercial',
+    commercialLabel: 'Personal / Staging',
     description: 'Expressive, melodic narrator voice with subtle breathing pauses and vocal dynamics.'
   }
 ];
@@ -316,8 +387,28 @@ export default function SpeechStudioView({
   // Input text and voice parameters
   const [text, setText] = useState<string>(SAMPLE_PROMPTS[0].text);
   const [selectedLang, setSelectedLang] = useState<'all' | 'en' | 'hi'>('all');
+  const [voiceFilter, setVoiceFilter] = useState<'all' | 'commercial' | 'hi' | 'en'>('all');
   const [neuralVoices, setNeuralVoices] = useState<TTSVoiceOption[]>(DEFAULT_NEURAL_VOICES);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('aarav-neural');
+
+  // Multi-Voice Replicated Profiles State
+  const [clonedProfiles, setClonedProfiles] = useState<ClonedVoiceProfile[]>(() => {
+    try {
+      const saved = localStorage.getItem('sutharlabs_cloned_voice_profiles');
+      if (saved) return JSON.parse(saved);
+    } catch { }
+    return [];
+  });
+  const [voiceToDelete, setVoiceToDelete] = useState<ClonedVoiceProfile | null>(null);
+  const [saveSuccessMsg, setSaveSuccessMsg] = useState<string | null>(null);
+
+  // New Voice Profile Ingestion Form State
+  const [profileName, setProfileName] = useState<string>('Custom Studio Voice');
+  const [profileGender, setProfileGender] = useState<'female' | 'male' | 'neutral'>('neutral');
+  const [profileLang, setProfileLang] = useState<string>('hi-IN');
+  const [profileEmotion, setProfileEmotion] = useState<string>('Warm & Authoritative');
+  const [profileDesc, setProfileDesc] = useState<string>('');
+  const [referenceTranscript, setReferenceTranscript] = useState<string>('');
 
   // Architecture & Emotion State
   const [architectures, setArchitectures] = useState<TTSArchitectureOption[]>(DEFAULT_ARCHITECTURES);
@@ -338,7 +429,7 @@ export default function SpeechStudioView({
   const [playbackProgress, setPlaybackProgress] = useState<number>(0);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
-  // Voice Cloning State
+  // Voice Cloning Audio State
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [recordingDuration, setRecordingDuration] = useState<number>(0);
   const [clonedSampleBase64, setClonedSampleBase64] = useState<string | null>(null);
@@ -400,9 +491,89 @@ export default function SpeechStudioView({
       }
     };
 
+    const fetchClonedProfiles = async () => {
+      try {
+        const headers: Record<string, string> = {};
+        if (userToken) headers['Authorization'] = `Bearer ${userToken}`;
+        const res = await fetch('/api/plugins/speech-studio/cloned-voices', { headers });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.voices && Array.isArray(data.voices) && data.voices.length > 0) {
+            setClonedProfiles(prev => {
+              const map = new Map<string, ClonedVoiceProfile>();
+              data.voices.forEach((v: ClonedVoiceProfile) => map.set(v.id, v));
+              prev.forEach(v => map.set(v.id, v));
+              return Array.from(map.values());
+            });
+          }
+        }
+      } catch { }
+    };
+
     fetchVoices();
     fetchModels();
-  }, []);
+    fetchClonedProfiles();
+  }, [userToken]);
+
+  // Save new cloned profile
+  const handleSaveClonedProfile = async () => {
+    if (!profileName.trim()) {
+      setErrorMessage('Please enter a name for your voice profile.');
+      return;
+    }
+    if (!clonedSampleBase64) {
+      setErrorMessage('Please record or upload a 5–10s audio reference sample first.');
+      return;
+    }
+
+    const newProfile: ClonedVoiceProfile = {
+      id: `cloned-${Date.now()}`,
+      name: profileName.trim(),
+      description: profileDesc.trim() || `${profileEmotion} custom replicated voice`,
+      createdAt: new Date().toISOString(),
+      sampleDurationSec: recordingDuration || 5,
+      sampleAudioDataUrl: clonedSampleBase64,
+      referenceText: referenceTranscript.trim(),
+      language: profileLang,
+      languageLabel: profileLang === 'hi-IN' ? 'Hindi (हिंदी)' : profileLang === 'en-IN' ? 'English (India)' : profileLang === 'en-GB' ? 'English (UK)' : 'English (US)',
+      gender: profileGender,
+      emotionTag: profileEmotion,
+      commercialUse: 'commercial_safe',
+      commercialLabel: 'Commercial Safe (Self-Owned)'
+    };
+
+    const updated = [newProfile, ...clonedProfiles.filter(p => p.id !== newProfile.id)];
+    setClonedProfiles(updated);
+
+    try {
+      localStorage.setItem('sutharlabs_cloned_voice_profiles', JSON.stringify(updated));
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (userToken) headers['Authorization'] = `Bearer ${userToken}`;
+      await fetch('/api/plugins/speech-studio/cloned-voices', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(newProfile)
+      });
+    } catch { }
+
+    setSaveSuccessMsg(`Replicated voice "${newProfile.name}" successfully saved to your library!`);
+    setTimeout(() => setSaveSuccessMsg(null), 4000);
+    setProfileName(`Custom Studio Voice ${updated.length + 1}`);
+    setClonedSampleBase64(null);
+    setReferenceTranscript('');
+    setProfileDesc('');
+  };
+
+  const deleteClonedProfile = async (id: string) => {
+    const updated = clonedProfiles.filter(p => p.id !== id);
+    setClonedProfiles(updated);
+    try {
+      localStorage.setItem('sutharlabs_cloned_voice_profiles', JSON.stringify(updated));
+      const headers: Record<string, string> = {};
+      if (userToken) headers['Authorization'] = `Bearer ${userToken}`;
+      await fetch(`/api/plugins/speech-studio/cloned-voices/${id}`, { method: 'DELETE', headers });
+    } catch { }
+  };
 
   // Fetch quota
   const fetchQuota = useCallback(async () => {
@@ -463,10 +634,11 @@ export default function SpeechStudioView({
     };
   }, []);
 
-  // Filter voices by selected language pill
+  // Filter voices by selected language and commercial license
   const filteredVoices = neuralVoices.filter(v => {
-    if (selectedLang === 'hi') return v.lang.startsWith('hi');
-    if (selectedLang === 'en') return v.lang.startsWith('en');
+    if (voiceFilter === 'commercial') return v.commercialUse === 'commercial_safe';
+    if (voiceFilter === 'hi') return v.lang.startsWith('hi');
+    if (voiceFilter === 'en') return v.lang.startsWith('en');
     return true;
   });
 
@@ -517,7 +689,10 @@ export default function SpeechStudioView({
       utterance.volume = volume;
 
       const voices = window.speechSynthesis.getVoices();
-      const activeVoice = neuralVoices.find(v => v.id === selectedVoiceId);
+      const activeCloned = clonedProfiles.find(p => p.id === selectedVoiceId);
+      const activeVoice = activeCloned
+        ? { id: activeCloned.id, name: activeCloned.name, lang: activeCloned.language }
+        : (neuralVoices.find(v => v.id === selectedVoiceId) || neuralVoices[0]);
       const targetLang = activeVoice?.lang || (selectedLang === 'hi' ? 'hi-IN' : 'en-US');
 
       const matchedVoice = voices.find(v => v.lang.toLowerCase().startsWith(targetLang.slice(0, 2).toLowerCase()));
@@ -562,7 +737,17 @@ export default function SpeechStudioView({
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (userToken) headers['Authorization'] = `Bearer ${userToken}`;
 
-      const activeVoice = neuralVoices.find(v => v.id === selectedVoiceId) || neuralVoices[0];
+      const activeCloned = clonedProfiles.find(p => p.id === selectedVoiceId);
+      const isCloned = !!activeCloned;
+      const activeVoice = activeCloned
+        ? {
+            id: activeCloned.id,
+            name: activeCloned.name,
+            lang: activeCloned.language,
+            referenceAudio: activeCloned.sampleAudioDataUrl
+          }
+        : (neuralVoices.find(v => v.id === selectedVoiceId) || neuralVoices[0]);
+
       const res = await fetch('/api/plugins/speech-studio/synthesize', {
         method: 'POST',
         headers,
@@ -574,9 +759,10 @@ export default function SpeechStudioView({
           rate,
           pitch,
           volume,
-          architecture: selectedArchitecture,
+          architecture: isCloned ? 'f5-tts' : selectedArchitecture,
           emotion: selectedEmotion,
-          cfgStrength
+          cfgStrength,
+          referenceAudio: isCloned ? (activeVoice as any).referenceAudio : undefined
         })
       });
 
@@ -1292,12 +1478,89 @@ export default function SpeechStudioView({
                   Studio Neural Voices
                 </span>
                 <span className="text-[10px] font-mono text-[#00dbe7] font-semibold">
-                  {filteredVoices.length} Models
+                  {filteredVoices.length + clonedProfiles.length} Models
                 </span>
               </div>
 
+              {/* Quick Filter: All | Commercial Safe | Hindi | English */}
+              <div className={`flex rounded-lg p-0.5 border text-[10px] font-mono ${
+                isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
+              }`}>
+                {[
+                  { id: 'all', label: 'All' },
+                  { id: 'commercial', label: 'Commercial Safe', icon: ShieldCheck },
+                  { id: 'hi', label: 'Hindi' },
+                  { id: 'en', label: 'English' }
+                ].map(filter => (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    onClick={() => setVoiceFilter(filter.id as any)}
+                    className={`flex-1 py-1 px-1 rounded-md cursor-pointer transition-all flex items-center justify-center gap-1 ${
+                      voiceFilter === filter.id
+                        ? isLight
+                          ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-300'
+                          : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    {filter.icon && <ShieldCheck className="w-2.5 h-2.5 shrink-0 text-emerald-400" />}
+                    <span>{filter.label}</span>
+                  </button>
+                ))}
+              </div>
+
               {/* Voice Cards Grid */}
-              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+              <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
+                {/* Replicated Voices Section */}
+                {clonedProfiles.length > 0 && (
+                  <div className="pb-2 mb-2 border-b border-purple-500/25 space-y-1.5">
+                    <div className="flex items-center justify-between text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider px-1">
+                      <span className="flex items-center gap-1.5">
+                        <Sparkles className="w-3 h-3 text-[#ce5dff] shrink-0" />
+                        My Replicated Voices ({clonedProfiles.length})
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setActiveTab('clone')}
+                        className="text-[9px] hover:underline cursor-pointer"
+                      >
+                        + New Voice
+                      </button>
+                    </div>
+                    {clonedProfiles.map(cloned => (
+                      <div
+                        key={cloned.id}
+                        onClick={() => {
+                          setSelectedVoiceId(cloned.id);
+                          setSelectedArchitecture('f5-tts');
+                        }}
+                        className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
+                          selectedVoiceId === cloned.id
+                            ? isLight
+                              ? 'bg-purple-50 border-purple-400 text-purple-950 shadow-xs ring-1 ring-purple-300'
+                              : 'bg-[#ce5dff]/15 border-[#ce5dff]/60 text-white shadow-xs ring-1 ring-[#ce5dff]/40'
+                            : isLight
+                              ? 'bg-purple-50/30 hover:bg-purple-50 border-purple-200/50 text-slate-700'
+                              : 'bg-purple-950/20 hover:bg-purple-950/40 border-purple-500/20 text-on-surface-variant'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="text-xs font-bold font-sans truncate text-[#ce5dff]">{cloned.name}</span>
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5 shrink-0">
+                            <ShieldCheck className="w-2.5 h-2.5 shrink-0" /> Commercial Safe
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between text-[9px] font-mono text-on-surface-variant mt-1.5">
+                          <span>{cloned.languageLabel}</span>
+                          <span className="px-1.5 py-0.5 rounded text-[8px] bg-purple-500/10 text-purple-300 border border-purple-500/20">{cloned.emotionTag || 'Adaptive'}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Standard Voices */}
                 {filteredVoices.map(voice => (
                   <div
                     key={voice.id}
@@ -1315,15 +1578,6 @@ export default function SpeechStudioView({
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-bold font-sans truncate">{voice.name}</span>
                       <div className="flex items-center gap-1 shrink-0">
-                        {voice.emotionTag && (
-                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold truncate max-w-[110px] ${
-                            isLight
-                              ? 'bg-sky-100 text-sky-800 border border-sky-200'
-                              : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
-                          }`}>
-                            {voice.emotionTag}
-                          </span>
-                        )}
                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase ${
                           voice.gender === 'female'
                             ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20'
@@ -1332,6 +1586,26 @@ export default function SpeechStudioView({
                           {voice.gender}
                         </span>
                       </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
+                      {voice.commercialUse === 'commercial_safe' ? (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5 shrink-0">
+                          <ShieldCheck className="w-2.5 h-2.5 shrink-0 text-emerald-400" /> Commercial Safe
+                        </span>
+                      ) : (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-0.5 shrink-0">
+                          <AlertTriangle className="w-2.5 h-2.5 shrink-0 text-amber-400" /> Personal / Dev
+                        </span>
+                      )}
+                      {voice.emotionTag && (
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold truncate max-w-[120px] ${
+                          isLight
+                            ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                            : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
+                        }`}>
+                          {voice.emotionTag}
+                        </span>
+                      )}
                     </div>
                     <p className="text-[10px] text-on-surface-variant mt-1 leading-tight font-mono">
                       {voice.description || voice.accent}
@@ -1400,186 +1674,408 @@ export default function SpeechStudioView({
         </div>
       )}
 
-      {/* TAB 2: ZERO-SHOT VOICE CLONING */}
+      {/* TAB 2: ZERO-SHOT VOICE REPLICATION & MULTI-VOICE LIBRARY */}
       {activeTab === 'clone' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Cloning Recorder & Sample Ingestion */}
-          <div className="space-y-4">
-            <div className={`p-4 rounded-2xl border shadow-sm space-y-4 ${
-              isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
-            }`}>
-              <div className="flex items-center gap-2 border-b border-outline/20 pb-3">
-                <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center shrink-0">
-                  <Mic className="w-4 h-4 text-[#ce5dff] shrink-0" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-on-surface">Step 1: Ingest Voice Sample</h3>
-                  <p className="text-[10px] text-on-surface-variant font-mono">Record 5–10s of audio or upload .wav</p>
-                </div>
+        <div className="space-y-6">
+          {saveSuccessMsg && (
+            <div className="p-3.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-xs font-mono flex items-center justify-between gap-2 animate-in fade-in">
+              <div className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                <span>{saveSuccessMsg}</span>
               </div>
-
-              <div>
-                <label className="block text-[11px] font-mono uppercase font-bold text-on-surface-variant mb-1">
-                  Speaker Profile Name
-                </label>
-                <input
-                  type="text"
-                  value={clonedSpeakerName}
-                  onChange={(e) => setClonedSpeakerName(e.target.value)}
-                  className={`w-full p-2.5 rounded-lg border font-mono text-xs focus:outline-none transition-colors ${
-                    isLight ? 'bg-slate-50 border-slate-300 text-slate-800' : 'bg-[#121215] border-[#3a494b]/50 text-white'
-                  }`}
-                  placeholder="e.g., Suresh (Founder Voice)"
-                />
-              </div>
-
-              {/* Record via Browser Mic */}
-              <div className={`p-4 rounded-xl border text-center space-y-3 ${
-                isLight ? 'bg-slate-50 border-slate-200' : 'bg-black/30 border-white/5'
-              }`}>
-                <div className="flex items-center justify-center">
-                  <div className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                    isRecording
-                      ? 'bg-rose-500/20 border-2 border-rose-500 animate-pulse text-rose-400'
-                      : 'bg-purple-500/10 border border-purple-500/30 text-[#ce5dff]'
-                  }`}>
-                    <Mic className="w-8 h-8 shrink-0" />
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-xs font-mono font-bold">
-                    {isRecording ? `Recording Audio: ${recordingDuration}s / 15s max` : 'Record via Microphone'}
-                  </div>
-                  <p className="text-[10px] text-on-surface-variant mt-0.5 font-mono">
-                    Speak clearly for 5–10 seconds into your mic.
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-center gap-2">
-                  {!isRecording ? (
-                    <button
-                      type="button"
-                      onClick={startRecording}
-                      className="h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-purple-500 hover:bg-purple-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Radio className="w-3.5 h-3.5 shrink-0" />
-                      <span>START RECORDING</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={stopRecording}
-                      className="h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer animate-pulse"
-                    >
-                      <Square className="w-3.5 h-3.5 shrink-0" />
-                      <span>STOP RECORDING</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Or File Upload */}
-              <div className="text-center">
-                <span className="text-[10px] font-mono text-on-surface-variant uppercase font-bold">
-                  — Or Upload Audio File —
-                </span>
-                <label className={`mt-2 block p-3 rounded-xl border border-dashed cursor-pointer transition-all ${
-                  isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-300' : 'bg-white/5 hover:bg-white/10 border-white/10'
-                }`}>
-                  <Upload className="w-5 h-5 mx-auto text-on-surface-variant mb-1 shrink-0" />
-                  <span className="text-xs font-mono font-semibold block">Select audio file (.wav, .mp3)</span>
-                  <span className="text-[10px] text-on-surface-variant font-mono">Max size: 10MB</span>
-                  <input
-                    type="file"
-                    accept="audio/*"
-                    onChange={handleFileUpload}
-                    className="hidden"
-                  />
-                </label>
-              </div>
-
-              {/* Preview Ingested Sample */}
-              {clonedSampleBase64 && (
-                <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-emerald-400 shrink-0" />
-                    <span className="text-xs font-mono text-emerald-300 font-semibold">
-                      Sample Captured & Ready
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setClonedSampleBase64(null)}
-                    className="text-xs font-mono text-rose-400 hover:text-white cursor-pointer"
-                  >
-                    Remove
-                  </button>
-                </div>
-              )}
+              <button
+                type="button"
+                onClick={() => setSaveSuccessMsg(null)}
+                className="text-xs hover:text-white"
+              >
+                <X className="w-3.5 h-3.5 shrink-0" />
+              </button>
             </div>
-          </div>
+          )}
 
-          {/* Script Input & Replicated Output */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className={`p-4 rounded-2xl border shadow-sm space-y-4 ${
-              isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
-            }`}>
-              <div className="flex items-center justify-between border-b border-outline/20 pb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0">
-                    <Sparkles className="w-4 h-4 text-[#00dbe7] shrink-0" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+            {/* Step 1: Voice Profile Configuration & Ingestion */}
+            <div className="space-y-4">
+              <div className={`p-4 rounded-2xl border shadow-sm space-y-4 ${
+                isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
+              }`}>
+                <div className="flex items-center gap-2 border-b border-outline/20 pb-3">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center shrink-0">
+                    <Mic className="w-4 h-4 text-[#ce5dff] shrink-0" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-bold text-on-surface">Step 2: Script for Cloned Voice</h3>
-                    <p className="text-[10px] text-on-surface-variant font-mono">
-                      Your replicated voice will synthesize this text
+                    <h3 className="text-sm font-bold text-on-surface">Step 1: Capture & Label Voice</h3>
+                    <p className="text-[10px] text-on-surface-variant font-mono">Replicate and name a custom vocal identity</p>
+                  </div>
+                </div>
+
+                {/* Profile Name */}
+                <div>
+                  <label className="block text-[11px] font-mono uppercase font-bold text-on-surface-variant mb-1">
+                    Voice Profile Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={profileName}
+                    onChange={(e) => setProfileName(e.target.value)}
+                    className={`w-full p-2.5 rounded-lg border font-mono text-xs focus:outline-none transition-colors ${
+                      isLight ? 'bg-slate-50 border-slate-300 text-slate-800' : 'bg-[#121215] border-[#3a494b]/50 text-white'
+                    }`}
+                    placeholder="e.g. Suresh (Executive Pitch), Aditi (Support)"
+                  />
+                </div>
+
+                {/* Gender & Language Selector */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase font-bold text-on-surface-variant mb-1">
+                      Gender
+                    </label>
+                    <select
+                      value={profileGender}
+                      onChange={(e) => setProfileGender(e.target.value as any)}
+                      className={`w-full p-2 rounded-lg border font-mono text-xs focus:outline-none ${
+                        isLight ? 'bg-slate-50 border-slate-300 text-slate-800' : 'bg-[#121215] border-[#3a494b]/50 text-white'
+                      }`}
+                    >
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="neutral">Neutral</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-mono uppercase font-bold text-on-surface-variant mb-1">
+                      Language
+                    </label>
+                    <select
+                      value={profileLang}
+                      onChange={(e) => setProfileLang(e.target.value)}
+                      className={`w-full p-2 rounded-lg border font-mono text-xs focus:outline-none ${
+                        isLight ? 'bg-slate-50 border-slate-300 text-slate-800' : 'bg-[#121215] border-[#3a494b]/50 text-white'
+                      }`}
+                    >
+                      <option value="hi-IN">Hindi (हिंदी)</option>
+                      <option value="en-IN">English (India)</option>
+                      <option value="en-US">English (US)</option>
+                      <option value="en-GB">English (UK)</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Emotion / Cadence Persona */}
+                <div>
+                  <label className="block text-[10px] font-mono uppercase font-bold text-on-surface-variant mb-1">
+                    Emotion / Tone Profile
+                  </label>
+                  <div className="flex items-center gap-1 flex-wrap mb-1.5">
+                    {['Warm & Authoritative', 'Conversational Melodic', 'Empathetic Support', 'Dramatic Narration'].map(tag => (
+                      <button
+                        key={tag}
+                        type="button"
+                        onClick={() => setProfileEmotion(tag)}
+                        className={`px-2 py-0.5 rounded text-[9px] font-mono border transition-all ${
+                          profileEmotion === tag
+                            ? isLight ? 'bg-purple-600 text-white border-purple-700' : 'bg-[#ce5dff]/20 text-[#ce5dff] border-[#ce5dff]/50'
+                            : isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/5 text-on-surface-variant'
+                        }`}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="text"
+                    value={profileEmotion}
+                    onChange={(e) => setProfileEmotion(e.target.value)}
+                    className={`w-full p-2 rounded-lg border font-mono text-xs focus:outline-none ${
+                      isLight ? 'bg-slate-50 border-slate-300 text-slate-800' : 'bg-[#121215] border-[#3a494b]/50 text-white'
+                    }`}
+                    placeholder="Custom emotion tag..."
+                  />
+                </div>
+
+                {/* Record via Browser Mic */}
+                <div className={`p-4 rounded-xl border text-center space-y-3 ${
+                  isLight ? 'bg-slate-50 border-slate-200' : 'bg-black/30 border-white/5'
+                }`}>
+                  <div className="flex items-center justify-center">
+                    <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
+                      isRecording
+                        ? 'bg-rose-500/20 border-2 border-rose-500 animate-pulse text-rose-400'
+                        : 'bg-purple-500/10 border border-purple-500/30 text-[#ce5dff]'
+                    }`}>
+                      <Mic className="w-7 h-7 shrink-0" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-xs font-mono font-bold">
+                      {isRecording ? `Recording Audio: ${recordingDuration}s / 15s max` : 'Record via Microphone'}
+                    </div>
+                    <p className="text-[10px] text-on-surface-variant mt-0.5 font-mono">
+                      Speak clearly for 5–10 seconds into your microphone.
                     </p>
                   </div>
+
+                  <div className="flex items-center justify-center gap-2">
+                    {!isRecording ? (
+                      <button
+                        type="button"
+                        onClick={startRecording}
+                        className="h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-purple-500 hover:bg-purple-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer"
+                      >
+                        <Radio className="w-3.5 h-3.5 shrink-0" />
+                        <span>START RECORDING</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={stopRecording}
+                        className="h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer animate-pulse"
+                      >
+                        <Square className="w-3.5 h-3.5 shrink-0" />
+                        <span>STOP RECORDING</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Or File Upload */}
+                <div className="text-center">
+                  <span className="text-[10px] font-mono text-on-surface-variant uppercase font-bold">
+                    — Or Upload Reference Clip —
+                  </span>
+                  <label className={`mt-2 block p-2.5 rounded-xl border border-dashed cursor-pointer transition-all ${
+                    isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-300' : 'bg-white/5 hover:bg-white/10 border-white/10'
+                  }`}>
+                    <Upload className="w-4 h-4 mx-auto text-on-surface-variant mb-1 shrink-0" />
+                    <span className="text-xs font-mono font-semibold block">Select audio file (.wav, .mp3)</span>
+                    <input
+                      type="file"
+                      accept="audio/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                  </label>
+                </div>
+
+                {/* Preview Ingested Sample */}
+                {clonedSampleBase64 && (
+                  <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5">
+                        <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <span className="text-xs font-mono text-emerald-300 font-semibold">
+                          Sample Captured ({recordingDuration || 5}s)
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setClonedSampleBase64(null)}
+                        className="text-xs font-mono text-rose-400 hover:text-white cursor-pointer"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <audio controls src={clonedSampleBase64} className="w-full h-7" />
+                  </div>
+                )}
+
+                {/* Save to Voice Library Button */}
+                <button
+                  type="button"
+                  onClick={handleSaveClonedProfile}
+                  disabled={!clonedSampleBase64 || !profileName.trim()}
+                  className={`w-full h-9 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 leading-none border shadow-sm ${
+                    isLight
+                      ? 'bg-emerald-600 hover:bg-emerald-700 text-white border-emerald-700'
+                      : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border-emerald-500/40'
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
+                >
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-400" />
+                  <span>SAVE VOICE TO MY LIBRARY</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Step 2: Synthesis Test Script & Live Cloned Audio Player */}
+            <div className="lg:col-span-2 space-y-4">
+              <div className={`p-4 rounded-2xl border shadow-sm space-y-4 ${
+                isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
+              }`}>
+                <div className="flex items-center justify-between border-b border-outline/20 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4 text-[#00dbe7] shrink-0" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-on-surface">Step 2: Synthesize with Voice</h3>
+                      <p className="text-[10px] text-on-surface-variant font-mono">
+                        Test speech replication immediately using your captured voice
+                      </p>
+                    </div>
+                  </div>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-emerald-400 shrink-0" />
+                    Commercial Safe (User-Owned)
+                  </span>
+                </div>
+
+                <textarea
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  rows={5}
+                  maxLength={5000}
+                  placeholder="Enter script for your replicated voice in English, Hindi, or mixed bilingual dialogue..."
+                  className={`w-full p-3.5 rounded-xl border font-sans text-sm focus:outline-none transition-colors resize-y leading-relaxed ${
+                    isLight
+                      ? 'bg-slate-50 border-slate-300 text-slate-800 focus:border-purple-500'
+                      : 'bg-[#121215] border-[#3a494b]/50 text-white focus:border-[#ce5dff]'
+                  }`}
+                />
+
+                <div className="flex items-center justify-between gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={handleCloneAndSynthesize}
+                    disabled={isSynthesizing || !text.trim() || !clonedSampleBase64}
+                    className={`h-9 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 leading-none border shadow-sm ${
+                      isLight
+                        ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-700'
+                        : 'bg-[#ce5dff]/15 hover:bg-[#ce5dff]/25 text-[#ce5dff] hover:text-white border-[#ce5dff]/50 shadow-[#ce5dff]/10'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {isSynthesizing ? (
+                      <>
+                        <Zap className="w-4 h-4 animate-spin shrink-0" />
+                        <span>SYNTHESIZING WITH REPLICATED VOICE...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Mic className="w-4 h-4 shrink-0" />
+                        <span>REPLICATE & SPEAK SCRIPT</span>
+                      </>
+                    )}
+                  </button>
+
+                  {!clonedSampleBase64 && (
+                    <span className="text-[11px] font-mono text-amber-400">
+                      * Ingest or record an audio sample in Step 1 first
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <textarea
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                rows={6}
-                maxLength={5000}
-                placeholder="Enter what you want your replicated voice to say in English, Hindi, or bilingual speech..."
-                className={`w-full p-3.5 rounded-xl border font-sans text-sm focus:outline-none transition-colors resize-y leading-relaxed ${
-                  isLight
-                    ? 'bg-slate-50 border-slate-300 text-slate-800 focus:border-purple-500'
-                    : 'bg-[#121215] border-[#3a494b]/50 text-white focus:border-[#ce5dff]'
-                }`}
-              />
-
-              <div className="flex items-center justify-between gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={handleCloneAndSynthesize}
-                  disabled={isSynthesizing || !text.trim() || !clonedSampleBase64}
-                  className={`h-9 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 leading-none border shadow-sm ${
-                    isLight
-                      ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-700'
-                      : 'bg-[#ce5dff]/15 hover:bg-[#ce5dff]/25 text-[#ce5dff] hover:text-white border-[#ce5dff]/50 shadow-[#ce5dff]/10'
-                  } disabled:opacity-50 disabled:cursor-not-allowed`}
-                >
-                  {isSynthesizing ? (
-                    <>
-                      <Zap className="w-4 h-4 animate-spin shrink-0" />
-                      <span>CLONING & SYNTHESIZING...</span>
-                    </>
-                  ) : (
-                    <>
-                      <Mic className="w-4 h-4 shrink-0" />
-                      <span>REPLICATE VOICE & SPEAK</span>
-                    </>
-                  )}
-                </button>
-
-                {!clonedSampleBase64 && (
-                  <span className="text-[11px] font-mono text-amber-400">
-                    * Capture or upload a 5s voice sample in Step 1 first
+              {/* My Replicated Voices Gallery */}
+              <div className={`p-4 rounded-2xl border shadow-sm space-y-4 ${
+                isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
+              }`}>
+                <div className="flex items-center justify-between border-b border-outline/20 pb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center shrink-0">
+                      <Layers className="w-4 h-4 text-[#ce5dff] shrink-0" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold text-on-surface">My Replicated Voices Library</h3>
+                      <p className="text-[10px] text-on-surface-variant font-mono">
+                        Saved speaker profiles ready for Studio synthesis & multi-character generation
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/30">
+                    {clonedProfiles.length} Saved Profiles
                   </span>
+                </div>
+
+                {clonedProfiles.length === 0 ? (
+                  <div className="p-8 rounded-xl border border-dashed border-outline/25 text-center space-y-2">
+                    <Mic className="w-8 h-8 mx-auto text-on-surface-variant opacity-60" />
+                    <p className="text-xs font-mono text-on-surface-variant">
+                      No replicated voices saved yet. Capture 5 seconds of audio on the left and click "Save Voice to My Library".
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {clonedProfiles.map(profile => (
+                      <div
+                        key={profile.id}
+                        className={`p-3.5 rounded-xl border transition-all space-y-2.5 ${
+                          isLight
+                            ? 'bg-slate-50/70 border-slate-200 hover:border-purple-300'
+                            : 'bg-white/5 border-white/10 hover:border-purple-500/40'
+                        }`}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <h4 className="text-xs font-bold font-sans text-on-surface">{profile.name}</h4>
+                            <p className="text-[10px] font-mono text-on-surface-variant mt-0.5 line-clamp-1">
+                              {profile.description || 'Custom replicated profile'}
+                            </p>
+                          </div>
+                          <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5 shrink-0">
+                            <ShieldCheck className="w-2.5 h-2.5 shrink-0" /> Commercial Safe
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 flex-wrap text-[9px] font-mono">
+                          <span className="px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                            {profile.languageLabel}
+                          </span>
+                          <span className="px-2 py-0.5 rounded bg-blue-500/10 text-blue-300 border border-blue-500/20 uppercase">
+                            {profile.gender}
+                          </span>
+                          {profile.emotionTag && (
+                            <span className="px-2 py-0.5 rounded bg-sky-500/10 text-sky-300 border border-sky-500/20">
+                              {profile.emotionTag}
+                            </span>
+                          )}
+                        </div>
+
+                        {profile.sampleAudioDataUrl && (
+                          <div className="pt-1">
+                            <span className="text-[9px] font-mono text-on-surface-variant block mb-1">
+                              Reference Sample:
+                            </span>
+                            <audio controls src={profile.sampleAudioDataUrl} className="w-full h-7" />
+                          </div>
+                        )}
+
+                        <div className="flex items-center justify-between gap-2 pt-1 border-t border-outline/15">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setSelectedVoiceId(profile.id);
+                              setSelectedArchitecture('f5-tts');
+                              setActiveTab('synthesize');
+                              onAddLog({
+                                timestamp: new Date().toLocaleTimeString(),
+                                type: 'INFO',
+                                message: `Loaded replicated voice "${profile.name}" into Studio.`
+                              });
+                            }}
+                            className={`h-7 px-3 rounded text-[10px] font-mono font-bold uppercase transition-all cursor-pointer flex items-center gap-1.5 ${
+                              isLight
+                                ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                                : 'bg-[#ce5dff]/20 hover:bg-[#ce5dff]/30 text-[#ce5dff] border border-[#ce5dff]/40'
+                            }`}
+                          >
+                            <Sparkles className="w-3 h-3 shrink-0" />
+                            <span>USE IN STUDIO →</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setVoiceToDelete(profile)}
+                            className="p-1.5 rounded text-rose-400 hover:bg-rose-500/10 transition-colors cursor-pointer"
+                            title="Delete voice profile"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
             </div>
@@ -1814,6 +2310,25 @@ export default function SpeechStudioView({
         message="Are you sure you want to permanently delete all saved audio synthesis records?"
         subtext="Audio waveforms and script entries will be cleared from your browser storage."
         confirmLabel="Clear History"
+        cancelLabel="Cancel"
+        variant="danger"
+        theme={theme}
+      />
+
+      {/* Delete Replicated Voice Profile Confirmation Modal */}
+      <ConfirmModal
+        isOpen={!!voiceToDelete}
+        onClose={() => setVoiceToDelete(null)}
+        onConfirm={() => {
+          if (voiceToDelete) {
+            deleteClonedProfile(voiceToDelete.id);
+            setVoiceToDelete(null);
+          }
+        }}
+        title="Delete Replicated Voice"
+        message={`Are you sure you want to permanently delete the voice profile "${voiceToDelete?.name}"?`}
+        subtext="This action will remove the voice profile and reference audio from your library."
+        confirmLabel="Delete Voice"
         cancelLabel="Cancel"
         variant="danger"
         theme={theme}

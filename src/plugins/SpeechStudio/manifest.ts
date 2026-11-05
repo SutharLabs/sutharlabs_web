@@ -3,7 +3,7 @@ import { WorkspacePluginManifest } from "../types.js";
 export const manifest: WorkspacePluginManifest = {
   id: "speech-studio",
   name: "Speech Studio",
-  version: "0.3.0",
+  version: "0.3.1",
   category: "AI & Multimedia",
   type: "tool",
   iconSymbol: "record_voice_over",

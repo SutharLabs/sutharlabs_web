@@ -11,6 +11,8 @@ export interface TTSVoiceOption {
   previewSample?: string;
   emotionTag?: string;
   architecture?: string;
+  commercialUse?: 'commercial_safe' | 'personal_non_commercial' | 'conditional';
+  commercialLabel?: string;
 }
 
 export interface TTSArchitectureOption {
@@ -31,9 +33,17 @@ export interface TTSArchitectureOption {
 export interface ClonedVoiceProfile {
   id: string;
   name: string;
+  description?: string;
   createdAt: string;
   sampleDurationSec: number;
   sampleAudioDataUrl?: string;
+  referenceText?: string;
+  language: string;
+  languageLabel: string;
+  gender: 'female' | 'male' | 'neutral';
+  emotionTag?: string;
+  commercialUse?: 'commercial_safe' | 'personal_non_commercial';
+  commercialLabel?: string;
 }
 
 export interface TTSQuotaStatus {

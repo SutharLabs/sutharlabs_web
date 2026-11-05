@@ -180,7 +180,7 @@ async function seedDatabase() {
         type: "Native",
         description: "Studio-grade Neural Text-to-Speech & Zero-Shot Voice Cloning engine. Supports replicating user voices, human narrator voices, Hindi and English synthesis, and audio downloads.",
         iconSymbol: "record_voice_over",
-        version: "0.3.0"
+        version: "0.3.1"
       },
       {
         id: "image-studio",
