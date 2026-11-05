@@ -635,15 +635,31 @@ To achieve human-like, studio-grade speech with instant voice cloning, SutharLab
 
 ---
 
-### B. State-of-the-Art Image Generation & Upscaling (Serverless GPU API)
+### B. State-of-the-Art Image Generation & Tiered Upscaling Architecture
 
-To generate true photographic masterpieces and crisp vector graphics with text rendering, SutharLabs delegates diffusion workloads to **FLUX.1** and super-resolution upscalers:
+To guarantee zero surprise costs while maintaining access to Hollywood-grade super-resolution, SutharLabs enforces a **Default-Free / On-Demand Paid** image upscaling strategy:
+
+#### 1. The Two-Tier Image Upscaler Matrix:
+
+| Parameter | Tier 1: Sovereign Engine (Default & Free) | Tier 2: Generative Ultra-Detail (Paid on Selection Only) |
+| :--- | :--- | :--- |
+| **Model Architecture** | **Real-ESRGAN / Compact Neural Super-Resolution** | **Clarity Upscaler / FLUX Generative Upscaler** |
+| **Cost** | **$0.00 (100% Free & Unlimited)** | **~$0.01 per 4K generation (Pay-as-you-go)** |
+| **Hosting Location** | **VM 2 ARM64 / Client WebAssembly** | **Serverless GPU API (Fal.ai / Replicate)** |
+| **Upscaling Factor** | 2x and 4x (Up to 2048px) | 4x to 8x (Full 4K and 8K) |
+| **Processing Speed** | **1 to 3 seconds** | 10 to 20 seconds |
+| **Output Characteristics** | Clean mathematical super-resolution: sharpens outlines, purges JPEG artifacts, lossless line art. | Creative generative hallucination: injects realistic skin pores, fabric weaves, hair strands, cinematic depth. |
+| **Activation Rule** | **Active by default** for all users and plugins. | **Explicit toggle only** with pre-confirmation to prevent accidental charges. |
+
+#### 2. Image Generation Leaderboard (Serverless GPU):
+For original image generation, requests dispatch to the following top-tier models:
 
 | Capability | SOTA Model / Architecture | Cost per Request | Key Strengths |
 | :--- | :--- | :--- | :--- |
 | **Photorealistic & Text Rendering** | **FLUX.1 [dev] / [pro]** (Black Forest Labs) | ~$0.015 – $0.025 | Flawless hands/anatomy, complex prompt adherence, in-image typography. |
 | **Design, Vector & Typography** | **Recraft v3 / Ideogram v2** | ~$0.02 | High-precision branding assets, logos, and vector illustrations. |
-| **AI Super-Resolution & Upscale** | **Clarity Upscaler / FLUX Upscaler** | ~$0.01 – $0.02 | Upscales 512px/1024px images to **4K / 8K** with generative high-frequency detail. |
+| **Fast Draft Previews** | **FLUX.1 [schnell]** | ~$0.003 | Sub-second prototype generation. |
+
 
 ---
 
