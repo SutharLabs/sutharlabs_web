@@ -150,12 +150,12 @@ python3 /home/ubuntu/update_url.py
 
 ---
 
-## 5. Natural Neural Text-to-Speech (TTS) Gateway
+## 5. Natural Neural Text-to-Speech (TTS) Gateway & Multi-Engine Studio
 
-To eliminate robotic, garbled sine-wave audio and provide natural human audiobook-grade speech in Hindi and English:
+To eliminate robotic, garbled sine-wave audio and provide natural human audiobook-grade speech with full emotional dynamics in Hindi and English:
 
 ```
-[User Browser / Speech Studio] 
+[User Browser / Speech Studio v0.3.0] 
               │
               ▼ (POST /api/plugins/speech-studio/synthesize)
 [VM 3 Node.js Gateway — 130.210.37.199]
@@ -164,22 +164,31 @@ To eliminate robotic, garbled sine-wave audio and provide natural human audioboo
 [VM 2 Nginx Reverse Proxy — 132.226.190.125:80]
               │
               ▼ (Proxy Pass http://127.0.0.1:5050/)
-[Python FastAPI + edge-tts Daemon — PM2 "neural-tts"]
+[Python FastAPI + Neural Daemon — PM2 "neural-tts"]
               │
               ▼ (Generates 100% Real Neural MP3 in ~0.3s)
 [Base64 Audio Stream Played Crystal-Clear in HTML5 Audio Player]
 ```
 
-### A. Voice Mapping Matrix
-| SutharLabs Voice ID | Neural Model Voice | Language / Accent | Cadence & Tone |
-| :--- | :--- | :--- | :--- |
-| `aarav-neural` | `hi-IN-MadhurNeural` | Hindi (हिंदी) | Deep, warm studio narrator |
-| `priya-neural` | `hi-IN-SwaraNeural` | Hindi (हिंदी) | Clear, conversational, natural prosody |
-| `marcus-neural` | `en-US-GuyNeural` | English (US) | Rich, resonant broadcaster voice |
-| `seraphina-neural` | `en-US-JennyNeural` | English (US) | Expressive, melodic audiobook narrator |
-| `cloned-user` | `en-US-ChristopherNeural`| Adaptive English | Neutral, dynamic narrator |
+### A. SutharLabs 13+ Expressive Voice Matrix
+| SutharLabs Voice ID | Neural Model Voice | Language / Accent | Emotion Tag | Cadence & Specialization |
+| :--- | :--- | :--- | :--- | :--- |
+| `aarav-neural` | `hi-IN-MadhurNeural` | Hindi (हिंदी - Delhi) | Warm & Authoritative | Deep, resonant studio narrator for financial & technical audio |
+| `priya-neural` | `hi-IN-SwaraNeural` | Hindi (हिंदी - Mumbai) | Natural & Melodic | Clear conversational Hindi voice with emotional prosody |
+| `neerja-expressive` | `en-IN-NeerjaExpressiveNeural` | English (India) | Bright & Positive | Fluent Indian English voice with lively expressive inflection |
+| `prabhat-executive` | `en-IN-PrabhatNeural` | English (India) | Authoritative & Dignified | Executive broadcast baritone for corporate briefs & governance |
+| `ava-expressive` | `en-US-AvaNeural` | English (US) | Empathetic & Warm | Gentle breathing dynamics, conversational empathy, natural pacing |
+| `andrew-warm` | `en-US-AndrewNeural` | English (US) | Authentic & Reassuring | Authentic masculine baritone with confident conversational tone |
+| `aria-confident` | `en-US-AriaNeural` | English (US) | Confident & Engaging | Dynamic broadcaster & news narrator with crisp pronunciation |
+| `brian-sincere` | `en-US-BrianNeural` | English (US) | Casual & Approachable | Sincere West Coast podcast tone ideal for tutorials & dialogues |
+| `emma-cheerful` | `en-US-EmmaNeural` | English (US) | Cheerful & Joyful | Lively, optimistic voice with bright emotional energy |
+| `sonia-british` | `en-GB-SoniaNeural` | English (UK) | Sophisticated & Elegant | BBC Received Pronunciation for historical documentaries & audiobooks |
+| `ryan-documentary` | `en-GB-RyanNeural` | English (UK) | Deep & Narrative | Compelling documentary narrator with dramatic pause control |
+| `marcus-neural` | `en-US-GuyNeural` | English (US) | Passionate & Direct | Rich broadcaster voice suitable for executive product overviews |
+| `seraphina-neural` | `en-US-JennyNeural` | English (US) | Melodic & Emotional | Expressive narrator with subtle vocal dynamics & breath pauses |
+| `cloned-user` | `F5 Zero-Shot Cloned` | Multi-Lingual / In-Context | Adaptive In-Context Emotion | Clones vocal timbre & emotional mood from a 3–10s user sample |
 
-### B. Python Virtualenv & Service Setup (`scripts/tts_service.py`)
+### B. Python Virtualenv & Multi-Voice Service Setup (`scripts/vm2_tts_service.py`)
 ```bash
 # 1. Install prerequisites
 sudo apt update && sudo apt install -y python3-pip python3-venv
@@ -188,8 +197,11 @@ sudo apt update && sudo apt install -y python3-pip python3-venv
 python3 -m venv /home/ubuntu/tts_env
 /home/ubuntu/tts_env/bin/pip install edge-tts fastapi uvicorn
 
-# 3. Launch service under PM2
-pm2 start "/home/ubuntu/tts_env/bin/python3 /home/ubuntu/tts_service.py" --name neural-tts
+# 3. Deploy updated service script to VM 2
+scp -i key.key scripts/vm2_tts_service.py ubuntu@132.226.190.125:/home/ubuntu/tts_service.py
+
+# 4. Launch or reload under PM2
+pm2 restart neural-tts || pm2 start "/home/ubuntu/tts_env/bin/python3 /home/ubuntu/tts_service.py" --name neural-tts
 pm2 save
 ```
 
@@ -282,3 +294,84 @@ curl -s -X POST http://132.226.190.125/tts/api/tts \
   -d '{"text": "नमस्ते, सुधार लैब्स में आपका स्वागत है।", "voiceId": "aarav-neural"}' | wc -c
 # Returns: ~26000 bytes (clean valid MP3 audio stream)
 ```
+
+---
+
+## 8. Open-Source Status & Commercial Use Licensing Audit
+
+A critical enterprise requirement is knowing whether models, codebases, pre-trained weights, and generated audio/text can be legally used in commercial, revenue-generating products without legal friction, copyright infringement, or unexpected licensing fees.
+
+### A. Text-to-Speech (TTS) Architectures & Models
+
+| Model / Architecture | Code License | Weights License | Free for Commercial Use? | Supported Languages | Legal & Operational Verdict |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Kokoro-82M** *(Hexgrad)* | **Apache 2.0** | **Apache 2.0** | ✅ **YES (100% Free)** | English (US `af_heart`, `am_adam`, UK `bf_isabella`), Japanese, Mandarin, Spanish, French, Italian, Hindi | **Gold Standard for Commercial Deployment**. Zero license fees, no output copyright restrictions, sub-second generation on CPU. |
+| **MeloTTS** *(MyShell.ai)* | **MIT** | **MIT** | ✅ **YES (100% Free)** | English (US, UK, AU, IN), Spanish, French, Chinese, Japanese, Korean | **100% Commercial-Safe**. Extremely fast, clean pronunciation across accents, completely unencumbered by restrictive licenses. |
+| **AI4Bharat Indic-TTS & Indic Parler** *(IIT Madras)* | **Apache 2.0 / MIT** | **Apache 2.0 / MIT** | ✅ **YES (100% Free)** | **Hindi (हिंदी)**, Tamil, Telugu, Marathi, Bengali, Gujarati, Kannada, Malayalam, Odia, Punjabi (22 Indic languages) | **#1 Choice for Commercial Indian Languages**. Fully open-source government/academic initiative explicitly released under Apache/MIT for public & commercial use. |
+| **Piper TTS** *(Rhasspy / Nabu Casa)* | **GPL v3.0** | Per-Voice (LibriTTS = CC-BY 4.0; Lessac = Restricted) | ⚠️ **CONDITIONAL** | Multilingual (English, Hindi, German, Spanish, French, etc.) | Engine is GPL v3 (copyleft applies if distributing software binary). Only voices trained on LibriTTS/CC-BY/CC0 are commercial-safe; avoid Lessac research voices. |
+| **CosyVoice 2** *(Alibaba FunAudioLLM)* | **Apache 2.0** | **Apache 2.0** | ✅ **YES (Permitted under Apache 2.0)** | English, Mandarin, Cantonese, Japanese, Korean, Cross-Lingual Transfer | Code and official weights are Apache 2.0. Commercial use is permitted. Deployers must observe standard biometric voice cloning consent laws. |
+| **F5-TTS** *(SWHL / Flow Matching)* | **MIT** | **CC-BY-NC 4.0** *(Emilia Base)* | ❌ **RESTRICTED (Code: Yes / Weights: No)** | English, Mandarin Chinese, Multilingual Zero-Shot | Code is MIT, but official pre-trained checkpoints (`F5TTS_v1_Base`) are trained on Emilia and licensed under **Non-Commercial CC-BY-NC 4.0**. To use commercially, you must deploy Apache 2.0 retrained checkpoints (e.g. `OpenF5-TTS`) or train on proprietary audio. |
+| **ChatTTS** *(2noise)* | **AGPLv3+** | **CC-BY-NC 4.0** | ❌ **NO (Non-Commercial Only)** | English, Mandarin Chinese | Official model weights are strictly restricted to academic research, educational demonstrations, and non-commercial testing. Prohibited for monetized products. |
+| **Fish Speech** *(Fish Audio)* | **BSD-3-Clause** | **Fish Audio Research License** | ❌ **RESTRICTED (Requires Paid Plan)** | English, Chinese, Multilingual | Open weights on GitHub are restricted to non-commercial research. Commercial deployments require a paid plan or commercial license from Fish Audio. |
+| **Coqui XTTS v2** *(Coqui AI)* | **MPL 2.0** | **CPML (Coqui Public Model License)** | ❌ **NO (Non-Commercial Only)** | English, Hindi, Spanish, French, German, Italian, Portuguese, etc. (17 languages) | The CPML explicitly forbids any commercial exploitation or monetization. |
+| **Microsoft Edge-TTS** *(`edge-tts`)* | **LGPL-3.0 / MIT** (Wrapper) | **Microsoft Proprietary (Edge Consumer Endpoint)** | ⚠️ **NOT OFFICIALLY LICENSED** | 100+ Languages (including Hindi `Madhur`, `Swara`, Indian English `Neerja`, `Prabhat`, US `Ava`, `Andrew`) | The Python client is open source, but the underlying voices communicate with Microsoft's consumer browser endpoint. Microsoft Terms of Service do not grant commercial redistribution rights. Ideal for dev/prototyping/staging; enterprise commercial products should migrate to the official **Azure AI Speech SDK** or deploy **Kokoro-82M / AI4Bharat Indic-TTS**. |
+
+---
+
+### B. LLM Inference Models (Deployed on VM 2 Ollama Fleet)
+
+| Model Family & Checkpoint | Developer | Open Source License | Free for Commercial Use? | Supported Languages | Commercial Verdict |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **`qwen2.5:1.5b`**<br>`qwen2.5:7b` | Alibaba Cloud (Qwen) | **Apache 2.0** | ✅ **YES (100% Free)** | 29+ Languages (English, Hindi, Chinese, Spanish, French, German, Arabic, Russian, Japanese, etc.) | Fully permissive Apache 2.0 license for all models ≤ 32B parameters. No revenue caps, no monthly active user limits. |
+| **`qwen2.5-coder:3b`** | Alibaba Cloud (Qwen) | **Apache 2.0** | ✅ **YES (100% Free)** | Code & 29+ natural languages | Permissive Apache 2.0. Exceptional for commercial developer tooling, code synthesis, and bug analysis. |
+| **`deepseek-r1:1.5b`**<br>`deepseek-r1:7b` | DeepSeek AI | **MIT License** | ✅ **YES (100% Free)** | English, Chinese, Multilingual Reasoning & Math | **Most Permissive Frontier Reasoner**. DeepSeek released both architecture and weights under the unencumbered MIT license with zero commercial restrictions. |
+| **`gemma2:2b`** | Google DeepMind | **Gemma Terms of Use** | ✅ **YES (Permissive Open Weights)** | English primary, strong multilingual coverage (Hindi, Spanish, French, etc.) | Permissive commercial use granted under Google's Responsible Generative AI Terms (standard exclusions apply: unlawful use, military weapons, harmful generation). |
+
+---
+
+### C. Language-by-Language Commercial Readiness Summary
+
+1. **Hindi (हिंदी)**:
+   * **Text-to-Speech**:
+     * *Open-Source & 100% Commercial*: **AI4Bharat Indic Parler-TTS / Indic-TTS** (Apache 2.0/MIT) and **Kokoro-82M community Indic checkpoints**.
+     * *Prototyping & Internal Fleet*: **Edge-TTS** (`hi-IN-MadhurNeural`, `hi-IN-SwaraNeural`).
+   * **LLM Intelligence**: **Qwen 2.5 (1.5B & 7B)** and **Gemma 2 (2B)** natively excel in Hindi syntax, Devanagari script, transliteration, and translation under full Apache 2.0 / Gemma commercial terms.
+2. **Indian English (`en-IN`)**:
+   * **Text-to-Speech**: **MeloTTS** (English-IN, MIT licensed) and **AI4Bharat** provide native Indian English phonetics free for commercial use.
+   * **LLM Intelligence**: Fully supported by Qwen 2.5, DeepSeek-R1, and Gemma 2.
+3. **English (US & UK)**:
+   * **Text-to-Speech**: **Kokoro-82M** (Apache 2.0) and **MeloTTS** (MIT) deliver studio-grade, human-cadence speech with zero licensing fees.
+   * **LLM Intelligence**: 100% open-source commercial coverage across all Ollama models on VM 2.
+4. **Mandarin & East Asian Languages**:
+   * **Text-to-Speech**: **CosyVoice 2** (Apache 2.0) and **MeloTTS** (MIT) provide high-accuracy native delivery.
+   * **LLM Intelligence**: Native domain strength of Qwen 2.5 and DeepSeek-R1 under Apache 2.0 and MIT.
+
+---
+
+### D. Production Commercial Architecture Recommendation
+
+If SutharLabs packages SpeechStudio as a commercially sold SaaS, enterprise on-premise installation, or monetized consumer service:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      SUTHARLABS COMMERCIAL AUDIO PIPELINE                   │
+└─────────────────────────────────────────────────────────────────────────────┘
+                                       │
+        ┌──────────────────────────────┴──────────────────────────────┐
+        ▼                                                             ▼
+ [English US / UK Workloads]                                 [Hindi & Indic Workloads]
+        │                                                             │
+        ▼                                                             ▼
+ ┌──────────────┐                                              ┌──────────────┐
+ │  Kokoro-82M  │ (Apache 2.0)                                 │  AI4Bharat   │ (Apache 2.0 / MIT)
+ │   MeloTTS    │ (MIT License)                                │  Indic-TTS   │ Native Devanagari
+ └──────────────┘                                              └──────────────┘
+        │                                                             │
+        └──────────────────────────────┬──────────────────────────────┘
+                                       ▼
+                       [100% Unencumbered Commercial Audio]
+                       • Zero Royalties • Zero Legal Risk
+                       • Sub-Second Generation on CPU/ARM A1
+```
+
+For staging, internal studio narration, and rapid experimentation, the **Edge-TTS Neural Fleet** provides zero-GPU sovereign delivery across all 13 voices.

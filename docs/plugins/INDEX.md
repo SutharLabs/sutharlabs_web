@@ -1,7 +1,7 @@
 # SutharLabs Workspace Plugins: Master Documentation Index
 
 > **Standard:** SutharLabs Sovereign Architecture  
-> **Last Updated:** October 2026  
+> **Last Updated:** November 2026  
 > **Documentation Strategy:** Centralized Master Catalog with Plugin-Specific Technical Specs
 
 ---
@@ -20,6 +20,7 @@ docs/
     ├── docnexus_studio_architecture_and_logic.md # DocNexus Studio (v0.2.0) Full Spec
     ├── accounting_architecture_and_logic.md      # Accounting ERP & GST (v0.2.3) Full Spec
     ├── stock_tracker_architecture_and_logic.md   # Stock Tracker & Quant (v1.1.3) Full Spec
+    ├── speech_studio_architecture_and_logic.md   # Speech Studio Neural TTS (v0.3.0) Full Spec
     └── flow_designer_architecture_and_logic.md   # Custom Flow Designer (v0.1.0) Spec
 
 src/plugins/<PluginName>/
@@ -40,6 +41,7 @@ src/plugins/<PluginName>/
 | **Doc Nexus** | `wp_doc_nexus` | `v0.3.0` | Creativity & Docs | `/workspace/docnexus` | [README.md](../../src/plugins/DocNexus/README.md) | [DocNexus Studio Architecture & Logic](./docnexus_studio_architecture_and_logic.md) |
 | **Accounting** | `wp_accounting` | `v0.2.3` | Operations | `/workspace/accounting` | [README.md](../../src/plugins/Accounting/README.md) | [Accounting Architecture & GST Logic](./accounting_architecture_and_logic.md) |
 | **Stock Tracker** | `wp_stock_analyzer`| `v1.1.3` | Finance | `/workspace/stock-tracker` | [README.md](../../src/plugins/StockTracker/README.md) | [Stock Tracker Algo Review & Quant Roadmap](./stock_tracker_architecture_and_logic.md) |
+| **Speech Studio** | `speech-studio` | `v0.3.0` | AI & Audio | `/workspace/speech-studio` | In-Tree Module | [Speech Studio Architecture & Logic](./speech_studio_architecture_and_logic.md) |
 | **Custom Flow** | `wp_flow_designer` | `v0.1.0` | Architecture | `/workspace/flow` | In-Tree Module | [Flow Designer Architecture Spec](./flow_designer_architecture_and_logic.md) |
 
 ---
@@ -64,7 +66,13 @@ src/plugins/<PluginName>/
 * **Storage:** Neon PostgreSQL `Portfolio` and `SimulationStore` tables.
 * **Endpoints:** `/api/plugins/wp_stock_analyzer/*`, `/api/workspace/stock-analyzer/*`.
 
-### D. Custom Flow Designer (`wp_flow_designer` • v0.1.0)
+### D. Speech Studio (`speech-studio` • v0.3.0)
+* **Scope:** Enterprise neural text-to-speech studio, multi-engine architecture selector, expressive vocal dynamics, and zero-shot voice cloning.
+* **Engines:** Edge-TTS Neural Fleet (13+ voices across Hindi, Indian English, US & UK English), F5-TTS (Flow-Matching with CFG Guidance), Kokoro-82M (Apache 2.0), ChatTTS (Conversational Dialogue Tokens), and CosyVoice 2 (Apache 2.0).
+* **Licensing Compliance:** Full audit covering Apache 2.0, MIT, and CC-BY-NC 4.0 usage terms for commercial applications.
+* **Endpoints:** `/api/plugins/speech-studio/models`, `/voices`, `/synthesize`, `/quota`.
+
+### E. Custom Flow Designer (`wp_flow_designer` • v0.1.0)
 * **Scope:** Interactive system node topology designer and microservice workflow modeler.
 * **Features:** Node drag-and-drop, connection routing, status toggling, and JSON import/export.
 * **Storage:** PostgreSQL `FlowNode` table.
