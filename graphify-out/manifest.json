@@ -56,15 +56,15 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1793980852.2913575,
-    "seen": 1793980986.2089775,
-    "ast_hash": "f4e57a33bd56765d0343a801a87e0984",
+    "mtime": 1793982964.7865226,
+    "seen": 1793983005.2618804,
+    "ast_hash": "bead59af39895ef83e57c8cdf9c60103",
     "semantic_hash": ""
   },
   "src/App.tsx": {
-    "mtime": 1793974598.5736306,
-    "seen": 1793974735.9523478,
-    "ast_hash": "a026f2cade400aca8284475f0d3a32f3",
+    "mtime": 1793982777.9513423,
+    "seen": 1793983005.261884,
+    "ast_hash": "b36355e91c46f03c0129254920791456",
     "semantic_hash": ""
   },
   "src/components/AccountingView.tsx": {
@@ -80,10 +80,10 @@
     "semantic_hash": ""
   },
   "src/components/AuthPage.tsx": {
-    "mtime": 1790497065.4078505,
-    "seen": 1793772051.9635773,
-    "ast_hash": "fa8089ca1550d413ebb21da48617e0eb",
-    "semantic_hash": "fa8089ca1550d413ebb21da48617e0eb"
+    "mtime": 1793982385.4121869,
+    "seen": 1793983005.2618964,
+    "ast_hash": "765aa43438cb6f06002e7f29a8ea4086",
+    "semantic_hash": ""
   },
   "src/components/BugReportModal.tsx": {
     "mtime": 1792230862.4879715,
@@ -128,15 +128,15 @@
     "semantic_hash": ""
   },
   "src/components/HeroStudioConsole.tsx": {
-    "mtime": 1793980935.0724018,
-    "seen": 1793980986.2090054,
-    "ast_hash": "a0deecb43b7e2296e5c00272fb17bb7c",
+    "mtime": 1793982930.8437426,
+    "seen": 1793983005.2619212,
+    "ast_hash": "13eb0f38dd9306d24513d1b5acf12749",
     "semantic_hash": ""
   },
   "src/components/LandingPage.tsx": {
-    "mtime": 1793980935.602443,
-    "seen": 1793980986.2090075,
-    "ast_hash": "fdd44580a648ec24c8c19910461affb9",
+    "mtime": 1793982936.13173,
+    "seen": 1793983005.2619236,
+    "ast_hash": "ff162ca8f616853dba2cba7eb14d649b",
     "semantic_hash": ""
   },
   "src/components/ManageAppsView.tsx": {
@@ -356,9 +356,9 @@
     "semantic_hash": "8dab1d2f4b290c72f4b09fe1b159d0b2"
   },
   "src/plugins/Accounting/manifest.json": {
-    "mtime": 1793980953.1985993,
-    "seen": 1793980986.2090828,
-    "ast_hash": "6f53ebdad17091f1fd3d611e827a4986",
+    "mtime": 1793982976.707568,
+    "seen": 1793983005.2620342,
+    "ast_hash": "aa0dff214ee8da58a0091d03cef01db2",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/manifest.ts": {
@@ -470,9 +470,9 @@
     "semantic_hash": "2cf61e718991de61558a761f4a82f17b"
   },
   "src/plugins/DocNexus/manifest.json": {
-    "mtime": 1793980948.8438852,
-    "seen": 1793980986.209136,
-    "ast_hash": "e167804f5844eb22866ac1e8498ae1db",
+    "mtime": 1793982975.5927246,
+    "seen": 1793983005.2621253,
+    "ast_hash": "530316088d73ab3300c398a831b5262d",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/manifest.ts": {
@@ -536,9 +536,9 @@
     "semantic_hash": "60a8dc279c1c40a63b3d53988dbd2e61"
   },
   "src/plugins/FlowDesigner/manifest.json": {
-    "mtime": 1793980947.247898,
-    "seen": 1793980986.2091544,
-    "ast_hash": "60e12a54353bf6261c29e6a6dfed3eb4",
+    "mtime": 1793982974.8951087,
+    "seen": 1793983005.2621548,
+    "ast_hash": "71a00253a2198c146d5b1a7fcfc4b903",
     "semantic_hash": ""
   },
   "src/plugins/FlowDesigner/manifest.ts": {
@@ -644,9 +644,9 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1793980938.0091493,
-    "seen": 1793980986.2092187,
-    "ast_hash": "940ac56f7f4d091bbd372bf4ef2af946",
+    "mtime": 1793982973.1808105,
+    "seen": 1793983005.262257,
+    "ast_hash": "27ce24ea1212cd4b26a7add0cdeb8365",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
@@ -980,9 +980,9 @@
     "semantic_hash": ""
   },
   "index.html": {
-    "mtime": 1792228754.043905,
-    "seen": 1793773436.6222906,
-    "ast_hash": "84379dd5d09208f1ef2de2a899f2efc0",
+    "mtime": 1793982182.3300915,
+    "seen": 1793983005.262543,
+    "ast_hash": "5fc8c2007d0ecbd6216ed1257043d104",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/README.md": {
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1793980954.8884194,
-    "seen": 1793980986.2091858,
-    "ast_hash": "e1b8c99f79386771f666b681c9511d43",
+    "mtime": 1793982977.7597063,
+    "seen": 1793983005.2622051,
+    "ast_hash": "1204b4b288a065a8e57e826a1a683cf8",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {
@@ -1178,9 +1178,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.json": {
-    "mtime": 1793980956.4894168,
-    "seen": 1793980986.2091632,
-    "ast_hash": "2eceb638e76432b191b25e64edb3ae98",
+    "mtime": 1793982978.5565479,
+    "seen": 1793983005.2621682,
+    "ast_hash": "b139faa98ce5d2589bf6de78ee0797bb",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.ts": {
@@ -1466,15 +1466,15 @@
     "semantic_hash": ""
   },
   "src/components/PublicToolsHubView.tsx": {
-    "mtime": 1793980936.0446262,
-    "seen": 1793980986.209028,
-    "ast_hash": "7ef51d525a16c724a35d0b19f8a9e476",
+    "mtime": 1793982915.9260633,
+    "seen": 1793983005.2619522,
+    "ast_hash": "8dfcaf5be35acad371b95d6bcd7d59cb",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/PdfToolsStudio.tsx": {
-    "mtime": 1793980939.2713716,
-    "seen": 1793980986.209106,
-    "ast_hash": "7106152173ac2a2f52d892d45809a5d7",
+    "mtime": 1793982695.180033,
+    "seen": 1793983005.262071,
+    "ast_hash": "332334b87108689910089c34eb4bda6f",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/tools/Base64Tool.tsx": {
@@ -1562,15 +1562,81 @@
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.json": {
-    "mtime": 1793980958.1410642,
-    "seen": 1793980986.209177,
-    "ast_hash": "b31a2c3e2c72acc4a7856b0b9961ab88",
+    "mtime": 1793982979.4699905,
+    "seen": 1793983005.26219,
+    "ast_hash": "6135d563cabb1890dcb0991aa458d975",
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.ts": {
     "mtime": 1793974909.396425,
     "seen": 1793980178.9893527,
     "ast_hash": "1d72300c338b609aecaaaecc0a759d1f",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/AppIconGeneratorTool.tsx": {
+    "mtime": 1793982499.1178532,
+    "seen": 1793983005.2620878,
+    "ast_hash": "806386953739e480612bb07325cc10bf",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/ResumeBuilderTool.tsx": {
+    "mtime": 1793982612.4855294,
+    "seen": 1793983005.262111,
+    "ast_hash": "95c44ea54e453d6ceaf76b5e4ce72e4a",
+    "semantic_hash": ""
+  },
+  "SutharLabs_Logo.png": {
+    "mtime": 1793981524.5923407,
+    "seen": 1793983005.2625554,
+    "ast_hash": "a23a8816128dc729cb61bf425287141d",
+    "semantic_hash": ""
+  },
+  "public/android-chrome-192x192.png": {
+    "mtime": 1793982169.1825051,
+    "seen": 1793983005.2625577,
+    "ast_hash": "115648600f3e9ee80499266914254687",
+    "semantic_hash": ""
+  },
+  "public/android-chrome-512x512.png": {
+    "mtime": 1793982169.2835205,
+    "seen": 1793983005.2625604,
+    "ast_hash": "ed6e386003c658f1ba99f301d850bb1c",
+    "semantic_hash": ""
+  },
+  "public/apple-touch-icon.png": {
+    "mtime": 1793982169.115315,
+    "seen": 1793983005.2625625,
+    "ast_hash": "589a4389c51201933401de177dff7fcf",
+    "semantic_hash": ""
+  },
+  "public/favicon-16x16.png": {
+    "mtime": 1793982169.1391602,
+    "seen": 1793983005.2625701,
+    "ast_hash": "7c189e6daf786962548dff67200fbc15",
+    "semantic_hash": ""
+  },
+  "public/favicon-32x32.png": {
+    "mtime": 1793982169.1613927,
+    "seen": 1793983005.2625725,
+    "ast_hash": "e6d23cbc7b79780579cae7de5ea99b35",
+    "semantic_hash": ""
+  },
+  "public/sutharlabs-logo-sm.png": {
+    "mtime": 1793982168.4831474,
+    "seen": 1793983005.2625778,
+    "ast_hash": "e9a064e82c5db0938413554e61992dcc",
+    "semantic_hash": ""
+  },
+  "public/sutharlabs-logo.png": {
+    "mtime": 1793982168.0359156,
+    "seen": 1793983005.26258,
+    "ast_hash": "b06fc2b0c91ceb7b2c816b29ba73c17a",
+    "semantic_hash": ""
+  },
+  "src/assets/sutharlabs-logo.png": {
+    "mtime": 1793982168.2482889,
+    "seen": 1793983005.2625873,
+    "ast_hash": "b06fc2b0c91ceb7b2c816b29ba73c17a",
     "semantic_hash": ""
   },
   "package-lock.json": {

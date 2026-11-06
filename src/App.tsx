@@ -255,8 +255,8 @@ export default function App() {
         <Route path="/contact" element={
           <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} theme={theme} toggleTheme={toggleTheme} />
         } />
-        <Route path="/tools" element={<PublicToolsHubView theme={theme} user={user} />} />
-        <Route path="/tools/:toolId" element={<PublicToolsHubView theme={theme} user={user} />} />
+        <Route path="/tools" element={<PublicToolsHubView theme={theme} user={user} toggleTheme={toggleTheme} />} />
+        <Route path="/tools/:toolId" element={<PublicToolsHubView theme={theme} user={user} toggleTheme={toggleTheme} />} />
         <Route path="/privacy" element={<PrivacyPolicyView />} />
         <Route path="/copyright" element={<CopyrightView />} />
         <Route path="/auth" element={
@@ -350,17 +350,11 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             className="flex items-center gap-1.5 sm:gap-2 cursor-pointer group shrink-0"
             title="Return to Home"
           >
-            <svg className="w-5 h-5 sm:w-5.5 sm:h-5.5 transition-transform duration-300 group-hover:rotate-12 shrink-0" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <defs>
-                <linearGradient id="sutharGlowWorkNav" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stopColor="#00dbe7" />
-                  <stop offset="50%" stopColor="#ce5dff" />
-                  <stop offset="100%" stopColor="#00e476" />
-                </linearGradient>
-              </defs>
-              <path d="M50 5 L90 28 L90 72 L50 95 L10 72 L10 28 Z" stroke="url(#sutharGlowWorkNav)" strokeWidth="6" strokeLinejoin="round" fill="none" />
-              <path d="M65 32 C65 25, 35 25, 35 37 C35 49, 65 51, 65 63 C65 75, 35 75, 35 68" stroke="url(#sutharGlowWorkNav)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-            </svg>
+            <img 
+              src="/sutharlabs-logo-sm.png" 
+              alt="SutharLabs Logo" 
+              className="w-5 h-5 sm:w-6 sm:h-6 object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-[0_0_6px_rgba(0,219,231,0.4)]" 
+            />
             <span className="text-base sm:text-lg font-bold text-[#74f5ff] tracking-tight neon-text-glow truncate">
               SutharLabs
             </span>

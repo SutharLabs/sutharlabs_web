@@ -136,7 +136,12 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
       <div className="w-full max-w-[480px] z-10 relative my-8">
         
         {/* Back to Home Logo Header */}
-        <div className="text-center mb-8 cursor-pointer" onClick={onBackToHome}>
+        <div className="text-center mb-8 cursor-pointer flex flex-col items-center group" onClick={onBackToHome}>
+          <img 
+            src="/sutharlabs-logo-sm.png" 
+            alt="SutharLabs" 
+            className="w-14 h-14 object-contain mb-2.5 drop-shadow-[0_0_12px_rgba(0,219,231,0.4)] group-hover:scale-105 transition-transform" 
+          />
           <h1 className="text-3xl sm:text-4xl font-bold text-primary tracking-tight neon-text-glow select-none">SutharLabs</h1>
           <p className="font-mono text-xs text-on-surface-variant tracking-widest mt-2 uppercase">Identity &amp; Access Control</p>
         </div>

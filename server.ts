@@ -394,7 +394,7 @@ async function seedDatabase() {
 
         type: "Native",
 
-        description: "High-performance client-side sovereign utility suite: Client-side PDF tools (Merge, Split, Compress, Watermark, Reorder, Page Extract), Image & Document Converters, Multilingual OCR (Devanagari & English), Receipt-to-CSV, Business Card Scanner, Developer Tools. Zero server uploads, 100% private.",
+        description: "High-performance client-side sovereign utility suite: App Icon & Favicon Studio (multi-resolution PNG, ICO, PWA manifest), Sovereign Resume & CV Studio (PDF, Word DOCX, LaTeX .tex, Plain Text), Client-side PDF tools (Merge, Split, Compress, Watermark, Reorder, Page Extract), Image & Document Converters, Multilingual OCR (Devanagari & English), Receipt-to-CSV, Business Card Scanner, Developer Tools. Zero server uploads, 100% private.",
 
         iconSymbol: "build",
 

@@ -38,17 +38,19 @@ import {
   PenTool,
   Scissors,
   Minimize2,
-  FileDown
+  FileDown,
+  Menu
 } from 'lucide-react';
 
 interface PublicToolsHubViewProps {
   theme?: 'dark' | 'light';
   user?: any;
+  toggleTheme?: () => void;
 }
 
 type ToolCategory = 'ALL' | 'PDF' | 'IMAGE' | 'OCR' | 'DEV';
 
-export default function PublicToolsHubView({ theme = 'dark', user }: PublicToolsHubViewProps) {
+export default function PublicToolsHubView({ theme = 'dark', user, toggleTheme }: PublicToolsHubViewProps) {
   const isLight = theme === 'light';
   const { toolId } = useParams<{ toolId?: string }>();
   const navigate = useNavigate();
@@ -56,6 +58,7 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
   // Search & Filter State
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<ToolCategory>('ALL');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // FAQ accordion state
   const [openFaq, setOpenFaq] = useState<number | null>(0);
@@ -67,10 +70,10 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
 
   // Tool categorization mapping
   const getToolCategory = (id: ToolType): 'PDF' | 'IMAGE' | 'OCR' | 'DEV' => {
-    if (['pdf-to-image', 'image-to-pdf', 'merge-pdf', 'split-pdf', 'pdf-editor', 'pdf-to-word', 'ocr-pdf'].includes(id)) {
+    if (['pdf-to-image', 'image-to-pdf', 'merge-pdf', 'split-pdf', 'pdf-editor', 'pdf-to-word', 'ocr-pdf', 'resume-builder'].includes(id)) {
       return 'PDF';
     }
-    if (['compress-image', 'qr-generator', 'base64-tool'].includes(id)) {
+    if (['compress-image', 'qr-generator', 'base64-tool', 'app-icon-generator'].includes(id)) {
       return 'IMAGE';
     }
     if (['multilingual-ocr', 'receipt-to-csv', 'business-card-scanner'].includes(id)) {
@@ -188,85 +191,178 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }} 
       />
 
-      {/* Top Navigation Bar */}
-      <header className={`sticky top-0 z-40 w-full border-b backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between transition-colors ${
-        isLight ? 'bg-white/80 border-slate-200 shadow-xs' : 'bg-[#101014]/80 border-[#3a494b]/30'
+      {/* Uniform Responsive Floating Top Navigation Bar */}
+      <nav className={`fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-6 py-3 backdrop-blur-xl rounded-full mt-4 mx-auto w-[92%] sm:w-[95%] max-w-7xl border shadow-[0_0_15px_rgba(0,219,231,0.08)] transition-all duration-300 ease-out ${
+        isLight 
+          ? 'bg-white/85 border-slate-200 text-slate-800' 
+          : 'bg-[#101014]/85 border-outline/10 text-[#e5e1e4]'
       }`}>
-        <div className="flex items-center gap-6">
-          <Link to="/" className="flex items-center gap-2.5 group cursor-pointer">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00dbe7] to-[#74f5ff] flex items-center justify-center shadow-sm shadow-[#00dbe7]/20 group-hover:scale-105 transition-transform shrink-0">
-              <span className="text-[#002022] font-black text-sm tracking-tighter">SL</span>
-            </div>
-            <div>
-              <span className="font-extrabold text-base tracking-tight block leading-none">
-                Suthar<span className="text-[#00dbe7]">Labs</span>
-              </span>
-              <span className="text-[10px] font-mono text-[#849495] tracking-widest uppercase block mt-0.5">
-                Sovereign Tools Hub
-              </span>
-            </div>
-          </Link>
+        <Link 
+          to="/" 
+          className="flex items-center gap-2.5 cursor-pointer group"
+        >
+          <img 
+            src="/sutharlabs-logo-sm.png" 
+            alt="SutharLabs Emblem" 
+            className="w-7 h-7 sm:w-8 sm:h-8 object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-[0_0_8px_rgba(0,219,231,0.4)]" 
+          />
+          <span className="font-sans text-xl sm:text-2xl font-bold text-[#74f5ff] tracking-tight neon-text-glow">
+            SutharLabs
+          </span>
+        </Link>
 
-          {/* Quick tool pills on desktop */}
-          <nav className="hidden xl:flex items-center gap-1.5 text-xs font-mono">
-            {TOOLS_LIST.slice(0, 6).map(t => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => navigate(`/tools/${t.id}`)}
-                className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                  currentToolId === t.id && isSpecificTool
-                    ? isLight ? 'bg-slate-200 text-slate-900 font-bold' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
-                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-[#849495] hover:text-[#e5e1e4]'
-                }`}
-              >
-                {t.title}
-              </button>
-            ))}
-          </nav>
+        {/* Desktop Navigation Links */}
+        <div className="hidden lg:flex items-center gap-4 sm:gap-6 xl:gap-8 font-mono text-xs">
+          <Link 
+            to="/#features" 
+            className="text-on-surface-variant hover:text-primary hover:bg-primary/5 px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer bg-transparent border-none"
+          >
+            Features
+          </Link>
+          <Link 
+            to="/#services" 
+            className="text-on-surface-variant hover:text-primary hover:bg-primary/5 px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer bg-transparent border-none"
+          >
+            Services offered
+          </Link>
+          <Link 
+            to="/#portfolio" 
+            className="text-on-surface-variant hover:text-tertiary hover:bg-tertiary/5 px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer bg-transparent border-none"
+          >
+            Our Portfolio
+          </Link>
+          <Link 
+            to="/#store" 
+            className="text-on-surface-variant hover:text-secondary hover:bg-secondary/5 px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer bg-transparent border-none"
+          >
+            App Store
+          </Link>
+          <Link 
+            to="/tools"
+            className="text-primary bg-primary/10 font-bold px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer border-none flex items-center gap-1"
+          >
+            <span>Free Tools</span>
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-primary/20 text-primary uppercase font-sans font-bold">19 Tools</span>
+          </Link>
+          <Link 
+            to="/#contact" 
+            className="text-on-surface-variant hover:text-primary hover:bg-primary/5 px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer bg-transparent border-none"
+          >
+            Contact Us
+          </Link>
         </div>
 
-        {/* Action CTAs */}
-        <div className="flex items-center gap-2.5">
-          {isSpecificTool && (
+        {/* Controls */}
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Theme Toggle */}
+          {toggleTheme && (
             <button
               type="button"
-              onClick={() => navigate('/tools')}
-              className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
-                isLight 
-                  ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-xs' 
-                  : 'bg-[#1b1b1e] hover:bg-[#252428] text-[#e5e1e4] border border-[#3a494b]/40 shadow-xs'
-              }`}
+              onClick={toggleTheme}
+              className="p-2.5 bg-white/5 border border-white/10 rounded-full text-on-surface hover:text-[#00dbe7] hover:border-[#00dbe7]/50 transition-all flex items-center justify-center cursor-pointer"
+              title={theme === 'light' ? 'Switch to Dark Theme' : 'Switch to Light Theme'}
             >
-              <Layers className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-              <span>All 17 Tools</span>
+              {isLight ? (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+                </svg>
+              ) : (
+                <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="5" />
+                  <line x1="12" y1="1" x2="12" y2="3" />
+                  <line x1="12" y1="21" x2="12" y2="23" />
+                  <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+                  <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+                  <line x1="1" y1="12" x2="3" y2="12" />
+                  <line x1="21" y1="12" x2="23" y2="12" />
+                  <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+                  <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+                </svg>
+              )}
             </button>
           )}
 
-          <Link
-            to="/workspace"
-            className={`hidden sm:flex h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider items-center gap-1.5 transition-all cursor-pointer ${
-              isLight 
-                ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
-                : 'bg-[#1b1b1e] hover:bg-[#252428] text-[#e5e1e4] border border-[#3a494b]/40'
-            }`}
-          >
-            <Workflow className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-            <span>Workflow Studio</span>
-          </Link>
-
+          {/* Launch Workspace */}
           <Link
             to={user ? "/workspace" : "/auth"}
-            className="h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-sm bg-sky-500 hover:bg-sky-600 text-white select-none transition-all shrink-0"
+            className="hidden sm:inline-flex items-center gap-1.5 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full font-mono font-bold text-xs bg-gradient-to-r from-[#00dbe7] to-[#74f5ff] text-[#002022] hover:opacity-95 shadow-md shadow-[#00dbe7]/20 transition-all uppercase tracking-wider"
           >
-            <span>{user ? 'Open Workspace' : 'Sign In'}</span>
+            <span>{user ? 'Open Workspace' : 'Launch Workspace'}</span>
             <ChevronRight className="w-3.5 h-3.5 shrink-0" />
           </Link>
+
+          {/* Mobile Menu Hamburger */}
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="lg:hidden p-2 text-on-surface hover:text-primary transition-all cursor-pointer"
+            aria-label="Open navigation menu"
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
-      </header>
+      </nav>
+
+      {/* Mobile Sliding Drawer Panel */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div 
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setIsMobileMenuOpen(false)} 
+          />
+          <div className="fixed right-0 top-0 bottom-0 h-full w-[85%] max-w-[320px] bg-[#0c0c0e] border-l border-white/10 shadow-2xl p-6 flex flex-col justify-between font-mono z-50">
+            <div className="space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <img src="/sutharlabs-logo-sm.png" alt="SutharLabs" className="w-6 h-6 object-contain" />
+                  <span className="text-sm font-bold text-[#74f5ff] uppercase tracking-wider">SutharLabs</span>
+                </div>
+                <button 
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-1.5 text-on-surface-variant hover:text-white cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3 text-sm">
+                <Link to="/#features" onClick={() => setIsMobileMenuOpen(false)} className="text-on-surface-variant hover:text-primary py-1.5">
+                  Features
+                </Link>
+                <Link to="/#services" onClick={() => setIsMobileMenuOpen(false)} className="text-on-surface-variant hover:text-primary py-1.5">
+                  Services
+                </Link>
+                <Link to="/#portfolio" onClick={() => setIsMobileMenuOpen(false)} className="text-on-surface-variant hover:text-tertiary py-1.5">
+                  Our Portfolio
+                </Link>
+                <Link to="/#store" onClick={() => setIsMobileMenuOpen(false)} className="text-on-surface-variant hover:text-secondary py-1.5">
+                  App Store
+                </Link>
+                <Link to="/tools" onClick={() => setIsMobileMenuOpen(false)} className="text-primary font-bold py-1.5">
+                  Free Tools (19 Tools)
+                </Link>
+                <Link to="/#contact" onClick={() => setIsMobileMenuOpen(false)} className="text-on-surface-variant hover:text-primary py-1.5">
+                  Contact Us
+                </Link>
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-white/10">
+              <Link
+                to={user ? "/workspace" : "/auth"}
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="w-full h-10 rounded-xl font-mono font-bold text-xs bg-sky-500 hover:bg-sky-600 text-white flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <span>{user ? 'Open Workspace' : 'Launch Workspace'}</span>
+                <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+              </Link>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero Header Section */}
-      <section className={`py-8 sm:py-12 px-4 sm:px-8 border-b ${
+      <section className={`pt-28 pb-10 sm:pt-36 sm:pb-14 px-4 sm:px-8 border-b ${
         isLight ? 'bg-white border-slate-200' : 'bg-gradient-to-b from-[#121216] to-[#0a0a0c] border-[#3a494b]/30'
       }`}>
         <div className="max-w-4xl mx-auto text-center space-y-4">
@@ -295,7 +391,7 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
                 <Search className="w-4 h-4 ml-3.5 text-slate-400 shrink-0" />
                 <input
                   type="text"
-                  placeholder="Search over 17 tools: word, merge, split, ocr, qr, vcard, compress..."
+                  placeholder="Search 19 sovereign tools: resume, icon generator, word, merge, split, ocr, qr, vcard, compress..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={`w-full py-2.5 px-3 text-xs font-mono outline-none bg-transparent ${
@@ -352,7 +448,7 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
                   <span>Related Sovereign Tools</span>
                 </h3>
                 <Link to="/tools" className="text-xs font-mono text-[#00dbe7] hover:underline">
-                  View All 17 Tools &rarr;
+                  View All 19 Tools &rarr;
                 </Link>
               </div>
 

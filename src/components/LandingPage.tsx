@@ -248,17 +248,11 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
           }} 
           className="flex items-center gap-2.5 cursor-pointer group"
         >
-          <svg className="w-6 h-6 sm:w-7 sm:h-7 transition-transform duration-300 group-hover:rotate-12" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <linearGradient id="sutharGlowNav" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#00dbe7" />
-                <stop offset="50%" stopColor="#ce5dff" />
-                <stop offset="100%" stopColor="#00e476" />
-              </linearGradient>
-            </defs>
-            <path d="M50 5 L90 28 L90 72 L50 95 L10 72 L10 28 Z" stroke="url(#sutharGlowNav)" strokeWidth="6" strokeLinejoin="round" fill="none" />
-            <path d="M65 32 C65 25, 35 25, 35 37 C35 49, 65 51, 65 63 C65 75, 35 75, 35 68" stroke="url(#sutharGlowNav)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-          </svg>
+          <img 
+            src="/sutharlabs-logo-sm.png" 
+            alt="SutharLabs Emblem" 
+            className="w-7 h-7 sm:w-8 sm:h-8 object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-[0_0_8px_rgba(0,219,231,0.4)]" 
+          />
           <span className="font-sans text-xl sm:text-2xl font-bold text-[#74f5ff] tracking-tight neon-text-glow">
             SutharLabs
           </span>
@@ -403,17 +397,11 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
               {/* Header inside drawer */}
               <div className="flex items-center justify-between pb-6 border-b border-outline/15 mb-8">
                 <div className="flex items-center gap-2">
-                  <svg className="w-5.5 h-5.5" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <linearGradient id="sutharGlowMobiNav" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="#00dbe7" />
-                        <stop offset="50%" stopColor="#ce5dff" />
-                        <stop offset="100%" stopColor="#00e476" />
-                      </linearGradient>
-                    </defs>
-                    <path d="M50 5 L90 28 L90 72 L50 95 L10 72 L10 28 Z" stroke="url(#sutharGlowMobiNav)" strokeWidth="6" strokeLinejoin="round" fill="none" />
-                    <path d="M65 32 C65 25, 35 25, 35 37 C35 49, 65 51, 65 63 C65 75, 35 75, 35 68" stroke="url(#sutharGlowMobiNav)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                  </svg>
+                  <img 
+                    src="/sutharlabs-logo-sm.png" 
+                    alt="SutharLabs" 
+                    className="w-6 h-6 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(0,219,231,0.4)]" 
+                  />
                   <span className="text-sm font-bold text-[#74f5ff] uppercase tracking-wider">SutharLabs</span>
                 </div>
                 <button 
@@ -608,7 +596,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                 </span>
                 <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-[#00dbe7]"></span>
-                  17+ In-Browser WASM Tools
+                  19+ In-Browser WASM Tools
                 </span>
                 <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>

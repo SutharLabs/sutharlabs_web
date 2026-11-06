@@ -50,6 +50,8 @@ import Base64Tool from './tools/Base64Tool.js';
 import ReceiptToCsvTool from './tools/ReceiptToCsvTool.js';
 import MultilingualOcrTool from './tools/MultilingualOcrTool.js';
 import BusinessCardScannerTool from './tools/BusinessCardScannerTool.js';
+import AppIconGeneratorTool from './tools/AppIconGeneratorTool.js';
+import ResumeBuilderTool from './tools/ResumeBuilderTool.js';
 import ConfirmModal from '../../../components/ConfirmModal.js';
 
 
@@ -77,7 +79,9 @@ export type ToolType =
   | 'hash-generator'
   | 'uuid-password'
   | 'text-diff'
-  | 'base64-tool';
+  | 'base64-tool'
+  | 'app-icon-generator'
+  | 'resume-builder';
 
 export interface ToolMeta {
   id: ToolType;
@@ -235,6 +239,24 @@ export const TOOLS_LIST: ToolMeta[] = [
     category: 'dev',
     icon: Binary,
     accentColor: '#38bdf8'
+  },
+  {
+    id: 'app-icon-generator',
+    title: 'App Icon & Favicon Studio',
+    tagline: 'Generate multi-resolution favicon.ico, Apple touch icons, Android manifest, and social cards in RAM.',
+    badge: 'PWA & STORES',
+    category: 'dev',
+    icon: Sparkles,
+    accentColor: '#00dbe7'
+  },
+  {
+    id: 'resume-builder',
+    title: 'Sovereign Resume & CV Studio',
+    tagline: 'Create ATS-optimized resumes with 4-format export: PDF, Word (.docx), LaTeX (.tex), and Plain Text.',
+    badge: '4-FORMAT EXPORT',
+    category: 'doc',
+    icon: FileText,
+    accentColor: '#818cf8'
   }
 ];
 
@@ -664,6 +686,30 @@ export default function PdfToolsStudio({
               setStatus={setStatusMessage} 
               setError={setErrorMessage} 
               addLog={addLogSafe} 
+            />
+          )}
+
+          {activeTool === 'app-icon-generator' && (
+            <AppIconGeneratorTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+              checkDownloadAccess={checkDownloadAccess}
+            />
+          )}
+
+          {activeTool === 'resume-builder' && (
+            <ResumeBuilderTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+              checkDownloadAccess={checkDownloadAccess}
             />
           )}
         </div>

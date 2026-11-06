@@ -57,7 +57,7 @@ const ALL_PLUGIN_SLIDES: PluginSlide[] = [
   {
     id: 'sovereign-tools',
     name: 'Sovereign Tools Studio',
-    badge: '17+ Client WASM Tools',
+    badge: '19+ Client WASM Tools',
     icon: 'build',
     accentColor: '#00dbe7',
     tagline: 'Zero-Upload PDF to Word, Lossless Converter & Utilities',
