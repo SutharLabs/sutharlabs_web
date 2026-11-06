@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import { GoogleGenAI } from '@google/genai';
 import { authenticateToken } from '../../middleware/auth.js';
 import { AccountingStorage } from './storage.js';
 import { validateGSTIN, COMMON_HSN_SAC_CATALOG, INDIAN_GST_STATES } from './gstEngine.js';
@@ -476,4 +477,127 @@ export function registerRoutes(router: Router) {
       res.status(500).json({ error: 'Failed to generate General Ledger.' });
     }
   });
+
+  // ==================== MULTILINGUAL AI RECEIPT & BILL OCR ====================
+
+  router.post('/ocr-receipt', authenticateToken, async (req: any, res: any) => {
+    try {
+      const { image, apiKey: clientApiKey } = req.body;
+      if (!image || typeof image !== 'string') {
+        return res.status(400).json({ error: 'Receipt image data is required (base64 data URL).' });
+      }
+
+      // Extract mime type and base64 payload
+      let mimeType = 'image/jpeg';
+      let base64Data = image;
+
+      if (image.startsWith('data:')) {
+        const match = image.match(/^data:([^;]+);base64,(.+)$/);
+        if (match) {
+          mimeType = match[1];
+          base64Data = match[2];
+        }
+      }
+
+      // Resolve Gemini API key with priority: body apiKey -> header x-gemini-key -> env variables
+      const apiKey = (clientApiKey && String(clientApiKey).trim()) ||
+                     (req.headers['x-gemini-key'] && String(req.headers['x-gemini-key']).trim()) ||
+                     process.env.GEMINI_API_KEY ||
+                     process.env.GOOGLE_API_KEY;
+
+      if (!apiKey) {
+        return res.status(400).json({
+          error: 'No Gemini Vision API key provided. Pass x-gemini-key header or enter your API key in the OCR dialog, or run client-side Tesseract.js.'
+        });
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+
+      const prompt = `You are a Chartered Accountant, Tax Auditor, and Multilingual OCR Engine specialized in Indian and International financial documents, receipts, invoices, and bills.
+Analyze this receipt/bill image carefully. The receipt may be in English, Hindi (हिन्दी / देवनागरी लिपि), or bilingual English-Hindi (e.g. किराना बिल, पेट्रोल पंप रसीद, रेस्टोरेंट बिल, टैक्स इनवॉइस, सर्विस बिल, हार्डवेयर बिल).
+
+Understand both English and Hindi text thoroughly. Extract all visible financial metadata, itemized lines, taxes, and totals accurately.
+If certain fields are in Hindi/Devanagari (e.g. "श्री गणेश ट्रेडर्स", "कर इनवॉयस", "रसीद नं", "दिनांक", "कुल योग"), capture the vendor name authentically and provide a clear English description if helpful.
+
+Extract and output ONLY a valid, raw JSON object (with NO markdown code fences, NO formatting text, NO backticks) adhering strictly to this JSON schema:
+{
+  "vendorName": string,
+  "vendorGstin": string or null,
+  "vendorAddress": string or null,
+  "vendorPhone": string or null,
+  "invoiceNumber": string,
+  "invoiceDate": string,
+  "dueDate": string,
+  "voucherType": string,
+  "expenseCategory": string,
+  "items": [
+    {
+      "itemDescription": string,
+      "hsnSacCode": string,
+      "quantity": number,
+      "unit": string,
+      "rate": number,
+      "gstRate": number,
+      "taxableValue": number,
+      "cgstAmount": number,
+      "sgstAmount": number,
+      "igstAmount": number,
+      "totalAmount": number
+    }
+  ],
+  "taxableAmount": number,
+  "cgstTotal": number,
+  "sgstTotal": number,
+  "igstTotal": number,
+  "totalTax": number,
+  "roundOff": number,
+  "grandTotal": number,
+  "paymentMode": string,
+  "detectedLanguage": string,
+  "confidenceScore": number,
+  "rawText": string,
+  "notes": string
+}
+
+Rules:
+- If tax amounts are not explicitly broken down but grand total is known, calculate or infer reasonable GST amounts or set tax to 0.
+- Ensure all numbers are valid numerical values, not strings.
+- Return ONLY the JSON object.`;
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: [
+          {
+            inlineData: {
+              mimeType,
+              data: base64Data
+            }
+          },
+          prompt
+        ],
+        config: {
+          responseMimeType: 'application/json'
+        }
+      });
+
+      const text = response.text || '';
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          parsed = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error('Failed to parse structured JSON from OCR response.');
+        }
+      }
+
+      res.json({ success: true, data: parsed });
+    } catch (err: any) {
+      console.error('OCR Receipt processing error:', err);
+      res.status(500).json({ error: err.message || 'Failed to process receipt image with AI Vision OCR.' });
+    }
+  });
+
 }

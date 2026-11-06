@@ -154,3 +154,4 @@ export default function TextDiffTool({ isLight, isProcessing, setIsProcessing, s
     </div>
   );
 }
+

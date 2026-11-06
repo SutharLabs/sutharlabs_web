@@ -232,3 +232,4 @@ export default function Base64Tool({ isLight, isProcessing, setIsProcessing, set
     </div>
   );
 }
+

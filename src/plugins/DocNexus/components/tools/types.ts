@@ -9,6 +9,9 @@ export type ToolType =
   | 'pdf-to-word' 
   | 'compress-image' 
   | 'ocr-pdf'
+  | 'receipt-to-csv'
+  | 'multilingual-ocr'
+  | 'business-card-scanner'
   | 'qr-generator'
   | 'json-converter'
   | 'hash-generator'
@@ -34,3 +37,4 @@ export interface SubToolProps {
   setError: (err: string | null) => void;
   addLog: (type: 'INFO' | 'SUCCESS' | 'ERROR', message: string) => void;
 }
+

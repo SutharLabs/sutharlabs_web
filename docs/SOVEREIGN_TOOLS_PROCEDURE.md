@@ -194,7 +194,25 @@ ssh -i <ssh-key> ubuntu@130.210.37.199 "pm2 restart sutharlabs-backend"
 | **QR & Barcodes** | `qrcode` or native SVG math | MIT | 100% Client Canvas/SVG |
 | **Hashing & Encryption** | `window.crypto.subtle` | W3C Standard | Hardware-accelerated browser |
 | **Image Compression** | HTML5 Canvas / `createImageBitmap` | Web Standard | In-browser multi-threaded |
+| **Multilingual OCR** | `tesseract.js` | Apache 2.0 | 100% Client WebAssembly (Hindi + English) |
+| **Multimodal Financial OCR** | `@google/genai` (Gemini 2.5 Flash) | MIT / Permissive | Zero-Shot Structured Bill & Receipt JSON |
 | **Diagramming** | `@excalidraw/excalidraw` | MIT | Drop-in React Component |
 
 ---
+
+## 6. Accounting Multilingual OCR Architecture
+
+In `src/plugins/Accounting/`:
+- **Dual Engine Recognition**:
+  1. Sovereign AI Multimodal Vision (`POST /api/plugins/wp_accounting/ocr-receipt`) using Gemini 2.5 Flash for deep semantic understanding of complex Indian GST invoices, thermal bills, BPCL/HPCL petrol slips, and Hindi receipts (किराना बिल, कर इनवॉयस, रसीद क्र., देयक).
+  2. In-browser client-side WebAssembly fallback via `tesseract.js` (`eng+hin` trained weights) providing zero-cloud privacy and offline resilience.
+- **Interactive Reconciliation**:
+  - Side-by-side zoomable document preview with rotation and raw OCR inspector.
+  - Fully editable prefilled form (Vendor, GSTIN validator, Dates, Expense Categories).
+  - Dynamic line-items table with real-time tax recalculation (CGST, SGST, IGST, Round Off).
+  - Double-entry direct posting to **Payment Voucher (DayBook F5)** or **Purchase Tax Invoice (GST F9)**.
+  - Optional auto-registration of vendor in Party Master directory.
+
+---
 *Maintained by SutharLabs Engineering • Sovereign Cloud Infrastructure*
+

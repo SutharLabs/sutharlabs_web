@@ -33,7 +33,10 @@ import {
   Hash,
   KeyRound,
   GitCompare,
-  Binary
+  Binary,
+  FileSpreadsheet,
+  Languages,
+  Contact
 } from 'lucide-react';
 import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -44,6 +47,9 @@ import HashGeneratorTool from './tools/HashGeneratorTool.js';
 import UuidPasswordTool from './tools/UuidPasswordTool.js';
 import TextDiffTool from './tools/TextDiffTool.js';
 import Base64Tool from './tools/Base64Tool.js';
+import ReceiptToCsvTool from './tools/ReceiptToCsvTool.js';
+import MultilingualOcrTool from './tools/MultilingualOcrTool.js';
+import BusinessCardScannerTool from './tools/BusinessCardScannerTool.js';
 
 
 // Configure PDF.js worker
@@ -62,6 +68,9 @@ export type ToolType =
   | 'pdf-to-word' 
   | 'compress-image' 
   | 'ocr-pdf'
+  | 'receipt-to-csv'
+  | 'multilingual-ocr'
+  | 'business-card-scanner'
   | 'qr-generator'
   | 'json-converter'
   | 'hash-generator'
@@ -141,8 +150,36 @@ export const TOOLS_LIST: ToolMeta[] = [
     title: 'Extract Text / OCR',
     tagline: 'Extract raw text, paragraphs, and data tables from any PDF document.',
     badge: 'PRIVACY-FIRST',
+    category: 'doc',
     icon: FileDown,
     accentColor: '#a78bfa'
+  },
+  {
+    id: 'receipt-to-csv',
+    title: 'Receipt to Excel / CSV',
+    tagline: 'Extract line items, GST taxes, vendor info, and totals from receipts into CSV or Excel tables.',
+    badge: 'MULTILINGUAL',
+    category: 'doc',
+    icon: FileSpreadsheet,
+    accentColor: '#10b981'
+  },
+  {
+    id: 'multilingual-ocr',
+    title: 'Multilingual Image OCR',
+    tagline: 'Extract high-precision text from images and photos supporting Hindi (Devanagari), English, and European scripts.',
+    badge: '100% PRIVATE',
+    category: 'doc',
+    icon: Languages,
+    accentColor: '#c084fc'
+  },
+  {
+    id: 'business-card-scanner',
+    title: 'Business Card to vCard',
+    tagline: 'Scan physical visiting cards into structured contacts and export directly as .vcf or JSON.',
+    badge: '1-CLICK VCARD',
+    category: 'doc',
+    icon: Contact,
+    accentColor: '#38bdf8'
   },
   {
     id: 'qr-generator',
@@ -490,6 +527,39 @@ export default function PdfToolsStudio({
 
           {activeTool === 'ocr-pdf' && (
             <ExtractTextTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+            />
+          )}
+
+          {activeTool === 'receipt-to-csv' && (
+            <ReceiptToCsvTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+            />
+          )}
+
+          {activeTool === 'multilingual-ocr' && (
+            <MultilingualOcrTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+            />
+          )}
+
+          {activeTool === 'business-card-scanner' && (
+            <BusinessCardScannerTool 
               isLight={isLight} 
               isProcessing={isProcessing} 
               setIsProcessing={setIsProcessing} 

@@ -19,9 +19,9 @@
     "ast_empty": true
   },
   "package.json": {
-    "mtime": 1793958502.913735,
-    "seen": 1793959027.9285655,
-    "ast_hash": "3de3fc24671179755615f1e70c7e30ab",
+    "mtime": 1793959426.5681026,
+    "seen": 1793960439.7215633,
+    "ast_hash": "345ad312025c9c0d407723b408b19cf1",
     "semantic_hash": ""
   },
   "plugins-db.json": {
@@ -68,10 +68,10 @@
     "semantic_hash": ""
   },
   "src/components/AccountingView.tsx": {
-    "mtime": 1791625128.963614,
-    "seen": 1793772051.9618878,
-    "ast_hash": "4d0419c7df9b5bc4e1a337e854b747e7",
-    "semantic_hash": "4d0419c7df9b5bc4e1a337e854b747e7"
+    "mtime": 1793960041.7262416,
+    "seen": 1793960439.7216017,
+    "ast_hash": "b73895fa97ec71bf5902fa69c7330607",
+    "semantic_hash": ""
   },
   "src/components/AdminConsoleView.tsx": {
     "mtime": 1793895913.2258446,
@@ -356,9 +356,9 @@
     "semantic_hash": "8dab1d2f4b290c72f4b09fe1b159d0b2"
   },
   "src/plugins/Accounting/manifest.json": {
-    "mtime": 1793959001.01123,
-    "seen": 1793959027.9288151,
-    "ast_hash": "afa6cabd9128b0b1c51485c3735a9b8c",
+    "mtime": 1793960407.1179478,
+    "seen": 1793960439.7217884,
+    "ast_hash": "56179a8de7ae50088b25bdb6a672d4ef",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/manifest.ts": {
@@ -368,10 +368,10 @@
     "semantic_hash": "f9be45dd7a35b319705bf0d0e8114c81"
   },
   "src/plugins/Accounting/routes.ts": {
-    "mtime": 1791657600.999052,
-    "seen": 1793772051.9690287,
-    "ast_hash": "712ee0d4e47183dd822a4ee85dc2a5b0",
-    "semantic_hash": "712ee0d4e47183dd822a4ee85dc2a5b0"
+    "mtime": 1793959730.1867032,
+    "seen": 1793960439.721795,
+    "ast_hash": "7cd09e500cfa57000874efcc35ee0fd4",
+    "semantic_hash": ""
   },
   "src/plugins/Accounting/storage.ts": {
     "mtime": 1791625129.0409362,
@@ -470,9 +470,9 @@
     "semantic_hash": "2cf61e718991de61558a761f4a82f17b"
   },
   "src/plugins/DocNexus/manifest.json": {
-    "mtime": 1793958999.3539279,
-    "seen": 1793959027.928914,
-    "ast_hash": "951f33731156cc1ec136967530d8d706",
+    "mtime": 1793960405.4812748,
+    "seen": 1793960439.721884,
+    "ast_hash": "ea29f3def340a8c6efa3c89e655b4c42",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/manifest.ts": {
@@ -536,9 +536,9 @@
     "semantic_hash": "60a8dc279c1c40a63b3d53988dbd2e61"
   },
   "src/plugins/FlowDesigner/manifest.json": {
-    "mtime": 1793958998.3028927,
-    "seen": 1793959027.9289534,
-    "ast_hash": "3f517fdfba8660003d5187c4592d1e0a",
+    "mtime": 1793960404.514562,
+    "seen": 1793960439.7219098,
+    "ast_hash": "3f66f573187c3fa7dd96012b64b208df",
     "semantic_hash": ""
   },
   "src/plugins/FlowDesigner/manifest.ts": {
@@ -644,9 +644,9 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1793958996.3517766,
-    "seen": 1793959027.9290757,
-    "ast_hash": "f0ea5cb0de3b009744945737cce93b3f",
+    "mtime": 1793960402.1376312,
+    "seen": 1793960439.7219892,
+    "ast_hash": "3e995b2c66908a232c0e9f55f5010e44",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1793959002.2310834,
-    "seen": 1793959027.929002,
-    "ast_hash": "c5a598d19ac9b5890259f462f080fd58",
+    "mtime": 1793960408.3041444,
+    "seen": 1793960439.7219443,
+    "ast_hash": "beb7ef7af820d384206ce019a27ff29a",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {
@@ -1178,9 +1178,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.json": {
-    "mtime": 1793959003.3826187,
-    "seen": 1793959027.9289696,
-    "ast_hash": "0131e7839dba06c89498f840edff271e",
+    "mtime": 1793960409.3124306,
+    "seen": 1793960439.7219222,
+    "ast_hash": "201ccac9fea1ad5701abd692e9b2beb2",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.ts": {
@@ -1472,21 +1472,21 @@
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/PdfToolsStudio.tsx": {
-    "mtime": 1793958792.0071187,
-    "seen": 1793959027.9288602,
-    "ast_hash": "676f91ded9e75b6085cff5b964982e6e",
+    "mtime": 1793960285.9253678,
+    "seen": 1793960439.7218332,
+    "ast_hash": "a3daf6ddc621050ecd3fa4379c323786",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/tools/Base64Tool.tsx": {
-    "mtime": 1793958732.3871734,
-    "seen": 1793959027.9288843,
-    "ast_hash": "dd2281bf993456e14377bb90d2c3c963",
+    "mtime": 1793959170.7550437,
+    "seen": 1793960439.7218513,
+    "ast_hash": "edd56a9ad581212773eec2d8bcc41dfc",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/tools/HashGeneratorTool.tsx": {
-    "mtime": 1793958663.9288893,
-    "seen": 1793959027.928888,
-    "ast_hash": "f8849233e1034a14338e40e989dfeab2",
+    "mtime": 1793959170.8221047,
+    "seen": 1793960439.7218575,
+    "ast_hash": "ff02f1113daaee13bab4eaa94cd4a637",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/tools/JsonConverterTool.tsx": {
@@ -1496,39 +1496,63 @@
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/tools/QrGeneratorTool.tsx": {
-    "mtime": 1793958615.8298001,
-    "seen": 1793959027.928896,
-    "ast_hash": "de11f773e047af371ce16bf8a73ef65d",
+    "mtime": 1793959172.2397592,
+    "seen": 1793960439.7218683,
+    "ast_hash": "12994d4135fa8a310ac8207ff234821a",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/tools/TextDiffTool.tsx": {
-    "mtime": 1793958711.5594964,
-    "seen": 1793959027.9288998,
-    "ast_hash": "6b5a03230dae095a6724ad34396e48dc",
+    "mtime": 1793959172.6969647,
+    "seen": 1793960439.7218747,
+    "ast_hash": "0f9918e15cc68fb80481b5aaac121148",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/tools/UuidPasswordTool.tsx": {
-    "mtime": 1793958693.0906546,
-    "seen": 1793959027.9289033,
-    "ast_hash": "8464cc2049ce63430295fcbf76acb927",
+    "mtime": 1793959173.892313,
+    "seen": 1793960439.721877,
+    "ast_hash": "e5f4534582c96ca7bc0ecfea03ef7560",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/tools/types.ts": {
-    "mtime": 1793958564.964861,
-    "seen": 1793959027.9289064,
-    "ast_hash": "a400dbc0b27d56e1f3e89303a96fb371",
+    "mtime": 1793960089.3412797,
+    "seen": 1793960439.721879,
+    "ast_hash": "945be388352c960fcecf6710086e8836",
     "semantic_hash": ""
   },
   "docs/SOVEREIGN_TOOLS_PROCEDURE.md": {
-    "mtime": 1793958478.0992713,
-    "seen": 1793959027.929261,
-    "ast_hash": "c129736b739895588a45207e1df42fab",
+    "mtime": 1793960384.678846,
+    "seen": 1793960439.7221148,
+    "ast_hash": "4630085bce52117948df40245c80d71e",
+    "semantic_hash": ""
+  },
+  "src/plugins/Accounting/components/OcrReceiptModal.tsx": {
+    "mtime": 1793960106.66363,
+    "seen": 1793960439.7217672,
+    "ast_hash": "4663ddbcb63ae56abc9a2ac02f08fb2f",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/BusinessCardScannerTool.tsx": {
+    "mtime": 1793960209.2530203,
+    "seen": 1793960439.7218542,
+    "ast_hash": "13ceabe34587afd677ebda19f608d296",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/MultilingualOcrTool.tsx": {
+    "mtime": 1793960166.0149372,
+    "seen": 1793960439.7218647,
+    "ast_hash": "3f7dd2f815c5e702ef5d44a0301e0679",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/ReceiptToCsvTool.tsx": {
+    "mtime": 1793960142.5386398,
+    "seen": 1793960439.7218714,
+    "ast_hash": "6a81f1900110431f6f6f70fba47227a3",
     "semantic_hash": ""
   },
   "package-lock.json": {
-    "mtime": 1793958503.3705375,
-    "seen": 1793959027.9295022,
-    "ast_hash": "7f6062f6863426ec66def3b3c45044c8",
+    "mtime": 1793959426.7514246,
+    "seen": 1793960439.7222662,
+    "ast_hash": "283a91b612571f8d3846603650cdd919",
     "semantic_hash": ""
   }
 }

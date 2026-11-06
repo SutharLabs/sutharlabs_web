@@ -275,3 +275,4 @@ export default function UuidPasswordTool({ isLight, isProcessing, setIsProcessin
     </div>
   );
 }
+

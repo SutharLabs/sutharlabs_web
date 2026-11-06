@@ -400,3 +400,4 @@ export default function QrGeneratorTool({ isLight, isProcessing, setIsProcessing
     </div>
   );
 }
+

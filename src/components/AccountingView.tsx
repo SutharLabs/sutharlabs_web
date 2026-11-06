@@ -12,6 +12,7 @@ import PartyMasterView from '../plugins/Accounting/components/PartyMasterView.js
 import ItemCatalogView from '../plugins/Accounting/components/ItemCatalogView.js';
 import CompanySettingsModal from '../plugins/Accounting/components/CompanySettingsModal.js';
 import InvoiceAnalyticsChart from '../plugins/Accounting/components/InvoiceAnalyticsChart.js';
+import OcrReceiptModal from '../plugins/Accounting/components/OcrReceiptModal.js';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer.js';
 import { TerminalLog } from '../types.js';
 
@@ -44,6 +45,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
   const [selectedAuditInvoice, setSelectedAuditInvoice] = useState<GSTInvoice | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isOcrOpen, setIsOcrOpen] = useState(false);
   const [isVoucherModalOpen, setIsVoucherModalOpen] = useState(false);
   const [editingVoucher, setEditingVoucher] = useState<AccountingVoucher | null>(null);
   const [voucherInitialType, setVoucherInitialType] = useState<VoucherType>('Payment');
@@ -289,6 +291,14 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
 
         <div className="flex items-center gap-2.5 w-full md:w-auto">
           <button
+            onClick={() => setIsOcrOpen(true)}
+            className="flex-1 md:flex-none px-3.5 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-[#00dbe7] border border-cyan-500/30 font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            title="Scan Hindi or English bills & receipts with AI OCR"
+          >
+            <span className="material-symbols-outlined text-sm">document_scanner</span>
+            OCR Scan Bill / रसीद
+          </button>
+          <button
             onClick={() => setIsSettingsOpen(true)}
             className="flex-1 md:flex-none px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#18181c] dark:hover:bg-[#201f21] border border-slate-200 dark:border-[#3a494b]/30 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white font-mono text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
           >
@@ -315,6 +325,14 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
+          <button
+            onClick={() => setIsOcrOpen(true)}
+            className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-cyan-50 dark:hover:bg-cyan-950/30 border border-cyan-400/40 text-cyan-700 dark:text-[#00dbe7] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
+            title="Multilingual OCR Bill / Receipt Scanner (Hindi & English)"
+          >
+            <span className="px-1 py-0.2 rounded bg-cyan-100 dark:bg-cyan-900/50 text-cyan-800 dark:text-cyan-200 text-[9px]">OCR</span>
+            Scan Receipt (रसीद)
+          </button>
           <button
             onClick={() => openVoucherEntry('Contra')}
             className="px-2.5 py-1 rounded-lg bg-white dark:bg-[#1f1f24] hover:bg-cyan-50 dark:hover:bg-cyan-950/30 border border-cyan-400/30 text-cyan-700 dark:text-[#74f5ff] font-mono text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
@@ -834,6 +852,43 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
       )}
 
       {/* Company Settings Modal */}
+      {/* AI Multilingual Receipt OCR Modal */}
+      {isOcrOpen && (
+        <OcrReceiptModal
+          isOpen={isOcrOpen}
+          onClose={() => setIsOcrOpen(false)}
+          parties={parties}
+          company={company}
+          userToken={userToken}
+          onVoucherCreated={(v) => {
+            setVouchers(prev => [v, ...prev]);
+            setDataRefreshCounter(c => c + 1);
+            onAddLog({
+              timestamp: new Date().toLocaleTimeString(),
+              type: 'SUCCESS',
+              message: `ACCOUNTING OCR: Reconciled bill [${v.referenceNo || v.voucherNumber}] from [${v.partyName}]. Posted ₹${v.amount} into DayBook.`
+            });
+          }}
+          onInvoiceCreated={(inv) => {
+            setInvoices(prev => [inv, ...prev]);
+            setDataRefreshCounter(c => c + 1);
+            onAddLog({
+              timestamp: new Date().toLocaleTimeString(),
+              type: 'SUCCESS',
+              message: `ACCOUNTING OCR: Reconciled Purchase Tax Invoice [${inv.invoiceNumber}] from [${inv.buyer.legalName}]. Grand Total: ₹${inv.grandTotal}.`
+            });
+          }}
+          onAddParty={(party) => {
+            setParties(prev => [party, ...prev]);
+            onAddLog({
+              timestamp: new Date().toLocaleTimeString(),
+              type: 'INFO',
+              message: `ACCOUNTING: Auto-registered vendor party [${party.name}] via OCR.`
+            });
+          }}
+        />
+      )}
+
       {isSettingsOpen && company && (
         <CompanySettingsModal
           company={company}

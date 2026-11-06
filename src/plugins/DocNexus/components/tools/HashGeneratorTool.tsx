@@ -188,3 +188,4 @@ export default function HashGeneratorTool({ isLight, isProcessing, setIsProcessi
     </div>
   );
 }
+
