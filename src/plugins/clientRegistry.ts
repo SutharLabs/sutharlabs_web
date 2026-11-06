@@ -5,6 +5,7 @@ import { AccountingPlugin } from "./Accounting/index.js";
 import { SpeechStudioPlugin } from "./SpeechStudio/index.js";
 import { ImageStudioPlugin } from "./ImageStudio/index.js";
 import { ToolsStudioPlugin } from "./SovereignTools/index.js";
+import { ResumeStudioPlugin } from "./ResumeStudio/index.js";
 import { WorkspacePluginManifest, WorkspacePluginViewProps } from "./types.js";
 import React from "react";
 
@@ -21,6 +22,7 @@ export const CLIENT_PLUGIN_REGISTRY: Record<string, ClientPluginEntry> = {
   [SpeechStudioPlugin.manifest.id]: SpeechStudioPlugin as any,
   [ImageStudioPlugin.manifest.id]: ImageStudioPlugin as any,
   [ToolsStudioPlugin.manifest.id]: ToolsStudioPlugin as any,
+  [ResumeStudioPlugin.manifest.id]: ResumeStudioPlugin as any,
 };
 
 export function getAllClientPlugins(): ClientPluginEntry[] {

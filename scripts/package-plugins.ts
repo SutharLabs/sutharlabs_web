@@ -106,6 +106,17 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     description: 'High-performance client-side sovereign utility suite: Client-side PDF tools (Merge, Split, Compress, Watermark, Reorder, Page Extract), Image & Document Converters, Multilingual OCR (Devanagari & English), Receipt-to-CSV, Business Card Scanner, Developer Tools (JSON format/convert, QR codes, Cryptographic Hash utilities). Zero server uploads, 100% private.',
     iconSymbol: 'build',
     minEngineVersion: '0.1.0'
+  },
+  {
+    dirName: 'ResumeStudio',
+    id: 'wp_resume_studio',
+    name: 'Resume Studio',
+    version: '1.0.0',
+    category: 'Productivity & Career',
+    type: 'Native',
+    description: 'Enterprise sovereign Resume & CV Studio supporting multi-format ingestion (DOCX Word, PDF, LaTeX, Markdown, Text, JSON) and 4-format vector export (PDF, Word DOCX, LaTeX .tex, Plain Text, JSON). Zero server uploads, 100% private.',
+    iconSymbol: 'description',
+    minEngineVersion: '0.1.0'
   }
 ];
 

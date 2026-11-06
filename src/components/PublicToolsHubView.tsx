@@ -70,7 +70,7 @@ export default function PublicToolsHubView({ theme = 'dark', user, toggleTheme }
 
   // Tool categorization mapping
   const getToolCategory = (id: ToolType): 'PDF' | 'IMAGE' | 'OCR' | 'DEV' => {
-    if (['pdf-to-image', 'image-to-pdf', 'merge-pdf', 'split-pdf', 'pdf-editor', 'pdf-to-word', 'ocr-pdf', 'resume-builder'].includes(id)) {
+    if (['pdf-to-image', 'image-to-pdf', 'merge-pdf', 'split-pdf', 'pdf-editor', 'pdf-to-word', 'ocr-pdf'].includes(id)) {
       return 'PDF';
     }
     if (['compress-image', 'qr-generator', 'base64-tool', 'app-icon-generator'].includes(id)) {
@@ -242,7 +242,6 @@ export default function PublicToolsHubView({ theme = 'dark', user, toggleTheme }
             className="text-primary bg-primary/10 font-bold px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer border-none flex items-center gap-1"
           >
             <span>Free Tools</span>
-            <span className="text-[9px] px-1.5 py-0.2 rounded bg-primary/20 text-primary uppercase font-sans font-bold">19 Tools</span>
           </Link>
           <Link 
             to="/#contact" 
@@ -339,7 +338,7 @@ export default function PublicToolsHubView({ theme = 'dark', user, toggleTheme }
                   App Store
                 </Link>
                 <Link to="/tools" onClick={() => setIsMobileMenuOpen(false)} className="text-primary font-bold py-1.5">
-                  Free Tools (19 Tools)
+                  Free Tools
                 </Link>
                 <Link to="/#contact" onClick={() => setIsMobileMenuOpen(false)} className="text-on-surface-variant hover:text-primary py-1.5">
                   Contact Us
@@ -391,7 +390,7 @@ export default function PublicToolsHubView({ theme = 'dark', user, toggleTheme }
                 <Search className="w-4 h-4 ml-3.5 text-slate-400 shrink-0" />
                 <input
                   type="text"
-                  placeholder="Search 19 sovereign tools: resume, icon generator, word, merge, split, ocr, qr, vcard, compress..."
+                  placeholder="Search sovereign tools: icon generator, word, merge, split, ocr, qr, vcard, compress..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   className={`w-full py-2.5 px-3 text-xs font-mono outline-none bg-transparent ${
@@ -448,7 +447,7 @@ export default function PublicToolsHubView({ theme = 'dark', user, toggleTheme }
                   <span>Related Sovereign Tools</span>
                 </h3>
                 <Link to="/tools" className="text-xs font-mono text-[#00dbe7] hover:underline">
-                  View All 19 Tools &rarr;
+                  View All Tools &rarr;
                 </Link>
               </div>
 
