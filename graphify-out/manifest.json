@@ -19,9 +19,9 @@
     "ast_empty": true
   },
   "package.json": {
-    "mtime": 1793957073.0887008,
-    "seen": 1793957865.4995275,
-    "ast_hash": "ebe4c03b46241368ae93571a003617a5",
+    "mtime": 1793958502.913735,
+    "seen": 1793959027.9285655,
+    "ast_hash": "3de3fc24671179755615f1e70c7e30ab",
     "semantic_hash": ""
   },
   "plugins-db.json": {
@@ -356,9 +356,9 @@
     "semantic_hash": "8dab1d2f4b290c72f4b09fe1b159d0b2"
   },
   "src/plugins/Accounting/manifest.json": {
-    "mtime": 1793957826.1095905,
-    "seen": 1793957865.4996681,
-    "ast_hash": "28f3a910477ef6709cc12e408dcdf378",
+    "mtime": 1793959001.01123,
+    "seen": 1793959027.9288151,
+    "ast_hash": "afa6cabd9128b0b1c51485c3735a9b8c",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/manifest.ts": {
@@ -470,9 +470,9 @@
     "semantic_hash": "2cf61e718991de61558a761f4a82f17b"
   },
   "src/plugins/DocNexus/manifest.json": {
-    "mtime": 1793957825.0366013,
-    "seen": 1793957865.4997034,
-    "ast_hash": "6eeed9c53506b7da93f0d3fcc8cd22e5",
+    "mtime": 1793958999.3539279,
+    "seen": 1793959027.928914,
+    "ast_hash": "951f33731156cc1ec136967530d8d706",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/manifest.ts": {
@@ -500,8 +500,8 @@
     "semantic_hash": "3b3ed4d0cdbe68134384ca1ee5dc31f4"
   },
   "src/plugins/DocNexus/types.ts": {
-    "mtime": 1793957178.0204344,
-    "seen": 1793957865.4997118,
+    "mtime": 1793958221.337298,
+    "seen": 1793959027.9289322,
     "ast_hash": "156eab37718aa6c598b7d1741902d756",
     "semantic_hash": ""
   },
@@ -536,9 +536,9 @@
     "semantic_hash": "60a8dc279c1c40a63b3d53988dbd2e61"
   },
   "src/plugins/FlowDesigner/manifest.json": {
-    "mtime": 1793957824.089337,
-    "seen": 1793957865.4997222,
-    "ast_hash": "7514e0843a815d1eaa81021d61c5b1d3",
+    "mtime": 1793958998.3028927,
+    "seen": 1793959027.9289534,
+    "ast_hash": "3f517fdfba8660003d5187c4592d1e0a",
     "semantic_hash": ""
   },
   "src/plugins/FlowDesigner/manifest.ts": {
@@ -644,9 +644,9 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1793957821.7666073,
-    "seen": 1793957865.4997818,
-    "ast_hash": "add2c8e8411e7d1c29df783d3b2540f4",
+    "mtime": 1793958996.3517766,
+    "seen": 1793959027.9290757,
+    "ast_hash": "f0ea5cb0de3b009744945737cce93b3f",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1793957827.201884,
-    "seen": 1793957865.499748,
-    "ast_hash": "5d739f199fcb71f4158b8859651a0473",
+    "mtime": 1793959002.2310834,
+    "seen": 1793959027.929002,
+    "ast_hash": "c5a598d19ac9b5890259f462f080fd58",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {
@@ -1178,9 +1178,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.json": {
-    "mtime": 1793957828.5372436,
-    "seen": 1793957865.4997318,
-    "ast_hash": "333e306da63ea74a6e2aa5015db6e867",
+    "mtime": 1793959003.3826187,
+    "seen": 1793959027.9289696,
+    "ast_hash": "0131e7839dba06c89498f840edff271e",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.ts": {
@@ -1466,21 +1466,69 @@
     "semantic_hash": ""
   },
   "src/components/PublicToolsHubView.tsx": {
-    "mtime": 1793957474.7448564,
-    "seen": 1793957865.4996037,
-    "ast_hash": "9e9fe98e50e29c251b7287234889ecf0",
+    "mtime": 1793958816.3893716,
+    "seen": 1793959027.9287076,
+    "ast_hash": "0a7d45006e4532f073615a5a1d4a5def",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/PdfToolsStudio.tsx": {
-    "mtime": 1793957342.3456166,
-    "seen": 1793957865.4996912,
-    "ast_hash": "01cd90ea5eb171fb8db97afd6d7e328e",
+    "mtime": 1793958792.0071187,
+    "seen": 1793959027.9288602,
+    "ast_hash": "676f91ded9e75b6085cff5b964982e6e",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/Base64Tool.tsx": {
+    "mtime": 1793958732.3871734,
+    "seen": 1793959027.9288843,
+    "ast_hash": "dd2281bf993456e14377bb90d2c3c963",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/HashGeneratorTool.tsx": {
+    "mtime": 1793958663.9288893,
+    "seen": 1793959027.928888,
+    "ast_hash": "f8849233e1034a14338e40e989dfeab2",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/JsonConverterTool.tsx": {
+    "mtime": 1793958889.605655,
+    "seen": 1793959027.9288921,
+    "ast_hash": "4636afa28ac1237e093914acb372ad78",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/QrGeneratorTool.tsx": {
+    "mtime": 1793958615.8298001,
+    "seen": 1793959027.928896,
+    "ast_hash": "de11f773e047af371ce16bf8a73ef65d",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/TextDiffTool.tsx": {
+    "mtime": 1793958711.5594964,
+    "seen": 1793959027.9288998,
+    "ast_hash": "6b5a03230dae095a6724ad34396e48dc",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/UuidPasswordTool.tsx": {
+    "mtime": 1793958693.0906546,
+    "seen": 1793959027.9289033,
+    "ast_hash": "8464cc2049ce63430295fcbf76acb927",
+    "semantic_hash": ""
+  },
+  "src/plugins/DocNexus/components/tools/types.ts": {
+    "mtime": 1793958564.964861,
+    "seen": 1793959027.9289064,
+    "ast_hash": "a400dbc0b27d56e1f3e89303a96fb371",
+    "semantic_hash": ""
+  },
+  "docs/SOVEREIGN_TOOLS_PROCEDURE.md": {
+    "mtime": 1793958478.0992713,
+    "seen": 1793959027.929261,
+    "ast_hash": "c129736b739895588a45207e1df42fab",
     "semantic_hash": ""
   },
   "package-lock.json": {
-    "mtime": 1793957073.2666936,
-    "seen": 1793957865.5002291,
-    "ast_hash": "6e33b73b09d2c81881491c7634a4707d",
+    "mtime": 1793958503.3705375,
+    "seen": 1793959027.9295022,
+    "ast_hash": "7f6062f6863426ec66def3b3c45044c8",
     "semantic_hash": ""
   }
 }

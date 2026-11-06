@@ -87,7 +87,7 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
 
           {/* Quick tool pills on desktop */}
           <nav className="hidden lg:flex items-center gap-1.5 text-xs font-mono">
-            {TOOLS_LIST.slice(0, 4).map(t => (
+            {TOOLS_LIST.slice(0, 6).map(t => (
               <button
                 key={t.id}
                 type="button"
@@ -287,3 +287,4 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
     </div>
   );
 }
+

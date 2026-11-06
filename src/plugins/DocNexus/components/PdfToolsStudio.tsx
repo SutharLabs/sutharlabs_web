@@ -28,11 +28,23 @@ import {
   ShieldCheck,
   Zap,
   Lock,
-  ChevronDown
+  ChevronDown,
+  QrCode,
+  Hash,
+  KeyRound,
+  GitCompare,
+  Binary
 } from 'lucide-react';
 import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
 import JSZip from 'jszip';
+import QrGeneratorTool from './tools/QrGeneratorTool.js';
+import JsonConverterTool from './tools/JsonConverterTool.js';
+import HashGeneratorTool from './tools/HashGeneratorTool.js';
+import UuidPasswordTool from './tools/UuidPasswordTool.js';
+import TextDiffTool from './tools/TextDiffTool.js';
+import Base64Tool from './tools/Base64Tool.js';
+
 
 // Configure PDF.js worker
 if (typeof window !== 'undefined' && (pdfjsLib as any).GlobalWorkerOptions) {
@@ -49,13 +61,20 @@ export type ToolType =
   | 'pdf-editor' 
   | 'pdf-to-word' 
   | 'compress-image' 
-  | 'ocr-pdf';
+  | 'ocr-pdf'
+  | 'qr-generator'
+  | 'json-converter'
+  | 'hash-generator'
+  | 'uuid-password'
+  | 'text-diff'
+  | 'base64-tool';
 
 export interface ToolMeta {
   id: ToolType;
   title: string;
   tagline: string;
   badge: string;
+  category?: 'doc' | 'dev';
   icon: any;
   accentColor: string;
 }
@@ -124,6 +143,60 @@ export const TOOLS_LIST: ToolMeta[] = [
     badge: 'PRIVACY-FIRST',
     icon: FileDown,
     accentColor: '#a78bfa'
+  },
+  {
+    id: 'qr-generator',
+    title: 'QR Code & Barcode',
+    tagline: 'Generate custom QR codes for URLs, Wi-Fi, and text with vector SVG export.',
+    badge: 'VECTOR SVG',
+    category: 'dev',
+    icon: QrCode,
+    accentColor: '#00dbe7'
+  },
+  {
+    id: 'json-converter',
+    title: 'JSON Formatter & CSV',
+    tagline: 'Format, minify, validate, and convert JSON to CSV and vice-versa in RAM.',
+    badge: 'DEVELOPER',
+    category: 'dev',
+    icon: FileCode,
+    accentColor: '#34d399'
+  },
+  {
+    id: 'hash-generator',
+    title: 'Hash & File Checksum',
+    tagline: 'Hardware-accelerated SHA-256, SHA-512, and checksums for text and dropped files.',
+    badge: 'WEB CRYPTO',
+    category: 'dev',
+    icon: Hash,
+    accentColor: '#818cf8'
+  },
+  {
+    id: 'uuid-password',
+    title: 'Password & UUID Generator',
+    tagline: 'Cryptographically secure random passwords, passphrases, and UUID v4 tokens.',
+    badge: 'SECURE RNG',
+    category: 'dev',
+    icon: KeyRound,
+    accentColor: '#f59e0b'
+  },
+  {
+    id: 'text-diff',
+    title: 'Text & Code Diff Checker',
+    tagline: 'Side-by-side and inline visual difference comparison for text and source code.',
+    badge: 'SIDE-BY-SIDE',
+    category: 'dev',
+    icon: GitCompare,
+    accentColor: '#ec4899'
+  },
+  {
+    id: 'base64-tool',
+    title: 'Base64 & Data URI Studio',
+    tagline: 'Encode and decode Base64, URL entities, and convert files into Data URIs.',
+    badge: 'DATA URI',
+    category: 'dev',
+    icon: Binary,
+    accentColor: '#38bdf8'
   }
 ];
 
@@ -142,6 +215,7 @@ export default function PdfToolsStudio({
 }: PdfToolsStudioProps) {
   const isLight = theme === 'light';
   const [activeTool, setActiveTool] = useState<ToolType>(initialTool);
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'doc' | 'dev'>('all');
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -186,12 +260,53 @@ export default function PdfToolsStudio({
         </div>
       </div>
 
+            {/* Category Pills & Tool Selector */}
+      <div className={`px-4 sm:px-6 py-2 border-b flex items-center justify-between gap-3 ${
+        isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#151518] border-[#3a494b]/20'
+      }`}>
+        <div className="flex items-center gap-1.5 text-xs font-mono">
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('all')}
+            className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              selectedCategory === 'all'
+                ? isLight ? 'bg-slate-200 text-slate-900 font-bold' : 'bg-white/10 text-white font-bold'
+                : 'text-[#849495] hover:text-[#e5e1e4]'
+            }`}
+          >
+            All Tools (14)
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('doc')}
+            className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              selectedCategory === 'doc'
+                ? isLight ? 'bg-sky-100 text-sky-800 font-bold' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
+                : 'text-[#849495] hover:text-[#e5e1e4]'
+            }`}
+          >
+            Document & PDF (8)
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('dev')}
+            className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
+              selectedCategory === 'dev'
+                ? isLight ? 'bg-purple-100 text-purple-800 font-bold' : 'bg-purple-500/15 text-purple-400 font-bold'
+                : 'text-[#849495] hover:text-[#e5e1e4]'
+            }`}
+          >
+            Developer & Misc (6)
+          </button>
+        </div>
+      </div>
+
       {/* Tool Selector Tabs */}
       <div className={`px-4 sm:px-6 py-3 border-b overflow-x-auto scrollbar-thin ${
         isLight ? 'bg-white border-slate-200' : 'bg-[#121214] border-[#3a494b]/30'
       }`}>
         <div className="flex items-center gap-2 min-w-max">
-          {TOOLS_LIST.map(tool => {
+          {TOOLS_LIST.filter(t => selectedCategory === 'all' || (selectedCategory === 'dev' ? t.category === 'dev' : t.category !== 'dev')).map(tool => {
             const Icon = tool.icon;
             const isSelected = activeTool === tool.id;
             return (
@@ -375,6 +490,72 @@ export default function PdfToolsStudio({
 
           {activeTool === 'ocr-pdf' && (
             <ExtractTextTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+            />
+          )}
+
+          {activeTool === 'qr-generator' && (
+            <QrGeneratorTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+            />
+          )}
+
+          {activeTool === 'json-converter' && (
+            <JsonConverterTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+            />
+          )}
+
+          {activeTool === 'hash-generator' && (
+            <HashGeneratorTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+            />
+          )}
+
+          {activeTool === 'uuid-password' && (
+            <UuidPasswordTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+            />
+          )}
+
+          {activeTool === 'text-diff' && (
+            <TextDiffTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+            />
+          )}
+
+          {activeTool === 'base64-tool' && (
+            <Base64Tool 
               isLight={isLight} 
               isProcessing={isProcessing} 
               setIsProcessing={setIsProcessing} 
@@ -2388,3 +2569,4 @@ function ExtractTextTool({ isLight, isProcessing, setIsProcessing, setStatus, se
     </div>
   );
 }
+
