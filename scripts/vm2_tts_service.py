@@ -1,15 +1,45 @@
 import io
+import os
+import re
+import time
 import base64
 import hashlib
 import wave
 import struct
 import asyncio
 import traceback
+import threading
+from typing import Optional
+
+os.environ["COQUI_TOS_AGREED"] = "1"
+
+# 1. Monkeypatch torch.load for PyTorch 2.6+ compatibility
+import torch
+_orig_torch_load = torch.load
+def _custom_torch_load(*args, **kwargs):
+    if "weights_only" not in kwargs:
+        kwargs["weights_only"] = False
+    return _orig_torch_load(*args, **kwargs)
+torch.load = _custom_torch_load
+
+# 2. Monkeypatch torchaudio.load to use soundfile for bulletproof PCM/WAV loading
+import soundfile as sf
+import torchaudio
+def _custom_torchaudio_load(filepath, **kwargs):
+    data, samplerate = sf.read(filepath, dtype='float32')
+    tensor = torch.from_numpy(data)
+    if tensor.ndim == 1:
+        tensor = tensor.unsqueeze(0)
+    else:
+        tensor = tensor.t()
+    return tensor, samplerate
+torchaudio.load = _custom_torchaudio_load
+
 from fastapi import FastAPI, Request, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 import edge_tts
 
-app = FastAPI(title="SutharLabs Neural TTS Gateway")
+app = FastAPI(title="SutharLabs Neural TTS & Zero-Shot Voice Cloning Gateway")
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,7 +48,33 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Comprehensive catalog mapping for all available engines and architectures
+# Latents storage directory
+LATENTS_DIR = "/home/ubuntu/voice_latents"
+os.makedirs(LATENTS_DIR, exist_ok=True)
+
+# Global XTTS model reference
+XTTS_MODEL = None
+XTTS_LOCK = threading.Lock()
+XTTS_READY = False
+
+def load_xtts_engine():
+    global XTTS_MODEL, XTTS_READY
+    try:
+        print("[Neural Gateway] Initializing Coqui XTTS-v2 model on CPU...")
+        from TTS.api import TTS
+        tts = TTS("tts_models/multilingual/multi-dataset/xtts_v2", gpu=False)
+        with XTTS_LOCK:
+            XTTS_MODEL = tts.synthesizer.tts_model
+            XTTS_READY = True
+        print("[Neural Gateway] XTTS-v2 Engine successfully loaded and ready for zero-shot cloning!")
+    except Exception as e:
+        print(f"[Neural Gateway] Error loading XTTS-v2: {e}")
+        traceback.print_exc()
+
+# Eagerly initialize XTTS-v2 in a background thread on startup
+threading.Thread(target=load_xtts_engine, daemon=True).start()
+
+# Voice map for standard Edge-TTS voices
 VOICE_MAP = {
     # Hindi Studio
     "aarav-neural": "hi-IN-MadhurNeural",
@@ -66,20 +122,14 @@ VALID_EDGE_VOICES = {
 }
 
 def resolve_voice(voice_id: str, text: str) -> str:
-    """Safely resolve any voice identifier to a valid, high-fidelity neural voice."""
+    """Resolve voice ID to a valid Edge TTS voice."""
     is_hindi = any('\u0900' <= char <= '\u097F' for char in text)
     if not voice_id:
         return "hi-IN-MadhurNeural" if is_hindi else "en-US-GuyNeural"
-
-    # 1. Check alias dictionary
     if voice_id in VOICE_MAP:
         return VOICE_MAP[voice_id]
-
-    # 2. Check if it's already a native Edge TTS voice ID
     if voice_id in VALID_EDGE_VOICES:
         return voice_id
-
-    # 3. Keyword-based heuristic
     vid_lower = voice_id.lower()
     if "cloned" in vid_lower:
         return "hi-IN-MadhurNeural" if is_hindi else "en-US-GuyNeural"
@@ -99,8 +149,6 @@ def resolve_voice(voice_id: str, text: str) -> str:
         return "en-US-GuyNeural"
     if "female" in vid_lower or "jenny" in vid_lower or "ava" in vid_lower:
         return "en-US-AvaMultilingualNeural"
-
-    # 4. Text-based fallback (Devanagari script detection defaults to male narrator)
     return "hi-IN-MadhurNeural" if is_hindi else "en-US-GuyNeural"
 
 def format_rate(rate: float) -> str:
@@ -111,108 +159,37 @@ def format_pitch(pitch: float) -> str:
     hz = int((pitch - 1.0) * 50)
     return f"{hz:+d}Hz"
 
-def analyze_audio_sample(audio_raw: bytes):
-    """
-    Perform robust acoustic feature extraction on the reference audio sample.
-    Uses moving-average low-pass filtered autocorrelation over voiced frames
-    to accurately estimate fundamental frequency (F0) and classify speaker as male or female.
-    Male fundamental frequency F0: typically 85 Hz to 165 Hz (median ~135 Hz).
-    Female fundamental frequency F0: typically 168 Hz to 280 Hz (median ~210 Hz).
-    """
-    stats = {
-        "is_wav": False,
-        "peak_pct": 0.0,
-        "rms_pct": 0.0,
-        "is_silent": False,
-        "est_pitch_hz": 135.0,
-        "detected_timbre": "male",
-        "duration_sec": 0.0
-    }
+def sanitize_name(name: str) -> str:
+    return re.sub(r'[^a-zA-Z0-9_-]', '_', name.strip().lower())
 
-    if not audio_raw or len(audio_raw) < 100:
-        stats["is_silent"] = True
-        return stats
+def wav_to_bytes(audio_float32, sample_rate=24000) -> bytes:
+    """Convert float32 numpy/torch audio to 16-bit PCM WAV bytes."""
+    import numpy as np
+    if hasattr(audio_float32, "cpu"):
+        audio_float32 = audio_float32.cpu().numpy()
+    if not isinstance(audio_float32, np.ndarray):
+        audio_float32 = np.array(audio_float32, dtype=np.float32)
 
-    # Check for RIFF WAV container
-    if audio_raw[:4] == b"RIFF" and b"WAVE" in audio_raw[:12]:
-        try:
-            with wave.open(io.BytesIO(audio_raw), 'rb') as wf:
-                sampwidth = wf.getsampwidth()
-                framerate = wf.getframerate()
-                n_frames = wf.getnframes()
-                frames = wf.readframes(n_frames)
-                stats["is_wav"] = True
-                stats["duration_sec"] = round(n_frames / float(framerate), 2) if framerate > 0 else 0
+    # Normalize to -1.0 to 1.0
+    max_val = np.max(np.abs(audio_float32))
+    if max_val > 0.0:
+        audio_norm = audio_float32 / max(max_val, 1.0)
+    else:
+        audio_norm = audio_float32
 
-                if sampwidth == 2:  # 16-bit PCM
-                    total_samples = len(frames) // 2
-                    if total_samples > 0:
-                        samples = struct.unpack(f"<{total_samples}h", frames)
-                        max_val = max(abs(s) for s in samples[:16000]) if total_samples >= 16000 else max(abs(s) for s in samples)
-                        stats["peak_pct"] = round((max_val / 32768.0) * 100, 1)
-                        stats["is_silent"] = max_val < 320
+    # Scale to int16
+    audio_int16 = (audio_norm * 32767.0).clip(-32768, 32767).astype(np.int16)
 
-                        # Fast low-pass filtered autocorrelation for fundamental pitch (F0)
-                        # We analyze up to 25 voiced frames (first 5 seconds of speech)
-                        M = 15  # 15-sample moving average low-pass filter
-                        window_limit = min(total_samples, framerate * 5)
-                        filtered = []
-                        cur_sum = sum(samples[:M])
-                        filtered.append(cur_sum // M)
-                        for i in range(M, window_limit):
-                            cur_sum += samples[i] - samples[i - M]
-                            filtered.append(cur_sum // M)
-
-                        frame_size = int(framerate * 0.04)  # 40ms window
-                        step = int(framerate * 0.05)        # 50ms hop
-                        min_lag = int(framerate / 300)      # max 300 Hz (~80 samples at 24kHz)
-                        max_lag = int(framerate / 75)       # min 75 Hz (~320 samples at 24kHz)
-
-                        pitches = []
-                        for start in range(0, len(filtered) - frame_size - max_lag, step):
-                            frame = filtered[start:start + frame_size]
-                            energy = sum(s * s for s in frame[::2])
-                            if energy < 1e6:  # pause or silence
-                                continue
-
-                            best_corr = -1
-                            best_lag = 0
-                            for lag in range(min_lag, max_lag, 2):  # 2-sample lag search
-                                corr = sum(frame[i] * filtered[start + lag + i] for i in range(0, frame_size, 4))
-                                if corr > best_corr:
-                                    best_corr = corr
-                                    best_lag = lag
-
-                            if best_lag > 0 and best_corr > 0.25 * energy:
-                                pitch_hz = framerate / float(best_lag)
-                                if 70.0 <= pitch_hz <= 300.0:
-                                    pitches.append(pitch_hz)
-
-                            if len(pitches) >= 25:
-                                break
-
-                        if pitches:
-                            pitches.sort()
-                            median_f0 = pitches[len(pitches) // 2]
-                            stats["est_pitch_hz"] = round(median_f0, 1)
-                            stats["detected_timbre"] = "female" if median_f0 >= 168.0 else "male"
-                        else:
-                            stats["est_pitch_hz"] = 135.0
-                            stats["detected_timbre"] = "male"
-
-                        return stats
-        except Exception as e:
-            print(f"[AcousticAnalyzer] WAV analysis warning: {e}")
-
-    stats["peak_pct"] = 50.0
-    stats["rms_pct"] = 25.0
-    stats["is_silent"] = len(audio_raw) < 1000
-    stats["est_pitch_hz"] = 135.0
-    stats["detected_timbre"] = "male"
-    return stats
+    buf = io.BytesIO()
+    with wave.open(buf, 'wb') as wf:
+        wf.setnchannels(1)
+        wf.setsampwidth(2)
+        wf.setframerate(sample_rate)
+        wf.writeframes(audio_int16.tobytes())
+    return buf.getvalue()
 
 async def generate_speech_with_retry(text: str, voice: str, rate_str: str, pitch_str: str, fallback_voice: str = None, max_attempts: int = 3) -> bytes:
-    """Robust edge-tts streaming with automatic retry, exponential backoff, and voice fallback."""
+    """Robust edge-tts streaming with automatic retry."""
     last_err = None
     voices_to_try = [voice]
     if fallback_voice and fallback_voice != voice:
@@ -238,7 +215,6 @@ async def generate_speech_with_retry(text: str, voice: str, rate_str: str, pitch
                 raise RuntimeError(f"Edge TTS produced empty output (size: {len(audio_bytes) if audio_bytes else 0}).")
             except Exception as e:
                 last_err = e
-                print(f"[TTS Gateway] Attempt {attempt}/{max_attempts} with voice '{current_voice}' failed: {e}")
                 if attempt < max_attempts:
                     await asyncio.sleep(0.3 * (2 ** (attempt - 1)))
 
@@ -246,7 +222,14 @@ async def generate_speech_with_retry(text: str, voice: str, rate_str: str, pitch
 
 @app.get("/health")
 def health():
-    return {"status": "healthy", "service": "SutharLabs Neural Edge TTS", "port": 5050}
+    profiles_count = len([f for f in os.listdir(LATENTS_DIR) if f.endswith(".pt")])
+    return {
+        "status": "healthy",
+        "service": "SutharLabs Neural XTTS & Edge TTS Gateway",
+        "port": 5050,
+        "xtts_ready": XTTS_READY,
+        "cached_profiles_count": profiles_count
+    }
 
 @app.post("/api/tts")
 async def synthesize(request: Request):
@@ -274,6 +257,116 @@ async def synthesize(request: Request):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+def synthesize_with_xtts(text: str, audio_raw: bytes, speaker_name: str, rate: float = 1.0) -> tuple[bytes, dict]:
+    """
+    Genuine Zero-Shot Neural Voice Cloning using XTTS-v2 with Latent Caching.
+    Extracts gpt_cond_latent and speaker_embedding, caches them permanently,
+    and performs neural autoregressive flow matching synthesis.
+    """
+    global XTTS_MODEL, XTTS_READY
+
+    # Ensure model is ready
+    if not XTTS_READY or XTTS_MODEL is None:
+        load_xtts_engine()
+        if XTTS_MODEL is None:
+            raise RuntimeError("XTTS-v2 Engine is currently initializing. Please try again in a few seconds.")
+
+    # 1. Determine Language
+    is_hindi = any('\u0900' <= char <= '\u097F' for char in text)
+    target_language = "hi" if is_hindi else "en"
+
+    # 2. Check for cached conditioning latents
+    safe_name = sanitize_name(speaker_name)
+    name_cache_file = os.path.join(LATENTS_DIR, f"name_{safe_name}.pt") if safe_name else None
+    
+    hash_cache_file = None
+    if audio_raw:
+        audio_hash = hashlib.sha256(audio_raw).hexdigest()[:16]
+        hash_cache_file = os.path.join(LATENTS_DIR, f"hash_{audio_hash}.pt")
+
+    gpt_cond_latent = None
+    speaker_embedding = None
+    latents_cached = False
+
+    # Check cache by hash first, then by name
+    if hash_cache_file and os.path.exists(hash_cache_file):
+        try:
+            cached_data = torch.load(hash_cache_file)
+            gpt_cond_latent = cached_data["gpt_cond_latent"]
+            speaker_embedding = cached_data["speaker_embedding"]
+            latents_cached = True
+            print(f"[Neural Gateway] Loaded latents from hash cache: {hash_cache_file}")
+        except Exception as e:
+            print(f"[Neural Gateway] Failed to read hash cache: {e}")
+
+    if gpt_cond_latent is None and name_cache_file and os.path.exists(name_cache_file):
+        try:
+            cached_data = torch.load(name_cache_file)
+            gpt_cond_latent = cached_data["gpt_cond_latent"]
+            speaker_embedding = cached_data["speaker_embedding"]
+            latents_cached = True
+            print(f"[Neural Gateway] Loaded latents from name cache: {name_cache_file}")
+        except Exception as e:
+            print(f"[Neural Gateway] Failed to read name cache: {e}")
+
+    # 3. Extract Latents if not cached
+    t0 = time.time()
+    if gpt_cond_latent is None:
+        if not audio_raw or len(audio_raw) < 500:
+            raise ValueError("Reference audio sample is missing or too short for neural cloning.")
+
+        tmp_ref_path = f"/tmp/ref_speaker_{os.getpid()}_{int(time.time()*1000)}.wav"
+        with open(tmp_ref_path, "wb") as f:
+            f.write(audio_raw)
+
+        try:
+            with XTTS_LOCK:
+                gpt_cond_latent, speaker_embedding = XTTS_MODEL.get_conditioning_latents(audio_path=tmp_ref_path)
+            
+            # Save to cache
+            cache_payload = {
+                "gpt_cond_latent": gpt_cond_latent,
+                "speaker_embedding": speaker_embedding,
+                "speaker_name": speaker_name,
+                "cached_at": time.time()
+            }
+            if hash_cache_file:
+                torch.save(cache_payload, hash_cache_file)
+            if name_cache_file:
+                torch.save(cache_payload, name_cache_file)
+            print(f"[Neural Gateway] Computed & cached new latents for speaker '{speaker_name}' in {time.time() - t0:.2f}s")
+        finally:
+            if os.path.exists(tmp_ref_path):
+                os.remove(tmp_ref_path)
+
+    # 4. Perform Neural Synthesis with XTTS-v2
+    t1 = time.time()
+    speed_factor = max(0.7, min(1.4, float(rate)))
+    with XTTS_LOCK:
+        out = XTTS_MODEL.inference(
+            text=text,
+            language=target_language,
+            gpt_cond_latent=gpt_cond_latent,
+            speaker_embedding=speaker_embedding,
+            temperature=0.75,
+            speed=speed_factor
+        )
+    synth_time = time.time() - t1
+    total_time = time.time() - t0
+
+    wav_bytes = wav_to_bytes(out["wav"], sample_rate=24000)
+
+    meta = {
+        "engine": "XTTS_V2_NEURAL_ZERO_SHOT",
+        "latents_cached": latents_cached,
+        "language": target_language,
+        "inference_sec": round(synth_time, 2),
+        "total_sec": round(total_time, 2),
+        "speaker": speaker_name,
+        "samples_count": len(out["wav"])
+    }
+    return wav_bytes, meta
+
 @app.post("/api/clone")
 async def clone(request: Request):
     try:
@@ -285,105 +378,60 @@ async def clone(request: Request):
     if not text:
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
 
-    reference_text = data.get("referenceText", "").strip()
     sample_audio = data.get("sampleAudio", "")
     speaker_name = data.get("speakerName", "User Voice")
-    timbre_pref = data.get("timbrePreference", data.get("gender", "auto")).lower()
+    rate = float(data.get("rate", 1.0))
+    pitch = float(data.get("pitch", 1.0))
 
-    # Detect language: check for Devanagari script in target text or reference text
-    is_hindi = any('\u0900' <= char <= '\u097F' for char in text + reference_text)
-
-    # 1. Decode reference audio bytes
+    # Decode reference audio
     audio_raw = b""
-    if sample_audio and "," in sample_audio:
+    if sample_audio:
         try:
             b64_part = sample_audio.split(",")[-1]
             audio_raw = base64.b64decode(b64_part)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"[Neural Gateway] Base64 decode warning: {e}")
 
-    # 2. Extract acoustic features (pitch, RMS energy, peak volume)
-    acoustic = analyze_audio_sample(audio_raw)
-
-    # 3. Deterministic acoustic seed from sample bytes & acoustic properties
-    fingerprint_seed = 0
-    if audio_raw:
-        h = hashlib.sha256(audio_raw[:16384] if len(audio_raw) >= 16384 else audio_raw).hexdigest()
-        fingerprint_seed = int(h[:8], 16)
-    else:
-        h = hashlib.sha256((speaker_name + reference_text).encode()).hexdigest()
-        fingerprint_seed = int(h[:8], 16)
-
-    # 4. Resolve effective timbre (explicit preference strictly enforced first, else acoustic analysis)
-    if timbre_pref in ["male", "female"]:
-        effective_timbre = timbre_pref
-    else:
-        effective_timbre = acoustic["detected_timbre"]
-
-    # 5. Dynamic voice selection from diverse neural timbre pools
-    male_voices_en = [
-        "en-US-GuyNeural",
-        "en-US-AndrewMultilingualNeural",
-        "en-US-BrianMultilingualNeural",
-        "en-US-ChristopherNeural",
-        "en-GB-RyanNeural"
-    ]
-    female_voices_en = [
-        "en-US-AvaMultilingualNeural",
-        "en-US-JennyNeural",
-        "en-US-AriaNeural",
-        "en-US-EmmaMultilingualNeural",
-        "en-GB-SoniaNeural"
-    ]
-    male_voices_hi = ["hi-IN-MadhurNeural", "en-IN-PrabhatNeural"]
-    female_voices_hi = ["hi-IN-SwaraNeural", "en-IN-NeerjaExpressiveNeural"]
-
-    if is_hindi:
-        if effective_timbre == "female":
-            voice = female_voices_hi[fingerprint_seed % len(female_voices_hi)]
-        else:
-            voice = male_voices_hi[fingerprint_seed % len(male_voices_hi)]
-    else:
-        if effective_timbre == "female":
-            voice = female_voices_en[fingerprint_seed % len(female_voices_en)]
-        else:
-            voice = male_voices_en[fingerprint_seed % len(male_voices_en)]
-
-    # 6. Acoustic Pitch Alignment (-10Hz to +10Hz based on detected pitch & user pitch slider)
-    base_pitch = float(data.get("pitch", 1.0))
-    user_pitch_hz = int((base_pitch - 1.0) * 50)
-    
-    target_f0 = 200.0 if effective_timbre == "female" else 135.0
-    f0_delta = acoustic["est_pitch_hz"] - target_f0
-    acoustic_pitch_offset = int(max(-10, min(10, f0_delta * 0.12)))
-
-    total_pitch_hz = user_pitch_hz + acoustic_pitch_offset
-    pitch_str = f"{total_pitch_hz:+d}Hz"
-
-    # 7. Acoustic Rate Modulation (Cadence alignment -10% to +10%)
-    base_rate = float(data.get("rate", 1.0))
-    user_rate_pct = int((base_rate - 1.0) * 100)
-    rate_jitter = ((fingerprint_seed // 19) % 11) - 5  # between -5% and +5%
-    total_rate_pct = user_rate_pct + rate_jitter
-    rate_str = f"{total_rate_pct:+d}%"
-
-    fallback = "hi-IN-MadhurNeural" if is_hindi else "en-US-GuyNeural"
-
+    # Attempt True Zero-Shot Neural Voice Cloning via XTTS-v2
     try:
-        audio_bytes = await generate_speech_with_retry(text, voice, rate_str, pitch_str, fallback_voice=fallback)
+        wav_bytes, meta = synthesize_with_xtts(
+            text=text,
+            audio_raw=audio_raw,
+            speaker_name=speaker_name,
+            rate=rate
+        )
 
         headers = {
-            "X-Audio-Status": "SILENCE_DETECTED" if acoustic["is_silent"] else "ACTIVE_SPEECH",
-            "X-Detected-Timbre": effective_timbre,
-            "X-Detected-Pitch-Hz": str(acoustic["est_pitch_hz"]),
-            "X-Peak-Volume-Pct": str(acoustic["peak_pct"]),
-            "X-Voice-Assigned": voice,
-            "X-Replication-Engine": "ACOUSTIC_TIMBRE_CALIBRATION",
-            "Access-Control-Expose-Headers": "X-Audio-Status, X-Detected-Timbre, X-Detected-Pitch-Hz, X-Peak-Volume-Pct, X-Voice-Assigned, X-Replication-Engine"
+            "X-Replication-Engine": meta["engine"],
+            "X-Speaker-Latents-Cached": str(meta["latents_cached"]),
+            "X-Cloned-Speaker": str(meta["speaker"]),
+            "X-Detected-Language": meta["language"],
+            "X-Inference-Time-Sec": str(meta["inference_sec"]),
+            "X-Total-Time-Sec": str(meta["total_sec"]),
+            "X-Audio-Status": "ACTIVE_SPEECH",
+            "Access-Control-Expose-Headers": "X-Replication-Engine, X-Speaker-Latents-Cached, X-Cloned-Speaker, X-Detected-Language, X-Inference-Time-Sec, X-Total-Time-Sec, X-Audio-Status"
         }
-        return Response(content=audio_bytes, media_type="audio/mpeg", headers=headers)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return Response(content=wav_bytes, media_type="audio/wav", headers=headers)
+    except Exception as xtts_err:
+        print(f"[Neural Gateway] XTTS Zero-Shot Cloning error: {xtts_err}")
+        traceback.print_exc()
+
+        # Resilient Fallback to Edge-TTS with Acoustic Timbre Calibration
+        try:
+            is_hindi = any('\u0900' <= char <= '\u097F' for char in text)
+            fallback_voice = "hi-IN-MadhurNeural" if is_hindi else "en-US-GuyNeural"
+            rate_str = format_rate(rate)
+            pitch_str = format_pitch(pitch)
+            audio_bytes = await generate_speech_with_retry(text, fallback_voice, rate_str, pitch_str)
+            headers = {
+                "X-Replication-Engine": "ACOUSTIC_FALLBACK",
+                "X-Fallback-Reason": str(xtts_err)[:100],
+                "X-Audio-Status": "ACTIVE_SPEECH",
+                "Access-Control-Expose-Headers": "X-Replication-Engine, X-Fallback-Reason, X-Audio-Status"
+            }
+            return Response(content=audio_bytes, media_type="audio/mpeg", headers=headers)
+        except Exception as fb_err:
+            raise HTTPException(status_code=500, detail=f"Synthesis failed: {xtts_err} | Fallback failed: {fb_err}")
 
 if __name__ == "__main__":
     import uvicorn

@@ -1,7 +1,7 @@
 # Graph Report - website  (2026-11-06)
 
 ## Corpus Check
-- 173 files · ~350,018 words
+- 173 files · ~350,754 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `c8fcae8d`
+- Built from commit: `535cae6e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -91,8 +91,8 @@
 4. `startServer()` - 36 edges
 5. `getPrismaClient()` - 35 edges
 6. `registerRoutes()` - 30 edges
-7. `registerRoutes()` - 27 edges
-8. `AccountingStorage` - 27 edges
+7. `AccountingStorage` - 27 edges
+8. `registerRoutes()` - 27 edges
 9. `loadTenantData()` - 23 edges
 10. `runEODSimulation()` - 22 edges
 
@@ -105,8 +105,8 @@
   server.ts → src/middleware/errorHandler.ts
 - `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
   server.ts → src/middleware/auth.ts
-- `registerRoutes()` --calls--> `getPrismaClient()`  [EXTRACTED]
-  src/plugins/StockTracker/routes.ts → api/_utils.ts
+- `getUserIdentifierAndRole()` --calls--> `verifyToken()`  [EXTRACTED]
+  src/plugins/SpeechStudio/routes.ts → api/_utils.ts
 
 ## Import Cycles
 - 2-file cycle: `src/components/LandingPage.tsx -> src/components/ProjectBrowserMockup.tsx -> src/components/LandingPage.tsx`
@@ -372,7 +372,7 @@ Nodes (4): OpenLocalWorkspaceModal(), OpenLocalWorkspaceModalProps, readDirector
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `react` to `App.tsx`, `TerminalLog`, `indicatorEngine.ts`, `dependencies`, `clientRegistry.ts`, `package.json`, `patterns/types.ts`, `FlowDesignerView.tsx`, `AdminAIChatView.tsx`, `LandingPage.tsx`, `StockTrackerView.tsx`, `BugReportModal.tsx`, `DocNexusDocument`, `StorageVaultView.tsx`, `backtest/engine.ts`, `DocNexus/types.ts`, `ImageStudioView.tsx`, `DocNexusStudio.tsx`, `DocNexus/types.ts`, `SpeechStudioView.tsx`, `MarkdownStudio.tsx`, `strategies/types.ts`, `strategies/types.ts`, `WorkspacePluginStore.tsx`, `StockSimulatorPanel.tsx`, `SlideDeckStudio.tsx`, `OpenLocalWorkspaceModal.tsx`?**
-  _High betweenness centrality (0.235) - this node is a cross-community bridge._
+  _High betweenness centrality (0.251) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `startServer()` (e.g. with `authenticateToken()` and `requireAdmin()`) actually correct?**
   _`startServer()` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **Should `react` be split into smaller, more focused modules?**
@@ -382,6 +382,6 @@ _Questions this graph is uniquely positioned to answer:_
 - **Should `App.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.09388335704125178 - nodes in this community are weakly interconnected._
 - **Why does `express` connect `express` to `react`, `ref_fs`, `DocNexus/storage.ts`, `StockTracker/routes.ts`, `serverRegistry.ts`, `package.json`, `server.ts`, `SpeechStudioView.tsx`, `auth.ts`, `telemetryService.ts`?**
-  _High betweenness centrality (0.072) - this node is a cross-community bridge._
+  _High betweenness centrality (0.064) - this node is a cross-community bridge._
 - **Should `TerminalLog` be split into smaller, more focused modules?**
   _Cohesion score 0.06823529411764706 - nodes in this community are weakly interconnected._

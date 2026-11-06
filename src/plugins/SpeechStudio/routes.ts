@@ -494,6 +494,9 @@ export function registerRoutes(router: Router) {
       // Synthesize audio using VM 2 Neural Studio daemon
       const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://132.226.190.125/tts";
       let audioBuffer: Buffer;
+      let replicationEngine = "NEURAL_EDGE";
+      let latentsCached = false;
+      let inferenceTimeSec = 0;
 
       try {
         const targetUrl = (isClonedVoice && effectiveSampleAudio)
@@ -507,13 +510,16 @@ export function registerRoutes(router: Router) {
         let vmResponse: Response | null = null;
         let lastError: any = null;
 
+        // Neural zero-shot cloning on CPU takes 25-60s, allow up to 180s timeout
+        const requestTimeoutMs = (isClonedVoice && effectiveSampleAudio) ? 180000 : 45000;
+
         for (let attempt = 1; attempt <= 2; attempt++) {
           try {
             vmResponse = await fetch(targetUrl, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(payload),
-              signal: AbortSignal.timeout(45000)
+              signal: AbortSignal.timeout(requestTimeoutMs)
             });
 
             if (vmResponse.ok) break;
@@ -532,6 +538,10 @@ export function registerRoutes(router: Router) {
         if (!vmResponse || !vmResponse.ok) {
           throw lastError || new Error("Failed to communicate with Neural TTS service on VM 2.");
         }
+
+        replicationEngine = vmResponse.headers.get("x-replication-engine") || "NEURAL_EDGE";
+        latentsCached = vmResponse.headers.get("x-speaker-latents-cached") === "True";
+        inferenceTimeSec = Number(vmResponse.headers.get("x-inference-time-sec") || 0);
 
         const arrayBuf = await vmResponse.arrayBuffer();
         audioBuffer = Buffer.from(arrayBuf);
@@ -554,11 +564,14 @@ export function registerRoutes(router: Router) {
       const updatedQuota = getQuotaStatus(identifier, role);
       const words = text.trim().split(/\s+/).length;
       const estimatedDurationSec = Number((words / (2.6 * Number(rate || 1))).toFixed(1));
-      const mimeType = "audio/mpeg";
+      const isWav = audioBuffer.length >= 4 && audioBuffer.subarray(0, 4).toString() === "RIFF";
+      const mimeType = isWav ? "audio/wav" : "audio/mpeg";
       const audioBase64 = `data:${mimeType};base64,${audioBuffer.toString("base64")}`;
 
       let engineTitle = "Oracle VM2 Neural Studio (Natural Human Voice)";
-      if (architecture === "f5-tts") {
+      if (replicationEngine === "XTTS_V2_NEURAL_ZERO_SHOT") {
+        engineTitle = `Oracle VM2 XTTS-v2 Zero-Shot Neural Engine (${latentsCached ? "Cached Latents" : "Acoustic Flow Matching"})`;
+      } else if (architecture === "f5-tts") {
         engineTitle = `Oracle VM2 F5-TTS Flow Matching (${emotion || "Zero-Shot In-Context"})`;
       } else if (architecture === "kokoro-82m") {
         engineTitle = `Oracle VM2 Kokoro-82M Audio Narrator`;
@@ -583,7 +596,10 @@ export function registerRoutes(router: Router) {
           wordCount: words,
           estimatedDurationSec,
           fileSizeBytes: audioBuffer.length,
-          sampleRate: 24000
+          sampleRate: 24000,
+          replicationEngine,
+          latentsCached,
+          inferenceTimeSec
         },
         quota: updatedQuota,
         synthesizedAt: new Date().toISOString()
@@ -628,6 +644,11 @@ export function registerRoutes(router: Router) {
       // Check if VM 2 Voice Cloning Engine is available
       const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://132.226.190.125/tts";
       let audioBuffer: Buffer;
+      let replicationEngine = "XTTS_V2_NEURAL_ZERO_SHOT";
+      let latentsCached = false;
+      let detectedLang = "en";
+      let inferenceTimeSec = 0;
+      let totalTimeSec = 0;
 
       try {
         let vmResponse: Response | null = null;
@@ -639,7 +660,7 @@ export function registerRoutes(router: Router) {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ text, sampleAudio, referenceText, speakerName, timbrePreference, rate, pitch }),
-              signal: AbortSignal.timeout(45000)
+              signal: AbortSignal.timeout(180000)
             });
 
             if (vmResponse.ok) break;
@@ -659,11 +680,11 @@ export function registerRoutes(router: Router) {
           throw lastError || new Error("Failed to communicate with Voice Cloning service on VM 2.");
         }
 
-        const audioStatus = vmResponse.headers.get("x-audio-status") || "ACTIVE_SPEECH";
-        const detectedTimbre = vmResponse.headers.get("x-detected-timbre") || timbrePreference;
-        const detectedPitchHz = vmResponse.headers.get("x-detected-pitch-hz") || "140";
-        const peakVolumePct = vmResponse.headers.get("x-peak-volume-pct") || "50";
-        const voiceAssigned = vmResponse.headers.get("x-voice-assigned") || "cloned-user";
+        replicationEngine = vmResponse.headers.get("x-replication-engine") || "XTTS_V2_NEURAL_ZERO_SHOT";
+        latentsCached = vmResponse.headers.get("x-speaker-latents-cached") === "True";
+        detectedLang = vmResponse.headers.get("x-detected-language") || "en";
+        inferenceTimeSec = Number(vmResponse.headers.get("x-inference-time-sec") || 0);
+        totalTimeSec = Number(vmResponse.headers.get("x-total-time-sec") || 0);
 
         const arrayBuf = await vmResponse.arrayBuffer();
         audioBuffer = Buffer.from(arrayBuf);
@@ -686,22 +707,32 @@ export function registerRoutes(router: Router) {
       const updatedQuota = getQuotaStatus(identifier, role);
       const words = text.trim().split(/\s+/).length;
       const estimatedDurationSec = Number((words / (2.6 * Number(rate || 1))).toFixed(1));
-      const mimeType = "audio/mpeg";
+      const isWav = audioBuffer.length >= 4 && audioBuffer.subarray(0, 4).toString() === "RIFF";
+      const mimeType = isWav ? "audio/wav" : "audio/mpeg";
       const audioBase64 = `data:${mimeType};base64,${audioBuffer.toString("base64")}`;
+
+      const engineName = replicationEngine === "XTTS_V2_NEURAL_ZERO_SHOT"
+        ? `Oracle VM2 XTTS-v2 Zero-Shot Neural Engine (${latentsCached ? "Cached Speaker Latents" : "Acoustic Flow Matching"})`
+        : "Oracle VM2 Neural Studio (Natural Voice Replicator)";
 
       return res.json({
         success: true,
         speakerName,
         text,
         audioUrl: audioBase64,
-        engine: "Oracle VM2 Neural Studio (Natural Voice Replicator)",
+        engine: engineName,
         isCloned: true,
         telemetry: {
           characterCount: text.length,
           wordCount: words,
           estimatedDurationSec,
           fileSizeBytes: audioBuffer.length,
-          sampleRate: 24000
+          sampleRate: 24000,
+          replicationEngine,
+          latentsCached,
+          detectedLanguage: detectedLang,
+          inferenceTimeSec,
+          totalTimeSec
         },
         quota: updatedQuota,
         synthesizedAt: new Date().toISOString()

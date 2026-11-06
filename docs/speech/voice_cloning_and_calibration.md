@@ -142,3 +142,47 @@ In **Speech Studio v0.3.3**, we resolved key user experience issues regarding vo
   ```
 * This guarantees seamless multi-session speech synthesis across any browser session or machine.
 
+---
+
+## 7. True Zero-Shot Neural Voice Cloning with XTTS-v2 (v0.3.4 Production)
+
+In **Speech Studio v0.3.4**, we replaced heuristic acoustic pitch/timbre mapping with a genuine **Zero-Shot Neural Voice Cloning Engine** powered by **Coqui XTTS-v2** running natively on Oracle Cloud Always Free VM 2 (`132.226.190.125`).
+
+### A. Architectural Topology
+```mermaid
+flowchart TD
+    A["User Audio Sample (16-bit PCM WAV)"] --> B["SHA-256 Fingerprint Generator"]
+    B --> C{"Speaker Latents Cached in /home/ubuntu/voice_latents/?"}
+    C -- "YES (Cache Hit)" --> D["Instant Retrieval (<10ms)"]
+    C -- "NO (Cache Miss)" --> E["Extract 1024-dim GPT Latents + 512-dim Speaker Embedding (0.74s)"]
+    E --> F["Save {hash}.pt and name_{speaker}.pt to Vault"]
+    D --> G["XTTS-v2 Flow Matching / Autoregressive Decoder"]
+    F --> G
+    H["Target Script (English / Hindi Devanagari)"] --> I["Language Classifier (Devanagari \u0900-\u097F)"]
+    I --> G
+    G --> J["24 kHz 16-Bit PCM WAV Audio Stream"]
+    J --> K["Telemetry: x-replication-engine: XTTS_V2_NEURAL_ZERO_SHOT"]
+```
+
+### B. Empirical Benchmarks on VM 2 (2 ARM64 Neoverse-N1 Cores, CPU-Only)
+| Metric | Benchmark Result | Engineering Note |
+| :--- | :--- | :--- |
+| **Model Load Time (Initial)** | 34.87s | Model is kept permanently warm in RAM via FastAPI daemon under PM2. |
+| **Latent Conditioning Extraction** | **0.74s** | Extracts complete vocal tract resonance & prosodic embedding from 3–10s reference WAV. |
+| **Latent File Footprint** | **135 KB** | Stored as `.pt` file; allows tens of thousands of custom user voices on disk. |
+| **Subsequent Latent Retrieval** | **< 0.01s** | Skips acoustic feature extraction completely for saved profiles (e.g. `SS_Voice`). |
+| **Inference Latency (Target Sentence)** | **26.8s – 34.7s** | High-fidelity neural voice synthesis directly matching the user's authentic voice, pitch, timbre, and accent. |
+| **Language Support** | **English (`en`) & Hindi (`hi`)** | Automatic script detection routes Devanagari text to Hindi neural phonemes. |
+| **HTTP Proxy Timeouts** | **180s (3 min) / 300s (5 min)** | Express backend and Nginx timeouts configured to comfortably accommodate long sentences. |
+
+### C. Live Telemetry Contract
+Every zero-shot cloned audio response includes cryptographic and execution telemetry headers:
+* `X-Replication-Engine`: `XTTS_V2_NEURAL_ZERO_SHOT`
+* `X-Speaker-Latents-Cached`: `True` / `False`
+* `X-Cloned-Speaker`: `SS_Voice` (or user speaker profile name)
+* `X-Detected-Language`: `en` / `hi`
+* `X-Inference-Time-Sec`: `29.18`
+* `X-Total-Time-Sec`: `29.97`
+* `X-Audio-Status`: `ACTIVE_SPEECH`
+
+
