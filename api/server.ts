@@ -1,9 +1,12 @@
-import app, { startPromise } from '../server.js';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 
-// Backend routing provider: 'ORACLE' | 'VERCEL' (default: 'VERCEL')
-const BACKEND_TARGET = (process.env.BACKEND_TARGET || 'VERCEL').toUpperCase();
-const ORACLE_BACKEND_URL = (process.env.ORACLE_BACKEND_URL || process.env.ORACLE_AI_URL || '').replace(/\/$/, '');
+// Backend routing provider: 'ORACLE' | 'VERCEL' (default: 'ORACLE' since dedicated VM 3 is live)
+const BACKEND_TARGET = (process.env.BACKEND_TARGET || 'ORACLE').toUpperCase();
+const ORACLE_BACKEND_URL = (
+  process.env.ORACLE_BACKEND_URL || 
+  process.env.ORACLE_WEB_URL || 
+  'http://130.210.37.199'
+).replace(/\/$/, '');
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Restore original URL for Express routing via our explicit rewrite query parameter
@@ -21,17 +24,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // =========================================================================
-  // OPTION 2: DUAL-MODE SMART PROXY (SINGLE-SWITCH ROUTING TO ORACLE VM)
+  // OPTION 1: SMART PROXY TO DEDICATED ORACLE CLOUD VM (VM 3: 130.210.37.199)
   // =========================================================================
   if (BACKEND_TARGET === 'ORACLE' && ORACLE_BACKEND_URL) {
     try {
       const destinationUrl = `${ORACLE_BACKEND_URL}${targetPath}`;
       console.log(`[Vercel Smart Switch] Proxying ${req.method} ${targetPath} -> ${destinationUrl}`);
 
-      // Forward request headers, sanitizing host
+      // Forward request headers, sanitizing host and content-length
       const forwardHeaders: Record<string, string> = {};
       for (const [key, val] of Object.entries(req.headers)) {
-        if (val !== undefined && key.toLowerCase() !== 'host') {
+        const lowerKey = key.toLowerCase();
+        if (val !== undefined && lowerKey !== 'host' && lowerKey !== 'content-length') {
           forwardHeaders[key] = Array.isArray(val) ? val.join(', ') : String(val);
         }
       }
@@ -48,9 +52,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      // 15-second timeout safeguard for Oracle VM proxying before triggering automatic fallback
+      // 8-second timeout safeguard (well under Vercel's 10s hard timeout)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000);
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
 
       const proxyRes = await fetch(destinationUrl, {
         method: req.method,
@@ -62,7 +66,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       // Relay response headers (excluding hop-by-hop headers)
       proxyRes.headers.forEach((val, key) => {
-        if (!['content-encoding', 'transfer-encoding', 'connection'].includes(key.toLowerCase())) {
+        const lower = key.toLowerCase();
+        if (!['content-encoding', 'transfer-encoding', 'connection'].includes(lower)) {
           res.setHeader(key, val);
         }
       });
@@ -79,10 +84,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   // =========================================================================
-  // LOCAL VERCEL SERVERLESS EXECUTION (DEFAULT OR FAILOVER)
+  // LOCAL VERCEL SERVERLESS EXECUTION (LAZY LOADED FAILOVER ONLY)
   // =========================================================================
-  await startPromise;
-  res.setHeader('x-backend-provider', 'vercel-serverless');
-  console.log(`[Vercel Handler] Handing off to local Express: ${req.method} ${req.url}`);
-  return app(req as any, res as any);
+  try {
+    const { default: app, startPromise } = await import('../server.js');
+    await startPromise;
+    res.setHeader('x-backend-provider', 'vercel-serverless');
+    console.log(`[Vercel Handler] Handing off to local Express: ${req.method} ${req.url}`);
+    return app(req as any, res as any);
+  } catch (err: any) {
+    console.error('[Vercel Handler] Fatal error during local bootstrap:', err);
+    res.status(500).json({
+      error: 'Backend service temporarily unavailable. Please retry in a few moments.',
+      detail: err.message
+    });
+  }
 }
