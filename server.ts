@@ -382,6 +382,24 @@ async function seedDatabase() {
 
         version: "0.1.0"
 
+      },
+
+      {
+
+        id: "wp_sovereign_tools",
+
+        name: "Tools Studio",
+
+        category: "Utilities & Productivity",
+
+        type: "Native",
+
+        description: "High-performance client-side sovereign utility suite: Client-side PDF tools (Merge, Split, Compress, Watermark, Reorder, Page Extract), Image & Document Converters, Multilingual OCR (Devanagari & English), Receipt-to-CSV, Business Card Scanner, Developer Tools. Zero server uploads, 100% private.",
+
+        iconSymbol: "build",
+
+        version: "1.0.0"
+
       }
 
     ];
@@ -2519,6 +2537,29 @@ app.get("/api/workspace-plugins/installed", authenticateToken, async (req: any, 
         include: { plugin: true }
 
       });
+
+    } else {
+
+      // Auto-provision any new Native workspace plugins for existing users
+      const nativePlugins = await prisma.workspacePlugin.findMany({ where: { type: "Native" } });
+      const installedIds = new Set(installs.map(i => i.pluginId));
+      let hasNewInstalls = false;
+      for (const np of nativePlugins) {
+        if (!installedIds.has(np.id)) {
+          try {
+            await prisma.userWorkspacePlugin.create({
+              data: { userEmail: req.user.email, pluginId: np.id, installedVersion: np.version }
+            });
+            hasNewInstalls = true;
+          } catch (e) {}
+        }
+      }
+      if (hasNewInstalls) {
+        installs = await prisma.userWorkspacePlugin.findMany({
+          where: { userEmail: req.user.email },
+          include: { plugin: true }
+        });
+      }
 
     }
 

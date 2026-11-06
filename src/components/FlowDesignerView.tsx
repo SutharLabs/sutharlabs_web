@@ -766,7 +766,16 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
             }`}
           >
             <Zap className="w-3.5 h-3.5 shrink-0" />
-            <span>Inspector</span>
+            <span>Execution Console</span>
+            {stepExecutions.length > 0 && (
+              <span className={`px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                stepExecutions.some(s => s.status === 'ERROR')
+                  ? 'bg-rose-500/20 text-rose-400'
+                  : 'bg-emerald-500/20 text-emerald-400'
+              }`}>
+                {stepExecutions.length}
+              </span>
+            )}
           </button>
 
           {/* Run Workflow */}

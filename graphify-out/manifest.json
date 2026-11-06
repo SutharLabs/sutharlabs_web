@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1793979421.1585705,
-    "seen": 1793980178.9889617,
-    "ast_hash": "bd7ead51e2475eaf3090018c39c256a4",
+    "mtime": 1793980852.2913575,
+    "seen": 1793980986.2089775,
+    "ast_hash": "f4e57a33bd56765d0343a801a87e0984",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -74,8 +74,8 @@
     "semantic_hash": ""
   },
   "src/components/AdminConsoleView.tsx": {
-    "mtime": 1793979513.139979,
-    "seen": 1793980178.9889772,
+    "mtime": 1793980933.7175097,
+    "seen": 1793980986.2089856,
     "ast_hash": "99c75ea7d2aa0d8aea6c4d83fa776014",
     "semantic_hash": ""
   },
@@ -122,20 +122,20 @@
     "semantic_hash": "324737b86b55bbc04f585145e05470c7"
   },
   "src/components/FlowDesignerView.tsx": {
-    "mtime": 1793976762.9126554,
-    "seen": 1793980178.9890091,
-    "ast_hash": "7091c2054fa9b619aed2b75b87c1d7b5",
+    "mtime": 1793980934.3505523,
+    "seen": 1793980986.2090034,
+    "ast_hash": "c3c3d4f280d049a8008f3cc90ecd64f0",
     "semantic_hash": ""
   },
   "src/components/HeroStudioConsole.tsx": {
-    "mtime": 1793979947.7623043,
-    "seen": 1793980178.9890132,
+    "mtime": 1793980935.0724018,
+    "seen": 1793980986.2090054,
     "ast_hash": "a0deecb43b7e2296e5c00272fb17bb7c",
     "semantic_hash": ""
   },
   "src/components/LandingPage.tsx": {
-    "mtime": 1793980006.6946814,
-    "seen": 1793980178.9890165,
+    "mtime": 1793980935.602443,
+    "seen": 1793980986.2090075,
     "ast_hash": "fdd44580a648ec24c8c19910461affb9",
     "semantic_hash": ""
   },
@@ -218,8 +218,8 @@
     "semantic_hash": "b221785dc10a508e4bfb9a3be909433f"
   },
   "src/components/StockTrackerView.tsx": {
-    "mtime": 1793980210.2340739,
-    "seen": 1793980233.5252008,
+    "mtime": 1793980937.094136,
+    "seen": 1793980986.2090392,
     "ast_hash": "a2280bae64ee114917cd7b8052c1b146",
     "semantic_hash": ""
   },
@@ -356,9 +356,9 @@
     "semantic_hash": "8dab1d2f4b290c72f4b09fe1b159d0b2"
   },
   "src/plugins/Accounting/manifest.json": {
-    "mtime": 1793980109.0107243,
-    "seen": 1793980178.9891589,
-    "ast_hash": "587ea27a946849b38453fe2e82bc5fe2",
+    "mtime": 1793980953.1985993,
+    "seen": 1793980986.2090828,
+    "ast_hash": "6f53ebdad17091f1fd3d611e827a4986",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/manifest.ts": {
@@ -470,9 +470,9 @@
     "semantic_hash": "2cf61e718991de61558a761f4a82f17b"
   },
   "src/plugins/DocNexus/manifest.json": {
-    "mtime": 1793980107.114134,
-    "seen": 1793980178.9892666,
-    "ast_hash": "a4e2d392e51d4803e59c7f213784c2a7",
+    "mtime": 1793980948.8438852,
+    "seen": 1793980986.209136,
+    "ast_hash": "e167804f5844eb22866ac1e8498ae1db",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/manifest.ts": {
@@ -536,9 +536,9 @@
     "semantic_hash": "60a8dc279c1c40a63b3d53988dbd2e61"
   },
   "src/plugins/FlowDesigner/manifest.json": {
-    "mtime": 1793980106.367272,
-    "seen": 1793980178.9893036,
-    "ast_hash": "99639500c7f21531de0eb4f33bb58e29",
+    "mtime": 1793980947.247898,
+    "seen": 1793980986.2091544,
+    "ast_hash": "60e12a54353bf6261c29e6a6dfed3eb4",
     "semantic_hash": ""
   },
   "src/plugins/FlowDesigner/manifest.ts": {
@@ -644,9 +644,9 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1793980104.379441,
-    "seen": 1793980178.9894335,
-    "ast_hash": "99cf2fe82a2b89cb19b016907c69d5e1",
+    "mtime": 1793980938.0091493,
+    "seen": 1793980986.2092187,
+    "ast_hash": "940ac56f7f4d091bbd372bf4ef2af946",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1793980110.2724648,
-    "seen": 1793980178.989366,
-    "ast_hash": "d8d80eebd5c2e2d663e246b22db9deff",
+    "mtime": 1793980954.8884194,
+    "seen": 1793980986.2091858,
+    "ast_hash": "e1b8c99f79386771f666b681c9511d43",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {
@@ -1178,9 +1178,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.json": {
-    "mtime": 1793980111.1906443,
-    "seen": 1793980178.9893212,
-    "ast_hash": "44833dc14072e44774384fb24e3da954",
+    "mtime": 1793980956.4894168,
+    "seen": 1793980986.2091632,
+    "ast_hash": "2eceb638e76432b191b25e64edb3ae98",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.ts": {
@@ -1466,14 +1466,14 @@
     "semantic_hash": ""
   },
   "src/components/PublicToolsHubView.tsx": {
-    "mtime": 1793979836.2372105,
-    "seen": 1793980178.9890544,
+    "mtime": 1793980936.0446262,
+    "seen": 1793980986.209028,
     "ast_hash": "7ef51d525a16c724a35d0b19f8a9e476",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/PdfToolsStudio.tsx": {
-    "mtime": 1793979623.158023,
-    "seen": 1793980178.9892013,
+    "mtime": 1793980939.2713716,
+    "seen": 1793980986.209106,
     "ast_hash": "7106152173ac2a2f52d892d45809a5d7",
     "semantic_hash": ""
   },
@@ -1526,8 +1526,8 @@
     "semantic_hash": ""
   },
   "src/plugins/Accounting/components/OcrReceiptModal.tsx": {
-    "mtime": 1793979023.051682,
-    "seen": 1793980178.9891384,
+    "mtime": 1793980937.5911756,
+    "seen": 1793980986.2090728,
     "ast_hash": "79fbf14efb46de071d688168bea732ba",
     "semantic_hash": ""
   },
@@ -1538,14 +1538,14 @@
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/tools/MultilingualOcrTool.tsx": {
-    "mtime": 1793979202.067978,
-    "seen": 1793980178.9892392,
+    "mtime": 1793980940.0719428,
+    "seen": 1793980986.2091238,
     "ast_hash": "40e2d7dc682550a26417aec1952f39d6",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/components/tools/ReceiptToCsvTool.tsx": {
-    "mtime": 1793979363.510257,
-    "seen": 1793980178.9892492,
+    "mtime": 1793980941.171092,
+    "seen": 1793980986.2091272,
     "ast_hash": "7a62a2ecc30eb9c43e9bd8f60e57a659",
     "semantic_hash": ""
   },
@@ -1562,9 +1562,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.json": {
-    "mtime": 1793980112.0373695,
-    "seen": 1793980178.9893498,
-    "ast_hash": "d8da108628f7db71630c13b79fca9233",
+    "mtime": 1793980958.1410642,
+    "seen": 1793980986.209177,
+    "ast_hash": "b31a2c3e2c72acc4a7856b0b9961ab88",
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.ts": {
