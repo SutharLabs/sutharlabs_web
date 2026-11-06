@@ -50,6 +50,7 @@ import {
 } from 'lucide-react';
 import {
   createChart,
+  createSeriesMarkers,
   CandlestickSeries,
   HistogramSeries,
   LineSeries,
@@ -667,6 +668,9 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     ];
   });
   const [isIndicatorsModalOpen, setIsIndicatorsModalOpen] = useState(false);
+  const [showPatterns, setShowPatterns] = useState<boolean>(true);
+  const [activeChartPatterns, setActiveChartPatterns] = useState<DetectedPattern[]>([]);
+  const [selectedPattern, setSelectedPattern] = useState<DetectedPattern | null>(null);
   const [settingsIndicator, setSettingsIndicator] = useState<IndicatorInstance | null>(null);
   const [isChartExpanded, setIsChartExpanded] = useState<boolean>(false);
 
@@ -1130,7 +1134,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
 
   // Main Workspace Right Panel View Mode: WATCHLIST (Default) | TELEMETRY | NEWS | ORDER | BACKTEST
-  const [rightPanelTab, setRightPanelTab] = useState<'WATCHLIST' | 'TELEMETRY' | 'NEWS' | 'ORDER' | 'BACKTEST'>('WATCHLIST');
+  const [rightPanelTab, setRightPanelTab] = useState<'WATCHLIST' | 'TELEMETRY' | 'NEWS' | 'PATTERNS' | 'ORDER' | 'BACKTEST'>('WATCHLIST');
 
   // Resizable Workspace Splitter State (TradingView, VS Code & Linear pattern)
   const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
@@ -2031,6 +2035,20 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
     fetchAll(symbol, activePeriod, activeInterval);
   }, [symbol, activePeriod, activeInterval, fetchAll]);
 
+  // Scan candlestick series for macro geometric and micro candlestick patterns
+  useEffect(() => {
+    if (candles && candles.length >= 10) {
+      const detected = scanChartPatterns(candles);
+      setActiveChartPatterns(detected);
+      if (detected.length > 0 && (!selectedPattern || !detected.some(p => p.id === selectedPattern.id))) {
+        setSelectedPattern(detected[0]);
+      }
+    } else {
+      setActiveChartPatterns([]);
+      setSelectedPattern(null);
+    }
+  }, [candles]);
+
   // Auto-refresh quote based on configured poll interval
   useEffect(() => {
     if (pollIntervalSec <= 0) return;
@@ -2142,6 +2160,61 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       close: c.close,
     }));
     candleSeries.setData(candleData);
+
+    // 1b. Render Visual Chart Pattern Markers & Breakout Targets
+    if (showPatterns && activeChartPatterns.length > 0) {
+      try {
+        const markers = activeChartPatterns.map(pat => {
+          const isBull = pat.direction === 'BULLISH';
+          return {
+            time: pat.endTime as UTCTimestamp,
+            position: isBull ? ('belowBar' as const) : ('aboveBar' as const),
+            color: isBull ? '#00e476' : '#ff5252',
+            shape: isBull ? ('arrowUp' as const) : ('arrowDown' as const),
+            text: `${pat.action === 'BUY' ? '🟢 BUY' : '🔴 SELL'}: ${pat.name} (T: ₹${pat.targetPrice})`
+          };
+        });
+
+        markers.sort((a, b) => (Number(a.time) - Number(b.time)));
+        createSeriesMarkers(candleSeries, markers);
+      } catch (e) {
+        console.warn('[Pattern Overlay] Error setting markers:', e);
+      }
+    }
+
+    // Dynamic Price Lines for Selected Pattern (Neckline, Target, Stop Loss)
+    if (showPatterns && selectedPattern) {
+      try {
+        candleSeries.createPriceLine({
+          price: selectedPattern.necklinePrice,
+          color: '#00dbe7',
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
+          title: `Neckline: ₹${selectedPattern.necklinePrice}`
+        });
+
+        candleSeries.createPriceLine({
+          price: selectedPattern.targetPrice,
+          color: '#00e476',
+          lineWidth: 2,
+          lineStyle: LineStyle.Solid,
+          axisLabelVisible: true,
+          title: `Target (T1): ₹${selectedPattern.targetPrice}`
+        });
+
+        candleSeries.createPriceLine({
+          price: selectedPattern.stopLossPrice,
+          color: '#ff5252',
+          lineWidth: 1,
+          lineStyle: LineStyle.LargeDashed,
+          axisLabelVisible: true,
+          title: `Stop Loss: ₹${selectedPattern.stopLossPrice}`
+        });
+      } catch (e) {
+        console.warn('[Pattern PriceLine] Error creating price lines:', e);
+      }
+    }
 
     // 2. Dynamic Technical Indicators Plotting (Top-rated Plotter Engine)
     activeIndicators.forEach(ind => {
@@ -2357,7 +2430,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       chart.remove();
       chartInstanceRef.current = null;
     };
-  }, [candles, activeIndicators, indicatorDataMap, activePeriod, activeInterval, isDark, candleLookup, isChartExpanded]);
+  }, [candles, activeIndicators, indicatorDataMap, activePeriod, activeInterval, isDark, candleLookup, isChartExpanded, showPatterns, activeChartPatterns, selectedPattern]);
 
   // ── 5. Terminal Internal Auto-Scroll ──────────────────────────────────────
   useEffect(() => {
@@ -3370,6 +3443,26 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
               {/* Indicator Manager & Fullscreen Toggle */}
               <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap py-0.5 justify-start sm:justify-end shrink-0 pr-1 ml-auto sm:ml-0">
+                {/* Patterns Toggle Button */}
+                <button
+                  type="button"
+                  onClick={() => setShowPatterns(prev => !prev)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm shrink-0 ${
+                    showPatterns
+                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-[0_0_8px_rgba(206,93,255,0.25)]'
+                      : 'bg-surface-container text-on-surface-variant border border-outline/20 hover:text-on-surface'
+                  }`}
+                  title="Toggle Geometric & Candlestick Pattern Recognition Overlays"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Patterns</span>
+                  {activeChartPatterns.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-500/25 border border-purple-500/40">
+                      {activeChartPatterns.length}
+                    </span>
+                  )}
+                </button>
+
                 {/* Indicators & Strategies Modal Button (TradingView Style) */}
                 <button
                   type="button"
@@ -3689,6 +3782,28 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <span className={`w-2 h-2 rounded-full shrink-0 ${
                       sentimentReport.verdict === 'BULLISH' ? 'bg-[#00e476]' : sentimentReport.verdict === 'BEARISH' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'
                     }`} />
+                  )}
+                </span>
+              </button>
+
+              <button
+                onClick={(e) => {
+                  setRightPanelTab('PATTERNS');
+                  (e.currentTarget as HTMLElement).scrollIntoView({ behavior: 'smooth', inline: 'nearest', block: 'nearest' });
+                }}
+                className={`shrink-0 h-8 px-3 rounded-lg text-xs font-mono font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer leading-none whitespace-nowrap ${
+                  rightPanelTab === 'PATTERNS'
+                    ? 'bg-[#ce5dff] text-white shadow-[0_0_10px_rgba(206,93,255,0.3)]'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                <span className="leading-none inline-flex items-center gap-1">
+                  <span>Patterns</span>
+                  {activeChartPatterns.length > 0 && (
+                    <span className="px-1.5 py-0.2 rounded-full text-[9px] bg-white/20 text-white font-bold">
+                      {activeChartPatterns.length}
+                    </span>
                   )}
                 </span>
               </button>
@@ -4483,6 +4598,22 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                 )}
               </div>
 
+            </div>
+          )}
+
+          {/* ── TAB: ACTIVE CHART PATTERNS & GEOMETRIC TARGETS ── */}
+          {rightPanelTab === 'PATTERNS' && (
+            <div className="glass-panel rounded-xl p-3.5 border border-outline/20 bg-surface-container-lowest/95 flex flex-col gap-3 shadow-md">
+              <ChartPatternsPanel
+                patterns={activeChartPatterns}
+                selectedPatternId={selectedPattern?.id || null}
+                onSelectPattern={(pat) => {
+                  setSelectedPattern(pat);
+                  setShowPatterns(true);
+                }}
+                theme={theme}
+                symbol={quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
+              />
             </div>
           )}
 

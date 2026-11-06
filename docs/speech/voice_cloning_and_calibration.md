@@ -108,3 +108,37 @@ To achieve optimal pitch contours, consonant crispness, and vocal timbre extract
    > *"Technology aur modern AI systems mein continuous learning sabse critical parameter hai. Sovereign neural engineering se hum high-accuracy speech models build kar rahe hain."*
 4. **Quick 10-Second Test**:
    > *"Hello, I am testing my sovereign voice clone on SutharLabs speech studio. This sample captures my natural tone, pitch, and cadence."*
+
+---
+
+## 6. Voice Library Multi-Profile Storage & Step 2 Fallback Architecture (v0.3.3)
+
+In **Speech Studio v0.3.3**, we resolved key user experience issues regarding voice sample persistence and step progression:
+
+### A. Saved Voice Library in Step 1
+* When a user saves a voice (e.g. `SS_Voice`), the profile is persisted both in browser `localStorage` (`sutharlabs_cloned_voice_profiles`) and the backend PostgreSQL database (`/api/plugins/speech-studio/profiles`).
+* Step 1 features a prominent **Saved Voice Library Selector** displaying all previously recorded voice profiles with their detected gender and duration.
+* Selecting any profile instantly loads its reference audio, name, and timbre preferences into active memory without requiring the user to record again.
+
+### B. One-Click "USE IN STEP 2" Gallery Action
+* Each card in the Saved Voice Profiles gallery features a dedicated **`USE IN STEP 2`** button.
+* Clicking this button automatically populates `activeProfileId`, extracts the base64 reference audio (`sampleAudioDataUrl`), sets the speaker name, and unlocks Step 2.
+
+### C. Step 2 Disabled Logic & Automatic Audio Fallback
+* Previously, Step 2 was disabled with the warning `"* Ingest or record an audio sample in Step 1 first"` if a new sample was not recorded in the active browser tab.
+* **Modern Logic**: The button disabling condition now evaluates:
+  ```ts
+  disabled={isSynthesizing || !text.trim() || (!clonedSampleBase64 && !activeProfileId)}
+  ```
+* In `handleCloneAndSynthesize`, if `clonedSampleBase64` is null, the engine automatically falls back to `activeProfileId`'s stored WAV audio:
+  ```ts
+  let effectiveSample = clonedSampleBase64;
+  if (!effectiveSample && activeProfileId) {
+    const found = clonedProfiles.find(p => p.id === activeProfileId);
+    if (found?.sampleAudioDataUrl) {
+      effectiveSample = found.sampleAudioDataUrl;
+    }
+  }
+  ```
+* This guarantees seamless multi-session speech synthesis across any browser session or machine.
+

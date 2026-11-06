@@ -435,3 +435,25 @@ For staging, internal studio narration, and rapid experimentation, the **Edge-TT
   2. Added **Standardized Phonetic Calibration Test Prompts** panel in Step 1 (English Rainbow, Hindi Panchatantra, Hinglish Corporate, and Quick 10s).
   3. Auto-synchronized `referenceTranscript` state with selected script.
   4. Automatically selects language-appropriate neural base voice on VM 2 backend (Hindi Devanagari script routing).
+
+### Issue 5: Intermittent Responses from Heavy 7B Persona Defaults
+* **Symptoms:**
+  * Switching agent personas (e.g. Cloud Architect, Database Architect, Math Reasoner) caused inference requests to hang for 45–60s and occasionally fail with HTTP 500 errors.
+* **Root Cause Identified:**
+  * `AGENT_PERSONAS` had `qwen2.5:7b` (4.7 GB) and `deepseek-r1:7b` (4.7 GB) configured as the default recommended models.
+  * On a 2-core ARM CPU without GPU, cold-loading 4.7 GB from block storage into RAM overwhelmed I/O and exceeded Nginx reverse-proxy gateway timeouts.
+* **Permanent Fix Applied:**
+  1. Updated all persona defaults in `src/services/aiChatService.ts` to sub-second parameter tiers:
+     * `cloud-architect` $\to$ `qwen2.5:1.5b` (986 MB, ~48 t/s)
+     * `database-architect` $\to$ `qwen2.5:1.5b`
+     * `software-engineer` $\to$ `qwen2.5-coder:3b` (~28 t/s)
+     * `math-reasoner` $\to$ `deepseek-r1:1.5b` (~40 t/s)
+  2. All persona switches now execute with instant <1s time-to-first-token (TTFT).
+
+### Issue 6: Real-Time Deep Web Research Intelligence Integration
+* **Symptoms:**
+  * Agents lacked access to real-time events, latest market news, or documentation beyond their training cutoff dates.
+* **Permanent Fix Applied:**
+  1. Implemented `POST /api/ai/research` on the production gateway, executing real-time multi-source queries across **Google News RSS**, **DuckDuckGo Instant Answers**, and the **Wikipedia REST API**.
+  2. Added a **`Deep Research: ON / OFF`** toggle in the custom chat bar.
+  3. Formatted verified web citations with clickable source links and auto-injected structured intelligence dossiers into agent system prompts.

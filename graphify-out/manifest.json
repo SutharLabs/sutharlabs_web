@@ -218,9 +218,9 @@
     "semantic_hash": "b221785dc10a508e4bfb9a3be909433f"
   },
   "src/components/StockTrackerView.tsx": {
-    "mtime": 1793931750.9030783,
-    "seen": 1793932563.2182922,
-    "ast_hash": "24145e2016a44b9837478c4f2a0e25b8",
+    "mtime": 1793945809.1434214,
+    "seen": 1793945985.9477382,
+    "ast_hash": "5e60b7e69fd10e835d5556b756e69f49",
     "semantic_hash": ""
   },
   "src/components/UserProfileView.tsx": {
@@ -356,9 +356,9 @@
     "semantic_hash": "8dab1d2f4b290c72f4b09fe1b159d0b2"
   },
   "src/plugins/Accounting/manifest.json": {
-    "mtime": 1793943241.5970187,
-    "seen": 1793943302.0215404,
-    "ast_hash": "4a3b8b971d1d19dafdf8b123344a1d8d",
+    "mtime": 1793945943.709196,
+    "seen": 1793945985.9477792,
+    "ast_hash": "41f49375704ca60796ef6a21f28e6361",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/manifest.ts": {
@@ -470,9 +470,9 @@
     "semantic_hash": "2cf61e718991de61558a761f4a82f17b"
   },
   "src/plugins/DocNexus/manifest.json": {
-    "mtime": 1793943240.1701293,
-    "seen": 1793943302.0216055,
-    "ast_hash": "3c0bda1053672dfe8c8c4483c06564ff",
+    "mtime": 1793945942.6932726,
+    "seen": 1793945985.9478118,
+    "ast_hash": "b85849633d6a554ecd73fd4bfd9169a7",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/manifest.ts": {
@@ -536,9 +536,9 @@
     "semantic_hash": "60a8dc279c1c40a63b3d53988dbd2e61"
   },
   "src/plugins/FlowDesigner/manifest.json": {
-    "mtime": 1793943239.116595,
-    "seen": 1793943302.021643,
-    "ast_hash": "a3051bfcab9f798a9b034a1e3023d02f",
+    "mtime": 1793945941.976413,
+    "seen": 1793945985.94783,
+    "ast_hash": "2e0569b5c5e7b1438d36b3f27a20d6ce",
     "semantic_hash": ""
   },
   "src/plugins/FlowDesigner/manifest.ts": {
@@ -644,9 +644,9 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1793943236.9203186,
-    "seen": 1793943302.0217588,
-    "ast_hash": "b08b6b33fac05cb1afb8b245a25ec364",
+    "mtime": 1793945940.4241316,
+    "seen": 1793945985.9478872,
+    "ast_hash": "cac5f79f2b69e6a8cdd4c24c36123b1e",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
@@ -680,9 +680,9 @@
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/routes.ts": {
-    "mtime": 1793940995.460346,
-    "seen": 1793943302.02178,
-    "ast_hash": "fa4728b841cf98cb83cffd0d6f487f6e",
+    "mtime": 1793945897.3993735,
+    "seen": 1793945985.9479086,
+    "ast_hash": "03beedc74ed08ed0f2bf14f8905a8724",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/scanner/index.ts": {
@@ -932,9 +932,9 @@
     "semantic_hash": ""
   },
   "docs/plugins/flow_designer_architecture_and_logic.md": {
-    "mtime": 1791625128.9301107,
-    "seen": 1793773436.6222792,
-    "ast_hash": "d572c0cc9e5fcfec3a9ac99519322060",
+    "mtime": 1793945253.69726,
+    "seen": 1793945985.948027,
+    "ast_hash": "5f857cb890b90c0bc7c434d181c73ce0",
     "semantic_hash": ""
   },
   "docs/plugins/stock_tracker_architecture_and_logic.md": {
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1793943247.2433417,
-    "seen": 1793943302.0216916,
-    "ast_hash": "d9996d68f06b36c7dd4110181fad9f45",
+    "mtime": 1793945944.6658974,
+    "seen": 1793945985.9478545,
+    "ast_hash": "47bca10690f456b094ee64b61176d1a6",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {
@@ -1178,9 +1178,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.json": {
-    "mtime": 1793943248.6607044,
-    "seen": 1793943302.0216603,
-    "ast_hash": "34157155960f20b2c3977497429c7c6b",
+    "mtime": 1793945945.6079342,
+    "seen": 1793945985.9478388,
+    "ast_hash": "2de1473aa4cb965fa7b7c7d632d6e91d",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.ts": {
@@ -1322,9 +1322,9 @@
     "semantic_hash": ""
   },
   "docs/llm/inference_node_setup_and_benchmarks.md": {
-    "mtime": 1793880159.8915596,
-    "seen": 1793886740.1465423,
-    "ast_hash": "e28dd822c8602b4dbeddbb298c2750bc",
+    "mtime": 1793945397.23604,
+    "seen": 1793945985.9480088,
+    "ast_hash": "7a70389d88ec6cb11241ee1e8b73b9fc",
     "semantic_hash": ""
   },
   "docs/llm/opencode_and_prompt_tuning.md": {
@@ -1376,9 +1376,9 @@
     "semantic_hash": ""
   },
   "docs/speech/voice_cloning_and_calibration.md": {
-    "mtime": 1793890400.5173943,
-    "seen": 1793891994.005507,
-    "ast_hash": "00f409e79c5dd7b80018b5de99773302",
+    "mtime": 1793945297.0628393,
+    "seen": 1793945985.9480438,
+    "ast_hash": "8ef22ae5f92711b6e9a7074281fa9b62",
     "semantic_hash": ""
   },
   "docs/stock-quant/README.md": {
@@ -1400,9 +1400,9 @@
     "semantic_hash": ""
   },
   "docs/stock-quant/quantitative_model_architecture.md": {
-    "mtime": 1793890073.9354243,
-    "seen": 1793890095.7815177,
-    "ast_hash": "a3631105ea1b6eb85277bf1910fcf45e",
+    "mtime": 1793945364.062049,
+    "seen": 1793945985.9480522,
+    "ast_hash": "ac666e1dc49726eab95dc4d3abbc864e",
     "semantic_hash": ""
   },
   "docs/stock-quant/top_rated_quant_algorithms_backtested.md": {
@@ -1421,6 +1421,48 @@
     "mtime": 1793943115.1360145,
     "seen": 1793943302.0217931,
     "ast_hash": "4293cce731acb0e738993a5720a3fde2",
+    "semantic_hash": ""
+  },
+  "src/plugins/StockTracker/patterns/ChartPatternsPanel.tsx": {
+    "mtime": 1793945562.8631105,
+    "seen": 1793945985.9478977,
+    "ast_hash": "707b640648780f609a65e85eb7e67144",
+    "semantic_hash": ""
+  },
+  "src/plugins/StockTracker/patterns/candlestickDetector.ts": {
+    "mtime": 1793945519.249391,
+    "seen": 1793945985.9478993,
+    "ast_hash": "c992e74a4845b0762c5dd64ca29f94a9",
+    "semantic_hash": ""
+  },
+  "src/plugins/StockTracker/patterns/geometricDetector.ts": {
+    "mtime": 1793945494.0499067,
+    "seen": 1793945985.947901,
+    "ast_hash": "59446dd07775bbc9a7d3e67fab8673db",
+    "semantic_hash": ""
+  },
+  "src/plugins/StockTracker/patterns/index.ts": {
+    "mtime": 1793945543.196003,
+    "seen": 1793945985.9479022,
+    "ast_hash": "832c6dae89d17266d3d0af6d2dd05f41",
+    "semantic_hash": ""
+  },
+  "src/plugins/StockTracker/patterns/patternScanner.ts": {
+    "mtime": 1793945535.194743,
+    "seen": 1793945985.9479034,
+    "ast_hash": "f321b14fda44b97818a9e053e75b9837",
+    "semantic_hash": ""
+  },
+  "src/plugins/StockTracker/patterns/types.ts": {
+    "mtime": 1793945430.9091015,
+    "seen": 1793945985.9479053,
+    "ast_hash": "6368f60da3848da78f92d52998e94e3e",
+    "semantic_hash": ""
+  },
+  "src/plugins/StockTracker/patterns/zigzag.ts": {
+    "mtime": 1793945444.4936554,
+    "seen": 1793945985.9479067,
+    "ast_hash": "d756198f36dde7b6c7a4bd237628e0f7",
     "semantic_hash": ""
   },
   "package-lock.json": {

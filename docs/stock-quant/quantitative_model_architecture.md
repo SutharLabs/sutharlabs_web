@@ -263,3 +263,23 @@ Therefore, SutharLabs implements an **Asymmetrical Hybrid Pipeline**:
 2. **Second-Pass Confluence (Deep FinLLM Reasoning on VM 2)**:
    - For candidates passing the mathematical filter, the system engages VM 2's `finllm` to analyze incoming news catalysts and market regime data.
    - The confluence algorithm adjusts the base technical confidence score (e.g. boosting a 74% technical setup to 92% if FinLLM detects an accretive earnings catalyst, or downgrading a `BUY` to `HOLD` if FinLLM identifies regulatory risk).
+
+---
+
+## 9. Trade Simulator Accounting Invariant & Autonomous Background Daemon
+
+In recent updates, the Trade Simulator architecture was enhanced with two critical institutional upgrades:
+
+### A. Strict Cash Accounting Invariant Reconciler
+* **Problem Resolved**: Previously, a compounding bug in `updateHistoryPortfolioSnapshot` wrote total portfolio equity (`report.endingCapital = store.cash + positionsValue`) into the database `cash` column on every 1-minute no-trade heartbeat tick. Open position values were continually added to liquid cash, causing virtual balances to inflate unrealistically (e.g., jumping from ₹1,00,000 to ₹25,00,000+).
+* **Audited Mathematical Formula**:
+  $$\text{Audited Cash} = \text{Initial Cash} + \sum \text{Realized PnL} - \sum_{\text{open positions}} \text{Cost Basis}$$
+* **Self-Healing Reconciler**: In `ensureSimulatorStore`, the engine now audits the stored balance against the mathematical invariant. If discrepancies exceed ₹1.00, it automatically logs a reconciliation notice and persists the true audited cash back to PostgreSQL.
+  * Verified in production on `mr_sutharsuresh_gmail_com__ss_cron_intraday`: Initial Cash ₹1,00,000 + Realized PnL ₹517.94 = **₹1,00,517.94**.
+
+### B. Continuous Server-Side Background Automation Daemon
+* **Replaced External Webhooks**: Previously, automated trading simulations required third-party cronjob triggers.
+* **Modern Daemon**: A native background worker daemon (`src/plugins/StockTracker/simulator/backgroundWorker.ts`) boots with the Node.js PM2 process on VM 3.
+  * Evaluates all registered active simulations every **60 seconds**.
+  * Fetches live market quotes, checks entry/exit criteria, manages trailing stop-losses, and auto-squares off intraday (MIS) trades at 15:15 IST.
+  * The frontend provides live status telemetry (`Worker: Active • 60s`) and an on-demand **"Run Worker Cycle"** button for immediate manual execution triggers.
