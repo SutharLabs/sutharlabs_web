@@ -805,3 +805,4 @@ export function parseJsonResume(jsonString: string): ResumeData {
     }))
   };
 }
+

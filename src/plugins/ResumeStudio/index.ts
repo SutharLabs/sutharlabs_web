@@ -8,3 +8,4 @@ export const ResumeStudioPlugin = {
 
 export { manifest, ResumeStudioView as View };
 export default ResumeStudioPlugin;
+

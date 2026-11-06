@@ -12,6 +12,9 @@
     "clean": "rm -rf dist server.js plugins-db.json",
     "package:plugins": "tsx scripts/package-plugins.ts --sync-db",
     "db:cron-sync": "tsx scripts/cron-sync-database.ts",
+    "deploy": "tsx scripts/deploy-production.ts",
+    "deploy:quick": "tsx scripts/deploy-production.ts --skip-build",
+    "deploy:ps": "powershell -ExecutionPolicy Bypass -File scripts/deploy-production.ps1",
     "lint": "tsc --noEmit"
   },
   "dependencies": {

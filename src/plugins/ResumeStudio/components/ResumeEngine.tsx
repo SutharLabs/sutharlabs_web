@@ -1874,3 +1874,4 @@ ${cleanTex(edu.institution)} ${edu.honors ? ` $|$ \\textit{${cleanTex(edu.honors
     </div>
   );
 }
+
