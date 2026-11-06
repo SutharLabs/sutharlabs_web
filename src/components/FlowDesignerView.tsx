@@ -319,6 +319,50 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
   const dragOffset = useRef({ x: 0, y: 0 });
   const canvasRef = useRef<HTMLDivElement>(null);
 
+  // Global window listeners for drag & drop so nodes never get stuck to cursor
+  useEffect(() => {
+    if (!isDraggingNodeId) return;
+
+    const handleWindowMouseMove = (e: MouseEvent) => {
+      if (!canvasRef.current) return;
+      const canvasEl = canvasRef.current;
+      const rect = canvasEl.getBoundingClientRect();
+      let nextX = (e.clientX - rect.left + canvasEl.scrollLeft) - dragOffset.current.x;
+      let nextY = (e.clientY - rect.top + canvasEl.scrollTop) - dragOffset.current.y;
+
+      nextX = Math.max(20, Math.min(2200, nextX));
+      nextY = Math.max(20, Math.min(1800, nextY));
+
+      setNodes(prev => prev.map(n => n.id === isDraggingNodeId ? { ...n, x: nextX, y: nextY } : n));
+    };
+
+    const handleWindowMouseUp = () => {
+      setIsDraggingNodeId(null);
+      saveWorkflowState(nodes, connections);
+    };
+
+    window.addEventListener('mousemove', handleWindowMouseMove);
+    window.addEventListener('mouseup', handleWindowMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleWindowMouseMove);
+      window.removeEventListener('mouseup', handleWindowMouseUp);
+    };
+  }, [isDraggingNodeId, nodes, connections]);
+
+  // Global Escape key listener to cleanly deselect any active node or connection wire
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSelectedNodeId(null);
+        setIsDraggingNodeId(null);
+        setIsConnecting(null);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   // Modals & Drawers
   const [isAddNodeModalOpen, setIsAddNodeModalOpen] = useState<boolean>(false);
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState<boolean>(false);
@@ -769,15 +813,22 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
         {/* Infinite Grid Canvas Area with Smooth Pan & Horizontal/Vertical Scrolling */}
         <div
           ref={canvasRef}
-          onMouseMove={handleCanvasMouseMove}
-          onMouseUp={handleCanvasMouseUp}
-          onClick={() => { setSelectedNodeId(null); setIsConnecting(null); }}
+          onClick={(e) => {
+            setSelectedNodeId(null);
+            setIsConnecting(null);
+          }}
           className={`flex-1 relative overflow-auto cursor-crosshair transition-colors scrollbar-thin ${
             isLight ? 'bg-slate-50' : 'bg-[#0e0e11]'
           }`}
         >
           <div
             className="relative min-w-[1600px] min-h-[900px] w-full h-full"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setSelectedNodeId(null);
+                setIsConnecting(null);
+              }
+            }}
             style={{
               backgroundImage: isLight
                 ? 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)'
@@ -830,7 +881,7 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
                 onMouseDown={(e) => handleNodeMouseDown(e, node.id)}
                 onClick={(e) => { e.stopPropagation(); setSelectedNodeId(node.id); }}
                 style={{ transform: `translate3d(${node.x}px, ${node.y}px, 0)` }}
-                className={`absolute w-52 rounded-xl border shadow-lg cursor-grab active:cursor-grabbing transition-shadow z-10 ${
+                className={`absolute w-52 rounded-xl border shadow-lg cursor-grab active:cursor-grabbing select-none transition-shadow z-10 ${
                   isSelected
                     ? isLight
                       ? 'border-sky-500 ring-2 ring-sky-400/30 shadow-sky-500/10'

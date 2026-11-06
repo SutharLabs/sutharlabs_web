@@ -16,6 +16,7 @@ export type WorkspaceTab =
   | 'Workflow'
   | 'Custom Flow' 
   | 'Accounting' 
+  | 'Tools Studio'
   | 'Admin Console' 
   | 'Manage Database'
   | 'Storage Vault'

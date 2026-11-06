@@ -20,9 +20,11 @@ interface AccountingViewProps {
   logs?: TerminalLog[];
   onAddLog: (log: TerminalLog) => void;
   userToken: string;
+  theme?: 'light' | 'dark';
 }
 
-export default function AccountingView({ logs = [], onAddLog, userToken }: AccountingViewProps) {
+export default function AccountingView({ logs = [], onAddLog, userToken, theme }: AccountingViewProps) {
+  const effectiveTheme: 'light' | 'dark' = theme || (typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light');
   // Navigation tabs across the Tally / SAP Enterprise Suite
   const [activeTab, setActiveTab] = useState<'DayBook' | 'Statements' | 'Invoices' | 'GSTR' | 'Ledger' | 'Parties' | 'Catalog'>('DayBook');
 
@@ -860,6 +862,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken }: Accou
           parties={parties}
           company={company}
           userToken={userToken}
+          theme={effectiveTheme}
           onVoucherCreated={(v) => {
             setVouchers(prev => [v, ...prev]);
             setDataRefreshCounter(c => c + 1);

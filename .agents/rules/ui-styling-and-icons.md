@@ -271,4 +271,47 @@ Always wrap inline filenames, env vars, or code keywords in a styled badge:
 * ❌ **Do NOT** use dark-only colors (`bg-[#201f21]`, `text-[#e5e1e4]`) without checking `isLight` or using CSS variable utilities (`bg-surface-container`, `text-on-surface`).
 * ❌ **Do NOT** use saturated background gradients on buttons in light mode that lack contrast with body typography.
 * ❌ **Do NOT** let toolbar buttons wrap onto multiple rows unless on small mobile viewports (`< sm`).
+* ❌ **Do NOT** omit `theme?: 'light' | 'dark'` when declaring or rendering child views, modals, or plugin views.
+* ❌ **Do NOT** default `theme` to `'dark'` or check `const isLight = theme === 'light'` without a fallback to DOM class detection (`document.documentElement.classList.contains('dark') ? 'dark' : 'light'`).
+* ❌ **Do NOT** mix raw Tailwind `dark:...` utility classes inside components that also use `isLight ? ... : ...` ternary logic, as class mismatches lead to unreadable dark-on-dark or light-on-light contrast distortion.
+
+---
+
+## 8. Theme Consistency & Modal / Sub-view Theme Propagation Standards
+
+To eliminate mixed-up UI where light and dark elements collide:
+
+### A. Mandatory Props Declaration & Fallback Resolution
+Every modal, drawer, or sub-view component must accept `theme?: 'light' | 'dark'` in its interface and resolve it safely:
+```tsx
+interface SubViewOrModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  theme?: 'light' | 'dark';
+}
+
+export default function SubViewOrModal({ theme, ...props }: SubViewOrModalProps) {
+  // Always resolve fallback so undefined never wrongly defaults to dark mode in light theme
+  const effectiveTheme: 'light' | 'dark' = theme || (
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+  );
+  const isLight = effectiveTheme === 'light';
+  // ...
+}
+```
+
+### B. Pure Conditional Theme Styling (Single Source of Truth)
+Do not mix Tailwind `dark:...` with `isLight` ternaries in the same component. Use explicit `isLight` ternaries for backgrounds, text, and borders:
+
+| UI Element | Light Theme (`isLight === true`) | Dark Theme (`isLight === false`) |
+| :--- | :--- | :--- |
+| **Card / Modal Container** | `bg-white border-slate-200 text-slate-800` | `bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]` |
+| **Section Card Header** | `bg-slate-50 border-slate-200 text-slate-800` | `bg-[#18181c]/60 border-[#3a494b]/40 text-[#e5e1e4]` |
+| **Subheadings & Labels** | `text-slate-600 font-mono` | `text-gray-400 font-mono` |
+| **Inputs & Selects** | `bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-sky-500` | `bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] placeholder-gray-500 focus:border-[#00dbe7]` |
+| **Tables Header** | `bg-slate-100 border-slate-300 text-slate-700 font-bold` | `bg-[#121215] border-[#3a494b]/40 text-gray-400 font-bold` |
+| **Table Rows Divider** | `divide-slate-200 hover:bg-slate-50` | `divide-[#3a494b]/20 hover:bg-white/5` |
+| **Accent Text / Totals** | `text-sky-600 font-bold` | `text-[#00dbe7] font-bold` |
+| **Status / Success Badge**| `bg-emerald-50 text-emerald-800 border-emerald-300` | `bg-emerald-500/10 text-emerald-400 border-emerald-500/20` |
+
 

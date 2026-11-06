@@ -4,6 +4,7 @@ import { DocNexusPlugin } from "./DocNexus/index.js";
 import { AccountingPlugin } from "./Accounting/index.js";
 import { SpeechStudioPlugin } from "./SpeechStudio/index.js";
 import { ImageStudioPlugin } from "./ImageStudio/index.js";
+import { ToolsStudioPlugin } from "./SovereignTools/index.js";
 import { WorkspacePluginManifest, WorkspacePluginViewProps } from "./types.js";
 import React from "react";
 
@@ -19,6 +20,7 @@ export const CLIENT_PLUGIN_REGISTRY: Record<string, ClientPluginEntry> = {
   [AccountingPlugin.manifest.id]: AccountingPlugin as any,
   [SpeechStudioPlugin.manifest.id]: SpeechStudioPlugin as any,
   [ImageStudioPlugin.manifest.id]: ImageStudioPlugin as any,
+  [ToolsStudioPlugin.manifest.id]: ToolsStudioPlugin as any,
 };
 
 export function getAllClientPlugins(): ClientPluginEntry[] {

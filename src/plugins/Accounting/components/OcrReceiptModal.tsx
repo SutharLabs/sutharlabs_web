@@ -103,9 +103,10 @@ export default function OcrReceiptModal({
   onVoucherCreated,
   onInvoiceCreated,
   onAddParty,
-  theme = 'dark'
+  theme
 }: OcrReceiptModalProps) {
-  const isLight = theme === 'light';
+  const effectiveTheme: 'light' | 'dark' = theme || (typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+  const isLight = effectiveTheme === 'light';
 
   // Processing & UI States
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -1042,27 +1043,33 @@ Drive Clean, Go Green!`,
 
         {/* Modal Header */}
         <div className={`p-4 sm:p-5 border-b flex items-center justify-between shrink-0 ${
-          isLight ? 'bg-slate-50/70 border-slate-200' : 'bg-[#18181c]/60 border-[#3a494b]/40'
+          isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-[#18181c]/60 border-[#3a494b]/40 text-[#e5e1e4]'
         }`}>
           <div className="flex items-center gap-3.5">
-            <div className="w-11 h-11 rounded-xl bg-cyan-500/10 border border-cyan-500/25 flex items-center justify-center shrink-0 shadow-sm">
-              <Camera className="w-5 h-5 text-[#00dbe7] shrink-0" />
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 shadow-xs border ${
+              isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-cyan-500/10 border-cyan-500/25 text-[#00dbe7]'
+            }`}>
+              <Camera className="w-5 h-5 shrink-0" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold font-sans tracking-tight">
                   AI Receipt &amp; Bill OCR Engine
                 </h2>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/30">
+                <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                  isLight ? 'bg-sky-50 text-sky-700 border-sky-300' : 'bg-[#00dbe7]/10 text-[#00dbe7] border-[#00dbe7]/30'
+                }`}>
                   Devanagari (हिन्दी) &amp; English
                 </span>
                 {confidenceScore > 0 && (
-                  <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-[#00e476] border border-emerald-500/25">
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border ${
+                    isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/10 text-[#00e476] border-emerald-500/25'
+                  }`}>
                     {confidenceScore}% Parity
                   </span>
                 )}
               </div>
-              <p className="text-xs font-mono text-slate-500 dark:text-gray-400 mt-0.5">
+              <p className={`text-xs font-mono mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
                 Scan complex Hindi &amp; English receipts, verify extracted tables, and reconcile directly into DayBook or GST Invoices.
               </p>
             </div>
@@ -1078,8 +1085,8 @@ Drive Clean, Go Green!`,
                 onClick={() => setOcrEngine('ai')}
                 className={`px-2.5 py-1 rounded-md font-mono cursor-pointer transition-all ${
                   ocrEngine === 'ai'
-                    ? isLight ? 'bg-white text-slate-900 font-bold shadow-xs' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white'
+                    ? isLight ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-300' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-gray-400 hover:text-white'
                 }`}
               >
                 AI Multimodal
@@ -1089,8 +1096,8 @@ Drive Clean, Go Green!`,
                 onClick={() => setOcrEngine('tesseract')}
                 className={`px-2.5 py-1 rounded-md font-mono cursor-pointer transition-all ${
                   ocrEngine === 'tesseract'
-                    ? isLight ? 'bg-white text-slate-900 font-bold shadow-xs' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
-                    : 'text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white'
+                    ? isLight ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-300' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                    : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-gray-400 hover:text-white'
                 }`}
               >
                 Offline Tesseract
@@ -1099,7 +1106,9 @@ Drive Clean, Go Green!`,
 
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-[#201f21] transition-colors cursor-pointer"
+              className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                isLight ? 'text-slate-500 hover:text-slate-800 hover:bg-slate-200' : 'text-gray-400 hover:text-white hover:bg-[#201f21]'
+              }`}
             >
               <X className="w-5 h-5 shrink-0" />
             </button>
@@ -1116,7 +1125,7 @@ Drive Clean, Go Green!`,
             <div className={`p-2.5 rounded-xl border flex flex-col gap-1.5 ${
               isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c] border-[#3a494b]/30'
             }`}>
-              <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-gray-400 tracking-wider">
+              <span className={`text-[10px] font-mono font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
                 Quick Test Samples:
               </span>
               <div className="grid grid-cols-3 gap-1.5">
@@ -1124,7 +1133,7 @@ Drive Clean, Go Green!`,
                   type="button"
                   onClick={() => loadSampleBill('hindi')}
                   className={`px-2 py-1.5 rounded-lg border text-[10px] font-mono font-bold text-center transition-all cursor-pointer truncate ${
-                    isLight ? 'bg-white hover:bg-slate-100 text-sky-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#00dbe7] border-[#3a494b]/40'
+                    isLight ? 'bg-white hover:bg-slate-100 text-sky-700 border-slate-300 shadow-xs' : 'bg-[#201f21] hover:bg-[#28272a] text-[#00dbe7] border-[#3a494b]/40'
                   }`}
                   title="Hindi Kirana Store Receipt (किराना दुकान रसीद)"
                 >
@@ -1134,7 +1143,7 @@ Drive Clean, Go Green!`,
                   type="button"
                   onClick={() => loadSampleBill('english')}
                   className={`px-2 py-1.5 rounded-lg border text-[10px] font-mono font-bold text-center transition-all cursor-pointer truncate ${
-                    isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                    isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-xs' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
                   }`}
                   title="English GST Hardware Tax Invoice"
                 >
@@ -1144,7 +1153,7 @@ Drive Clean, Go Green!`,
                   type="button"
                   onClick={() => loadSampleBill('fuel')}
                   className={`px-2 py-1.5 rounded-lg border text-[10px] font-mono font-bold text-center transition-all cursor-pointer truncate ${
-                    isLight ? 'bg-white hover:bg-slate-100 text-emerald-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-emerald-400 border-[#3a494b]/40'
+                    isLight ? 'bg-white hover:bg-slate-100 text-emerald-700 border-slate-300 shadow-xs' : 'bg-[#201f21] hover:bg-[#28272a] text-emerald-400 border-[#3a494b]/40'
                   }`}
                   title="Petrol Pump Slip (BPCL Fuel)"
                 >
@@ -1160,16 +1169,16 @@ Drive Clean, Go Green!`,
               
               {/* Controls Toolbar */}
               <div className={`p-2 border-b flex items-center justify-between text-xs font-mono shrink-0 ${
-                isLight ? 'bg-white/80 border-slate-200' : 'bg-[#18181c]/80 border-[#3a494b]/30'
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c]/80 border-[#3a494b]/30'
               }`}>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
                     onClick={() => setActiveTab('image')}
-                    className={`px-2 py-1 rounded text-[11px] font-bold transition-all ${
+                    className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
                       activeTab === 'image'
-                        ? isLight ? 'bg-slate-200 text-slate-900' : 'bg-[#00dbe7]/15 text-[#00dbe7]'
-                        : 'text-slate-500 hover:text-slate-900 dark:text-gray-400'
+                        ? isLight ? 'bg-white text-slate-900 border border-slate-300 shadow-xs' : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
+                        : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     Image View
@@ -1177,10 +1186,10 @@ Drive Clean, Go Green!`,
                   <button
                     type="button"
                     onClick={() => setActiveTab('rawText')}
-                    className={`px-2 py-1 rounded text-[11px] font-bold transition-all ${
+                    className={`px-2 py-1 rounded text-[11px] font-bold transition-all cursor-pointer ${
                       activeTab === 'rawText'
-                        ? isLight ? 'bg-slate-200 text-slate-900' : 'bg-[#00dbe7]/15 text-[#00dbe7]'
-                        : 'text-slate-500 hover:text-slate-900 dark:text-gray-400'
+                        ? isLight ? 'bg-white text-slate-900 border border-slate-300 shadow-xs' : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
+                        : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-gray-400 hover:text-white'
                     }`}
                   >
                     Raw OCR Text
@@ -1192,16 +1201,16 @@ Drive Clean, Go Green!`,
                     <button
                       type="button"
                       onClick={() => setZoomLevel(z => Math.max(z - 25, 50))}
-                      className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-slate-600 dark:text-gray-300"
+                      className={`p-1 rounded cursor-pointer ${isLight ? 'hover:bg-slate-200 text-slate-700' : 'hover:bg-white/10 text-gray-300'}`}
                       title="Zoom Out"
                     >
                       <ZoomOut className="w-3.5 h-3.5 shrink-0" />
                     </button>
-                    <span className="text-[10px] w-10 text-center font-bold">{zoomLevel}%</span>
+                    <span className={`text-[10px] w-10 text-center font-bold ${isLight ? 'text-slate-800' : 'text-white'}`}>{zoomLevel}%</span>
                     <button
                       type="button"
                       onClick={() => setZoomLevel(z => Math.min(z + 25, 250))}
-                      className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-slate-600 dark:text-gray-300"
+                      className={`p-1 rounded cursor-pointer ${isLight ? 'hover:bg-slate-200 text-slate-700' : 'hover:bg-white/10 text-gray-300'}`}
                       title="Zoom In"
                     >
                       <ZoomIn className="w-3.5 h-3.5 shrink-0" />
@@ -1209,7 +1218,7 @@ Drive Clean, Go Green!`,
                     <button
                       type="button"
                       onClick={() => setRotation(r => (r + 90) % 360)}
-                      className="p-1 rounded hover:bg-black/10 dark:hover:bg-white/10 text-slate-600 dark:text-gray-300 ml-1"
+                      className={`p-1 rounded cursor-pointer ml-1 ${isLight ? 'hover:bg-slate-200 text-slate-700' : 'hover:bg-white/10 text-gray-300'}`}
                       title="Rotate 90 deg"
                     >
                       <RotateCw className="w-3.5 h-3.5 shrink-0" />
@@ -1221,9 +1230,11 @@ Drive Clean, Go Green!`,
                   <button
                     type="button"
                     onClick={copyRawTextToClipboard}
-                    className="flex items-center gap-1 text-[11px] text-cyan-600 dark:text-[#00dbe7] hover:underline"
+                    className={`flex items-center gap-1 text-[11px] font-mono font-bold cursor-pointer ${
+                      isLight ? 'text-sky-600 hover:underline' : 'text-[#00dbe7] hover:underline'
+                    }`}
                   >
-                    {copiedRawText ? <Check className="w-3 h-3 text-emerald-400 shrink-0" /> : <Copy className="w-3 h-3 shrink-0" />}
+                    {copiedRawText ? <Check className="w-3 h-3 text-emerald-500 shrink-0" /> : <Copy className="w-3 h-3 shrink-0" />}
                     <span>{copiedRawText ? 'Copied' : 'Copy Text'}</span>
                   </button>
                 )}
@@ -1262,7 +1273,11 @@ Drive Clean, Go Green!`,
                           handleFileUpload(e.dataTransfer.files[0]);
                         }
                       }}
-                      className="w-full h-full min-h-[300px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 text-center transition-all cursor-pointer hover:border-[#00dbe7]/50"
+                      className={`w-full h-full min-h-[300px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 text-center transition-all cursor-pointer ${
+                        isLight
+                          ? 'border-slate-300 hover:border-sky-500 bg-slate-50/50'
+                          : 'border-[#3a494b]/50 hover:border-[#00dbe7]/50 bg-[#121215]/50'
+                      }`}
                       onClick={() => fileInputRef.current?.click()}
                     >
                       <input
@@ -1276,20 +1291,28 @@ Drive Clean, Go Green!`,
                           }
                         }}
                       />
-                      <div className="w-14 h-14 rounded-2xl bg-[#00dbe7]/10 border border-[#00dbe7]/30 flex items-center justify-center text-[#00dbe7] mb-3 shadow-md">
+                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 shadow-md border ${
+                        isLight
+                          ? 'bg-sky-50 border-sky-200 text-sky-600'
+                          : 'bg-[#00dbe7]/10 border-[#00dbe7]/30 text-[#00dbe7]'
+                      }`}>
                         <Upload className="w-7 h-7 shrink-0" />
                       </div>
-                      <p className="font-bold text-sm mb-1">
+                      <p className={`font-bold text-sm mb-1 ${isLight ? 'text-slate-800' : 'text-[#e5e1e4]'}`}>
                         Drop receipt or bill here, or click to upload
                       </p>
-                      <p className="text-xs font-mono text-slate-500 dark:text-gray-400 mb-3 max-w-xs">
-                        Supports PNG, JPG, WebP, PDF. Paste directly with <kbd className="px-1 py-0.5 rounded bg-black/10 dark:bg-white/10">Ctrl+V</kbd>.
+                      <p className={`text-xs font-mono mb-3 max-w-xs ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                        Supports PNG, JPG, WebP, PDF. Paste directly with <kbd className={`px-1 py-0.5 rounded border ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-white/10 border-white/20 text-white'}`}>Ctrl+V</kbd>.
                       </p>
                       <div className="flex items-center gap-2">
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
+                          isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                        }`}>
                           Devanagari (हिन्दी)
                         </span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/20">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
+                          isLight ? 'bg-sky-50 text-sky-800 border-sky-300' : 'bg-sky-500/10 text-sky-400 border-sky-500/20'
+                        }`}>
                           English &amp; GST
                         </span>
                       </div>
@@ -1314,14 +1337,16 @@ Drive Clean, Go Green!`,
                 <div className={`p-2.5 border-t flex items-center justify-between text-xs shrink-0 ${
                   isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c]/60 border-[#3a494b]/30'
                 }`}>
-                  <span className="font-mono text-[11px] truncate max-w-[200px] text-slate-600 dark:text-gray-300">
+                  <span className={`font-mono text-[11px] truncate max-w-[200px] ${isLight ? 'text-slate-700' : 'text-gray-300'}`}>
                     {imageFileName || 'Uploaded Document'}
                   </span>
                   <div className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-2 py-1 rounded text-[11px] font-mono text-cyan-600 dark:text-[#00dbe7] hover:underline cursor-pointer"
+                      className={`px-2 py-1 rounded text-[11px] font-mono font-bold cursor-pointer ${
+                        isLight ? 'text-sky-600 hover:underline' : 'text-[#00dbe7] hover:underline'
+                      }`}
                     >
                       Change File
                     </button>
@@ -1329,7 +1354,11 @@ Drive Clean, Go Green!`,
                       type="button"
                       onClick={() => imagePreview && runOcrRecognition(imagePreview)}
                       disabled={isProcessing}
-                      className="px-2.5 py-1 rounded-md text-[11px] font-mono font-bold bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/30 transition-all cursor-pointer flex items-center gap-1"
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-mono font-bold transition-all cursor-pointer flex items-center gap-1 ${
+                        isLight
+                          ? 'bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300'
+                          : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/30'
+                      }`}
                     >
                       <RefreshCw className={`w-3 h-3 shrink-0 ${isProcessing ? 'animate-spin' : ''}`} />
                       Re-scan
@@ -1356,10 +1385,12 @@ Drive Clean, Go Green!`,
               isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c] border-[#3a494b]/30'
             }`}>
               <div>
-                <span className="text-[10px] font-mono font-bold uppercase text-slate-500 dark:text-gray-400 tracking-wider block">
+                <span className={`text-[10px] font-mono font-bold uppercase tracking-wider block ${
+                  isLight ? 'text-slate-600' : 'text-gray-400'
+                }`}>
                   Accounting Posting Target:
                 </span>
-                <span className="text-xs font-sans text-slate-600 dark:text-gray-300">
+                <span className={`text-xs font-sans ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>
                   Where should this audited receipt be recorded?
                 </span>
               </div>
@@ -1372,8 +1403,8 @@ Drive Clean, Go Green!`,
                   onClick={() => setTargetType('Voucher')}
                   className={`px-3 py-1.5 rounded-md cursor-pointer transition-all ${
                     targetType === 'Voucher'
-                      ? isLight ? 'bg-slate-200 text-slate-900 font-bold shadow-xs' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white'
+                      ? isLight ? 'bg-slate-200 text-slate-900 font-bold shadow-xs border border-slate-300' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                      : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-gray-400 hover:text-white'
                   }`}
                 >
                   Payment Voucher (DayBook F5)
@@ -1383,8 +1414,8 @@ Drive Clean, Go Green!`,
                   onClick={() => setTargetType('Invoice')}
                   className={`px-3 py-1.5 rounded-md cursor-pointer transition-all ${
                     targetType === 'Invoice'
-                      ? isLight ? 'bg-slate-200 text-slate-900 font-bold shadow-xs' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
-                      : 'text-slate-500 hover:text-slate-900 dark:text-gray-400 dark:hover:text-white'
+                      ? isLight ? 'bg-slate-200 text-slate-900 font-bold shadow-xs border border-slate-300' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                      : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-gray-400 hover:text-white'
                   }`}
                 >
                   Purchase Tax Invoice (GST F9)
@@ -1397,13 +1428,17 @@ Drive Clean, Go Green!`,
               isLight ? 'bg-white border-slate-200' : 'bg-[#18181c] border-[#3a494b]/30'
             }`}>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold font-mono uppercase tracking-wider text-cyan-600 dark:text-[#00dbe7] flex items-center gap-1.5">
+                <span className={`text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1.5 ${
+                  isLight ? 'text-sky-700' : 'text-[#00dbe7]'
+                }`}>
                   <Building2 className="w-3.5 h-3.5 shrink-0" />
                   Vendor &amp; Supplier Profile
                 </span>
                 {detectedLanguage && (
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-white/5 border border-white/10 text-slate-500 dark:text-gray-400">
-                    Script: <strong className="text-on-surface">{detectedLanguage}</strong>
+                  <span className={`text-[10px] font-mono px-2 py-0.5 rounded border ${
+                    isLight ? 'bg-slate-100 border-slate-300 text-slate-700' : 'bg-white/5 border-white/10 text-gray-400'
+                  }`}>
+                    Script: <strong className={isLight ? 'text-slate-900' : 'text-white'}>{detectedLanguage}</strong>
                   </span>
                 )}
               </div>
@@ -1411,7 +1446,9 @@ Drive Clean, Go Green!`,
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {/* Vendor Name */}
                 <div>
-                  <label className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-gray-400 block mb-1">
+                  <label className={`text-[11px] font-mono uppercase font-bold block mb-1 ${
+                    isLight ? 'text-slate-700' : 'text-gray-400'
+                  }`}>
                     Vendor / Firm Name *
                   </label>
                   <input
@@ -1420,7 +1457,7 @@ Drive Clean, Go Green!`,
                     onChange={(e) => setVendorName(e.target.value)}
                     placeholder="e.g. श्री गणेश ट्रेडर्स or Reliance Retail"
                     className={`w-full px-3 py-2 rounded-lg border font-mono text-xs outline-none transition-colors ${
-                      isLight ? 'bg-slate-50 border-slate-300 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 focus:border-[#00dbe7]'
+                      isLight ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] placeholder-gray-500 focus:border-[#00dbe7]'
                     }`}
                   />
                 </div>
@@ -1428,14 +1465,16 @@ Drive Clean, Go Green!`,
                 {/* Vendor GSTIN */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-gray-400">
+                    <label className={`text-[11px] font-mono uppercase font-bold ${
+                      isLight ? 'text-slate-700' : 'text-gray-400'
+                    }`}>
                       Vendor GSTIN
                     </label>
                     {vendorGstin && (
                       <span className={`text-[9px] font-mono font-bold px-1.5 py-0.2 rounded border ${
                         validateGSTIN(vendorGstin).isValid
-                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-[#00e476] border-emerald-500/25'
-                          : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/25'
+                          ? isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/10 text-[#00e476] border-emerald-500/25'
+                          : isLight ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
                       }`}>
                         {validateGSTIN(vendorGstin).isValid ? 'Valid GSTIN' : 'Unregistered / B2C'}
                       </span>
@@ -1448,7 +1487,7 @@ Drive Clean, Go Green!`,
                     placeholder="15-digit GSTIN (optional for cash bills)"
                     maxLength={15}
                     className={`w-full px-3 py-2 rounded-lg border font-mono text-xs uppercase outline-none transition-colors ${
-                      isLight ? 'bg-slate-50 border-slate-300 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 focus:border-[#00dbe7]'
+                      isLight ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] placeholder-gray-500 focus:border-[#00dbe7]'
                     }`}
                   />
                 </div>
@@ -1457,7 +1496,9 @@ Drive Clean, Go Green!`,
               {/* Vendor Phone & Address */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-gray-400 block mb-1">
+                  <label className={`text-[11px] font-mono uppercase font-bold block mb-1 ${
+                    isLight ? 'text-slate-700' : 'text-gray-400'
+                  }`}>
                     Phone / Mobile
                   </label>
                   <input
@@ -1466,13 +1507,15 @@ Drive Clean, Go Green!`,
                     onChange={(e) => setVendorPhone(e.target.value)}
                     placeholder="+91-XXXXX XXXXX"
                     className={`w-full px-3 py-2 rounded-lg border font-mono text-xs outline-none transition-colors ${
-                      isLight ? 'bg-slate-50 border-slate-300 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 focus:border-[#00dbe7]'
+                      isLight ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] placeholder-gray-500 focus:border-[#00dbe7]'
                     }`}
                   />
                 </div>
 
                 <div>
-                  <label className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-gray-400 block mb-1">
+                  <label className={`text-[11px] font-mono uppercase font-bold block mb-1 ${
+                    isLight ? 'text-slate-700' : 'text-gray-400'
+                  }`}>
                     Vendor Address
                   </label>
                   <input
@@ -1481,7 +1524,7 @@ Drive Clean, Go Green!`,
                     onChange={(e) => setVendorAddress(e.target.value)}
                     placeholder="Market / City address"
                     className={`w-full px-3 py-2 rounded-lg border font-mono text-xs outline-none transition-colors ${
-                      isLight ? 'bg-slate-50 border-slate-300 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 focus:border-[#00dbe7]'
+                      isLight ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] placeholder-gray-500 focus:border-[#00dbe7]'
                     }`}
                   />
                 </div>
@@ -1494,7 +1537,9 @@ Drive Clean, Go Green!`,
             }`}>
               {/* Bill Number */}
               <div>
-                <label className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-gray-400 block mb-1">
+                <label className={`text-[11px] font-mono uppercase font-bold block mb-1 ${
+                  isLight ? 'text-slate-700' : 'text-gray-400'
+                }`}>
                   Bill / Ref No *
                 </label>
                 <input
@@ -1503,14 +1548,16 @@ Drive Clean, Go Green!`,
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   placeholder="e.g. REC-0091"
                   className={`w-full px-2.5 py-1.5 rounded-lg border font-mono text-xs outline-none ${
-                    isLight ? 'bg-slate-50 border-slate-300 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 focus:border-[#00dbe7]'
+                    isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] focus:border-[#00dbe7]'
                   }`}
                 />
               </div>
 
               {/* Bill Date */}
               <div>
-                <label className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-gray-400 block mb-1">
+                <label className={`text-[11px] font-mono uppercase font-bold block mb-1 ${
+                  isLight ? 'text-slate-700' : 'text-gray-400'
+                }`}>
                   Bill Date *
                 </label>
                 <input
@@ -1518,21 +1565,23 @@ Drive Clean, Go Green!`,
                   value={invoiceDate}
                   onChange={(e) => setInvoiceDate(e.target.value)}
                   className={`w-full px-2.5 py-1.5 rounded-lg border font-mono text-xs outline-none ${
-                    isLight ? 'bg-slate-50 border-slate-300 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 focus:border-[#00dbe7]'
+                    isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] focus:border-[#00dbe7]'
                   }`}
                 />
               </div>
 
               {/* Payment Mode */}
               <div>
-                <label className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-gray-400 block mb-1">
+                <label className={`text-[11px] font-mono uppercase font-bold block mb-1 ${
+                  isLight ? 'text-slate-700' : 'text-gray-400'
+                }`}>
                   Payment Mode
                 </label>
                 <select
                   value={paymentMode}
                   onChange={(e) => setPaymentMode(e.target.value as any)}
                   className={`w-full px-2 py-1.5 rounded-lg border font-mono text-xs outline-none ${
-                    isLight ? 'bg-slate-50 border-slate-300 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 focus:border-[#00dbe7]'
+                    isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] focus:border-[#00dbe7]'
                   }`}
                 >
                   <option value="UPI">UPI (GPay/PhonePe)</option>
@@ -1544,14 +1593,16 @@ Drive Clean, Go Green!`,
 
               {/* Expense Category */}
               <div>
-                <label className="text-[11px] font-mono uppercase font-bold text-slate-500 dark:text-gray-400 block mb-1">
+                <label className={`text-[11px] font-mono uppercase font-bold block mb-1 ${
+                  isLight ? 'text-slate-700' : 'text-gray-400'
+                }`}>
                   Expense Category
                 </label>
                 <select
                   value={expenseCategory}
                   onChange={(e) => setExpenseCategory(e.target.value)}
                   className={`w-full px-2 py-1.5 rounded-lg border font-mono text-xs outline-none ${
-                    isLight ? 'bg-slate-50 border-slate-300 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 focus:border-[#00dbe7]'
+                    isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-sky-500' : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] focus:border-[#00dbe7]'
                   }`}
                 >
                   {EXPENSE_CATEGORIES.map(cat => (
@@ -1566,8 +1617,10 @@ Drive Clean, Go Green!`,
               isLight ? 'bg-white border-slate-200' : 'bg-[#18181c] border-[#3a494b]/30'
             }`}>
               <div className="flex items-center justify-between">
-                <span className="text-xs font-bold font-mono uppercase tracking-wider text-slate-700 dark:text-white flex items-center gap-1.5">
-                  <Receipt className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+                <span className={`text-xs font-bold font-mono uppercase tracking-wider flex items-center gap-1.5 ${
+                  isLight ? 'text-slate-800' : 'text-white'
+                }`}>
+                  <Receipt className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`} />
                   Itemized Line Items ({items.length})
                 </span>
                 <button
@@ -1575,7 +1628,7 @@ Drive Clean, Go Green!`,
                   onClick={handleAddItemRow}
                   className={`h-7 px-2.5 rounded text-[11px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all ${
                     isLight
-                      ? 'bg-slate-100 hover:bg-slate-200 text-sky-700 border border-slate-300'
+                      ? 'bg-sky-50 hover:bg-sky-100 text-sky-700 border border-sky-300'
                       : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/30'
                   }`}
                 >
@@ -1589,7 +1642,7 @@ Drive Clean, Go Green!`,
                 <table className="w-full text-left text-xs font-mono border-collapse">
                   <thead>
                     <tr className={`border-b text-[10px] uppercase font-bold ${
-                      isLight ? 'border-slate-200 text-slate-500 bg-slate-50' : 'border-[#3a494b]/40 text-gray-400 bg-[#121215]'
+                      isLight ? 'border-slate-300 text-slate-700 bg-slate-100' : 'border-[#3a494b]/40 text-gray-400 bg-[#121215]'
                     }`}>
                       <th className="p-2 min-w-[160px]">Description</th>
                       <th className="p-2 w-16">HSN/SAC</th>
@@ -1600,9 +1653,9 @@ Drive Clean, Go Green!`,
                       <th className="p-2 w-10 text-center"></th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-200 dark:divide-[#3a494b]/20">
+                  <tbody className={isLight ? 'divide-y divide-slate-200' : 'divide-y divide-[#3a494b]/20'}>
                     {items.map((it) => (
-                      <tr key={it.id} className="hover:bg-slate-500/5">
+                      <tr key={it.id} className={isLight ? 'hover:bg-slate-50' : 'hover:bg-white/5'}>
                         <td className="p-1.5">
                           <input
                             type="text"
@@ -1610,7 +1663,7 @@ Drive Clean, Go Green!`,
                             onChange={(e) => handleUpdateItem(it.id, 'itemDescription', e.target.value)}
                             placeholder="Item name / विवरण"
                             className={`w-full px-2 py-1 rounded border text-xs outline-none ${
-                              isLight ? 'bg-white border-slate-200 focus:border-sky-500' : 'bg-[#141417] border-[#3a494b]/40 focus:border-[#00dbe7]'
+                              isLight ? 'bg-white border-slate-300 text-slate-900 focus:border-sky-500' : 'bg-[#141417] border-[#3a494b]/40 text-[#e5e1e4] focus:border-[#00dbe7]'
                             }`}
                           />
                         </td>
@@ -1620,7 +1673,7 @@ Drive Clean, Go Green!`,
                             value={it.hsnSacCode}
                             onChange={(e) => handleUpdateItem(it.id, 'hsnSacCode', e.target.value)}
                             className={`w-full px-1.5 py-1 rounded border text-xs outline-none ${
-                              isLight ? 'bg-white border-slate-200' : 'bg-[#141417] border-[#3a494b]/40'
+                              isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#141417] border-[#3a494b]/40 text-[#e5e1e4]'
                             }`}
                           />
                         </td>
@@ -1632,7 +1685,7 @@ Drive Clean, Go Green!`,
                             value={it.quantity}
                             onChange={(e) => handleUpdateItem(it.id, 'quantity', parseFloat(e.target.value) || 0)}
                             className={`w-full px-1.5 py-1 rounded border text-xs text-right outline-none ${
-                              isLight ? 'bg-white border-slate-200' : 'bg-[#141417] border-[#3a494b]/40'
+                              isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#141417] border-[#3a494b]/40 text-[#e5e1e4]'
                             }`}
                           />
                         </td>
@@ -1644,7 +1697,7 @@ Drive Clean, Go Green!`,
                             value={it.rate}
                             onChange={(e) => handleUpdateItem(it.id, 'rate', parseFloat(e.target.value) || 0)}
                             className={`w-full px-2 py-1 rounded border text-xs text-right outline-none ${
-                              isLight ? 'bg-white border-slate-200' : 'bg-[#141417] border-[#3a494b]/40'
+                              isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#141417] border-[#3a494b]/40 text-[#e5e1e4]'
                             }`}
                           />
                         </td>
@@ -1653,7 +1706,7 @@ Drive Clean, Go Green!`,
                             value={it.gstRate}
                             onChange={(e) => handleUpdateItem(it.id, 'gstRate', Number(e.target.value))}
                             className={`w-full px-1 py-1 rounded border text-xs text-right outline-none ${
-                              isLight ? 'bg-white border-slate-200' : 'bg-[#141417] border-[#3a494b]/40'
+                              isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#141417] border-[#3a494b]/40 text-[#e5e1e4]'
                             }`}
                           >
                             <option value="0">0%</option>
@@ -1663,7 +1716,7 @@ Drive Clean, Go Green!`,
                             <option value="28">28%</option>
                           </select>
                         </td>
-                        <td className="p-1.5 text-right font-bold text-slate-800 dark:text-white">
+                        <td className={`p-1.5 text-right font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
                           ₹{it.totalAmount.toFixed(2)}
                         </td>
                         <td className="p-1.5 text-center">
@@ -1671,7 +1724,7 @@ Drive Clean, Go Green!`,
                             <button
                               type="button"
                               onClick={() => handleDeleteRow(it.id)}
-                              className="p-1 text-slate-400 hover:text-rose-500 transition-colors"
+                              className={`p-1 transition-colors cursor-pointer ${isLight ? 'text-slate-400 hover:text-rose-600' : 'text-gray-400 hover:text-rose-400'}`}
                               title="Delete row"
                             >
                               <Trash2 className="w-3.5 h-3.5 shrink-0" />
@@ -1695,34 +1748,36 @@ Drive Clean, Go Green!`,
                     type="checkbox"
                     checked={autoAddParty}
                     onChange={(e) => setAutoAddParty(e.target.checked)}
-                    className="rounded accent-[#00dbe7]"
+                    className="rounded accent-sky-500"
                   />
-                  <span className="text-xs font-mono text-slate-700 dark:text-gray-300">
+                  <span className={`text-xs font-mono ${isLight ? 'text-slate-800' : 'text-gray-300'}`}>
                     Auto-register vendor in Party Master directory
                   </span>
                 </label>
-                <p className="text-[11px] font-mono text-slate-500 dark:text-gray-400">
-                  Supply Type: <strong className="text-on-surface">{calculatedTotals.isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}</strong>
+                <p className={`text-[11px] font-mono ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                  Supply Type: <strong className={isLight ? 'text-slate-900' : 'text-white'}>{calculatedTotals.isInterState ? 'Inter-State (IGST)' : 'Intra-State (CGST + SGST)'}</strong>
                 </p>
               </div>
 
               {/* Totals Box */}
               <div className="w-full sm:w-auto flex flex-col gap-1 text-right font-mono text-xs">
-                <div className="flex justify-between sm:justify-end gap-6 text-slate-500 dark:text-gray-400">
+                <div className={`flex justify-between sm:justify-end gap-6 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
                   <span>Taxable Subtotal:</span>
-                  <span className="font-bold text-slate-800 dark:text-white">₹{calculatedTotals.taxableAmount.toFixed(2)}</span>
+                  <span className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>₹{calculatedTotals.taxableAmount.toFixed(2)}</span>
                 </div>
-                <div className="flex justify-between sm:justify-end gap-6 text-slate-500 dark:text-gray-400">
+                <div className={`flex justify-between sm:justify-end gap-6 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
                   <span>{calculatedTotals.isInterState ? 'IGST Total:' : 'CGST + SGST:'}</span>
-                  <span>₹{calculatedTotals.totalTax.toFixed(2)}</span>
+                  <span className={`font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>₹{calculatedTotals.totalTax.toFixed(2)}</span>
                 </div>
                 {calculatedTotals.roundOff !== 0 && (
-                  <div className="flex justify-between sm:justify-end gap-6 text-slate-500 dark:text-gray-400">
+                  <div className={`flex justify-between sm:justify-end gap-6 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
                     <span>Round Off:</span>
                     <span>{calculatedTotals.roundOff > 0 ? `+₹${calculatedTotals.roundOff}` : `-₹${Math.abs(calculatedTotals.roundOff)}`}</span>
                   </div>
                 )}
-                <div className="flex justify-between sm:justify-end gap-6 text-base font-bold text-cyan-600 dark:text-[#00dbe7] pt-1 border-t border-slate-300 dark:border-[#3a494b]/40">
+                <div className={`flex justify-between sm:justify-end gap-6 text-base font-bold pt-1 border-t ${
+                  isLight ? 'text-sky-600 border-slate-300' : 'text-[#00dbe7] border-[#3a494b]/40'
+                }`}>
                   <span>Grand Total:</span>
                   <span>₹{calculatedTotals.grandTotal.toFixed(2)}</span>
                 </div>
@@ -1735,8 +1790,8 @@ Drive Clean, Go Green!`,
         <div className={`p-4 border-t flex flex-wrap items-center justify-between gap-3 shrink-0 ${
           isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c] border-[#3a494b]/40'
         }`}>
-          <div className="flex items-center gap-2 text-xs font-mono text-slate-500 dark:text-gray-400">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+          <div className={`flex items-center gap-2 text-xs font-mono ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
             <span>Ready for Double-Entry Ledger Reconciliation</span>
           </div>
 
@@ -1747,8 +1802,8 @@ Drive Clean, Go Green!`,
               disabled={isSubmitting}
               className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
                 isLight
-                  ? 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300'
-                  : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border border-[#3a494b]/40'
+                  ? 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 shadow-xs'
+                  : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border border-[#3a494b]/40 shadow-xs'
               }`}
             >
               Cancel
@@ -1792,7 +1847,7 @@ Drive Clean, Go Green!`,
           subtext={confirmModalConfig.subtext}
           confirmLabel={confirmModalConfig.confirmLabel}
           variant={confirmModalConfig.variant}
-          theme={theme}
+          theme={effectiveTheme}
         />
       )}
     </div>

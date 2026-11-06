@@ -1,0 +1,14 @@
+import { WorkspacePluginManifest } from "../types.js";
+
+export const manifest: WorkspacePluginManifest = {
+  id: "wp_sovereign_tools",
+  name: "Tools Studio",
+  version: "1.0.0",
+  category: "Utilities & Productivity",
+  type: "Native",
+  description: "High-performance client-side sovereign utility suite: Client-side PDF tools (Merge, Split, Compress, Watermark, Reorder, Page Extract), Image & Document Converters, Multilingual OCR (Devanagari & English), Receipt-to-CSV, Business Card Scanner, Developer Tools (JSON format/convert, QR codes, Cryptographic Hash utilities). Zero server uploads, 100% private.",
+  iconSymbol: "build",
+  route: "/workspace/tools",
+  main: "index.ts",
+  minEngineVersion: "0.1.0"
+};

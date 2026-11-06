@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T10:20:02.135Z",
+    "packagedAt": "2026-11-06T14:17:22.038Z",
     "archiveFileName": "wp_stock_analyzer-v1.1.6.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.6.zip",
-    "sizeBytes": 123398,
-    "checksumSha256": "aa71ea7af2e67b259ef9d927ceb06e730e4453676e71bc510a489c75f6addfb0",
+    "sizeBytes": 123399,
+    "checksumSha256": "874e2f81ac100a9ab70c67815314f05d36f592482cc677fc29009c929150518d",
     "changelog": "### v1.1.4 Subversion Release & Indicator Suite\n- **18 Professional Plottable Indicators on TradingView Graph**: Full mathematical calculation engine and plotting for EMA, SMA, WMA, VWAP, Bollinger Bands, Supertrend, Parabolic SAR, Donchian Channels, Keltner Channels, RSI, MACD, Stochastic Oscillator, ATR, ADX, CCI, Williams %R, OBV, and Volume.\n- **Dedicated Studies Ribbon Bar**: Clean, high-density studies bar situated directly above the chart canvas displaying active indicators, live telemetry at the hover crosshair, customizable parameters, visibility eye toggle, configuration settings gear modal, and removal controls.\n- **Unified Indicator Engine across Platform**:\n  - **Algo Creation (Strategy Builder)**: Categorized entry (BUY) and exit (SELL) rule builder with access to all 18 indicators.\n  - **Trade Simulator (EOD & Intraday)**: Dynamic calculation and evaluation of all 18 indicators across simulation runs.\n  - **Market Scanner Hub (Screener)**: Multi-indicator candidate metrics with quick filter buttons (Above VWAP, Supertrend Bull, RSI ≤ 35, RSI ≥ 50).\n- **Unobstructed Chart Canvas**: Relocated floating overlay from inside the canvas to the dedicated top ribbon, giving candles 100% full, unobstructed visibility.\n- **Toolbar Redundancy**: Removed redundant fixed indicator buttons from the chart toolbar.\n- **UI Polish**: Fixed duplicate '+' icon on the Study button."
   },
   {
@@ -26,11 +26,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T10:20:04.513Z",
+    "packagedAt": "2026-11-06T14:17:23.614Z",
     "archiveFileName": "wp_flow_designer-v0.2.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.2.0.zip",
-    "sizeBytes": 2986,
-    "checksumSha256": "e3064533ba92d6e67d09b246e5d04ab4014b4d7acc27ad73da852b285e476fe1",
+    "sizeBytes": 2987,
+    "checksumSha256": "16e54e734a7531f877bc5c25fa7edfd0fd9528bfe6e6b36bd10b037999f7bfd5",
     "changelog": "Interactive canvas for architectural node topologies, microservices modeling, and JSON state import/export."
   },
   {
@@ -43,11 +43,11 @@
     "iconSymbol": "auto_stories",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T10:20:05.480Z",
+    "packagedAt": "2026-11-06T14:17:24.290Z",
     "archiveFileName": "wp_doc_nexus-v0.3.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.3.0.zip",
-    "sizeBytes": 133825,
-    "checksumSha256": "ada4be118970c5d5068845aa7f29dd5d898286152ac125e9ab07759e69c17752",
+    "sizeBytes": 133878,
+    "checksumSha256": "358429ee2d42e52b40e5784536e34185aeef1fdbc5ad8d2ec39b776c53c0fd09",
     "changelog": "Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations."
   },
   {
@@ -60,11 +60,11 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T10:20:07.117Z",
+    "packagedAt": "2026-11-06T14:17:25.460Z",
     "archiveFileName": "wp_accounting-v0.2.3.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.2.3.zip",
-    "sizeBytes": 98384,
-    "checksumSha256": "3a34cd257dd7ab5d219dabe3ee48129b850f398ce4eca7861783deec48f0035f",
+    "sizeBytes": 98748,
+    "checksumSha256": "3ffe9aec6a99e68a1f443e15a14469d37f82ec1654e6589dd7042ce86a1bd708",
     "changelog": "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync."
   },
   {
@@ -77,11 +77,11 @@
     "iconSymbol": "record_voice_over",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T10:20:08.303Z",
+    "packagedAt": "2026-11-06T14:17:26.350Z",
     "archiveFileName": "speech-studio-v0.3.3.zip",
     "packageUrl": "/storage/plugins/speech-studio-v0.3.3.zip",
-    "sizeBytes": 44667,
-    "checksumSha256": "8c3540c7a0f22b141a5ada0e98a6ca6284671746aeb0e9462124fe9a63a7f39b",
+    "sizeBytes": 44668,
+    "checksumSha256": "1cf068b0e3a1345074858b0b52ba5775368915b9dd0d0157378d28a9c9ea628e",
     "changelog": "Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting."
   },
   {
@@ -94,11 +94,28 @@
     "iconSymbol": "photo_filter",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T10:20:09.312Z",
+    "packagedAt": "2026-11-06T14:17:27.205Z",
     "archiveFileName": "image-studio-v0.2.0.zip",
     "packageUrl": "/storage/plugins/image-studio-v0.2.0.zip",
-    "sizeBytes": 20506,
-    "checksumSha256": "f40a8767e858ac29bc7e6b79168a50ad4f7d4c31983e53cba41a231011c33d2c",
+    "sizeBytes": 20507,
+    "checksumSha256": "6d546b929a3b1f24425625564b27192465f4884f79be8b81ca28268e32133ee9",
     "changelog": "Dual-mode AI image studio: Top-rated open-source text-to-image generation (FLUX.1 & SD 3.5) and 4K super-resolution upscaling."
+  },
+  {
+    "id": "wp_sovereign_tools",
+    "name": "Tools Studio",
+    "version": "1.0.0",
+    "category": "Utilities & Productivity",
+    "type": "Native",
+    "description": "High-performance client-side sovereign utility suite: Client-side PDF tools (Merge, Split, Compress, Watermark, Reorder, Page Extract), Image & Document Converters, Multilingual OCR (Devanagari & English), Receipt-to-CSV, Business Card Scanner, Developer Tools (JSON format/convert, QR codes, Cryptographic Hash utilities). Zero server uploads, 100% private.",
+    "iconSymbol": "build",
+    "main": "index.ts",
+    "minEngineVersion": "0.1.0",
+    "packagedAt": "2026-11-06T14:17:27.947Z",
+    "archiveFileName": "wp_sovereign_tools-v1.0.0.zip",
+    "packageUrl": "/storage/plugins/wp_sovereign_tools-v1.0.0.zip",
+    "sizeBytes": 2762,
+    "checksumSha256": "25432dc3c27e0af303f26d6f8d8c2a72d21568a063cfe27a033927fc7b0aa13f",
+    "changelog": "High-performance client-side sovereign utility suite: Client-side PDF tools (Merge, Split, Compress, Watermark, Reorder, Page Extract), Image & Document Converters, Multilingual OCR (Devanagari & English), Receipt-to-CSV, Business Card Scanner, Developer Tools (JSON format/convert, QR codes, Cryptographic Hash utilities). Zero server uploads, 100% private."
   }
 ]
