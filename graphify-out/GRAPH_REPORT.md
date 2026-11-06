@@ -1,7 +1,7 @@
 # Graph Report - website  (2026-11-06)
 
 ## Corpus Check
-- 199 files · ~401,385 words
+- 199 files · ~403,159 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `23e9cc13`
+- Built from commit: `8d0f9fa4`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -397,16 +397,16 @@ Nodes (6): better-sqlite3@^12.10.0, @neondatabase/serverless@^1.1.0, @prisma/ada
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `formatINR` to `clientRegistry.ts`, `src/types.ts`, `indicatorEngine.ts`, `dependencies`, `ImageStudioView.tsx`, `App.tsx`, `package.json`, `patterns/types.ts`, `AccountingView.tsx`, `AdminAIChatView.tsx`, `StockTrackerView.tsx`, `UserProfileView.tsx`, `DocNexusStudio.tsx`, `ManageDatabaseView.tsx`, `LandingPage.tsx`, `Accounting/routes.ts`, `backtest/engine.ts`, `react`, `DocNexusStudio.tsx`, `DocNexus/types.ts`, `SpeechStudioView.tsx`, `strategies/types.ts`, `Accounting/types.ts`, `WorkspacePluginStore.tsx`, `SlideDeckStudio.tsx`, `StorageVaultView.tsx`, `lucide-react`, `StockScannerPanel.tsx`, `OpenLocalWorkspaceModal.tsx`, `ResumeEngine.tsx`, `StockSimulatorPanel.tsx`?**
-  _High betweenness centrality (0.236) - this node is a cross-community bridge._
+  _High betweenness centrality (0.210) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `startServer()` (e.g. with `authenticateToken()` and `requireAdmin()`) actually correct?**
   _`startServer()` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **Should `clientRegistry.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.13846153846153847 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `lucide-react` to `src/types.ts`, `indicatorEngine.ts`, `dependencies`, `ImageStudioView.tsx`, `App.tsx`, `package.json`, `patterns/types.ts`, `AccountingView.tsx`, `AdminAIChatView.tsx`, `StockTrackerView.tsx`, `UserProfileView.tsx`, `DocNexusStudio.tsx`, `ManageDatabaseView.tsx`, `LandingPage.tsx`, `backtest/engine.ts`, `react`, `DocNexusStudio.tsx`, `DocNexus/types.ts`, `SpeechStudioView.tsx`, `strategies/types.ts`, `WorkspacePluginStore.tsx`, `SlideDeckStudio.tsx`, `StorageVaultView.tsx`, `StockScannerPanel.tsx`, `OpenLocalWorkspaceModal.tsx`, `ResumeEngine.tsx`, `StockSimulatorPanel.tsx`?**
-  _High betweenness centrality (0.109) - this node is a cross-community bridge._
+  _High betweenness centrality (0.099) - this node is a cross-community bridge._
 - **Should `src/types.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.07926829268292683 - nodes in this community are weakly interconnected._
 - **Why does `express` connect `rateLimiter.ts` to `_utils.ts`, `DocNexus/storage.ts`, `ref_fs`, `StockTracker/routes.ts`, `serverRegistry.ts`, `package.json`, `server.ts`, `SpeechStudioView.tsx`, `telemetryService.ts`, `Accounting/routes.ts`?**
-  _High betweenness centrality (0.066) - this node is a cross-community bridge._
+  _High betweenness centrality (0.061) - this node is a cross-community bridge._
 - **Should `indicatorEngine.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.1310483870967742 - nodes in this community are weakly interconnected._

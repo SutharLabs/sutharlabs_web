@@ -189,6 +189,7 @@ async function main() {
 
   // 8. Live Health Probes
   logStep(8, 'Verifying Live Production Health & APIs');
+  await new Promise(r => setTimeout(r, 4000));
   const landingProbe = await probeUrl('https://www.sutharlabs.com/');
   if (landingProbe.status === 200) {
     logSuccess('Landing page (https://www.sutharlabs.com/) -> 200 OK');
@@ -200,7 +201,8 @@ async function main() {
   if (pluginsProbe.status === 200) {
     try {
       const data = JSON.parse(pluginsProbe.text);
-      logSuccess(`API /api/workspace-plugins -> 200 OK (${data.plugins?.length || 0} plugins active)`);
+      const count = Array.isArray(data) ? data.length : (data.plugins?.length || 0);
+      logSuccess(`API /api/workspace-plugins -> 200 OK (${count} plugins active in catalog)`);
     } catch {
       logSuccess('API /api/workspace-plugins -> 200 OK');
     }

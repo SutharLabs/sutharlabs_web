@@ -88,3 +88,10 @@ docs/
 ### F. Design System & UI Guidelines (`docs/design-system/`)
 * **[UI Styling, Icon Alignment & Modals Specification](file:///d:/Code/SutharLabs/website/docs/design-system/ui_styling_and_icons.md)**: Strict rules: Zero native browser dialogs (`<ConfirmModal />`), container icon badges, `shrink-0` rules, light/dark theme contrast matrices, and code highlight block standards.
 
+### G. Production Deployment Automation (`docs/AUTOMATED_DEPLOYMENT_PROCEDURE.md`)
+* **[Automated Deployment & Fleet Replication Runbook](file:///d:/Code/SutharLabs/website/docs/AUTOMATED_DEPLOYMENT_PROCEDURE.md)**: 1-command deployment (`npm run deploy` / `deploy-production.ps1`), 8-stage zero-downtime pipeline, 1GB RAM micro-VM build avoidance, and automated health checks.
+
+### H. System Updates & Comprehensive Changelog (`docs/SYSTEM_UPDATES_AND_CHANGELOG.md`)
+* **[System Updates & Release Changelog](file:///d:/Code/SutharLabs/website/docs/SYSTEM_UPDATES_AND_CHANGELOG.md)**: Detailed breakdown of the official 3D metallic branding, App Icon & Favicon Studio, Resume Studio standalone plugin, 6-mode multi-input CV parser, menu decluttering, and camera OCR integration.
+
+

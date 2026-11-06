@@ -189,6 +189,8 @@ For in-depth operational and architectural specifications, consult the categoriz
 * **[Neural Speech & Voice Cloning](file:///d:/Code/SutharLabs/website/docs/speech/README.md)**: Edge TTS daemon on VM 2, IndicParler/MeloTTS mapping, phonetic calibration prompt, and acoustic timbre fingerprinting.
 * **[Self-Hosted LLM Inference & Agents](file:///d:/Code/SutharLabs/website/docs/llm/README.md)**: VM 2 Ollama configuration, 6 models, 8192 context window, prompt tuning, and speculative decoding research.
 * **[Oracle Cloud Fleet & DevOps Runbook](file:///d:/Code/SutharLabs/website/docs/infrastructure/README.md)**: 3-VM Oracle topology, primary-standby database replication, storage vault, and zero-downtime deployment automation.
+* **[Production Deployment & Fleet Automation](file:///d:/Code/SutharLabs/website/docs/AUTOMATED_DEPLOYMENT_PROCEDURE.md)**: 1-command deployment (`npm run deploy`), 8-stage zero-downtime pipeline, 1GB RAM micro-VM build avoidance, and automated health checks.
+* **[Comprehensive System Updates & Release Changelog](file:///d:/Code/SutharLabs/website/docs/SYSTEM_UPDATES_AND_CHANGELOG.md)**: Official 3D branding, App Icon Studio, Resume Studio standalone plugin, 6-mode multi-input CV parser, menu decluttering, and camera OCR integration.
 * **[Sovereign Design System & UI Guidelines](file:///d:/Code/SutharLabs/website/docs/design-system/README.md)**: Zero native browser dialogs, icon badge standards, light/dark theme contrast, and code block styles.
 
 ---
