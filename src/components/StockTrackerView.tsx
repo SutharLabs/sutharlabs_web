@@ -3782,7 +3782,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
               >
                 <Newspaper className="w-3.5 h-3.5 shrink-0" />
                 <span className="leading-none inline-flex items-center gap-1">
-                  <span>News &amp; AI</span>
+                  <span>News {'&'} AI</span>
                   {sentimentReport && (
                     <span className={`w-2 h-2 rounded-full shrink-0 ${
                       sentimentReport.verdict === 'BULLISH' ? 'bg-[#00e476]' : sentimentReport.verdict === 'BEARISH' ? 'bg-[#ff6b6b]' : 'bg-[#00dbe7]'
@@ -4349,7 +4349,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                   </div>
                   <div>
                     <h4 className="text-xs font-mono font-bold text-on-surface">
-                      News &amp; AI Sentiment
+                      News {'&'} AI Sentiment
                     </h4>
                     <span className="text-[10px] font-mono text-on-surface-variant">
                       {quote?.display_symbol || formatTickerDisplay(symbol).displaySymbol}
@@ -4372,7 +4372,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       setShowSettingsDrawer(true);
                     }}
                     className="text-[10px] font-mono px-2 py-1 rounded bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/30 hover:bg-[#00dbe7]/20 transition-all flex items-center gap-1 cursor-pointer leading-none"
-                    title="Open Full Expanded News &amp; AI Sentiment Hub"
+                    title="Open Full Expanded News & AI Sentiment Hub"
                   >
                     <Maximize2 className="w-3 h-3 shrink-0" />
                     <span className="leading-none">Expanded View</span>
@@ -4893,7 +4893,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       {tab === 'SCANNER' && 'Market Screener'}
                       {tab === 'SIMULATOR' && 'Trade Simulator'}
                       {tab === 'BACKTEST' && 'Backtest Engine'}
-                      {tab === 'NEWS_AI' && 'News &amp; AI Sentiment'}
+                      {tab === 'NEWS_AI' && 'News & AI Sentiment'}
                       {tab === 'INDICATORS' && 'Indicator Mathematics'}
                       {tab === 'TRADING' && 'Order & Risk Rules'}
                       {tab === 'FEEDS' && 'Data Feeds & Brokers'}
@@ -6275,7 +6275,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                     <div>
                       <h4 className="text-sm font-bold text-on-surface flex items-center gap-2">
                         <Newspaper className="w-4 h-4 text-[#00dbe7]" />
-                        Real-Time News Stream &amp; AI Sentiment Intelligence
+                        Real-Time News Stream {'&'} AI Sentiment Intelligence
                       </h4>
                       <p className="text-on-surface-variant text-[11px] mt-0.5 max-w-3xl leading-relaxed">
                         Continuous financial news ingestion across global exchanges (NSE/BSE India, US S&amp;P 500, Europe &amp; East Asia).
@@ -6452,7 +6452,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
                       <div className="flex justify-between items-center">
                         <span className="font-bold text-xs text-on-surface flex items-center gap-1.5">
                           <Activity className="w-3.5 h-3.5 text-[#00dbe7]" />
-                          Daily News &amp; AI Usage Tracking
+                          Daily News & AI Usage Tracking
                         </span>
                         <span className="text-[10px] text-on-surface-variant font-mono">
                           Date: {aiUsageStats.date}

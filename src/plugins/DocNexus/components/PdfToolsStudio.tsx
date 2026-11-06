@@ -50,6 +50,7 @@ import Base64Tool from './tools/Base64Tool.js';
 import ReceiptToCsvTool from './tools/ReceiptToCsvTool.js';
 import MultilingualOcrTool from './tools/MultilingualOcrTool.js';
 import BusinessCardScannerTool from './tools/BusinessCardScannerTool.js';
+import ConfirmModal from '../../../components/ConfirmModal.js';
 
 
 // Configure PDF.js worker
@@ -242,13 +243,15 @@ interface PdfToolsStudioProps {
   theme?: 'dark' | 'light';
   onAddLog?: (log: any) => void;
   isStandalone?: boolean;
+  user?: any;
 }
 
 export default function PdfToolsStudio({
   initialTool = 'pdf-to-image',
   theme = 'dark',
   onAddLog,
-  isStandalone = false
+  isStandalone = false,
+  user
 }: PdfToolsStudioProps) {
   const isLight = theme === 'light';
   const [activeTool, setActiveTool] = useState<ToolType>(initialTool);
@@ -256,6 +259,35 @@ export default function PdfToolsStudio({
   const [isProcessing, setIsProcessing] = useState(false);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Tools Download Access Policy & Auth Guard
+  const [downloadPolicy, setDownloadPolicy] = useState<'direct' | 'login_required'>('direct');
+  const [showAuthRequiredModal, setShowAuthRequiredModal] = useState<boolean>(false);
+
+  useEffect(() => {
+    fetch('/api/public/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.toolsDownloadPolicy) {
+          setDownloadPolicy(data.toolsDownloadPolicy);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const isUserAuthenticated = Boolean(
+    user?.email || 
+    user?.isLoggedIn || 
+    (typeof localStorage !== 'undefined' && (localStorage.getItem('token') || localStorage.getItem('sutharlabs_token')))
+  );
+
+  const checkDownloadAccess = (): boolean => {
+    if (downloadPolicy === 'login_required' && !isUserAuthenticated) {
+      setShowAuthRequiredModal(true);
+      return false;
+    }
+    return true;
+  };
 
   // Sync initialTool prop if changed from router
   useEffect(() => {

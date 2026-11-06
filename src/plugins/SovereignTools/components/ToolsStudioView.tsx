@@ -79,8 +79,10 @@ export default function ToolsStudioView({
           theme={effectiveTheme}
           onAddLog={onAddLog}
           isStandalone={true}
+          user={{ email: userEmail, token: userToken, isLoggedIn: true }}
         />
       </div>
     </div>
   );
 }
+

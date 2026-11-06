@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import PdfToolsStudio, { TOOLS_LIST, ToolType } from '../plugins/DocNexus/components/PdfToolsStudio.js';
+import PdfToolsStudio, { TOOLS_LIST, ToolType, ToolMeta } from '../plugins/DocNexus/components/PdfToolsStudio.js';
 import { 
   ShieldCheck, 
   Zap, 
@@ -19,7 +19,26 @@ import {
   Bot,
   Workflow,
   TrendingUp,
-  FolderLock
+  FolderLock,
+  Search,
+  Filter,
+  CheckCircle2,
+  FileText,
+  Image as ImageIcon,
+  FileCode,
+  Languages,
+  FileSpreadsheet,
+  Contact,
+  Sliders,
+  QrCode,
+  Hash,
+  KeyRound,
+  GitCompare,
+  Binary,
+  PenTool,
+  Scissors,
+  Minimize2,
+  FileDown
 } from 'lucide-react';
 
 interface PublicToolsHubViewProps {
@@ -27,17 +46,67 @@ interface PublicToolsHubViewProps {
   user?: any;
 }
 
+type ToolCategory = 'ALL' | 'PDF' | 'IMAGE' | 'OCR' | 'DEV';
+
 export default function PublicToolsHubView({ theme = 'dark', user }: PublicToolsHubViewProps) {
   const isLight = theme === 'light';
   const { toolId } = useParams<{ toolId?: string }>();
   const navigate = useNavigate();
 
-  // Validate or fall back to default tool
-  const currentToolId = (TOOLS_LIST.some(t => t.id === toolId) ? toolId : 'pdf-to-image') as ToolType;
-  const currentToolMeta = TOOLS_LIST.find(t => t.id === currentToolId) || TOOLS_LIST[0];
+  // Search & Filter State
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<ToolCategory>('ALL');
 
   // FAQ accordion state
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+
+  // Determine if specific tool is loaded
+  const isSpecificTool = Boolean(toolId && TOOLS_LIST.some(t => t.id === toolId));
+  const currentToolId = (isSpecificTool ? toolId : 'pdf-to-image') as ToolType;
+  const currentToolMeta = TOOLS_LIST.find(t => t.id === currentToolId) || TOOLS_LIST[0];
+
+  // Tool categorization mapping
+  const getToolCategory = (id: ToolType): 'PDF' | 'IMAGE' | 'OCR' | 'DEV' => {
+    if (['pdf-to-image', 'image-to-pdf', 'merge-pdf', 'split-pdf', 'pdf-editor', 'pdf-to-word', 'ocr-pdf'].includes(id)) {
+      return 'PDF';
+    }
+    if (['compress-image', 'qr-generator', 'base64-tool'].includes(id)) {
+      return 'IMAGE';
+    }
+    if (['multilingual-ocr', 'receipt-to-csv', 'business-card-scanner'].includes(id)) {
+      return 'OCR';
+    }
+    return 'DEV';
+  };
+
+  // Filtered tools based on category and search
+  const filteredTools = useMemo(() => {
+    return TOOLS_LIST.filter(tool => {
+      const cat = getToolCategory(tool.id);
+      const matchesCategory = selectedCategory === 'ALL' || cat === selectedCategory;
+      const term = searchTerm.trim().toLowerCase();
+      const matchesSearch = !term || 
+        tool.title.toLowerCase().includes(term) ||
+        tool.tagline.toLowerCase().includes(term) ||
+        tool.badge.toLowerCase().includes(term) ||
+        tool.id.toLowerCase().includes(term);
+      return matchesCategory && matchesSearch;
+    });
+  }, [selectedCategory, searchTerm]);
+
+  // Related tools for the active tool view
+  const relatedTools = useMemo(() => {
+    const currentCat = getToolCategory(currentToolId);
+    return TOOLS_LIST.filter(t => t.id !== currentToolId && getToolCategory(t.id) === currentCat).slice(0, 4);
+  }, [currentToolId]);
+
+  const CATEGORIES: { key: ToolCategory; label: string; count: number }[] = [
+    { key: 'ALL', label: 'All Tools', count: TOOLS_LIST.length },
+    { key: 'PDF', label: 'PDF Suite', count: TOOLS_LIST.filter(t => getToolCategory(t.id) === 'PDF').length },
+    { key: 'IMAGE', label: 'Image & Visual', count: TOOLS_LIST.filter(t => getToolCategory(t.id) === 'IMAGE').length },
+    { key: 'OCR', label: 'OCR & Scanners', count: TOOLS_LIST.filter(t => getToolCategory(t.id) === 'OCR').length },
+    { key: 'DEV', label: 'Developer & Security', count: TOOLS_LIST.filter(t => getToolCategory(t.id) === 'DEV').length },
+  ];
 
   const FAQS = [
     {
@@ -57,22 +126,75 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
       a: 'Our engine parses the underlying PDF vector stream and text coordinates in-browser, reconstructs paragraphs and headings into standard OpenXML structure, and compiles an authentic Microsoft Word (.docx) archive directly in client RAM.'
     },
     {
+      q: 'How does the bilingual Hindi & English OCR work?',
+      a: 'The OCR engine embeds neural Tesseract WebAssembly language packs for Devanagari script and Latin characters, reading receipts, printed bills, and signage entirely on-device with optional camera snap.'
+    },
+    {
       q: 'Can I automate these document workflows programmatically?',
       a: 'Yes! SutharLabs provides Workflow Studio (an open-source n8n alternative) and AI Agent Studio on our platform to build fully autonomous, multi-step document pipelines connected to your private databases and APIs.'
     }
   ];
 
+  // Schema.org Structured Data
+  const jsonLdData = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebApplication',
+        '@id': 'https://www.sutharlabs.com/tools#webapp',
+        'name': 'SutharLabs Sovereign Document & PDF Tools Hub',
+        'url': 'https://www.sutharlabs.com/tools',
+        'description': 'Free client-side WebAssembly document and PDF tools: PDF to Word DOCX, Image to PDF, Merge, Split, Bilingual Hindi OCR, and Image Compression with zero server uploads.',
+        'applicationCategory': 'BusinessApplication, DeveloperApplication, UtilityApplication',
+        'operatingSystem': 'All (Web Browser, Chrome, Firefox, Safari, Edge)',
+        'browserRequirements': 'HTML5 Canvas & WebAssembly support',
+        'offers': {
+          '@type': 'Offer',
+          'price': '0',
+          'priceCurrency': 'USD'
+        },
+        'featureList': [
+          '100% Client-Side In-Browser Processing',
+          'PDF to Word DOCX Reconstruction',
+          'Lossless PDF to Image Converter',
+          'Bilingual Hindi Devanagari & English OCR',
+          'Receipt to Excel CSV Extractor',
+          'Client-Side PDF Merger and Splitter',
+          'Zero Cloud Uploads Privacy Guarantee'
+        ]
+      },
+      {
+        '@type': 'FAQPage',
+        '@id': 'https://www.sutharlabs.com/tools#faq',
+        'mainEntity': FAQS.map(faq => ({
+          '@type': 'Question',
+          'name': faq.q,
+          'acceptedAnswer': {
+            '@type': 'Answer',
+            'text': faq.a
+          }
+        }))
+      }
+    ]
+  };
+
   return (
     <div className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
       isLight ? 'bg-slate-50 text-slate-800' : 'bg-[#0a0a0c] text-[#e5e1e4]'
     }`}>
+      {/* Schema.org Structured Data Injection for SEO */}
+      <script 
+        type="application/ld+json" 
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLdData) }} 
+      />
+
       {/* Top Navigation Bar */}
       <header className={`sticky top-0 z-40 w-full border-b backdrop-blur-md px-4 sm:px-8 py-3.5 flex items-center justify-between transition-colors ${
         isLight ? 'bg-white/80 border-slate-200 shadow-xs' : 'bg-[#101014]/80 border-[#3a494b]/30'
       }`}>
         <div className="flex items-center gap-6">
           <Link to="/" className="flex items-center gap-2.5 group cursor-pointer">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00dbe7] to-[#74f5ff] flex items-center justify-center shadow-sm shadow-[#00dbe7]/20 group-hover:scale-105 transition-transform">
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#00dbe7] to-[#74f5ff] flex items-center justify-center shadow-sm shadow-[#00dbe7]/20 group-hover:scale-105 transition-transform shrink-0">
               <span className="text-[#002022] font-black text-sm tracking-tighter">SL</span>
             </div>
             <div>
@@ -80,20 +202,20 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
                 Suthar<span className="text-[#00dbe7]">Labs</span>
               </span>
               <span className="text-[10px] font-mono text-[#849495] tracking-widest uppercase block mt-0.5">
-                Tools Hub
+                Sovereign Tools Hub
               </span>
             </div>
           </Link>
 
           {/* Quick tool pills on desktop */}
-          <nav className="hidden lg:flex items-center gap-1.5 text-xs font-mono">
+          <nav className="hidden xl:flex items-center gap-1.5 text-xs font-mono">
             {TOOLS_LIST.slice(0, 6).map(t => (
               <button
                 key={t.id}
                 type="button"
                 onClick={() => navigate(`/tools/${t.id}`)}
                 className={`px-2.5 py-1 rounded-md transition-all cursor-pointer ${
-                  currentToolId === t.id
+                  currentToolId === t.id && isSpecificTool
                     ? isLight ? 'bg-slate-200 text-slate-900 font-bold' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
                     : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-[#849495] hover:text-[#e5e1e4]'
                 }`}
@@ -106,21 +228,36 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
 
         {/* Action CTAs */}
         <div className="flex items-center gap-2.5">
+          {isSpecificTool && (
+            <button
+              type="button"
+              onClick={() => navigate('/tools')}
+              className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+                isLight 
+                  ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-xs' 
+                  : 'bg-[#1b1b1e] hover:bg-[#252428] text-[#e5e1e4] border border-[#3a494b]/40 shadow-xs'
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+              <span>All 17 Tools</span>
+            </button>
+          )}
+
           <Link
             to="/workspace"
-            className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
+            className={`hidden sm:flex h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider items-center gap-1.5 transition-all cursor-pointer ${
               isLight 
                 ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300' 
                 : 'bg-[#1b1b1e] hover:bg-[#252428] text-[#e5e1e4] border border-[#3a494b]/40'
             }`}
           >
             <Workflow className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-            <span className="hidden sm:inline">Workflow Studio</span>
+            <span>Workflow Studio</span>
           </Link>
 
           <Link
             to={user ? "/workspace" : "/auth"}
-            className="h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-sm bg-sky-500 hover:bg-sky-600 text-white select-none transition-all"
+            className="h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-sm bg-sky-500 hover:bg-sky-600 text-white select-none transition-all shrink-0"
           >
             <span>{user ? 'Open Workspace' : 'Sign In'}</span>
             <ChevronRight className="w-3.5 h-3.5 shrink-0" />
@@ -128,35 +265,319 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className={`py-10 px-4 sm:px-8 border-b ${
+      {/* Hero Header Section */}
+      <section className={`py-8 sm:py-12 px-4 sm:px-8 border-b ${
         isLight ? 'bg-white border-slate-200' : 'bg-gradient-to-b from-[#121216] to-[#0a0a0c] border-[#3a494b]/30'
       }`}>
         <div className="max-w-4xl mx-auto text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono border mx-auto bg-emerald-500/10 border-emerald-500/30 text-emerald-400">
             <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
-            <span>100% Client-Side • Zero Cloud Uploads • Zero File Size Limits</span>
+            <span>100% Sovereign Client-Side • Zero Cloud Storage • Unlimited File Size</span>
           </div>
 
-          <h1 className="text-2xl sm:text-4xl font-extrabold tracking-tight">
-            Free Sovereign <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-[#00dbe7] to-emerald-400">Document & PDF Tools</span>
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-extrabold tracking-tight">
+            Free Sovereign <span className="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 via-[#00dbe7] to-emerald-400">Document, PDF &amp; OCR Tools</span>
           </h1>
 
           <p className={`text-xs sm:text-sm max-w-2xl mx-auto leading-relaxed ${isLight ? 'text-slate-600' : 'text-[#a4a2a6]'}`}>
-            Convert, edit, sign, merge, split, and compress PDF documents and images entirely in your browser. 
-            No sign-up required, no paywalls, and your files never leave your device.
+            Convert, sign, merge, split, compress, and extract text from PDFs, images, and receipts entirely inside your web browser. 
+            No cloud uploads, no daily task limits, and your files never leave your device.
           </p>
+
+          {/* Search Box on Catalog Hub View */}
+          {!isSpecificTool && (
+            <div className="pt-2 max-w-xl mx-auto">
+              <div className={`relative flex items-center rounded-xl border shadow-sm transition-all ${
+                isLight 
+                  ? 'bg-slate-50 border-slate-300 focus-within:border-sky-500 focus-within:ring-2 focus-within:ring-sky-500/20' 
+                  : 'bg-[#141418] border-[#3a494b]/50 focus-within:border-[#00dbe7] focus-within:ring-2 focus-within:ring-[#00dbe7]/20'
+              }`}>
+                <Search className="w-4 h-4 ml-3.5 text-slate-400 shrink-0" />
+                <input
+                  type="text"
+                  placeholder="Search over 17 tools: word, merge, split, ocr, qr, vcard, compress..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className={`w-full py-2.5 px-3 text-xs font-mono outline-none bg-transparent ${
+                    isLight ? 'text-slate-800 placeholder-slate-400' : 'text-[#e5e1e4] placeholder-gray-500'
+                  }`}
+                />
+                {searchTerm && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchTerm('')}
+                    className="p-2 mr-1 text-slate-400 hover:text-slate-600 dark:hover:text-white cursor-pointer"
+                  >
+                    <X className="w-3.5 h-3.5 shrink-0" />
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </div>
       </section>
 
-      {/* Main Interactive Studio Engine */}
-      <main className="flex-1 w-full max-w-6xl mx-auto py-6 sm:py-8 px-3 sm:px-6">
-        <PdfToolsStudio 
-          initialTool={currentToolId}
-          theme={theme}
-          isStandalone={true}
-        />
-      </main>
+      {/* VIEWPORT: Specific Tool Engine OR Full Categorized Directory */}
+      {isSpecificTool ? (
+        /* INDIVIDUAL TOOL VIEW */
+        <div className="flex-1 w-full max-w-6xl mx-auto py-6 sm:py-8 px-3 sm:px-6 space-y-6">
+          {/* Breadcrumbs */}
+          <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
+            <Link to="/tools" className="hover:underline flex items-center gap-1">
+              <Layers className="w-3.5 h-3.5 shrink-0" />
+              <span>Tools Hub</span>
+            </Link>
+            <ChevronRight className="w-3 h-3 shrink-0" />
+            <span className="font-bold text-on-surface">{currentToolMeta.title}</span>
+          </div>
+
+          {/* Main Interactive Studio Engine */}
+          <main className="w-full">
+            <PdfToolsStudio 
+              initialTool={currentToolId}
+              theme={theme}
+              isStandalone={true}
+              user={user}
+            />
+          </main>
+
+          {/* Related Tools Cross-Links */}
+          {relatedTools.length > 0 && (
+            <div className={`p-5 rounded-2xl border ${
+              isLight ? 'bg-white border-slate-200' : 'bg-[#121215] border-[#3a494b]/30'
+            }`}>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-bold flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-sky-400 shrink-0" />
+                  <span>Related Sovereign Tools</span>
+                </h3>
+                <Link to="/tools" className="text-xs font-mono text-[#00dbe7] hover:underline">
+                  View All 17 Tools &rarr;
+                </Link>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {relatedTools.map(t => {
+                  const ToolIcon = t.icon;
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => navigate(`/tools/${t.id}`)}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between group ${
+                        isLight 
+                          ? 'bg-slate-50 hover:bg-slate-100/80 border-slate-200 hover:border-sky-400' 
+                          : 'bg-[#18181c] hover:bg-[#202026] border-[#3a494b]/30 hover:border-[#00dbe7]/50'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5 mb-2">
+                        <div 
+                          className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border"
+                          style={{
+                            backgroundColor: `${t.accentColor}15`,
+                            borderColor: `${t.accentColor}30`,
+                            color: t.accentColor
+                          }}
+                        >
+                          <ToolIcon className="w-4 h-4 shrink-0" />
+                        </div>
+                        <div className="truncate">
+                          <h4 className="text-xs font-bold truncate text-on-surface group-hover:text-sky-500 transition-colors">
+                            {t.title}
+                          </h4>
+                          <span className="text-[10px] font-mono text-slate-400">{t.badge}</span>
+                        </div>
+                      </div>
+                      <p className={`text-[11px] line-clamp-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                        {t.tagline}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* MASTER CATALOG HUB VIEW */
+        <main className="flex-1 w-full max-w-6xl mx-auto py-8 px-4 sm:px-6 space-y-8">
+          {/* Category Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            {CATEGORIES.map(cat => (
+              <button
+                key={cat.key}
+                type="button"
+                onClick={() => setSelectedCategory(cat.key)}
+                className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer select-none ${
+                  selectedCategory === cat.key
+                    ? isLight
+                      ? 'bg-sky-500 text-white shadow-sm border border-sky-600'
+                      : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/50 shadow-sm'
+                    : isLight
+                      ? 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300'
+                      : 'bg-[#18181c] hover:bg-[#222228] text-slate-300 border border-[#3a494b]/40'
+                }`}
+              >
+                <span>{cat.label}</span>
+                <span className={`px-1.5 py-0.2 rounded text-[10px] ${
+                  selectedCategory === cat.key
+                    ? isLight ? 'bg-white/20 text-white' : 'bg-[#00dbe7]/20 text-[#00dbe7]'
+                    : isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/5 text-gray-400'
+                }`}>
+                  {cat.count}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {/* Tools Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+            {filteredTools.map(tool => {
+              const ToolIcon = tool.icon;
+              return (
+                <div
+                  key={tool.id}
+                  onClick={() => navigate(`/tools/${tool.id}`)}
+                  className={`p-5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between group hover:shadow-lg hover:-translate-y-0.5 duration-200 ${
+                    isLight 
+                      ? 'bg-white hover:bg-slate-50/80 border-slate-200 hover:border-sky-400' 
+                      : 'bg-[#131316] hover:bg-[#18181d] border-[#3a494b]/30 hover:border-[#00dbe7]/40 shadow-xs'
+                  }`}
+                >
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div 
+                        className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border shadow-xs"
+                        style={{
+                          backgroundColor: `${tool.accentColor}18`,
+                          borderColor: `${tool.accentColor}35`,
+                          color: tool.accentColor
+                        }}
+                      >
+                        <ToolIcon className="w-5 h-5 shrink-0" />
+                      </div>
+                      <span 
+                        className="px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider border"
+                        style={{
+                          backgroundColor: `${tool.accentColor}12`,
+                          borderColor: `${tool.accentColor}30`,
+                          color: tool.accentColor
+                        }}
+                      >
+                        {tool.badge}
+                      </span>
+                    </div>
+
+                    <div>
+                      <h3 className="text-base font-bold text-on-surface group-hover:text-sky-500 dark:group-hover:text-[#00dbe7] transition-colors flex items-center gap-1.5">
+                        <span>{tool.title}</span>
+                        <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all text-sky-500 dark:text-[#00dbe7] shrink-0" />
+                      </h3>
+                      <p className={`text-xs mt-1.5 leading-relaxed line-clamp-2 ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                        {tool.tagline}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="pt-4 mt-4 border-t border-slate-200/60 dark:border-white/5 flex items-center justify-between text-xs font-mono">
+                    <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                      <Zap className="w-3 h-3 text-emerald-400 shrink-0" />
+                      100% In-Browser
+                    </span>
+                    <span className="text-sky-500 dark:text-[#00dbe7] font-bold group-hover:underline flex items-center gap-1">
+                      <span>Launch</span>
+                      <ArrowRight className="w-3.5 h-3.5 shrink-0" />
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {filteredTools.length === 0 && (
+            <div className={`p-10 rounded-2xl border text-center space-y-3 ${
+              isLight ? 'bg-white border-slate-200' : 'bg-[#131316] border-[#3a494b]/30'
+            }`}>
+              <Search className="w-8 h-8 mx-auto text-slate-400" />
+              <h3 className="text-sm font-bold">No matching sovereign tools found</h3>
+              <p className="text-xs text-slate-500 font-mono">
+                Try searching for different keywords or select "All Tools".
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchTerm('');
+                  setSelectedCategory('ALL');
+                }}
+                className="h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-sky-500 text-white cursor-pointer"
+              >
+                Reset Search
+              </button>
+            </div>
+          )}
+
+          {/* 3-Step "How It Works" Visual Guide */}
+          <section className={`p-6 sm:p-8 rounded-2xl border ${
+            isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-[#121216] border-[#3a494b]/30'
+          }`}>
+            <div className="text-center space-y-2 mb-8">
+              <span className="px-3 py-1 rounded-full text-[10px] font-mono uppercase tracking-widest bg-sky-500/10 text-sky-500 border border-sky-500/20 font-bold">
+                Zero Cloud Latency
+              </span>
+              <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
+                How SutharLabs Sovereign Processing Works
+              </h2>
+              <p className={`text-xs max-w-xl mx-auto ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                Unlike legacy online PDF converters that send your files across remote clouds, our engine compiles high-performance C++ &amp; Rust WebAssembly binaries directly onto your device.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 relative">
+              <div className={`p-5 rounded-xl border flex flex-col justify-between ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c] border-[#3a494b]/30'
+              }`}>
+                <div className="space-y-2">
+                  <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 text-sky-500 flex items-center justify-center font-mono font-black text-sm">
+                    01
+                  </div>
+                  <h3 className="text-sm font-bold">Upload, Drag, or Snap</h3>
+                  <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                    Select local PDF documents, images, or snap physical bills using your device camera. Files are loaded solely into local browser sandbox RAM.
+                  </p>
+                </div>
+              </div>
+
+              <div className={`p-5 rounded-xl border flex flex-col justify-between ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c] border-[#3a494b]/30'
+              }`}>
+                <div className="space-y-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-emerald-500 flex items-center justify-center font-mono font-black text-sm">
+                    02
+                  </div>
+                  <h3 className="text-sm font-bold">In-Browser WASM Execution</h3>
+                  <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                    Local WebAssembly threads parse PDF vector streams, compress image buffers, or execute Tesseract OCR glyph transcription with 0 network latency.
+                  </p>
+                </div>
+              </div>
+
+              <div className={`p-5 rounded-xl border flex flex-col justify-between ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c] border-[#3a494b]/30'
+              }`}>
+                <div className="space-y-2">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 text-purple-400 flex items-center justify-center font-mono font-black text-sm">
+                    03
+                  </div>
+                  <h3 className="text-sm font-bold">Instant Asset Download</h3>
+                  <p className={`text-xs leading-relaxed ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
+                    Export clean, formatted Microsoft Word documents, image ZIPs, or CSV tables directly to your disk. Zero watermarks, zero tracking cookies.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
+      )}
 
       {/* Value Comparison Section: SutharLabs vs Traditional Online Converters */}
       <section className={`py-12 px-4 sm:px-8 border-t ${
@@ -200,13 +621,13 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
                   </tr>
                   <tr>
                     <td className="py-3 px-4 font-semibold">Daily Usage Limits</td>
-                    <td className="py-3 px-4 text-emerald-400 font-bold">100% Free & Unlimited</td>
+                    <td className="py-3 px-4 text-emerald-400 font-bold">100% Free &amp; Unlimited</td>
                     <td className="py-3 px-4 text-[#849495]">2 - 3 tasks per day before paywall</td>
                   </tr>
                   <tr>
-                    <td className="py-3 px-4 font-semibold">Advertisements & Trackers</td>
+                    <td className="py-3 px-4 font-semibold">Advertisements &amp; Trackers</td>
                     <td className="py-3 px-4 text-emerald-400 font-bold">Zero Ads, Zero Trackers</td>
-                    <td className="py-3 px-4 text-rose-400">Heavy ad banners & tracking cookies</td>
+                    <td className="py-3 px-4 text-rose-400">Heavy ad banners &amp; tracking cookies</td>
                   </tr>
                   <tr>
                     <td className="py-3 px-4 font-semibold">Watermarks on Output</td>
@@ -287,4 +708,3 @@ export default function PublicToolsHubView({ theme = 'dark', user }: PublicTools
     </div>
   );
 }
-

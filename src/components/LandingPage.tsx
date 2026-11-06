@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { UserProfile, StorePlugin } from '../types';
 import { openCookiePreferencesModal } from './CookieConsentBanner';
 import { 
@@ -582,6 +582,38 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
                 >
                   Browse App Store
                 </button>
+
+                <Link
+                  to="/tools"
+                  className="w-full sm:w-auto px-6 py-3.5 rounded-xl border border-sky-500/30 bg-sky-500/5 text-[11px] sm:text-[12px] font-bold uppercase tracking-widest text-[#74f5ff] hover:bg-sky-500/15 hover:border-sky-500/60 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <span className="material-symbols-outlined select-none">build</span>
+                  Free Sovereign Tools
+                </Link>
+              </div>
+
+              {/* Sovereign Capability Badges */}
+              <div className="pt-2 flex flex-wrap gap-2 items-center justify-center text-[10px] font-mono text-slate-400">
+                <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                  Quantitative Stock Tracker (18 Indicators)
+                </span>
+                <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-400"></span>
+                  Visual Workflow Studio (N8N Core)
+                </span>
+                <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-sky-400"></span>
+                  Indian GST Accounting &amp; Camera OCR
+                </span>
+                <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#00dbe7]"></span>
+                  17+ In-Browser WASM Tools
+                </span>
+                <span className="px-2.5 py-1 rounded-full bg-white/5 border border-white/10 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
+                  Kokoro-82M Voice Synthesis
+                </span>
               </div>
             </div>
 

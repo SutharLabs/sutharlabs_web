@@ -24,7 +24,8 @@ import {
   Hash,
   Eye,
   Sliders,
-  DollarSign
+  DollarSign,
+  SwitchCamera
 } from 'lucide-react';
 import { CompanyProfile, PartyCustomer, AccountingVoucher, GSTInvoice, GSTInvoiceItem } from '../types.js';
 import { validateGSTIN, determineSupplyType, calculateItemTaxes, formatINR, GSTRate } from '../gstEngine.js';
@@ -156,6 +157,90 @@ export default function OcrReceiptModal({
   } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Camera Capture States & Refs
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'environment' | 'user'>('environment');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        try {
+          track.stop();
+        } catch {}
+      });
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraActive(false);
+  }, []);
+
+  const startCamera = async (facing: 'environment' | 'user' = cameraFacingMode) => {
+    stopCamera();
+    setErrorMessage(null);
+    try {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Camera access is not supported by your browser or connection environment.');
+      }
+      setIsCameraActive(true);
+      setCameraFacingMode(facing);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+    } catch (err: any) {
+      console.error('Camera error:', err);
+      setIsCameraActive(false);
+      setErrorMessage(`Camera error: ${err.message || 'Unable to access device camera. Please check permissions.'}`);
+    }
+  };
+
+  const toggleFacingMode = () => {
+    const nextFacing = cameraFacingMode === 'environment' ? 'user' : 'environment';
+    startCamera(nextFacing);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      setImagePreview(dataUrl);
+      setImageFileName(`camera_receipt_${new Date().toISOString().replace(/[:.]/g, '-')}.jpg`);
+      stopCamera();
+      runOcrRecognition(dataUrl);
+    }
+  };
+
+  // Ensure camera streams are terminated on modal close or unmount
+  useEffect(() => {
+    if (!isOpen) {
+      stopCamera();
+    }
+    return () => {
+      stopCamera();
+    };
+  }, [isOpen, stopCamera]);
 
   // Clipboard paste listener
   useEffect(() => {
@@ -1251,7 +1336,72 @@ Drive Clean, Go Green!`,
                 )}
 
                 {activeTab === 'image' ? (
-                  imagePreview ? (
+                  isCameraActive ? (
+                    <div className="relative w-full h-full min-h-[340px] max-h-[460px] bg-black rounded-xl overflow-hidden flex flex-col items-center justify-center shadow-lg">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover"
+                      />
+                      
+                      {/* Viewfinder Framing Guidelines */}
+                      <div className="absolute inset-4 sm:inset-8 border border-white/30 rounded-lg pointer-events-none flex flex-col justify-between p-2">
+                        <div className="flex justify-between items-start">
+                          <div className="w-5 h-5 border-t-2 border-l-2 border-[#00dbe7]"></div>
+                          <div className="w-5 h-5 border-t-2 border-r-2 border-[#00dbe7]"></div>
+                        </div>
+                        <div className="text-center font-mono text-[11px] text-white/90 bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded-full mx-auto select-none border border-white/20">
+                          Align physical receipt within frame
+                        </div>
+                        <div className="flex justify-between items-end">
+                          <div className="w-5 h-5 border-b-2 border-l-2 border-[#00dbe7]"></div>
+                          <div className="w-5 h-5 border-b-2 border-r-2 border-[#00dbe7]"></div>
+                        </div>
+                      </div>
+
+                      {/* Floating Camera Action Controls */}
+                      <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3 px-4 z-10">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleFacingMode();
+                          }}
+                          title="Switch Camera (Front / Back)"
+                          className="w-10 h-10 rounded-full bg-black/60 border border-white/30 text-white flex items-center justify-center hover:bg-black/80 transition-all cursor-pointer"
+                        >
+                          <SwitchCamera className="w-4 h-4 shrink-0" />
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            capturePhoto();
+                          }}
+                          title="Capture Receipt Photo"
+                          className="h-11 px-5 rounded-full bg-gradient-to-r from-[#00dbe7] to-sky-400 text-[#002022] font-mono font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                        >
+                          <Camera className="w-5 h-5 shrink-0" />
+                          <span>Snap Photo</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            stopCamera();
+                          }}
+                          title="Cancel Camera"
+                          className="w-10 h-10 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300 flex items-center justify-center hover:bg-rose-500/30 transition-all cursor-pointer"
+                        >
+                          <X className="w-4 h-4 shrink-0" />
+                        </button>
+                      </div>
+                    </div>
+                  ) : imagePreview ? (
                     <div className="flex items-center justify-center w-full h-full">
                       <img
                         src={imagePreview}
@@ -1264,7 +1414,7 @@ Drive Clean, Go Green!`,
                       />
                     </div>
                   ) : (
-                    /* Dropzone when no file uploaded */
+                    /* Dropzone with Camera and Upload Options */
                     <div
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
@@ -1273,12 +1423,11 @@ Drive Clean, Go Green!`,
                           handleFileUpload(e.dataTransfer.files[0]);
                         }
                       }}
-                      className={`w-full h-full min-h-[300px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 text-center transition-all cursor-pointer ${
+                      className={`w-full h-full min-h-[300px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center p-6 text-center transition-all ${
                         isLight
                           ? 'border-slate-300 hover:border-sky-500 bg-slate-50/50'
                           : 'border-[#3a494b]/50 hover:border-[#00dbe7]/50 bg-[#121215]/50'
                       }`}
-                      onClick={() => fileInputRef.current?.click()}
                     >
                       <input
                         type="file"
@@ -1291,19 +1440,64 @@ Drive Clean, Go Green!`,
                           }
                         }}
                       />
-                      <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mb-3 shadow-md border ${
-                        isLight
-                          ? 'bg-sky-50 border-sky-200 text-sky-600'
-                          : 'bg-[#00dbe7]/10 border-[#00dbe7]/30 text-[#00dbe7]'
-                      }`}>
-                        <Upload className="w-7 h-7 shrink-0" />
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md border ${
+                          isLight
+                            ? 'bg-sky-50 border-sky-200 text-sky-600'
+                            : 'bg-[#00dbe7]/10 border-[#00dbe7]/30 text-[#00dbe7]'
+                        }`}>
+                          <Upload className="w-6 h-6 shrink-0" />
+                        </div>
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center shadow-md border ${
+                          isLight
+                            ? 'bg-purple-50 border-purple-200 text-purple-600'
+                            : 'bg-[#ce5dff]/10 border-[#ce5dff]/30 text-[#ce5dff]'
+                        }`}>
+                          <Camera className="w-6 h-6 shrink-0" />
+                        </div>
                       </div>
                       <p className={`font-bold text-sm mb-1 ${isLight ? 'text-slate-800' : 'text-[#e5e1e4]'}`}>
-                        Drop receipt or bill here, or click to upload
+                        Snap photo with camera or upload receipt
                       </p>
-                      <p className={`text-xs font-mono mb-3 max-w-xs ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
-                        Supports PNG, JPG, WebP, PDF. Paste directly with <kbd className={`px-1 py-0.5 rounded border ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-white/10 border-white/20 text-white'}`}>Ctrl+V</kbd>.
+                      <p className={`text-xs font-mono mb-3.5 max-w-xs ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                        Supports live camera snap, PNG, JPG, WebP, PDF. Paste directly with <kbd className={`px-1 py-0.5 rounded border ${isLight ? 'bg-slate-200 border-slate-300 text-slate-700' : 'bg-white/10 border-white/20 text-white'}`}>Ctrl+V</kbd>.
                       </p>
+
+                      {/* Dual Action Buttons */}
+                      <div className="flex flex-wrap items-center justify-center gap-2.5 mb-3">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startCamera();
+                          }}
+                          className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+                            isLight
+                              ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                              : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40'
+                          }`}
+                        >
+                          <Camera className="w-3.5 h-3.5 shrink-0" />
+                          <span>Use Camera</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            fileInputRef.current?.click();
+                          }}
+                          className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+                            isLight
+                              ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'
+                              : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border border-[#3a494b]/40'
+                          }`}
+                        >
+                          <Upload className="w-3.5 h-3.5 shrink-0" />
+                          <span>Choose File</span>
+                        </button>
+                      </div>
+
                       <div className="flex items-center gap-2">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-mono border ${
                           isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
@@ -1341,6 +1535,19 @@ Drive Clean, Go Green!`,
                     {imageFileName || 'Uploaded Document'}
                   </span>
                   <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setImagePreview(null);
+                        startCamera();
+                      }}
+                      className={`px-2 py-1 rounded text-[11px] font-mono font-bold cursor-pointer flex items-center gap-1 ${
+                        isLight ? 'text-purple-600 hover:underline' : 'text-[#ce5dff] hover:underline'
+                      }`}
+                    >
+                      <Camera className="w-3 h-3 shrink-0" />
+                      Take Photo
+                    </button>
                     <button
                       type="button"
                       onClick={() => fileInputRef.current?.click()}

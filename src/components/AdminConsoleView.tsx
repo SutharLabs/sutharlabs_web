@@ -17,7 +17,8 @@ import {
   Zap,
   HardDrive,
   RefreshCw,
-  Bot
+  Bot,
+  Layers
 } from 'lucide-react';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer';
 
@@ -127,6 +128,57 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
 
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+
+  // Public Tools Asset Download Access Policy State
+  const [toolsDownloadPolicy, setToolsDownloadPolicy] = useState<'direct' | 'login_required'>('direct');
+  const [isUpdatingPolicy, setIsUpdatingPolicy] = useState(false);
+  const [policyUpdateSuccess, setPolicyUpdateSuccess] = useState(false);
+
+  useEffect(() => {
+    fetch('/api/public/config')
+      .then(res => res.json())
+      .then(data => {
+        if (data.toolsDownloadPolicy) {
+          setToolsDownloadPolicy(data.toolsDownloadPolicy);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleUpdateToolsPolicy = async (newPolicy: 'direct' | 'login_required') => {
+    setIsUpdatingPolicy(true);
+    setPolicyUpdateSuccess(false);
+    try {
+      const res = await fetch('/api/admin/system-settings', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify({ toolsDownloadPolicy: newPolicy })
+      });
+      if (res.ok) {
+        setToolsDownloadPolicy(newPolicy);
+        setPolicyUpdateSuccess(true);
+        setTimeout(() => setPolicyUpdateSuccess(false), 3000);
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'SUCCESS',
+          message: `ADMIN: Public Tools download policy updated to [${newPolicy.toUpperCase()}]`
+        });
+      } else {
+        throw new Error('Failed to update tools download policy');
+      }
+    } catch (err: any) {
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'ERROR',
+        message: `ADMIN: Error updating tools download policy: ${err.message}`
+      });
+    } finally {
+      setIsUpdatingPolicy(false);
+    }
+  };
 
   const fetchUsers = async () => {
     try {
@@ -658,6 +710,78 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
           <HardDrive className="w-3.5 h-3.5 shrink-0" />
           <span>Open Storage Vault</span>
         </button>
+      </div>
+
+      {/* Public Tools & Asset Download Policy Cockpit Widget */}
+      <div className={`p-4 sm:p-5 rounded-xl border flex flex-col md:flex-row items-start md:items-center justify-between gap-4 transition-all ${
+        isLight ? 'bg-white border-slate-200 shadow-sm' : 'glass-panel border-outline/15 bg-surface-container-low/30'
+      }`}>
+        <div className="flex items-center gap-3.5">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm border ${
+            isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-[#00dbe7]/10 border-[#00dbe7]/25 text-[#00dbe7]'
+          }`}>
+            <Layers className="w-5 h-5 shrink-0" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="font-bold text-sm text-on-surface font-sans">Public Tools &amp; Asset Download Policy</span>
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border ${
+                toolsDownloadPolicy === 'direct'
+                  ? isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  : isLight ? 'bg-sky-50 text-sky-800 border-sky-300' : 'bg-[#00dbe7]/10 text-[#00dbe7] border-[#00dbe7]/30'
+              }`}>
+                {toolsDownloadPolicy === 'direct' ? 'DIRECT GUEST DOWNLOAD (OPEN)' : 'REQUIRE FREE ACCOUNT LOGIN'}
+              </span>
+              {policyUpdateSuccess && (
+                <span className="text-[10px] font-mono text-emerald-400 flex items-center gap-1 font-bold">
+                  <CheckCircle className="w-3 h-3 shrink-0" /> Policy Saved &amp; Live!
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-on-surface-variant font-mono mt-0.5 max-w-2xl">
+              Controls download access for visitors on <code className={`px-1 py-0.5 rounded text-[10px] font-mono border ${isLight ? 'bg-slate-100 text-slate-800 border-slate-300 font-medium' : 'bg-white/5 text-on-surface border-white/10'}`}>/tools</code>. In <strong>Direct</strong> mode, guests can immediately download converted PDFs, images, and documents. In <strong>Require Login</strong> mode, users are prompted to sign in with a free account before downloading.
+            </p>
+          </div>
+        </div>
+
+        {/* Policy Switcher Toggle */}
+        <div className={`flex items-center gap-1.5 p-1 rounded-lg border shrink-0 font-mono text-xs select-none ${
+          isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
+        }`}>
+          <button
+            type="button"
+            onClick={() => handleUpdateToolsPolicy('direct')}
+            disabled={isUpdatingPolicy}
+            className={`h-8 px-3 rounded-md font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
+              toolsDownloadPolicy === 'direct'
+                ? isLight
+                  ? 'bg-white text-emerald-800 border border-slate-300 shadow-sm'
+                  : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/40 shadow-sm'
+                : isLight
+                  ? 'text-slate-600 hover:text-slate-900'
+                  : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            <span>Direct (Guest)</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleUpdateToolsPolicy('login_required')}
+            disabled={isUpdatingPolicy}
+            className={`h-8 px-3 rounded-md font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
+              toolsDownloadPolicy === 'login_required'
+                ? isLight
+                  ? 'bg-white text-sky-800 border border-slate-300 shadow-sm'
+                  : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/40 shadow-sm'
+                : isLight
+                  ? 'text-slate-600 hover:text-slate-900'
+                  : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            <span>Require Login</span>
+          </button>
+        </div>
       </div>
 
       {/* Autonomous AI Agent Studio Cockpit Widget */}

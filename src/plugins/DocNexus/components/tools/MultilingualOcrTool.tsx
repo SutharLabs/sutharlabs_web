@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   Languages, 
   Upload, 
@@ -9,7 +9,10 @@ import {
   RefreshCw, 
   AlertCircle,
   Sparkles,
-  Sliders
+  Sliders,
+  Camera,
+  SwitchCamera,
+  X
 } from 'lucide-react';
 import { SubToolProps } from './types.js';
 
@@ -29,6 +32,112 @@ export default function MultilingualOcrTool({
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const [progressMsg, setProgressMsg] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Camera Capture States & Refs
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'environment' | 'user'>('environment');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        try { track.stop(); } catch {}
+      });
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraActive(false);
+  }, []);
+
+  const startCamera = async (facing: 'environment' | 'user' = cameraFacingMode) => {
+    stopCamera();
+    setError(null);
+    try {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Camera access is not supported by your browser.');
+      }
+      setIsCameraActive(true);
+      setCameraFacingMode(facing);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+    } catch (err: any) {
+      console.error('Camera error:', err);
+      setIsCameraActive(false);
+      setError(`Camera error: ${err.message || 'Unable to access device camera.'}`);
+    }
+  };
+
+  const toggleFacingMode = () => {
+    const nextFacing = cameraFacingMode === 'environment' ? 'user' : 'environment';
+    startCamera(nextFacing);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      stopCamera();
+      runOcrOnDataUrl(dataUrl, 'Camera Photo');
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
+
+  const runOcrOnDataUrl = async (dataUrl: string, sourceName: string) => {
+    setError(null);
+    setIsProcessing(true);
+    setUploadedImage(dataUrl);
+    setProgressMsg('Loading WebAssembly Tesseract OCR core...');
+    setStatus('Running multilingual character recognition...');
+    addLog('INFO', `Scanning [${sourceName}] with language profile: ${selectedLanguage}...`);
+
+    try {
+      const { createWorker } = await import('tesseract.js');
+      setProgressMsg(`Downloading and mounting [${selectedLanguage}] language neural weights...`);
+      const langs = selectedLanguage.split('+');
+      const worker = await createWorker(langs);
+
+      setProgressMsg('Transcribing glyphs and layout structure...');
+      const ret = await worker.recognize(dataUrl);
+      const text = ret.data.text || '';
+      await worker.terminate();
+
+      setExtractedText(text);
+      setIsProcessing(false);
+      setStatus('Multilingual OCR extraction complete!');
+      addLog('SUCCESS', `Successfully transcribed ${text.split(/\s+/).filter(Boolean).length} words.`);
+    } catch (err: any) {
+      setIsProcessing(false);
+      setError(`OCR failed: ${err.message || 'Unknown error'}`);
+      addLog('ERROR', `OCR Error: ${err.message}`);
+    }
+  };
 
   const handleFileUpload = async (file: File) => {
     setError(null);
@@ -162,6 +271,24 @@ export default function MultilingualOcrTool({
             <Upload className="w-3.5 h-3.5 shrink-0" />
             <span>Upload Image</span>
           </button>
+
+          <button
+            type="button"
+            onClick={() => (isCameraActive ? stopCamera() : startCamera())}
+            disabled={isProcessing}
+            className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+              isLight
+                ? isCameraActive
+                  ? 'bg-rose-50 text-rose-700 border border-rose-300'
+                  : 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-300'
+                : isCameraActive
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                  : 'bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/40'
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5 shrink-0" />
+            <span>{isCameraActive ? 'Close Camera' : 'Use Camera'}</span>
+          </button>
         </div>
       </div>
 
@@ -169,6 +296,64 @@ export default function MultilingualOcrTool({
       <div className={`p-4 rounded-xl border flex flex-col gap-3 ${
         isLight ? 'bg-white border-slate-200' : 'bg-[#121215] border-[#3a494b]/30'
       }`}>
+        {/* Live Camera Viewfinder Overlay */}
+        {isCameraActive && (
+          <div className="relative w-full h-72 sm:h-80 bg-black rounded-xl overflow-hidden flex flex-col items-center justify-center border border-purple-500/30 shadow-lg mb-2">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+            {/* Viewfinder Framing Guidelines */}
+            <div className="absolute inset-4 sm:inset-6 border border-white/30 rounded-lg pointer-events-none flex flex-col justify-between p-2">
+              <div className="flex justify-between items-start">
+                <div className="w-5 h-5 border-t-2 border-l-2 border-purple-400"></div>
+                <div className="w-5 h-5 border-t-2 border-r-2 border-purple-400"></div>
+              </div>
+              <div className="text-center font-mono text-[11px] text-white/90 bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded-full mx-auto select-none border border-white/20">
+                Point camera at physical document, bill, or sign
+              </div>
+              <div className="flex justify-between items-end">
+                <div className="w-5 h-5 border-b-2 border-l-2 border-purple-400"></div>
+                <div className="w-5 h-5 border-b-2 border-r-2 border-purple-400"></div>
+              </div>
+            </div>
+
+            {/* Floating Camera Action Controls */}
+            <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3 px-4 z-10">
+              <button
+                type="button"
+                onClick={toggleFacingMode}
+                title="Switch Camera (Front / Back)"
+                className="w-9 h-9 rounded-full bg-black/60 border border-white/30 text-white flex items-center justify-center hover:bg-black/80 transition-all cursor-pointer"
+              >
+                <SwitchCamera className="w-4 h-4 shrink-0" />
+              </button>
+
+              <button
+                type="button"
+                onClick={capturePhoto}
+                title="Capture Document Photo"
+                className="h-10 px-5 rounded-full bg-gradient-to-r from-purple-500 to-indigo-500 text-white font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <Camera className="w-4 h-4 shrink-0" />
+                <span>Snap & Transcribe</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={stopCamera}
+                title="Cancel Camera"
+                className="w-9 h-9 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300 flex items-center justify-center hover:bg-rose-500/30 transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4 shrink-0" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-xs font-mono font-bold uppercase tracking-wider">

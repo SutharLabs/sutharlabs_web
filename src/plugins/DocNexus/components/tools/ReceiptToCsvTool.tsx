@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   FileSpreadsheet, 
   Upload, 
@@ -11,7 +11,10 @@ import {
   FileText, 
   AlertCircle,
   Table,
-  CheckCircle2
+  CheckCircle2,
+  Camera,
+  SwitchCamera,
+  X
 } from 'lucide-react';
 import { SubToolProps } from './types.js';
 
@@ -70,6 +73,82 @@ export default function ReceiptToCsvTool({
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Camera Capture States & Refs
+  const [isCameraActive, setIsCameraActive] = useState<boolean>(false);
+  const [cameraFacingMode, setCameraFacingMode] = useState<'environment' | 'user'>('environment');
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const stopCamera = useCallback(() => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => {
+        try { track.stop(); } catch {}
+      });
+      streamRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+    }
+    setIsCameraActive(false);
+  }, []);
+
+  const startCamera = async (facing: 'environment' | 'user' = cameraFacingMode) => {
+    stopCamera();
+    setError(null);
+    try {
+      if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+        throw new Error('Camera access is not supported by your browser.');
+      }
+      setIsCameraActive(true);
+      setCameraFacingMode(facing);
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: facing },
+          width: { ideal: 1920 },
+          height: { ideal: 1080 }
+        },
+        audio: false
+      });
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play().catch(() => {});
+      }
+    } catch (err: any) {
+      console.error('Camera error:', err);
+      setIsCameraActive(false);
+      setError(`Camera error: ${err.message || 'Unable to access device camera.'}`);
+    }
+  };
+
+  const toggleFacingMode = () => {
+    const nextFacing = cameraFacingMode === 'environment' ? 'user' : 'environment';
+    startCamera(nextFacing);
+  };
+
+  const capturePhoto = () => {
+    if (!videoRef.current) return;
+    const video = videoRef.current;
+    if (video.videoWidth === 0 || video.videoHeight === 0) return;
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+      stopCamera();
+      processReceiptDataUrl(dataUrl, 'Live Camera Receipt');
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, [stopCamera]);
+
   // Recalculate row math
   const updateRow = (id: string, field: keyof CsvReceiptRow, val: any) => {
     setRows(prev => prev.map(r => {
@@ -111,61 +190,64 @@ export default function ReceiptToCsvTool({
     setRows(prev => prev.filter(r => r.id !== id));
   };
 
-  const handleFileUpload = async (file: File) => {
+  const processReceiptDataUrl = async (dataUrl: string, sourceName: string) => {
     setError(null);
     setIsProcessing(true);
     setStatus('Running in-browser WebAssembly OCR on receipt...');
-    addLog('INFO', `Processing receipt image [${file.name}]...`);
+    addLog('INFO', `Processing receipt image [${sourceName}]...`);
+    setUploadedImage(dataUrl);
 
+    try {
+      const { createWorker } = await import('tesseract.js');
+      const worker = await createWorker(['eng', 'hin']);
+      const ret = await worker.recognize(dataUrl);
+      const text = ret.data.text || '';
+      await worker.terminate();
+
+      // Extract items and totals
+      const dateMatch = text.match(/\b(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{2,4})\b/);
+      const extractedDate = dateMatch ? new Date().toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
+
+      const gstinMatch = text.match(/\b\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}\b/i);
+      const vendorCandidate = text.split('\n').map(l => l.trim()).filter(Boolean)[0] || 'Extracted Vendor / बिल विक्रेता';
+
+      const numbers = text.match(/₹?\s*(\d+[\d,]*\.\d{2})/g);
+      let extractedTotal = 1500;
+      if (numbers && numbers.length > 0) {
+        const parsed = numbers.map(n => parseFloat(n.replace(/[₹\s,]/g, ''))).filter(n => !isNaN(n));
+        extractedTotal = Math.max(...parsed, 500);
+      }
+
+      const newRow: CsvReceiptRow = {
+        id: `r_${Date.now()}`,
+        date: extractedDate,
+        vendor: vendorCandidate.substring(0, 36),
+        invoiceNo: gstinMatch ? `GSTIN-${gstinMatch[0].slice(0, 6)}` : `REC-${Date.now().toString().slice(-4)}`,
+        item: /[\u0900-\u097F]/.test(text) ? 'किराना एवं सामग्री आपूर्ति (Bilingual Item)' : 'Operational Inward Supplies',
+        hsn: '998313',
+        qty: 1,
+        rate: Number((extractedTotal / 1.18).toFixed(2)),
+        gstRate: 18,
+        tax: Number((extractedTotal - (extractedTotal / 1.18)).toFixed(2)),
+        total: Number(extractedTotal.toFixed(2))
+      };
+
+      setRows(prev => [newRow, ...prev]);
+      setIsProcessing(false);
+      setStatus('Receipt successfully scanned and converted to table row!');
+      addLog('SUCCESS', `Extracted row for ${vendorCandidate} (Total: ₹${extractedTotal.toFixed(2)})`);
+    } catch (err: any) {
+      setIsProcessing(false);
+      setError(`OCR failed: ${err.message || 'Unknown error'}`);
+      addLog('ERROR', `OCR Error: ${err.message}`);
+    }
+  };
+
+  const handleFileUpload = async (file: File) => {
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = reader.result as string;
-      setUploadedImage(dataUrl);
-
-      try {
-        const { createWorker } = await import('tesseract.js');
-        const worker = await createWorker(['eng', 'hin']);
-        const ret = await worker.recognize(dataUrl);
-        const text = ret.data.text || '';
-        await worker.terminate();
-
-        // Extract items and totals
-        const dateMatch = text.match(/\b(\d{1,2})[-/\.](\d{1,2})[-/\.](\d{2,4})\b/);
-        const extractedDate = dateMatch ? new Date().toISOString().split('T')[0] : new Date().toISOString().split('T')[0];
-
-        const gstinMatch = text.match(/\b\d{2}[A-Z]{5}\d{4}[A-Z]{1}[A-Z\d]{1}[Z]{1}[A-Z\d]{1}\b/i);
-        const vendorCandidate = text.split('\n').map(l => l.trim()).filter(Boolean)[0] || 'Extracted Vendor / बिल विक्रेता';
-
-        const numbers = text.match(/₹?\s*(\d+[\d,]*\.\d{2})/g);
-        let extractedTotal = 1500;
-        if (numbers && numbers.length > 0) {
-          const parsed = numbers.map(n => parseFloat(n.replace(/[₹\s,]/g, ''))).filter(n => !isNaN(n));
-          extractedTotal = Math.max(...parsed, 500);
-        }
-
-        const newRow: CsvReceiptRow = {
-          id: `r_${Date.now()}`,
-          date: extractedDate,
-          vendor: vendorCandidate.substring(0, 36),
-          invoiceNo: gstinMatch ? `GSTIN-${gstinMatch[0].slice(0, 6)}` : `REC-${Date.now().toString().slice(-4)}`,
-          item: /[\u0900-\u097F]/.test(text) ? 'किराना एवं सामग्री आपूर्ति (Bilingual Item)' : 'Operational Inward Supplies',
-          hsn: '998313',
-          qty: 1,
-          rate: Number((extractedTotal / 1.18).toFixed(2)),
-          gstRate: 18,
-          tax: Number((extractedTotal - (extractedTotal / 1.18)).toFixed(2)),
-          total: Number(extractedTotal.toFixed(2))
-        };
-
-        setRows(prev => [newRow, ...prev]);
-        setIsProcessing(false);
-        setStatus('Receipt successfully scanned and converted to table row!');
-        addLog('SUCCESS', `Extracted row for ${vendorCandidate} (Total: ₹${extractedTotal.toFixed(2)})`);
-      } catch (err: any) {
-        setIsProcessing(false);
-        setError(`OCR failed: ${err.message || 'Unknown error'}`);
-        addLog('ERROR', `OCR Error: ${err.message}`);
-      }
+      processReceiptDataUrl(dataUrl, file.name);
     };
     reader.readAsDataURL(file);
   };
@@ -265,6 +347,24 @@ export default function ReceiptToCsvTool({
 
           <button
             type="button"
+            onClick={() => (isCameraActive ? stopCamera() : startCamera())}
+            disabled={isProcessing}
+            className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+              isLight
+                ? isCameraActive
+                  ? 'bg-rose-50 text-rose-700 border border-rose-300'
+                  : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300'
+                : isCameraActive
+                  ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
+                  : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/40'
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5 shrink-0" />
+            <span>{isCameraActive ? 'Close Camera' : 'Snap Photo'}</span>
+          </button>
+
+          <button
+            type="button"
             onClick={copyCsv}
             className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer ${
               isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border border-[#3a494b]/40'
@@ -293,6 +393,64 @@ export default function ReceiptToCsvTool({
       <div className={`p-4 rounded-xl border flex flex-col gap-3 ${
         isLight ? 'bg-white border-slate-200' : 'bg-[#121215] border-[#3a494b]/30'
       }`}>
+        {/* Live Camera Viewfinder Overlay */}
+        {isCameraActive && (
+          <div className="relative w-full h-72 sm:h-80 bg-black rounded-xl overflow-hidden flex flex-col items-center justify-center border border-emerald-500/30 shadow-lg mb-2">
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+            {/* Viewfinder Framing Guidelines */}
+            <div className="absolute inset-4 sm:inset-6 border border-white/30 rounded-lg pointer-events-none flex flex-col justify-between p-2">
+              <div className="flex justify-between items-start">
+                <div className="w-5 h-5 border-t-2 border-l-2 border-emerald-400"></div>
+                <div className="w-5 h-5 border-t-2 border-r-2 border-emerald-400"></div>
+              </div>
+              <div className="text-center font-mono text-[11px] text-white/90 bg-black/60 backdrop-blur-xs px-2.5 py-1 rounded-full mx-auto select-none border border-white/20">
+                Align bill / cash memo inside frame
+              </div>
+              <div className="flex justify-between items-end">
+                <div className="w-5 h-5 border-b-2 border-l-2 border-emerald-400"></div>
+                <div className="w-5 h-5 border-b-2 border-r-2 border-emerald-400"></div>
+              </div>
+            </div>
+
+            {/* Floating Camera Action Controls */}
+            <div className="absolute bottom-3 left-0 right-0 flex items-center justify-center gap-3 px-4 z-10">
+              <button
+                type="button"
+                onClick={toggleFacingMode}
+                title="Switch Camera (Front / Back)"
+                className="w-9 h-9 rounded-full bg-black/60 border border-white/30 text-white flex items-center justify-center hover:bg-black/80 transition-all cursor-pointer"
+              >
+                <SwitchCamera className="w-4 h-4 shrink-0" />
+              </button>
+
+              <button
+                type="button"
+                onClick={capturePhoto}
+                title="Capture Document Photo"
+                className="h-10 px-5 rounded-full bg-gradient-to-r from-emerald-500 to-teal-500 text-white font-mono font-bold text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              >
+                <Camera className="w-4 h-4 shrink-0" />
+                <span>Snap & Parse Rows</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={stopCamera}
+                title="Cancel Camera"
+                className="w-9 h-9 rounded-full bg-rose-500/20 border border-rose-500/40 text-rose-300 flex items-center justify-center hover:bg-rose-500/30 transition-all cursor-pointer"
+              >
+                <X className="w-4 h-4 shrink-0" />
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Table className="w-4 h-4 text-emerald-500 shrink-0" />

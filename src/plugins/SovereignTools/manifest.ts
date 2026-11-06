@@ -12,3 +12,4 @@ export const manifest: WorkspacePluginManifest = {
   main: "index.ts",
   minEngineVersion: "0.1.0"
 };
+

@@ -3629,6 +3629,98 @@ app.get("/api/admin/telemetry/live-logs", authenticateToken, requireAdmin, async
 
 
 // ==========================================
+// SYSTEM SETTINGS & PUBLIC CONFIG API
+// ==========================================
+
+const SETTINGS_FILE_PATH = path.join(process.cwd(), 'data', 'system_settings.json');
+
+interface SystemSettingsState {
+  toolsDownloadPolicy: 'direct' | 'login_required';
+  updatedAt: string;
+}
+
+let cachedSystemSettings: SystemSettingsState = {
+  toolsDownloadPolicy: 'direct',
+  updatedAt: new Date().toISOString()
+};
+
+function loadSystemSettings(): SystemSettingsState {
+  try {
+    if (fs.existsSync(SETTINGS_FILE_PATH)) {
+      const raw = fs.readFileSync(SETTINGS_FILE_PATH, 'utf-8');
+      const parsed = JSON.parse(raw);
+      cachedSystemSettings = {
+        toolsDownloadPolicy: parsed.toolsDownloadPolicy === 'login_required' ? 'login_required' : 'direct',
+        updatedAt: parsed.updatedAt || new Date().toISOString()
+      };
+    } else {
+      saveSystemSettings(cachedSystemSettings);
+    }
+  } catch (err) {
+    console.error('[Settings] Failed reading system_settings.json, using defaults:', err);
+  }
+  return cachedSystemSettings;
+}
+
+function saveSystemSettings(settings: Partial<SystemSettingsState>): SystemSettingsState {
+  try {
+    const dir = path.dirname(SETTINGS_FILE_PATH);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cachedSystemSettings = {
+      ...cachedSystemSettings,
+      ...settings,
+      updatedAt: new Date().toISOString()
+    };
+    fs.writeFileSync(SETTINGS_FILE_PATH, JSON.stringify(cachedSystemSettings, null, 2), 'utf-8');
+  } catch (err) {
+    console.error('[Settings] Failed saving system_settings.json:', err);
+  }
+  return cachedSystemSettings;
+}
+
+// Initial load
+loadSystemSettings();
+
+// GET /api/public/config (Public, zero auth)
+app.get("/api/public/config", (_req: any, res: any) => {
+  res.json({
+    success: true,
+    toolsDownloadPolicy: cachedSystemSettings.toolsDownloadPolicy,
+    updatedAt: cachedSystemSettings.updatedAt
+  });
+});
+
+// GET /api/admin/system-settings (Admin only)
+app.get("/api/admin/system-settings", authenticateToken, requireAdmin, (_req: any, res: any) => {
+  res.json({
+    success: true,
+    settings: cachedSystemSettings
+  });
+});
+
+// PATCH /api/admin/system-settings (Admin only)
+app.patch("/api/admin/system-settings", authenticateToken, requireAdmin, (req: any, res: any) => {
+  try {
+    const { toolsDownloadPolicy } = req.body;
+    if (toolsDownloadPolicy && !['direct', 'login_required'].includes(toolsDownloadPolicy)) {
+      return res.status(400).json({ error: "Invalid toolsDownloadPolicy. Allowed: 'direct' | 'login_required'" });
+    }
+    const updated = saveSystemSettings({
+      ...(toolsDownloadPolicy ? { toolsDownloadPolicy } : {})
+    });
+    console.log(`[Admin] System settings updated by ${req.user?.email || 'admin'}:`, updated);
+    res.json({
+      success: true,
+      settings: updated
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to update system settings" });
+  }
+});
+
+// ==========================================
 
 // ADMIN DATABASE MANAGEMENT & DISASTER RECOVERY API
 

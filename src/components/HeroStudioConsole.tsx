@@ -29,28 +29,55 @@ const ALL_PLUGIN_SLIDES: PluginSlide[] = [
   },
   {
     id: 'stock-tracker',
-    name: 'Stock Tracker Hub',
-    badge: 'FinTech Plugin',
+    name: 'Stock Tracker & Algo Hub',
+    badge: 'Quantitative FinTech',
     icon: 'monitoring',
     accentColor: '#00e476',
-    tagline: 'High-Frequency Market Telemetry & Algorithmic Signals',
-    description: 'Sub-millisecond tick streaming, predictive RSI/MACD modeling, and automated portfolio execution.'
+    tagline: 'High-Frequency Telemetry & 18 Indicators',
+    description: '18 Technical indicators (RSI, MACD, ATR, Bollinger, Supertrend), daily automated backtest simulator with slippage & friction modeling, and Gemini news sentiment.'
   },
   {
     id: 'custom-flow',
     name: 'Workflow Studio',
-    badge: 'Architecture Plugin',
+    badge: 'Visual N8N Core',
     icon: 'account_tree',
     accentColor: '#ce5dff',
-    tagline: 'Visual Event-Driven Data Pipelines & Edge Microservices',
-    description: 'Drag-and-drop reactive architectures connecting Neon Serverless PG, edge caches, and client apps.'
+    tagline: 'Visual Event-Driven Data Pipelines & Webhooks',
+    description: 'Drag-and-drop reactive architecture connecting Neon Serverless PG, automated health triggers, conditional IF/ELSE branching, and sub-second failovers.'
+  },
+  {
+    id: 'accounting-ocr',
+    name: 'Accounting & Camera OCR',
+    badge: 'Enterprise Suite',
+    icon: 'receipt_long',
+    accentColor: '#38bdf8',
+    tagline: 'Indian GST Rule 46 & Bilingual Hindi OCR',
+    description: 'Automated CGST/SGST/IGST tax engine, DayBook F4-F9 voucher keys (Contra, Payment, Sales, Purchase), and on-device camera snap with Devanagari Hindi OCR.'
+  },
+  {
+    id: 'sovereign-tools',
+    name: 'Sovereign Tools Studio',
+    badge: '17+ Client WASM Tools',
+    icon: 'build',
+    accentColor: '#00dbe7',
+    tagline: 'Zero-Upload PDF to Word, Lossless Converter & Utilities',
+    description: '100% Client-side in-browser WebAssembly: PDF to Word DOCX, Image to PDF, Multi-page Merge/Split, WebP Compression, QR Vector SVG, and JSON CSV converter.'
+  },
+  {
+    id: 'speech-studio',
+    name: 'Neural Speech Studio',
+    badge: 'Kokoro-82M TTS',
+    icon: 'record_voice_over',
+    accentColor: '#f59e0b',
+    tagline: 'Multilingual Neural Speech Synthesis & Voice Cloning',
+    description: 'Kokoro-82M multi-speaker neural TTS across 8 languages, custom voice replication with teleprompter reading recording, and real-time audio waveform synthesis.'
   },
   {
     id: 'doc-nexus',
     name: 'Doc Nexus Intelligence',
-    badge: 'Knowledge Plugin',
+    badge: 'Knowledge Engine',
     icon: 'menu_book',
-    accentColor: '#ffb74d',
+    accentColor: '#fbbf24',
     tagline: 'Vectorized Semantic Knowledge Vault & RAG Search',
     description: 'Enterprise markdown indexing, neural vector embeddings, and zero-latency technical documentation search.'
   }
@@ -432,6 +459,200 @@ export default function HeroStudioConsole({ theme = 'dark', onLaunch }: HeroStud
                 <span>Node Isolation: <strong className="text-purple-300">V8 Sandbox</strong></span>
                 <span>Throughput: <strong className="text-cyan-300">4,200 req/sec</strong></span>
                 <span>Failover: <strong className="text-emerald-300">Active-Active</strong></span>
+              </div>
+            </div>
+          )}
+
+          {/* SLIDE: GST ACCOUNTING & CAMERA OCR */}
+          {currentSlide.id === 'accounting-ocr' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Left: GST Tax Invoice & DayBook Preview */}
+              <div className="lg:col-span-8 rounded-xl p-4 border bg-slate-900 dark:bg-black/60 dark:border-white/10 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between text-xs font-mono mb-3 pb-2 border-b border-white/10">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-white">TAX INVOICE #SL-2026/894</span>
+                      <span className="px-1.5 py-0.5 rounded bg-sky-500/20 text-sky-400 text-[10px] font-bold">RULE 46 COMPLIANT</span>
+                    </div>
+                    <span className="text-emerald-400 text-[11px] font-bold">₹14,850.00</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3 mb-3 text-xs font-mono">
+                    <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 space-y-1">
+                      <span className="text-[10px] text-slate-400 block uppercase">Supplier (Gujarat 24)</span>
+                      <div className="text-white font-bold text-xs truncate">SutharLabs Sovereign Technologies</div>
+                      <div className="text-[10px] text-sky-400 select-all">GSTIN: 24AAACS9182C1ZP</div>
+                    </div>
+                    <div className="p-2.5 rounded-lg bg-white/5 border border-white/10 space-y-1">
+                      <span className="text-[10px] text-slate-400 block uppercase">Customer / Party</span>
+                      <div className="text-white font-bold text-xs truncate">Om Enterprise Traders (B2B)</div>
+                      <div className="text-[10px] text-emerald-400">Intra-State: CGST 9% + SGST 9%</div>
+                    </div>
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-white/[0.03] border border-white/10 flex items-center justify-between text-[11px] font-mono text-slate-300">
+                    <span className="flex items-center gap-2">
+                      <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                      <span>Multimodal Vision OCR Engine</span>
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold text-[10px]">
+                      Hindi (हिन्दी) &amp; English Parity 98.4%
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-3 border-t border-white/10 mt-3">
+                  <span>DayBook Keys: <strong className="text-sky-400">F4 Contra • F5 Pay • F8 Sales • F9 Pur</strong></span>
+                  <span>Auto-Split: <strong className="text-emerald-400">CGST ₹1,133.47 / SGST ₹1,133.47</strong></span>
+                </div>
+              </div>
+
+              {/* Right: Accounting Controls Card */}
+              <div className="lg:col-span-4 flex flex-col gap-3">
+                <div className="p-3.5 rounded-xl border bg-slate-50/50 dark:bg-white/[0.03] border-slate-200 dark:border-white/10">
+                  <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400">GST Compliance Engine</span>
+                  <p className="text-xs text-slate-700 dark:text-slate-200 font-medium my-2">
+                    Autonomous state-code resolution, multi-tier tax breakdown (5%, 12%, 18%, 28%), and instant PDF invoice downloads.
+                  </p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {['Rule 46 Tax Invoice', 'DayBook Ledger', 'Camera OCR', 'GSTR-1 Ready'].map(b => (
+                      <span key={b} className="text-[9px] font-mono px-2 py-0.5 rounded bg-sky-500/10 text-sky-400 border border-sky-500/20 font-semibold">
+                        {b}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl border bg-slate-50/50 dark:bg-white/[0.03] border-slate-200 dark:border-white/10 flex items-center justify-between">
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">Tenant Vault</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-500 font-bold">SQLITE / PG ISOLATED</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SLIDE: SOVEREIGN TOOLS STUDIO */}
+          {currentSlide.id === 'sovereign-tools' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Left: Terminal Emulation of Local WASM Execution */}
+              <div className="lg:col-span-8 rounded-xl p-4 border bg-slate-900 dark:bg-black/60 dark:border-white/10 font-mono text-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-white/10 text-[10px] text-slate-400">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-[#00dbe7] animate-pulse"></span>
+                      WASM ENGINE SANDBOX: RUNNING
+                    </span>
+                    <span>100% IN-BROWSER MEMORY</span>
+                  </div>
+
+                  <div className="space-y-2 text-[11px] leading-relaxed">
+                    <div className="text-slate-400">
+                      <span className="text-[#00dbe7] font-bold">wasm</span> exec:pdf-to-word --input="audit_report.pdf" --dpi=300
+                    </div>
+                    <div className="text-emerald-400 flex items-center gap-1.5">
+                      <span>✔</span> Parsing PDF vector streams &amp; paragraph coordinates (0 server bytes)
+                    </div>
+                    <div className="text-cyan-300">
+                      → Compiling OpenXML standard archive: <span className="text-white font-bold">audit_report.docx</span> (184ms)
+                    </div>
+                    <div className="text-slate-300 pl-3 border-l-2 border-[#00dbe7]/40 bg-white/[0.02] py-1 text-[10px]">
+                      Memory Buffer: 1,842 KB | Network Requests: 0 | Watermark: None (Clean DOCX)
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-3 border-t border-white/10 mt-3">
+                  <span>Active WASM Core: <strong className="text-cyan-400">Rust + PDF.js + Canvas</strong></span>
+                  <span>Security Guarantee: <strong className="text-emerald-400">Zero Cloud Uploads</strong></span>
+                </div>
+              </div>
+
+              {/* Right: Suite Catalog Card */}
+              <div className="lg:col-span-4 flex flex-col gap-3">
+                <div className="p-3.5 rounded-xl border bg-slate-50/50 dark:bg-white/[0.03] border-slate-200 dark:border-white/10">
+                  <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400">17 Client Tools</span>
+                  <p className="text-xs text-slate-700 dark:text-slate-200 font-medium my-2">
+                    Free for personal and commercial usage with zero file size limits, zero daily caps, and zero remote storage.
+                  </p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {['PDF to Word', 'Lossless Images', 'Merge/Split', 'WebP AVIF', 'QR Vector SVG'].map(b => (
+                      <span key={b} className="text-[9px] font-mono px-2 py-0.5 rounded bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/20 font-semibold">
+                        {b}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl border bg-slate-50/50 dark:bg-white/[0.03] border-slate-200 dark:border-white/10 flex items-center justify-between">
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">Privacy Status</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-400 font-bold">100% PRIVATE WASM</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* SLIDE: NEURAL SPEECH STUDIO */}
+          {currentSlide.id === 'speech-studio' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+              {/* Left: Waveform & Audio Synthesis Stage */}
+              <div className="lg:col-span-8 rounded-xl p-4 border bg-slate-900 dark:bg-black/60 dark:border-white/10 font-mono text-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between pb-2 mb-3 border-b border-white/10 text-[10px] text-slate-400">
+                    <span className="flex items-center gap-1.5">
+                      <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                      KOKORO-82M NEURAL TTS: SYNTHESIZING
+                    </span>
+                    <span>24,000 Hz AUDIO BUFFER</span>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-white/5 border border-white/10 mb-3 space-y-2">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-amber-400 font-bold">Speaker Profile: af_bella (English US)</span>
+                      <span className="text-slate-400">Speed: 1.0x • Pitch: 0.0</span>
+                    </div>
+                    {/* Simulated Waveform Visualizer */}
+                    <div className="h-10 flex items-center gap-1 px-1">
+                      {[40, 65, 85, 30, 95, 70, 45, 80, 100, 60, 35, 75, 90, 50, 85, 65, 40, 70, 90, 55, 35, 80, 100, 45, 60].map((h, i) => (
+                        <div
+                          key={i}
+                          className="flex-1 bg-gradient-to-t from-amber-500 to-amber-300 rounded-full transition-all duration-300"
+                          style={{ height: `${h}%`, opacity: 0.7 + (i % 3) * 0.1 }}
+                        />
+                      ))}
+                    </div>
+                    <div className="text-[10px] text-slate-400 flex items-center justify-between pt-1">
+                      <span>00:03.48 / 00:08.20</span>
+                      <span className="text-emerald-400 font-bold">Synthesized in 240ms</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] font-mono text-slate-400 pt-3 border-t border-white/10 mt-3">
+                  <span>Voice Clone Mode: <strong className="text-amber-400">Custom Audio Passage Match</strong></span>
+                  <span>Supported Languages: <strong className="text-emerald-400">English, Hindi, Spanish, French</strong></span>
+                </div>
+              </div>
+
+              {/* Right: Speech Studio Feature Pill */}
+              <div className="lg:col-span-4 flex flex-col gap-3">
+                <div className="p-3.5 rounded-xl border bg-slate-50/50 dark:bg-white/[0.03] border-slate-200 dark:border-white/10">
+                  <span className="text-[10px] font-mono uppercase text-slate-500 dark:text-slate-400">Autonomous Speech Engine</span>
+                  <p className="text-xs text-slate-700 dark:text-slate-200 font-medium my-2">
+                    Studio-grade text-to-speech synthesis and zero-shot voice replication running on high-efficiency dedicated neural inference VMs.
+                  </p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {['Kokoro-82M', 'Voice Replication', 'Teleprompter', 'WAV/MP3 Export'].map(b => (
+                      <span key={b} className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-500 border border-amber-500/20 font-semibold">
+                        {b}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl border bg-slate-50/50 dark:bg-white/[0.03] border-slate-200 dark:border-white/10 flex items-center justify-between">
+                  <span className="text-xs font-mono text-slate-500 dark:text-slate-400">Voice Quality</span>
+                  <span className="px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-500/10 text-emerald-500 font-bold">4.8 / 5.0 MOS</span>
+                </div>
               </div>
             </div>
           )}

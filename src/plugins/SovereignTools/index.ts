@@ -8,3 +8,4 @@ export const ToolsStudioPlugin = {
 
 export { manifest, ToolsStudioView as View };
 export default ToolsStudioPlugin;
+
