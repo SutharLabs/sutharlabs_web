@@ -38,7 +38,7 @@ const ALL_PLUGIN_SLIDES: PluginSlide[] = [
   },
   {
     id: 'custom-flow',
-    name: 'Custom Flow Designer',
+    name: 'Workflow Studio',
     badge: 'Architecture Plugin',
     icon: 'account_tree',
     accentColor: '#ce5dff',
@@ -382,7 +382,7 @@ export default function HeroStudioConsole({ theme = 'dark', onLaunch }: HeroStud
             </div>
           )}
 
-          {/* SLIDE 3: CUSTOM FLOW DESIGNER */}
+          {/* SLIDE 3: WORKFLOW STUDIO */}
           {currentSlide.id === 'custom-flow' && (
             <div className="rounded-xl p-4 sm:p-6 border bg-slate-900 dark:bg-black/60 dark:border-white/10 relative overflow-hidden">
               <div className="flex items-center justify-between text-xs font-mono text-slate-400 mb-4 pb-2 border-b border-white/10">
@@ -411,7 +411,7 @@ export default function HeroStudioConsole({ theme = 'dark', onLaunch }: HeroStud
                 {/* Node 2 */}
                 <div className="w-full md:w-48 p-3 rounded-lg border bg-white/[0.04] border-purple-500/40 text-center shadow-lg relative group hover:border-purple-400 transition-colors">
                   <div className="text-[10px] font-mono text-[#ce5dff] font-bold uppercase mb-1">02. EDGE LOGIC</div>
-                  <div className="text-xs font-bold text-white">Custom Flow Node</div>
+                  <div className="text-xs font-bold text-white">Workflow Node</div>
                   <div className="text-[9px] font-mono text-slate-400 mt-1">Rules &amp; Routing</div>
                 </div>
 

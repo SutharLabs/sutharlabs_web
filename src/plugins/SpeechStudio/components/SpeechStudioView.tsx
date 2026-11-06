@@ -574,6 +574,7 @@ export default function SpeechStudioView({
   const [isTestPlayingSample, setIsTestPlayingSample] = useState<boolean>(false);
   const [clonedSpeakerName, setClonedSpeakerName] = useState<string>('My Replicated Voice');
   const [timbrePreference, setTimbrePreference] = useState<'auto' | 'male' | 'female'>('auto');
+  const [activeProfileId, setActiveProfileId] = useState<string | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const recordingTimerRef = useRef<any>(null);
@@ -674,6 +675,18 @@ export default function SpeechStudioView({
               try {
                 localStorage.setItem('sutharlabs_cloned_voice_profiles', JSON.stringify(combined));
               } catch {}
+              if (combined.length > 0) {
+                const first = combined[0];
+                setActiveProfileId(prev => prev || first.id);
+                setClonedSpeakerName(prev => (prev === 'My Replicated Voice' ? first.name : prev));
+                if (first.sampleAudioDataUrl) {
+                  setClonedSampleBase64(prev => prev || first.sampleAudioDataUrl!);
+                }
+                if (first.gender) {
+                  setTimbrePreference(prev => (prev === 'auto' ? (first.gender as any) : prev));
+                  setProfileGender(prev => (prev === 'male' ? (first.gender as any) : prev));
+                }
+              }
               return combined;
             });
           }
@@ -1459,8 +1472,17 @@ export default function SpeechStudioView({
       return;
     }
 
-    if (!clonedSampleBase64) {
-      setErrorMessage('Please record or upload a 5–10 second reference voice audio clip first.');
+    let effectiveSample = clonedSampleBase64;
+    if (!effectiveSample && activeProfileId) {
+      const found = clonedProfiles.find(p => p.id === activeProfileId);
+      if (found?.sampleAudioDataUrl) {
+        effectiveSample = found.sampleAudioDataUrl;
+        setClonedSampleBase64(effectiveSample);
+      }
+    }
+
+    if (!effectiveSample && !activeProfileId) {
+      setErrorMessage('Please select a saved voice profile or record an audio sample in Step 1 first.');
       return;
     }
 
@@ -2419,6 +2441,61 @@ export default function SpeechStudioView({
                     })}
                   </div>
 
+                  {/* Voice Selection / Library Source Switcher */}
+                  {clonedProfiles.length > 0 && (
+                    <div className={`p-3 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 transition-all ${
+                      isLight ? 'bg-purple-50/70 border-purple-200' : 'bg-purple-500/10 border-purple-500/30'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                        <div>
+                          <div className="text-xs font-bold text-on-surface">Saved Voice Library ({clonedProfiles.length})</div>
+                          <div className="text-[10px] text-on-surface-variant font-mono">Select a saved voice or capture a new one below</div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                        <select
+                          value={activeProfileId || ''}
+                          onChange={(e) => {
+                            const selectedId = e.target.value;
+                            if (!selectedId) {
+                              setActiveProfileId(null);
+                            } else {
+                              const found = clonedProfiles.find(p => p.id === selectedId);
+                              if (found) {
+                                setActiveProfileId(found.id);
+                                setClonedSpeakerName(found.name);
+                                setProfileName(found.name);
+                                if (found.sampleAudioDataUrl) {
+                                  setClonedSampleBase64(found.sampleAudioDataUrl);
+                                }
+                                if (found.gender) {
+                                  setTimbrePreference(found.gender as any);
+                                  setProfileGender(found.gender as any);
+                                }
+                                onAddLog({
+                                  timestamp: new Date().toLocaleTimeString(),
+                                  type: 'INFO',
+                                  message: `Loaded saved voice "${found.name}" into Step 2.`
+                                });
+                              }
+                            }
+                          }}
+                          className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold border transition-colors cursor-pointer w-full sm:w-auto ${
+                            isLight ? 'bg-white border-purple-300 text-purple-900' : 'bg-[#181220] border-purple-500/40 text-purple-300'
+                          }`}
+                        >
+                          <option value="">— Select Saved Voice to Replicate —</option>
+                          {clonedProfiles.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({p.gender || 'male'}) {p.languageLabel ? `• ${p.languageLabel}` : ''}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Teleprompter Script Card */}
                   {selectedCalibrationPrompt && (
                     <div className={`p-2.5 rounded-lg border space-y-1.5 ${
@@ -2802,7 +2879,7 @@ export default function SpeechStudioView({
                   <button
                     type="button"
                     onClick={handleCloneAndSynthesize}
-                    disabled={isSynthesizing || !text.trim() || !clonedSampleBase64}
+                    disabled={isSynthesizing || !text.trim() || (!clonedSampleBase64 && !activeProfileId)}
                     className={`h-9 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center justify-center gap-2 leading-none border shadow-sm ${
                       isLight
                         ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-700'
@@ -2822,9 +2899,9 @@ export default function SpeechStudioView({
                     )}
                   </button>
 
-                  {!clonedSampleBase64 && (
+                  {!clonedSampleBase64 && !activeProfileId && (
                     <span className="text-[11px] font-mono text-amber-400">
-                      * Ingest or record an audio sample in Step 1 first
+                      * Select a saved voice above or record an audio sample in Step 1 first
                     </span>
                   )}
                 </div>
@@ -2905,6 +2982,36 @@ export default function SpeechStudioView({
                         )}
 
                         <div className="flex items-center justify-between gap-2 pt-1 border-t border-outline/15">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setActiveProfileId(profile.id);
+                              setClonedSpeakerName(profile.name);
+                              setProfileName(profile.name);
+                              if (profile.sampleAudioDataUrl) {
+                                setClonedSampleBase64(profile.sampleAudioDataUrl);
+                              }
+                              if (profile.gender) {
+                                setTimbrePreference(profile.gender as any);
+                                setProfileGender(profile.gender as any);
+                              }
+                              onAddLog({
+                                timestamp: new Date().toLocaleTimeString(),
+                                type: 'INFO',
+                                message: `Loaded "${profile.name}" into Step 2 replication workspace.`
+                              });
+                            }}
+                            className={`h-7 px-2.5 rounded text-[10px] font-mono font-bold uppercase transition-all cursor-pointer flex items-center gap-1 ${
+                              isLight
+                                ? 'bg-sky-500 hover:bg-sky-600 text-white'
+                                : 'bg-[#00dbe7]/20 hover:bg-[#00dbe7]/30 text-[#00dbe7] border border-[#00dbe7]/40'
+                            }`}
+                            title="Load this voice directly into Step 2 for immediate synthesis"
+                          >
+                            <Mic className="w-3 h-3 shrink-0" />
+                            <span>USE IN STEP 2</span>
+                          </button>
+
                           <button
                             type="button"
                             onClick={() => {

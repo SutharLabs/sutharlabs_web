@@ -13,6 +13,7 @@ export interface UserProfile {
 
 export type WorkspaceTab = 
   | 'Stock Tracker' 
+  | 'Workflow'
   | 'Custom Flow' 
   | 'Accounting' 
   | 'Admin Console' 
@@ -67,6 +68,7 @@ export interface AIChatMessage {
   durationMs?: number;
   timestamp: string;
   agentId?: string;
+  researchSources?: Array<{ title: string; url: string; snippet: string; source: string; date?: string }>;
 }
 
 export interface AIAgentPersona {

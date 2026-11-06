@@ -20,7 +20,7 @@ export const AGENT_PERSONAS: AIAgentPersona[] = [
     badge: 'OCI & Docker',
     description: 'Expert in Oracle Cloud Always Free VM orchestration, swap tuning, Nginx proxies, and Linux security.',
     systemPrompt: `You are the Lead Sovereign Cloud Infrastructure Architect for SutharLabs. You specialize in zero-cost, high-reliability enterprise cloud architectures using Oracle Cloud Always Free compute (AMD E2.1.Micro and Ampere ARM A1), Docker containerization, Linux memory and swap tuning, Nginx reverse proxies, and secure networking. Always provide production-ready commands, architectural clarity, and precise, well-reasoned explanations.`,
-    recommendedModel: 'qwen2.5:7b'
+    recommendedModel: 'qwen2.5:1.5b'
   },
   {
     id: 'database-architect',
@@ -30,7 +30,7 @@ export const AGENT_PERSONAS: AIAgentPersona[] = [
     badge: 'PostgreSQL 16',
     description: 'Specialist in low-footprint PostgreSQL tuning, dual-database replication, query optimization, and schema design.',
     systemPrompt: `You are the Chief Database Administrator (DBA) for SutharLabs. You oversee the PostgreSQL 16 database running on Oracle Cloud and disaster recovery replication to Neon. You specialize in low-memory PostgreSQL configuration, indexing strategies, query execution plans, ACID transactions, data consistency verification, and Prisma ORM migrations. Provide exact SQL statements, explain trade-offs, and prioritize database integrity.`,
-    recommendedModel: 'qwen2.5:7b'
+    recommendedModel: 'qwen2.5:1.5b'
   },
   {
     id: 'software-engineer',
@@ -40,7 +40,7 @@ export const AGENT_PERSONAS: AIAgentPersona[] = [
     badge: 'React & Node',
     description: 'Crafts elegant, high-performance UI code adhering to Tailwind CSS v4, component isolation, and clean APIs.',
     systemPrompt: `You are a Principal Full-Stack Engineer at SutharLabs. You build resilient, high-speed interfaces using React 19, TypeScript, Tailwind CSS v4, and Node.js. Always format code cleanly with type safety, follow strict design system tokens, ensure dark and light mode harmony, and avoid unhandled edge cases. When producing code or configuration files, structure them modularly.`,
-    recommendedModel: 'qwen2.5:7b'
+    recommendedModel: 'qwen2.5-coder:3b'
   },
   {
     id: 'quant-analyst',
@@ -60,7 +60,7 @@ export const AGENT_PERSONAS: AIAgentPersona[] = [
     badge: 'DeepSeek-R1 CoT',
     description: 'Uses DeepSeek-R1 chain-of-thought to solve complex algorithms, verify logic proofs, and compute mathematical models step-by-step.',
     systemPrompt: `You are the Lead Symbolic Reasoner and Mathematical Analyst for SutharLabs, powered by DeepSeek-R1 chain-of-thought architecture. When solving problems, think rigorously step-by-step, verify edge cases, prove formulas mathematically, and provide clear structured conclusions with complete algorithmic notation.`,
-    recommendedModel: 'deepseek-r1:7b'
+    recommendedModel: 'deepseek-r1:1.5b'
   },
   {
     id: 'research-synthesizer',
@@ -216,5 +216,36 @@ export async function streamAIChat({
       durationMs
     });
   }
+}
+
+export interface WebResearchSource {
+  title: string;
+  url: string;
+  snippet: string;
+  source: string;
+  date?: string;
+}
+
+export interface WebResearchResult {
+  query: string;
+  sources: WebResearchSource[];
+  summary: string;
+}
+
+export async function performWebResearch(query: string, token?: string): Promise<WebResearchResult> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/research', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ query })
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Research request failed (HTTP ${res.status})`);
+  }
+  return res.json();
 }
 

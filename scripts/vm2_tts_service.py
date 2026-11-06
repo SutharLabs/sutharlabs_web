@@ -377,7 +377,9 @@ async def clone(request: Request):
             "X-Detected-Timbre": effective_timbre,
             "X-Detected-Pitch-Hz": str(acoustic["est_pitch_hz"]),
             "X-Peak-Volume-Pct": str(acoustic["peak_pct"]),
-            "X-Voice-Assigned": voice
+            "X-Voice-Assigned": voice,
+            "X-Replication-Engine": "ACOUSTIC_TIMBRE_CALIBRATION",
+            "Access-Control-Expose-Headers": "X-Audio-Status, X-Detected-Timbre, X-Detected-Pitch-Hz, X-Peak-Volume-Pct, X-Voice-Assigned, X-Replication-Engine"
         }
         return Response(content=audio_bytes, media_type="audio/mpeg", headers=headers)
     except Exception as e:

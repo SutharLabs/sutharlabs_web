@@ -112,18 +112,18 @@ const PLUGIN_METADATA_REGISTRY: Record<string, {
 
   wp_flow_designer: {
     publisher: 'SutharLabs Architecture Group',
-    tags: ['Visual Canvas', 'Topology Nodes', 'Microservices', 'JSON Export'],
+    tags: ['n8n-Style Workflow', 'AI Agents', 'HTTP Requests', 'DB Queries', 'Cron Triggers'],
     highlights: [
-      'Interactive Drag-and-Drop Node Architecture Canvas',
-      'Dynamic Spline Curvature & Port Snapping Routing',
-      'Live State Inspection & Pipeline Processor Triggers',
-      'Full Architectural JSON State Import / Export'
+      'Visual Multi-Tool Workflow Studio with Drag-and-Drop Canvas',
+      'Autonomous Node Execution Engine (AI, HTTP, SQL, Logic)',
+      'Pre-built Starter Templates for Market AI, Health Probes & DB Parity',
+      'Permissive Open-Source Tool Ecosystem for Commercial Deployments'
     ],
     features: [
-      'Interactive drag-and-drop node graph canvas for system architecture',
-      'Bi-directional connection ports with dynamic spline curvature',
-      'Live node status monitoring, file attachments, and processor triggers',
-      'Export and import complete architectural states as formatted JSON'
+      'n8n-style visual DAG workflow editor with dynamic bezier spline connections',
+      'Integrated node tools: HTTP Request, AI FinLLM Agent, PostgreSQL Query, Cron Triggers, If/Else Conditions',
+      'Live step-by-step pipeline execution engine with visual status highlights',
+      'Full pipeline JSON import/export and execution log console'
     ],
     permissions: [
       { name: 'Canvas Storage', description: 'Persists active node diagrams to local workspace state', granted: true },

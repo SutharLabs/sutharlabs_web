@@ -33,7 +33,7 @@ const STORE_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
 
 const INSTALLED_PLUGINS: { name: WorkspaceTab; icon: string; size: string }[] = [
   { name: 'Stock Tracker', icon: 'monitoring', size: '12.4 KB' },
-  { name: 'Custom Flow', icon: 'account_tree', size: '4.8 KB' },
+  { name: 'Workflow', icon: 'account_tree', size: '4.8 KB' },
   { name: 'Accounting', icon: 'currency_exchange', size: '18.2 KB' },
   { name: 'Doc Nexus', icon: 'menu_book', size: '15.6 KB' },
   { name: 'Speech Studio', icon: 'record_voice_over', size: '14.8 KB' },
@@ -61,6 +61,7 @@ const ALL_TABS: { name: WorkspaceTab; icon: string; size: string }[] = [
 
 const ROUTE_MAP: Record<string, string> = {
   'Stock Tracker': '/workspace/stock-tracker',
+  'Workflow': '/workspace/flow',
   'Custom Flow': '/workspace/flow',
   'Accounting': '/workspace/accounting',
   'Admin Console': '/admin',
@@ -1063,6 +1064,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
 
               {![
                 'Stock Tracker',
+                'Workflow',
                 'Custom Flow',
                 'Accounting',
                 'Doc Nexus',

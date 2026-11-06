@@ -189,7 +189,7 @@ export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({
               </div>
             </div>
             {/* Code Content */}
-            <pre className="p-3 text-[11px] sm:text-xs overflow-x-auto leading-relaxed select-all scrollbar-thin">
+            <pre className="p-3 text-[11px] sm:text-xs overflow-x-auto leading-relaxed select-all scrollbar-thin max-w-full">
               <code>{codeText}</code>
             </pre>
           </div>
@@ -455,7 +455,7 @@ export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({
 
       if (pLines.length > 0) {
         elements.push(
-          <p key={blockKey++} className="my-1.5 text-xs leading-relaxed text-on-surface font-sans">
+          <p key={blockKey++} className="my-1.5 text-xs leading-relaxed text-on-surface font-sans break-words">
             {pLines.map((pl, plIdx) => (
               <React.Fragment key={plIdx}>
                 {plIdx > 0 && <br />}
@@ -471,7 +471,7 @@ export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({
   };
 
   return (
-    <div className="markdown-body space-y-1 text-xs">
+    <div className="markdown-body space-y-1 text-xs break-words overflow-hidden max-w-full">
       {renderBlocks()}
     </div>
   );

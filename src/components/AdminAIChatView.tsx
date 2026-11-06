@@ -45,6 +45,8 @@ import {
   fetchAIModels, 
   fetchAIHealth, 
   streamAIChat, 
+  performWebResearch,
+  WebResearchSource,
   OllamaModelTag 
 } from '../services/aiChatService';
 import ConfirmModal, { ModalVariant } from './ConfirmModal';
@@ -262,6 +264,8 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const [inputPrompt, setInputPrompt] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [streamBuffer, setStreamBuffer] = useState<string>('');
+  const [isDeepResearch, setIsDeepResearch] = useState<boolean>(false);
+  const [isSearchingWeb, setIsSearchingWeb] = useState<boolean>(false);
 
   // Active Context Calculations
   const contextStats = useMemo(() => {
@@ -440,10 +444,39 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
     setIsGenerating(true);
     setStreamBuffer('');
 
+    let researchSources: WebResearchSource[] = [];
+    let systemPromptToUse = selectedAgent.systemPrompt;
+
+    if (isDeepResearch) {
+      setIsSearchingWeb(true);
+      addLog('RESEARCH', `Conducting live web research for query: "${text.slice(0, 50)}..."`, 'INFO');
+      try {
+        const researchData = await performWebResearch(text, userToken);
+        if (researchData && Array.isArray(researchData.sources) && researchData.sources.length > 0) {
+          researchSources = researchData.sources;
+          systemPromptToUse += `\n\n${researchData.summary}`;
+          addLog('RESEARCH', `Web research complete. Found ${researchSources.length} verified real-time sources.`, 'SUCCESS');
+        } else {
+          addLog('RESEARCH', 'Web research query executed. No real-time external articles returned.', 'INFO');
+        }
+      } catch (researchErr: any) {
+        console.warn('Deep research non-fatal error:', researchErr.message);
+        addLog('RESEARCH', `Web research warning: ${researchErr.message}`, 'ALERT');
+      } finally {
+        setIsSearchingWeb(false);
+      }
+    }
+
+    // Smart sliding context window: keep system prompt, first intent anchor, and recent turns
+    const maxHistoryTurns = 8;
+    const trimmedHistory = newHistory.length > maxHistoryTurns
+      ? [newHistory[0], ...newHistory.slice(-maxHistoryTurns)]
+      : newHistory;
+
     // Prepare message history with agent system prompt
     const apiMessages = [
-      { role: 'system' as const, content: selectedAgent.systemPrompt },
-      ...newHistory.map(m => ({ role: m.role, content: m.content }))
+      { role: 'system' as const, content: systemPromptToUse },
+      ...trimmedHistory.map(m => ({ role: m.role, content: m.content }))
     ];
 
     const abortController = new AbortController();
@@ -473,7 +506,8 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
             tokensPerSec: metrics.speedTokensPerSec,
             durationMs: metrics.durationMs,
             timestamp: new Date().toLocaleTimeString(),
-            agentId: selectedAgent.id
+            agentId: selectedAgent.id,
+            researchSources: researchSources.length > 0 ? researchSources : undefined
           };
 
           setMessages((prev) => [...prev, assistantMsg]);
@@ -635,7 +669,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         </div>
 
         {/* Action Controls */}
-        <div className="flex items-center gap-2.5 shrink-0 flex-nowrap">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
           {studioMode === 'opencode' ? (
             <>
               <button
@@ -742,12 +776,12 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
 
               {/* Model Selector Dropdown with Categories */}
               <div className="flex items-center gap-1.5 text-xs font-mono">
-                <span className="text-on-surface-variant hidden sm:inline">Model:</span>
+                <span className="text-on-surface-variant hidden lg:inline">Model:</span>
                 <select
                   value={selectedModel}
                   onChange={(e) => setSelectedModel(e.target.value)}
                   disabled={isGenerating}
-                  className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold border transition-colors cursor-pointer ${
+                  className={`h-8 px-2 sm:px-2.5 rounded-lg text-xs font-mono font-bold border transition-colors cursor-pointer max-w-[170px] sm:max-w-[240px] md:max-w-none truncate ${
                     isLight
                       ? 'bg-slate-100 border-slate-300 text-slate-800 focus:border-sky-500'
                       : 'bg-[#201f21] border-[#3a494b]/40 text-[#00dbe7] focus:border-[#00dbe7]/60'
@@ -968,12 +1002,12 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         )}
         
         {/* Left Column: Chat Conversation */}
-        <div className={`flex-1 flex flex-col h-full overflow-hidden transition-all duration-200 ${
-          isArtifactPanelOpen && !isArtifactFullscreen ? 'hidden lg:flex lg:w-3/5' : 'w-full'
+        <div className={`flex-1 min-w-0 flex flex-col h-full overflow-hidden transition-all duration-200 ${
+          isArtifactPanelOpen && !isArtifactFullscreen ? 'hidden lg:flex' : 'w-full'
         }`}>
           
           {/* Messages Scroll Area */}
-          <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 space-y-4 sm:space-y-5 min-w-0">
             
             {/* Empty State Welcome Screen */}
             {messages.length === 0 && (
@@ -1026,7 +1060,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
               return (
                 <div 
                   key={msg.id} 
-                  className={`flex gap-3 max-w-3xl ${isUser ? 'ml-auto justify-end' : 'mr-auto justify-start'}`}
+                  className={`flex gap-2.5 sm:gap-3 w-full max-w-3xl min-w-0 ${isUser ? 'ml-auto justify-end' : 'mr-auto justify-start'}`}
                 >
                   {!isUser && (
                     <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 mt-1 shadow-xs">
@@ -1034,7 +1068,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                     </div>
                   )}
 
-                  <div className={`space-y-1.5 ${isUser ? 'items-end' : 'items-start'}`}>
+                  <div className={`space-y-1.5 min-w-0 ${isUser ? 'items-end max-w-[85%]' : 'items-start flex-1 max-w-full'}`}>
                     
                     {/* Header meta */}
                     <div className={`flex items-center gap-2 text-[10px] font-mono text-on-surface-variant ${isUser ? 'justify-end' : 'justify-start'}`}>
@@ -1043,8 +1077,37 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                       <span>{msg.timestamp}</span>
                     </div>
 
+                    {/* Web Research Sources Pill (Assistant only, if present) */}
+                    {!isUser && msg.researchSources && msg.researchSources.length > 0 && (
+                      <div className={`p-2 rounded-lg border text-[11px] font-mono mb-1.5 ${
+                        isLight ? 'bg-sky-50 border-sky-200 text-sky-800' : 'bg-[#00dbe7]/10 border-[#00dbe7]/30 text-[#00dbe7]'
+                      }`}>
+                        <div className="flex items-center gap-1.5 font-bold mb-1">
+                          <Globe className="w-3.5 h-3.5 shrink-0" />
+                          <span>Live Web Research ({msg.researchSources.length} Sources Verified)</span>
+                        </div>
+                        <div className="flex flex-wrap gap-1.5 pt-0.5">
+                          {msg.researchSources.map((s, idx) => (
+                            <a
+                              key={idx}
+                              href={s.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={`px-1.5 py-0.5 rounded text-[10px] border flex items-center gap-1 transition-all ${
+                                isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-black/30 hover:bg-black/50 text-[#e5e1e4] border-white/10'
+                              }`}
+                              title={s.snippet}
+                            >
+                              <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                              <span className="truncate max-w-[140px]">{s.title}</span>
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                     {/* Content Bubble */}
-                    <div className={`p-4 rounded-2xl text-xs leading-relaxed transition-colors ${
+                    <div className={`p-3.5 sm:p-4 rounded-2xl text-xs leading-relaxed transition-colors min-w-0 max-w-full break-words overflow-hidden ${
                       isUser
                         ? isLight
                           ? 'bg-sky-500 text-white font-sans rounded-tr-xs shadow-sm'
@@ -1114,21 +1177,23 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
 
             {/* Live Streaming Response Bubble */}
             {isGenerating && (
-              <div className="flex gap-3 max-w-3xl mr-auto justify-start">
+              <div className="flex gap-2.5 sm:gap-3 w-full max-w-3xl min-w-0 mr-auto justify-start">
                 <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 mt-1 animate-pulse shadow-xs">
                   <Bot className="w-4 h-4 text-[#00dbe7] shrink-0" />
                 </div>
-                <div className="space-y-1.5 items-start">
+                <div className="space-y-1.5 items-start flex-1 min-w-0 max-w-full">
                   <div className="flex items-center gap-2 text-[10px] font-mono text-on-surface-variant">
                     <span className="font-bold text-[#00dbe7]">{selectedAgent.name}</span>
-                    <span className="animate-pulse">is streaming tokens...</span>
+                    <span className="animate-pulse">
+                      {isSearchingWeb ? 'searching live web sources...' : 'streaming tokens...'}
+                    </span>
                   </div>
-                  <div className={`p-4 rounded-2xl text-xs leading-relaxed transition-colors rounded-tl-xs ${
+                  <div className={`p-3.5 sm:p-4 rounded-2xl text-xs leading-relaxed transition-colors rounded-tl-xs min-w-0 max-w-full break-words overflow-hidden ${
                     isLight ? 'bg-white border border-slate-200 text-slate-800' : 'bg-surface-container-low/60 border border-outline/15 text-[#e5e1e4]'
                   }`}>
-                    <div className="text-xs">
+                    <div className="text-xs break-words overflow-hidden max-w-full">
                       <MarkdownMessage
-                        content={streamBuffer || 'Thinking...'}
+                        content={streamBuffer || (isSearchingWeb ? '🔍 Conducting Deep Web Research across live news, Wikipedia & DuckDuckGo...' : 'Thinking...')}
                         theme={theme}
                       />
                     </div>
@@ -1168,11 +1233,32 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                   className="w-full bg-transparent resize-none border-none outline-hidden text-xs font-sans text-on-surface placeholder:text-on-surface-variant/50 max-h-44 p-1"
                 />
 
-                <div className="flex items-center justify-between pt-1 border-t border-outline/10">
-                  <div className="flex items-center gap-2 text-[11px] font-mono text-on-surface-variant">
-                    <span className="text-[#00dbe7] font-semibold">{selectedModel}</span>
-                    <span>•</span>
-                    <span className="text-emerald-400">12GB RAM Node</span>
+                <div className="flex items-center justify-between pt-1 border-t border-outline/10 gap-2 flex-wrap sm:flex-nowrap">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsDeepResearch(!isDeepResearch)}
+                      className={`h-7 px-2.5 rounded-lg text-[10px] sm:text-[11px] font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                        isDeepResearch
+                          ? isLight
+                            ? 'bg-sky-500 text-white shadow-xs'
+                            : 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/50 shadow-[0_0_8px_rgba(0,219,231,0.25)]'
+                          : isLight
+                            ? 'bg-slate-200/80 hover:bg-slate-300 text-slate-700'
+                            : 'bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-on-surface border border-white/10'
+                      }`}
+                      title={isDeepResearch ? "Deep Web Research Enabled: Live web intelligence and citations injected" : "Click to Enable Real-Time Web Research"}
+                    >
+                      <Globe className={`w-3.5 h-3.5 shrink-0 ${isDeepResearch ? 'text-white dark:text-[#00dbe7] animate-pulse' : ''}`} />
+                      <span>Deep Research:</span>
+                      <span className="font-extrabold">{isDeepResearch ? 'ON' : 'OFF'}</span>
+                    </button>
+
+                    <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-on-surface-variant">
+                      <span className="text-[#00dbe7] font-semibold">{selectedModel}</span>
+                      <span>•</span>
+                      <span className="text-emerald-400">12GB RAM Node</span>
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">
@@ -1205,8 +1291,8 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
 
         {/* Right Column: Claude-Style Artifacts Studio Panel */}
         {isArtifactPanelOpen && activeArtifact && (
-          <div className={`border-l flex flex-col transition-all duration-200 ${
-            isArtifactFullscreen ? 'fixed inset-0 z-50 bg-background' : 'w-full lg:w-2/5'
+          <div className={`border-l flex flex-col transition-all duration-200 shrink-0 ${
+            isArtifactFullscreen ? 'fixed inset-0 z-50 bg-background' : 'w-full lg:w-[42%] xl:w-[40%]'
           } ${
             isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-[#0e0e11] border-outline/15'
           }`}>

@@ -249,6 +249,15 @@ export default function StockSimulatorPanel({
   const [showResetConfirm, setShowResetConfirm] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [expandedRunId, setExpandedRunId] = useState<string | null>(null);
+  const [workerStatus, setWorkerStatus] = useState<{
+    isRunning: boolean;
+    intervalMs: number;
+    lastRunAt: string | null;
+    runCount: number;
+    lastRunSuccess: boolean;
+    lastError: string | null;
+  } | null>(null);
+  const [isTriggeringWorker, setIsTriggeringWorker] = useState<boolean>(false);
 
   // Periodic UI clock tick (every 5s) to update relative timestamps (e.g. '12s ago') without polling network
   useEffect(() => {
@@ -363,6 +372,42 @@ export default function StockSimulatorPanel({
       })
       .catch(() => {});
   }, [getAuthHeaders]);
+
+  const fetchWorkerStatus = useCallback(async () => {
+    try {
+      const res = await fetch(`${STOCK_API}/simulator/worker-status`);
+      if (res.ok) {
+        const data = await res.json();
+        setWorkerStatus(data);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchWorkerStatus();
+    const interval = setInterval(fetchWorkerStatus, 15000);
+    return () => clearInterval(interval);
+  }, [fetchWorkerStatus]);
+
+  const handleTriggerWorkerCycle = async () => {
+    setIsTriggeringWorker(true);
+    try {
+      const res = await fetch(`${STOCK_API}/simulator/worker-run-cycle`, {
+        method: 'POST',
+        headers: getAuthHeaders()
+      });
+      if (res.ok) {
+        await Promise.all([
+          fetchPortfolioAndHistory(selectedSimulationId, false),
+          fetchWorkerStatus()
+        ]);
+      }
+    } catch (e: any) {
+      console.error('Failed to trigger worker cycle:', e);
+    } finally {
+      setIsTriggeringWorker(false);
+    }
+  };
 
   // Fetch Current Portfolio & Simulation History from server for selectedSimulationId
   const fetchPortfolioAndHistory = useCallback(async (targetSimId?: string, silent: boolean = false) => {
@@ -1213,6 +1258,21 @@ export default function StockSimulatorPanel({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
+                handleTriggerWorkerCycle();
+              }}
+              disabled={isTriggeringWorker || isLoadingPortfolio}
+              className="px-2.5 sm:px-3 py-1.5 sm:py-2 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-xl font-bold cursor-pointer flex items-center gap-1.5 transition-all text-xs"
+              title="Trigger Continuous Server-Side Background Worker Cycle Now"
+            >
+              <Zap className={`w-3.5 h-3.5 ${isTriggeringWorker ? 'animate-spin text-emerald-300' : 'text-emerald-400'}`} />
+              <span className="hidden sm:inline">{isTriggeringWorker ? 'Evaluating...' : 'Run Worker Cycle'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 fetchPortfolioAndHistory(selectedSimulationId, false);
               }}
               disabled={isLoadingPortfolio}
@@ -1285,6 +1345,19 @@ export default function StockSimulatorPanel({
             >
               <span className={`w-1.5 h-1.5 rounded-full ${isLoadingPortfolio ? 'bg-[#00e476] animate-spin' : 'bg-[#00e476] animate-pulse'}`}></span>
               {isLoadingPortfolio ? 'Syncing...' : `Live Sync (${Math.max(0, Math.floor((nowTick - lastSyncTimestamp) / 1000))}s ago)`}
+            </span>
+
+            {/* Continuous Server-Side Background Worker Status Pill */}
+            <span
+              className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold border transition-colors select-none ${
+                workerStatus?.isRunning
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  : 'bg-surface-container-high text-on-surface-variant border-outline/20'
+              }`}
+              title={`Autonomous PM2 server-side background worker running every 60s. Total cycles: ${workerStatus?.runCount || 0}. Last run: ${workerStatus?.lastRunAt || 'Pending'}`}
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${workerStatus?.isRunning ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'}`}></span>
+              <span>Worker: {workerStatus?.isRunning ? `Active (${workerStatus.runCount} cycles)` : 'Background Daemon'}</span>
             </span>
 
             {/* Background Cron Heartbeat Status Pill */}
