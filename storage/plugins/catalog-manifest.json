@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T06:57:38.988Z",
+    "packagedAt": "2026-11-06T08:22:22.510Z",
     "archiveFileName": "wp_stock_analyzer-v1.1.6.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.6.zip",
-    "sizeBytes": 122146,
-    "checksumSha256": "72627b7513398143b579db039f1b89a916e039f838cf45805ed1ee85fabced2e",
+    "sizeBytes": 123399,
+    "checksumSha256": "d5cbce596f5064f010cf4b09c5dcccaff1c3c885cd8751abffb1ced10636d249",
     "changelog": "### v1.1.4 Subversion Release & Indicator Suite\n- **18 Professional Plottable Indicators on TradingView Graph**: Full mathematical calculation engine and plotting for EMA, SMA, WMA, VWAP, Bollinger Bands, Supertrend, Parabolic SAR, Donchian Channels, Keltner Channels, RSI, MACD, Stochastic Oscillator, ATR, ADX, CCI, Williams %R, OBV, and Volume.\n- **Dedicated Studies Ribbon Bar**: Clean, high-density studies bar situated directly above the chart canvas displaying active indicators, live telemetry at the hover crosshair, customizable parameters, visibility eye toggle, configuration settings gear modal, and removal controls.\n- **Unified Indicator Engine across Platform**:\n  - **Algo Creation (Strategy Builder)**: Categorized entry (BUY) and exit (SELL) rule builder with access to all 18 indicators.\n  - **Trade Simulator (EOD & Intraday)**: Dynamic calculation and evaluation of all 18 indicators across simulation runs.\n  - **Market Scanner Hub (Screener)**: Multi-indicator candidate metrics with quick filter buttons (Above VWAP, Supertrend Bull, RSI ≤ 35, RSI ≥ 50).\n- **Unobstructed Chart Canvas**: Relocated floating overlay from inside the canvas to the dedicated top ribbon, giving candles 100% full, unobstructed visibility.\n- **Toolbar Redundancy**: Removed redundant fixed indicator buttons from the chart toolbar.\n- **UI Polish**: Fixed duplicate '+' icon on the Study button."
   },
   {
@@ -26,11 +26,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T06:57:40.618Z",
+    "packagedAt": "2026-11-06T08:22:24.050Z",
     "archiveFileName": "wp_flow_designer-v0.2.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.2.0.zip",
-    "sizeBytes": 2987,
-    "checksumSha256": "d75683c9c8fca30b5cc97e9be9ab3945e75e2f4e1f27ce1f9623a96c1a60d6e1",
+    "sizeBytes": 2986,
+    "checksumSha256": "bd38989294c1540d0709ba05e3c0a3e01bc171696f2cea1ac47fd7efe3c3591c",
     "changelog": "Interactive canvas for architectural node topologies, microservices modeling, and JSON state import/export."
   },
   {
@@ -43,11 +43,11 @@
     "iconSymbol": "auto_stories",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T06:57:41.333Z",
+    "packagedAt": "2026-11-06T08:22:24.830Z",
     "archiveFileName": "wp_doc_nexus-v0.3.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.3.0.zip",
     "sizeBytes": 85226,
-    "checksumSha256": "f7f33f3687ab2eb4b1328174679b550f6aeafdfae119cdba76b47cb000a8a863",
+    "checksumSha256": "d466717302939ef5c09f19460aa10d81ced8eaf862c346eacb951e7cbddef9fc",
     "changelog": "Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations."
   },
   {
@@ -60,11 +60,11 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T06:57:42.432Z",
+    "packagedAt": "2026-11-06T08:22:25.875Z",
     "archiveFileName": "wp_accounting-v0.2.3.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.2.3.zip",
-    "sizeBytes": 78954,
-    "checksumSha256": "976f2646af963a49e1088377328d8097e3358e66887e6c2aa3b8eee832c02635",
+    "sizeBytes": 78955,
+    "checksumSha256": "63c958cc9fe7840c40f39fe5249dd657d52c37b2ca8d4bbb9e70f096a96811b0",
     "changelog": "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync."
   },
   {
@@ -77,11 +77,11 @@
     "iconSymbol": "record_voice_over",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T06:57:43.339Z",
+    "packagedAt": "2026-11-06T08:22:26.924Z",
     "archiveFileName": "speech-studio-v0.3.3.zip",
     "packageUrl": "/storage/plugins/speech-studio-v0.3.3.zip",
-    "sizeBytes": 44318,
-    "checksumSha256": "1c3449317fcc8263e1f6398a6a5f1ee18116adfed4517b13a1e499ef0ce49998",
+    "sizeBytes": 44667,
+    "checksumSha256": "75778d4d71a5b2f95d16ba2a6070b96920463ed4f53138560ebf6a6f438ea2ff",
     "changelog": "Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting."
   },
   {
@@ -94,11 +94,11 @@
     "iconSymbol": "photo_filter",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T06:57:44.186Z",
+    "packagedAt": "2026-11-06T08:22:28.168Z",
     "archiveFileName": "image-studio-v0.2.0.zip",
     "packageUrl": "/storage/plugins/image-studio-v0.2.0.zip",
-    "sizeBytes": 20508,
-    "checksumSha256": "101ce1436df7005b59c8c09e6828ab682edcdc85c9b04ef8ab7980bd9163cce3",
+    "sizeBytes": 20507,
+    "checksumSha256": "20d929fad5e1e1cf9aea64b98974974f8c3a9ee564aa0cc7b7c71803f06aefb4",
     "changelog": "Dual-mode AI image studio: Top-rated open-source text-to-image generation (FLUX.1 & SD 3.5) and 4K super-resolution upscaling."
   }
 ]

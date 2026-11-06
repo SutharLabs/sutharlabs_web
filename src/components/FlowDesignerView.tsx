@@ -25,7 +25,13 @@ import {
   Save,
   Download,
   Upload,
-  ArrowRight
+  ArrowRight,
+  Bug,
+  FileCode,
+  Terminal,
+  Maximize2,
+  Minimize2,
+  HelpCircle
 } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
@@ -56,6 +62,20 @@ export interface WorkflowNode {
   outputData?: any;
   error?: string;
   executionDurationMs?: number;
+}
+
+export interface StepExecutionRecord {
+  stepIndex: number;
+  nodeId: string;
+  nodeName: string;
+  category: WorkflowNode['category'];
+  status: 'SUCCESS' | 'ERROR' | 'RUNNING';
+  durationMs: number;
+  timestamp: string;
+  inputConfig: Record<string, any>;
+  outputPayload?: any;
+  error?: string;
+  httpStatus?: number;
 }
 
 export interface WorkflowConnection {
@@ -288,6 +308,10 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(TEMPLATES[0].nodes[1].id);
   const [isExecutingWorkflow, setIsExecutingWorkflow] = useState<boolean>(false);
   const [executionLogs, setExecutionLogs] = useState<string[]>([]);
+  const [stepExecutions, setStepExecutions] = useState<StepExecutionRecord[]>([]);
+  const [activeInspectorTab, setActiveInspectorTab] = useState<'console' | 'inspector' | 'errors'>('console');
+  const [inspectedStepId, setInspectedStepId] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState<{ fromNodeId: string } | null>(null);
 
   // Dragging State
@@ -337,22 +361,25 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
     setSelectedNodeId(nodeId);
     setIsDraggingNodeId(nodeId);
     const node = nodes.find(n => n.id === nodeId);
-    if (node) {
+    if (node && canvasRef.current) {
+      const canvasEl = canvasRef.current;
+      const rect = canvasEl.getBoundingClientRect();
       dragOffset.current = {
-        x: e.clientX - node.x,
-        y: e.clientY - node.y
+        x: (e.clientX - rect.left + canvasEl.scrollLeft) - node.x,
+        y: (e.clientY - rect.top + canvasEl.scrollTop) - node.y
       };
     }
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent) => {
     if (!isDraggingNodeId || !canvasRef.current) return;
-    const containerRect = canvasRef.current.getBoundingClientRect();
-    let nextX = e.clientX - dragOffset.current.x;
-    let nextY = e.clientY - dragOffset.current.y;
+    const canvasEl = canvasRef.current;
+    const rect = canvasEl.getBoundingClientRect();
+    let nextX = (e.clientX - rect.left + canvasEl.scrollLeft) - dragOffset.current.x;
+    let nextY = (e.clientY - rect.top + canvasEl.scrollTop) - dragOffset.current.y;
 
-    nextX = Math.max(20, Math.min(containerRect.width - 240, nextX));
-    nextY = Math.max(20, Math.min(containerRect.height - 140, nextY));
+    nextX = Math.max(20, Math.min(2200, nextX));
+    nextY = Math.max(20, Math.min(1800, nextY));
 
     setNodes(prev => prev.map(n => n.id === isDraggingNodeId ? { ...n, x: nextX, y: nextY } : n));
   };
@@ -396,12 +423,14 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
     setIsConnecting(null);
   };
 
-  // Execute Workflow (n8n-style topological runner)
+  // Execute Workflow (n8n-style topological runner with full telemetry & error tracking)
   const handleExecuteWorkflow = async () => {
     if (isExecutingWorkflow || nodes.length === 0) return;
     setIsExecutingWorkflow(true);
     setIsExecutionDrawerOpen(true);
     setExecutionLogs([]);
+    setStepExecutions([]);
+    setActiveInspectorTab('console');
 
     // Reset status to IDLE
     setNodes(prev => prev.map(n => ({ ...n, status: 'IDLE', outputData: undefined, error: undefined })));
@@ -418,11 +447,13 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
     });
 
     let currentPayload: any = { timestamp: new Date().toISOString() };
+    const accumulatedRecords: StepExecutionRecord[] = [];
 
-    for (const node of nodes) {
+    for (let i = 0; i < nodes.length; i++) {
+      const node = nodes[i];
       // Set node to RUNNING
       setNodes(prev => prev.map(n => n.id === node.id ? { ...n, status: 'RUNNING' } : n));
-      logEntry(`▶ Running step: [${node.name}] (${node.category.toUpperCase()})...`);
+      logEntry(`▶ Step ${i + 1}/${nodes.length}: [${node.name}] (${node.category.toUpperCase()})...`);
       const stepStart = Date.now();
 
       try {
@@ -430,41 +461,97 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
 
         // Simulate or execute based on category
         if (node.category === 'schedule') {
-          await new Promise(r => setTimeout(r, 400));
-          stepOutput = { triggeredAt: new Date().toISOString(), cron: node.config.cronExpression || '* * * * *' };
+          await new Promise(r => setTimeout(r, 350));
+          stepOutput = {
+            triggeredAt: new Date().toISOString(),
+            cronExpression: node.config.cronExpression || '* * * * *',
+            status: 'SCHEDULED_TRIGGER_OK'
+          };
         } else if (node.category === 'http') {
           const url = node.config.url || '/api/health';
+          const method = node.config.method || 'GET';
           try {
             const resp = await fetch(url, {
-              method: node.config.method || 'GET',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${userToken}` }
+              method,
+              headers: {
+                'Content-Type': 'application/json',
+                ...(userToken ? { 'Authorization': `Bearer ${userToken}` } : {})
+              }
             });
-            stepOutput = resp.ok ? await resp.json().catch(() => ({ status: resp.statusText })) : { status: resp.status };
-          } catch {
-            stepOutput = { status: 'mock_success', responseTimeMs: 14, endpoint: url };
+            const isJson = resp.headers.get('content-type')?.includes('application/json');
+            const data = isJson ? await resp.json().catch(() => ({ status: resp.statusText })) : { text: await resp.text().catch(() => resp.statusText) };
+            if (!resp.ok) {
+              throw new Error(`HTTP ${resp.status} ${resp.statusText}: ${JSON.stringify(data).slice(0, 150)}`);
+            }
+            stepOutput = {
+              status: resp.status,
+              statusText: resp.statusText,
+              data,
+              endpoint: url,
+              method
+            };
+          } catch (fetchErr: any) {
+            // If remote or relative fetch fails, throw clear descriptive error
+            throw new Error(`REST API Request Failed [${method} ${url}]: ${fetchErr.message}`);
           }
         } else if (node.category === 'ai') {
-          await new Promise(r => setTimeout(r, 800));
+          const prompt = node.config.aiPrompt || 'Analyze context and evaluate next steps.';
+          const model = node.config.aiModel || 'finllm:latest';
+          logEntry(`🤖 Consulting Local AI Agent (${model})...`);
+          await new Promise(r => setTimeout(r, 650));
           stepOutput = {
-            model: node.config.aiModel || 'finllm:latest',
-            action: 'BUY',
-            confidence: 0.88,
-            reasoning: 'Strong bullish engulfing candle on 15m timeframe confirmed by low-frequency momentum.'
+            model,
+            action: 'PROCEED',
+            confidence: 0.91,
+            response: `Inference analysis completed for prompt "${prompt.slice(0, 40)}...". All parameters satisfied.`,
+            evaluatedAt: new Date().toISOString()
           };
         } else if (node.category === 'condition') {
-          await new Promise(r => setTimeout(r, 300));
-          const val = currentPayload?.confidence || 0.85;
-          const passed = Number(val) > Number(node.config.conditionValue || '0.75');
-          stepOutput = { conditionMet: passed, fieldEvaluated: 'confidence', value: val };
+          await new Promise(r => setTimeout(r, 250));
+          const field = node.config.conditionField || 'status';
+          const operator = node.config.conditionOperator || '==';
+          const targetVal = node.config.conditionValue || 'healthy';
+          
+          let actualVal = currentPayload?.[field] ?? currentPayload?.data?.[field] ?? 'healthy';
+          let conditionPassed = false;
+          if (operator === '==') conditionPassed = String(actualVal) === String(targetVal);
+          else if (operator === '!=') conditionPassed = String(actualVal) !== String(targetVal);
+          else if (operator === '>') conditionPassed = Number(actualVal) > Number(targetVal);
+          else if (operator === '<') conditionPassed = Number(actualVal) < Number(targetVal);
+          else if (operator === 'contains') conditionPassed = String(actualVal).includes(String(targetVal));
+
+          stepOutput = {
+            conditionMet: conditionPassed,
+            fieldEvaluated: field,
+            operator,
+            targetValue: targetVal,
+            actualValue: actualVal
+          };
+
+          if (!conditionPassed) {
+            logEntry(`⚠️ Condition Gate evaluated to FALSE: ${field} (${actualVal}) ${operator} ${targetVal}`);
+          }
         } else if (node.category === 'notification') {
-          await new Promise(r => setTimeout(r, 500));
-          stepOutput = { dispatched: true, channel: 'Discord Webhook', status: 200 };
+          await new Promise(r => setTimeout(r, 400));
+          const webhook = node.config.webhookUrl || 'https://webhook.site/dispatch';
+          stepOutput = {
+            dispatched: true,
+            channel: 'Webhook Dispatcher',
+            target: webhook,
+            timestamp: new Date().toISOString()
+          };
         } else if (node.category === 'database') {
-          await new Promise(r => setTimeout(r, 450));
-          stepOutput = { rowCount: 1, executedQuery: node.config.sqlQuery || 'SELECT 1;' };
+          await new Promise(r => setTimeout(r, 400));
+          const query = node.config.sqlQuery || 'SELECT 1;';
+          stepOutput = {
+            rowCount: 1,
+            executedQuery: query,
+            dbStatus: 'CONNECTED',
+            executedAt: new Date().toISOString()
+          };
         } else {
-          await new Promise(r => setTimeout(r, 350));
-          stepOutput = { success: true };
+          await new Promise(r => setTimeout(r, 300));
+          stepOutput = { success: true, timestamp: new Date().toISOString() };
         }
 
         const duration = Date.now() - stepStart;
@@ -477,22 +564,56 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
           executionDurationMs: duration
         } : n));
 
-        logEntry(`✓ [${node.name}] completed successfully in ${duration}ms.`);
+        const record: StepExecutionRecord = {
+          stepIndex: i + 1,
+          nodeId: node.id,
+          nodeName: node.name,
+          category: node.category,
+          status: 'SUCCESS',
+          durationMs: duration,
+          timestamp: new Date().toLocaleTimeString(),
+          inputConfig: { ...node.config },
+          outputPayload: stepOutput
+        };
+        accumulatedRecords.push(record);
+        setStepExecutions([...accumulatedRecords]);
+        if (!inspectedStepId) setInspectedStepId(node.id);
+
+        logEntry(`✓ Step ${i + 1} [${node.name}] completed in ${duration}ms.`);
       } catch (stepErr: any) {
         const duration = Date.now() - stepStart;
+        const errMsg = stepErr?.message || 'Execution error encountered.';
+
         setNodes(prev => prev.map(n => n.id === node.id ? {
           ...n,
           status: 'ERROR',
-          error: stepErr?.message || 'Execution failed',
+          error: errMsg,
           executionDurationMs: duration
         } : n));
-        logEntry(`✗ Error in [${node.name}]: ${stepErr?.message || 'Unknown error'}`);
+
+        const record: StepExecutionRecord = {
+          stepIndex: i + 1,
+          nodeId: node.id,
+          nodeName: node.name,
+          category: node.category,
+          status: 'ERROR',
+          durationMs: duration,
+          timestamp: new Date().toLocaleTimeString(),
+          inputConfig: { ...node.config },
+          error: errMsg
+        };
+        accumulatedRecords.push(record);
+        setStepExecutions([...accumulatedRecords]);
+        setInspectedStepId(node.id);
+        setActiveInspectorTab('errors');
+
+        logEntry(`✗ Error in Step ${i + 1} [${node.name}]: ${errMsg}`);
         break;
       }
     }
 
     setIsExecutingWorkflow(false);
-    logEntry(`🎉 Workflow execution finished.`);
+    logEntry(`🎉 Workflow execution run completed.`);
     onAddLog({
       timestamp: new Date().toLocaleTimeString(),
       type: 'SUCCESS',
@@ -645,22 +766,25 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
       {/* 2. Main Visual Canvas + Configuration Split View */}
       <div className="flex-1 flex overflow-hidden relative">
         
-        {/* Infinite Grid Canvas Area */}
+        {/* Infinite Grid Canvas Area with Smooth Pan & Horizontal/Vertical Scrolling */}
         <div
           ref={canvasRef}
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
           onClick={() => { setSelectedNodeId(null); setIsConnecting(null); }}
-          className={`flex-1 relative overflow-hidden cursor-crosshair transition-colors ${
+          className={`flex-1 relative overflow-auto cursor-crosshair transition-colors scrollbar-thin ${
             isLight ? 'bg-slate-50' : 'bg-[#0e0e11]'
           }`}
-          style={{
-            backgroundImage: isLight
-              ? 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)'
-              : 'radial-gradient(circle, #27272a 1px, transparent 1px)',
-            backgroundSize: '24px 24px'
-          }}
         >
+          <div
+            className="relative min-w-[1600px] min-h-[900px] w-full h-full"
+            style={{
+              backgroundImage: isLight
+                ? 'radial-gradient(circle, #cbd5e1 1px, transparent 1px)'
+                : 'radial-gradient(circle, #27272a 1px, transparent 1px)',
+              backgroundSize: '24px 24px'
+            }}
+          >
           {/* Connection Lines (SVG Bezier Curves) */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none z-0">
             {connections.map(conn => {
@@ -795,6 +919,7 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
               </div>
             );
           })}
+          </div>
         </div>
 
         {/* 3. Node Configuration Drawer (Right Side) */}
@@ -973,20 +1098,69 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
                 </>
               )}
 
-              {/* Step Output Inspection */}
-              {selectedNode.outputData && (
-                <div className="pt-2 border-t border-outline/10">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] uppercase font-bold text-emerald-400">Step Output Data</span>
-                    <span className="text-[9px] text-on-surface-variant">{selectedNode.executionDurationMs}ms</span>
-                  </div>
-                  <pre className={`p-2 rounded-lg text-[10px] overflow-x-auto max-h-40 border ${
-                    isLight ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-black/40 border-white/10 text-emerald-300'
+              {/* Execution Status, Errors & Output Telemetry */}
+              <div className="pt-3 border-t border-outline/10 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] uppercase font-bold text-on-surface-variant flex items-center gap-1">
+                    <Zap className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+                    Node Execution Status
+                  </span>
+                  <span className={`px-2 py-0.5 rounded text-[9px] font-mono font-bold uppercase tracking-wider border ${
+                    selectedNode.status === 'SUCCESS' ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30' :
+                    selectedNode.status === 'ERROR' ? 'bg-rose-500/15 text-rose-400 border-rose-500/30' :
+                    selectedNode.status === 'RUNNING' ? 'bg-purple-500/15 text-purple-400 border-purple-500/30 animate-pulse' :
+                    'bg-slate-500/10 text-slate-400 border-slate-500/20'
                   }`}>
-                    <code>{JSON.stringify(selectedNode.outputData, null, 2)}</code>
-                  </pre>
+                    {selectedNode.status} {selectedNode.executionDurationMs !== undefined ? `(${selectedNode.executionDurationMs}ms)` : ''}
+                  </span>
                 </div>
-              )}
+
+                {/* Prominent Error Trace Banner */}
+                {selectedNode.error && (
+                  <div className="p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-300 space-y-1.5 font-mono text-xs">
+                    <div className="flex items-center gap-1.5 font-bold text-rose-400">
+                      <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+                      <span>Execution Error Encountered</span>
+                    </div>
+                    <p className="text-[11px] select-all bg-black/30 p-2 rounded-lg border border-rose-500/25 text-rose-200 leading-relaxed font-mono">
+                      {selectedNode.error}
+                    </p>
+                    <div className="text-[10px] text-rose-300/80 flex items-center gap-1 pt-1">
+                      <HelpCircle className="w-3.5 h-3.5 shrink-0" />
+                      <span>Check endpoint configuration, network route, or HTTP headers.</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Step Output Inspection */}
+                {selectedNode.outputData && (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase font-bold text-emerald-400 flex items-center gap-1">
+                        <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                        Step Output Payload
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(selectedNode.outputData, null, 2));
+                          setCopiedKey(`node-${selectedNode.id}`);
+                          setTimeout(() => setCopiedKey(null), 2000);
+                        }}
+                        className="text-[10px] font-mono text-sky-400 hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        {copiedKey === `node-${selectedNode.id}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                        <span>{copiedKey === `node-${selectedNode.id}` ? 'Copied' : 'Copy JSON'}</span>
+                      </button>
+                    </div>
+                    <pre className={`p-2.5 rounded-xl text-[10px] overflow-x-auto max-h-48 border select-all scrollbar-thin ${
+                      isLight ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-black/40 border-white/10 text-emerald-300'
+                    }`}>
+                      <code>{JSON.stringify(selectedNode.outputData, null, 2)}</code>
+                    </pre>
+                  </div>
+                )}
+              </div>
 
               {/* Delete Node Button */}
               <div className="pt-4 border-t border-outline/10">
@@ -1012,38 +1186,307 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
 
       </div>
 
-      {/* 4. Execution Inspector Drawer (Bottom Sheet) */}
+      {/* 4. Comprehensive Workflow Execution & Diagnostics Console (3-Tab n8n-style Inspector) */}
       {isExecutionDrawerOpen && (
-        <div className={`h-48 border-t flex flex-col shrink-0 z-30 transition-all ${
+        <div className={`h-64 sm:h-72 border-t flex flex-col shrink-0 z-30 transition-all ${
           isLight ? 'bg-white border-slate-200' : 'bg-[#121215] border-outline/20'
         }`}>
-          <div className="p-2.5 border-b border-inherit flex items-center justify-between text-xs font-mono">
+          {/* Header Bar with Tabs */}
+          <div className="px-3 py-2 border-b border-inherit flex items-center justify-between gap-2 text-xs font-mono shrink-0">
             <div className="flex items-center gap-2">
-              <Zap className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
-              <span className="font-bold">Workflow Live Execution Console</span>
-              <span className="text-[10px] text-on-surface-variant font-mono">
-                {isExecutingWorkflow ? 'Executing nodes...' : 'Ready'}
-              </span>
+              <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0">
+                <Zap className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+              </div>
+              <span className="font-bold hidden sm:inline text-on-surface">Execution Console:</span>
+
+              {/* Console Tabs */}
+              <div className={`flex rounded-lg p-0.5 border text-[11px] ${
+                isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => setActiveInspectorTab('console')}
+                  className={`px-2.5 py-1 rounded-md font-mono flex items-center gap-1.5 cursor-pointer transition-all ${
+                    activeInspectorTab === 'console'
+                      ? isLight
+                        ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'
+                        : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  <Terminal className="w-3 h-3 shrink-0" />
+                  <span>Stream ({executionLogs.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveInspectorTab('inspector')}
+                  className={`px-2.5 py-1 rounded-md font-mono flex items-center gap-1.5 cursor-pointer transition-all ${
+                    activeInspectorTab === 'inspector'
+                      ? isLight
+                        ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'
+                        : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  <FileCode className="w-3 h-3 shrink-0" />
+                  <span>Step Outputs ({stepExecutions.length})</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setActiveInspectorTab('errors')}
+                  className={`px-2.5 py-1 rounded-md font-mono flex items-center gap-1.5 cursor-pointer transition-all ${
+                    activeInspectorTab === 'errors'
+                      ? isLight
+                        ? 'bg-rose-50 text-rose-700 font-bold shadow-sm border border-rose-300'
+                        : 'bg-rose-500/20 text-rose-400 font-bold border border-rose-500/40'
+                      : stepExecutions.some(s => s.status === 'ERROR')
+                        ? 'text-rose-400 font-bold'
+                        : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  <Bug className="w-3 h-3 shrink-0" />
+                  <span>Errors ({stepExecutions.filter(s => s.status === 'ERROR').length})</span>
+                </button>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => setIsExecutionDrawerOpen(false)}
-              className="p-1 rounded text-on-surface-variant hover:text-on-surface cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5 shrink-0" />
-            </button>
+
+            <div className="flex items-center gap-2">
+              <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold ${
+                isExecutingWorkflow
+                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/40 animate-pulse'
+                  : stepExecutions.some(s => s.status === 'ERROR')
+                    ? 'bg-rose-500/15 text-rose-400 border border-rose-500/30'
+                    : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+              }`}>
+                {isExecutingWorkflow ? '⚡ EXECUTING PIPELINE...' : stepExecutions.some(s => s.status === 'ERROR') ? '⚠️ STEP FAILED' : '✓ IDLE / READY'}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => setIsExecutionDrawerOpen(false)}
+                className="p-1 rounded text-on-surface-variant hover:text-on-surface cursor-pointer"
+                title="Close Execution Drawer"
+              >
+                <X className="w-4 h-4 shrink-0" />
+              </button>
+            </div>
           </div>
-          <div className="p-3 flex-1 overflow-y-auto font-mono text-[11px] space-y-1 scrollbar-thin">
-            {executionLogs.length === 0 ? (
-              <span className="text-on-surface-variant opacity-60">Click "Execute Workflow" above to run the DAG pipeline.</span>
-            ) : (
-              executionLogs.map((log, idx) => (
-                <div key={idx} className="text-on-surface leading-relaxed">
-                  {log}
+
+          {/* Tab 1: Live Console Log Stream */}
+          {activeInspectorTab === 'console' && (
+            <div className="p-3 flex-1 overflow-y-auto font-mono text-[11px] space-y-1 scrollbar-thin select-all">
+              {executionLogs.length === 0 ? (
+                <div className="text-on-surface-variant opacity-60 flex items-center gap-2 py-4 justify-center">
+                  <Play className="w-4 h-4 shrink-0" />
+                  <span>Click "Execute Workflow" above to start live DAG pipeline execution.</span>
                 </div>
-              ))
-            )}
-          </div>
+              ) : (
+                executionLogs.map((log, idx) => (
+                  <div key={idx} className={`leading-relaxed font-mono ${
+                    log.includes('✓') ? 'text-emerald-400' :
+                    log.includes('✗') ? 'text-rose-400 font-bold' :
+                    log.includes('⚠️') ? 'text-amber-400' :
+                    log.includes('▶') ? 'text-sky-400' :
+                    'text-on-surface'
+                  }`}>
+                    {log}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Tab 2: Step Outputs & Payload Inspector */}
+          {activeInspectorTab === 'inspector' && (
+            <div className="flex-1 flex overflow-hidden">
+              {/* Left Column: Step List */}
+              <div className={`w-56 sm:w-64 border-r overflow-y-auto p-2 space-y-1 scrollbar-thin shrink-0 ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-black/20 border-white/5'
+              }`}>
+                {stepExecutions.length === 0 ? (
+                  <div className="text-center py-6 text-[10px] text-on-surface-variant font-mono">
+                    No steps executed yet. Run workflow to inspect data.
+                  </div>
+                ) : (
+                  stepExecutions.map(step => {
+                    const isSelected = (inspectedStepId || stepExecutions[0]?.nodeId) === step.nodeId;
+                    return (
+                      <button
+                        key={step.nodeId}
+                        type="button"
+                        onClick={() => setInspectedStepId(step.nodeId)}
+                        className={`w-full p-2 rounded-lg text-left font-mono transition-all border flex items-center justify-between gap-1.5 cursor-pointer ${
+                          isSelected
+                            ? isLight
+                              ? 'bg-white border-sky-400 text-sky-800 shadow-sm'
+                              : 'bg-[#00dbe7]/15 border-[#00dbe7]/40 text-[#74f5ff]'
+                            : isLight
+                              ? 'bg-white/60 hover:bg-white border-slate-200 text-slate-700'
+                              : 'bg-white/5 hover:bg-white/10 border-white/5 text-on-surface-variant'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {step.status === 'SUCCESS' ? (
+                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                          ) : (
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                          )}
+                          <div className="min-w-0">
+                            <div className="text-[11px] font-bold truncate leading-tight">{step.nodeName}</div>
+                            <div className="text-[9px] opacity-60 uppercase">{step.category}</div>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-mono shrink-0 opacity-80">{step.durationMs}ms</span>
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Right Column: Step Input & Output Data */}
+              <div className="flex-1 overflow-y-auto p-3 space-y-3 font-mono text-xs scrollbar-thin">
+                {(() => {
+                  const activeStep = stepExecutions.find(s => s.nodeId === (inspectedStepId || stepExecutions[0]?.nodeId));
+                  if (!activeStep) {
+                    return (
+                      <div className="text-center py-8 text-on-surface-variant font-mono text-xs">
+                        Select an executed step from the left to inspect its input config and output payload.
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between border-b border-inherit pb-2">
+                        <div>
+                          <span className="font-bold text-sm text-on-surface">{activeStep.nodeName}</span>
+                          <span className="text-[10px] text-on-surface-variant ml-2 uppercase font-mono">({activeStep.category})</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-mono opacity-80">{activeStep.durationMs}ms latency</span>
+                          {activeStep.outputPayload && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                navigator.clipboard.writeText(JSON.stringify(activeStep.outputPayload, null, 2));
+                                setCopiedKey(`step-${activeStep.nodeId}`);
+                                setTimeout(() => setCopiedKey(null), 2000);
+                              }}
+                              className="text-[10px] font-mono text-sky-400 hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              {copiedKey === `step-${activeStep.nodeId}` ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                              <span>{copiedKey === `step-${activeStep.nodeId}` ? 'Copied' : 'Copy Output JSON'}</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Input Parameters */}
+                      <div>
+                        <div className="text-[10px] uppercase font-bold text-on-surface-variant mb-1">Step Configuration (Input)</div>
+                        <pre className={`p-2 rounded-lg text-[10px] overflow-x-auto border select-all ${
+                          isLight ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-black/30 border-white/10 text-on-surface-variant'
+                        }`}>
+                          <code>{JSON.stringify(activeStep.inputConfig, null, 2)}</code>
+                        </pre>
+                      </div>
+
+                      {/* Output Payload */}
+                      {activeStep.outputPayload && (
+                        <div>
+                          <div className="text-[10px] uppercase font-bold text-emerald-400 mb-1">Execution Response Payload (Output)</div>
+                          <pre className={`p-2.5 rounded-lg text-[10px] overflow-x-auto border select-all ${
+                            isLight ? 'bg-slate-100 border-slate-200 text-slate-800' : 'bg-black/40 border-white/10 text-emerald-300'
+                          }`}>
+                            <code>{JSON.stringify(activeStep.outputPayload, null, 2)}</code>
+                          </pre>
+                        </div>
+                      )}
+
+                      {/* Error if failed */}
+                      {activeStep.error && (
+                        <div className="p-2.5 rounded-lg border border-rose-500/30 bg-rose-500/10 text-rose-300 text-xs">
+                          <div className="font-bold flex items-center gap-1 mb-1">
+                            <AlertTriangle className="w-3.5 h-3.5 text-rose-400" />
+                            <span>Step Failure Details</span>
+                          </div>
+                          <p className="font-mono text-[11px] select-all">{activeStep.error}</p>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* Tab 3: Errors & Diagnostics */}
+          {activeInspectorTab === 'errors' && (
+            <div className="p-3 flex-1 overflow-y-auto space-y-2 font-mono text-xs scrollbar-thin">
+              {stepExecutions.filter(s => s.status === 'ERROR').length === 0 ? (
+                <div className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-center space-y-1">
+                  <div className="flex items-center justify-center gap-1.5 font-bold">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>No Execution Errors Detected</span>
+                  </div>
+                  <p className="text-[11px] text-emerald-300/80">
+                    All executed workflow steps completed with status SUCCESS.
+                  </p>
+                </div>
+              ) : (
+                stepExecutions.filter(s => s.status === 'ERROR').map((errStep, idx) => (
+                  <div key={idx} className="p-3 rounded-xl border border-rose-500/40 bg-rose-500/10 text-rose-200 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                        <span className="font-bold text-sm text-rose-300">
+                          Step {errStep.stepIndex}: {errStep.nodeName} ({errStep.category.toUpperCase()})
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-rose-400 font-mono">Failed in {errStep.durationMs}ms</span>
+                    </div>
+
+                    <div className="p-2 rounded bg-black/40 border border-rose-500/30 text-[11px] font-mono select-all">
+                      {errStep.error || 'Execution failed.'}
+                    </div>
+
+                    <div className="text-[10px] text-rose-300/80 space-y-0.5">
+                      <p className="font-bold">Troubleshooting Suggestions:</p>
+                      <ul className="list-disc list-inside space-y-0.5 pl-1 opacity-90">
+                        {errStep.category === 'http' && (
+                          <>
+                            <li>Verify endpoint URL is online and reachable from the server.</li>
+                            <li>Ensure authorization token header is valid and not expired.</li>
+                            <li>Check CORS policies if calling an external browser-restricted API.</li>
+                          </>
+                        )}
+                        {errStep.category === 'ai' && (
+                          <>
+                            <li>Confirm local Ollama inference service is running on VM 2 (port 11434).</li>
+                            <li>Check if model weights are fully loaded into memory.</li>
+                          </>
+                        )}
+                        {errStep.category === 'database' && (
+                          <>
+                            <li>Check SQL query syntax and table name identifiers.</li>
+                            <li>Confirm PostgreSQL connection pool is active.</li>
+                          </>
+                        )}
+                        {errStep.category === 'condition' && (
+                          <>
+                            <li>Verify the incoming field exists in previous node's output payload.</li>
+                            <li>Confirm comparison operator and target value data types match.</li>
+                          </>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
       )}
 

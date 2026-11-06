@@ -507,7 +507,7 @@ export function registerRoutes(router: Router) {
           ? { text, sampleAudio: effectiveSampleAudio, speakerName: voiceName, rate, pitch, timbrePreference: effectiveGender, gender: effectiveGender }
           : { text, voiceId, rate, pitch, volume, architecture, emotion, cfgStrength, timbrePreference: effectiveGender, gender: effectiveGender };
 
-        let vmResponse: Response | null = null;
+        let vmResponse: globalThis.Response | null = null;
         let lastError: any = null;
 
         // Neural zero-shot cloning on CPU takes 25-60s, allow up to 180s timeout
@@ -614,9 +614,10 @@ export function registerRoutes(router: Router) {
   router.post("/clone-voice", async (req: Request, res: Response) => {
     try {
       const { identifier, role } = getUserIdentifierAndRole(req);
-      const { 
+      let { 
         text, 
         sampleAudio, // Base64 audio sample or data URL
+        voiceId,
         referenceText = "", // Standardized phonetic calibration transcript
         speakerName = "User Voice",
         timbrePreference = "auto",
@@ -629,8 +630,20 @@ export function registerRoutes(router: Router) {
         return res.status(400).json({ error: "Text is required for voice cloning." });
       }
 
+      // If sample audio is not in payload but voiceId was provided, retrieve from persistent server vault
+      if (!sampleAudio && voiceId) {
+        const storedSample = getClonedAudioSample(voiceId);
+        if (storedSample) {
+          sampleAudio = `data:${storedSample.mimeType};base64,${storedSample.buffer.toString("base64")}`;
+        }
+        const storedProfile = getClonedVoiceProfile(voiceId);
+        if (storedProfile && (!speakerName || speakerName === "User Voice")) {
+          speakerName = storedProfile.name;
+        }
+      }
+
       if (!sampleAudio) {
-        return res.status(400).json({ error: "A reference audio sample is required for voice cloning." });
+        return res.status(400).json({ error: "A reference audio sample is required for voice cloning. Please record or select a saved voice." });
       }
 
       const quota = getQuotaStatus(identifier, role);
@@ -651,7 +664,7 @@ export function registerRoutes(router: Router) {
       let totalTimeSec = 0;
 
       try {
-        let vmResponse: Response | null = null;
+        let vmResponse: globalThis.Response | null = null;
         let lastError: any = null;
 
         for (let attempt = 1; attempt <= 2; attempt++) {

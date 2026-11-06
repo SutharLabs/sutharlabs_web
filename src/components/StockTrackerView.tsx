@@ -71,6 +71,11 @@ import {
   type IndicatorType,
   type MultiSeriesIndicatorData,
 } from '../plugins/StockTracker/indicators/index.js';
+import {
+  type DetectedPattern,
+  scanChartPatterns,
+  ChartPatternsPanel
+} from '../plugins/StockTracker/patterns/index.js';
 import { TerminalLog, UserPortfolio } from '../types';
 import { IStrategy, StrategySignal, StrategyRuleCondition, StrategyParameter } from '../plugins/StockTracker/strategies/types';
 import { PRESET_STRATEGIES } from '../plugins/StockTracker/strategies/presets';

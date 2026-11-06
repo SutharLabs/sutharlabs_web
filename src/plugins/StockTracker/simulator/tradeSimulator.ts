@@ -1202,7 +1202,7 @@ export async function ensureSimulatorStore(simId: string): Promise<PersistedEODS
 
       // Strict instance segregation: sanitize positions and trades so foreign entries never bleed
 
-      const cleanPositions: EODPosition[] = (Array.isArray(positions) ? positions : []).filter(p => {
+      let cleanPositions: EODPosition[] = (Array.isArray(positions) ? positions : []).filter(p => {
 
         if (!p.simulationId) {
 
@@ -1238,34 +1238,45 @@ export async function ensureSimulatorStore(simId: string): Promise<PersistedEODS
 
       // Liquid Cash must strictly equal: initialCash + totalRealizedPnL - costBasisOfCurrentOpenPositions
 
-      const initialCashVal = row.initialCash ?? 100000;
-
+      const initialCashVal = Math.max(1000, row.initialCash ?? 100000);
       const realizedPnLVal = row.totalRealizedPnL ?? 0;
 
+      // Auto-heal: Purge any non-tradeable index symbols (^NSEI, ^BSESN) or corrupt oversized positions exceeding account capital
+      let cleanedPositionsList: EODPosition[] = [];
+      let hadCorruptPositions = false;
+      for (const p of cleanPositions) {
+        const isIndex = p.symbol.startsWith('^');
+        const posCost = p.totalCost || (p.shares * p.entryPrice) || 0;
+        const isOversized = posCost > (initialCashVal * 1.25);
+        if (isIndex || isOversized) {
+          console.warn(`[Simulator Accounting Auto-Heal] Purging corrupt/oversized position ${p.symbol} (${p.shares} shares, cost ${posCost}) from ${safeSimId}`);
+          hadCorruptPositions = true;
+        } else {
+          cleanedPositionsList.push(p);
+        }
+      }
+
+      if (hadCorruptPositions) {
+        cleanPositions = cleanedPositionsList;
+      }
+
       const openPositionsCostBasis = cleanPositions.reduce((acc, p) => acc + (p.totalCost || (p.shares * p.entryPrice) || 0), 0);
-
-      const auditedCash = parseFloat((initialCashVal + realizedPnLVal - openPositionsCostBasis).toFixed(2));
-
-      
+      // Hard Floor Constraint: Liquid Cash can NEVER be negative!
+      const auditedCash = Math.max(0, parseFloat((initialCashVal + realizedPnLVal - openPositionsCostBasis).toFixed(2)));
 
       let finalCash = row.cash ?? 100000;
-
-      if (Math.abs(finalCash - auditedCash) > 1.0) {
-
-        console.warn(`[Simulator Accounting Audit] Corrected compounded cash for ${safeSimId}: recorded=${finalCash}, audited=${auditedCash}`);
-
+      if (Math.abs(finalCash - auditedCash) > 1.0 || finalCash < 0 || hadCorruptPositions) {
+        console.warn(`[Simulator Accounting Audit] Restored audited cash for ${safeSimId}: recorded=${finalCash}, audited=${auditedCash}`);
         finalCash = auditedCash;
 
-        // Persist healed cash back to database immediately
-
+        // Persist healed cash and clean positions back to database immediately
         prisma.simulationStore.update({
-
           where: { simId: safeSimId },
-
-          data: { cash: auditedCash }
-
+          data: {
+            cash: auditedCash,
+            positions: JSON.stringify(cleanPositions)
+          }
         }).catch(err => console.warn(`[Simulator DB] Error persisting audited cash:`, err));
-
       }
 
 
@@ -2206,22 +2217,17 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
   if (options.watchlistSymbols && options.watchlistSymbols.length > 0) {
 
-    options.watchlistSymbols.forEach(s => trackedSymbols.push({ symbol: s, market: detectMarketRegion(s) }));
+    options.watchlistSymbols.filter(s => !s.startsWith('^')).forEach(s => trackedSymbols.push({ symbol: s, market: detectMarketRegion(s) }));
 
   } else {
 
     const marketUniverse = (MARKET_UNIVERSES as any)[targetMarket]?.stocks || [];
-
-    if (marketUniverse.length > 0) {
-
-      marketUniverse.forEach((s: any) => trackedSymbols.push({ symbol: s.symbol, market: targetMarket }));
-
+    const validStocks = marketUniverse.filter((s: any) => !s.symbol.startsWith('^') && s.sector !== 'Benchmark Index' && s.sector !== 'Sectoral Index');
+    if (validStocks.length > 0) {
+      validStocks.forEach((s: any) => trackedSymbols.push({ symbol: s.symbol, market: targetMarket }));
     } else {
-
-      const universeIN = (MARKET_UNIVERSES as any)["IN"]?.stocks || [];
-
+      const universeIN = ((MARKET_UNIVERSES as any)["IN"]?.stocks || []).filter((s: any) => !s.symbol.startsWith('^') && s.sector !== 'Benchmark Index' && s.sector !== 'Sectoral Index');
       universeIN.forEach((s: any) => trackedSymbols.push({ symbol: s.symbol, market: "IN" }));
-
     }
 
   }
@@ -2916,51 +2922,39 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
 
 
-          let shares = Math.floor((store.cash * allocationPct) / entryPrice);
+          // Strict capital ceiling: available cash cannot be negative
+          const availableCash = Math.max(0, store.cash);
+          if (availableCash < entryPrice) continue;
+
+          // Never allocate more than 20% of account or 25% of initial capital to a single position
+          const maxPerTradeCapital = Math.min(
+            availableCash * (allocationPct || 0.20),
+            (store.initialCash || 100000) * 0.25
+          );
+
+          let shares = Math.floor(maxPerTradeCapital / entryPrice);
 
           if (options.positionSizingModel === 'RISK_BASED') {
-
-            const totalEquity = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
-
+            const totalEquity = Math.max(0, store.cash) + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
             const riskPct = options.riskPerTradePct || 1.5;
-
             const dollarRisk = totalEquity * (riskPct / 100);
-
-            const perShareRisk = Math.max(0.01, entryPrice - stopLoss);
-
+            const perShareRisk = Math.max(entryPrice * 0.01, entryPrice - stopLoss);
             const riskShares = Math.floor(dollarRisk / perShareRisk);
-
-            const maxCashShares = Math.floor((store.cash * (allocationPct || 0.20)) / entryPrice);
-
-            shares = Math.min(riskShares, maxCashShares);
-
+            shares = Math.min(shares, riskShares);
           }
 
-
-
-          if (shares > 0 && store.cash >= entryPrice) {
-
+          if (shares > 0 && availableCash >= entryPrice) {
             const region = detectMarketRegion(item.symbol);
-
             const friction = calculateRegionalFriction({
-
               region,
-
               side: "BUY",
-
               price: entryPrice,
-
               quantity: shares
-
             });
 
-
-
             const totalCost = (shares * entryPrice) + friction.totalFriction;
-
             if (store.cash >= totalCost) {
-
-              store.cash -= totalCost;
+              store.cash = Math.max(0, parseFloat((store.cash - totalCost).toFixed(2)));
 
               store.totalFrictionPaid += friction.totalFriction;
 
@@ -3652,51 +3646,39 @@ export async function runEODSimulation(options: EODSimulationOptions = {}): Prom
 
 
 
-          let shares = Math.floor((store.cash * allocationPct) / entryPrice);
+          // Strict capital ceiling: available cash cannot be negative
+          const availableCash = Math.max(0, store.cash);
+          if (availableCash < entryPrice) continue;
+
+          // Never allocate more than 20% of account or 25% of initial capital to a single position
+          const maxPerTradeCapital = Math.min(
+            availableCash * (allocationPct || 0.20),
+            (store.initialCash || 100000) * 0.25
+          );
+
+          let shares = Math.floor(maxPerTradeCapital / entryPrice);
 
           if (options.positionSizingModel === 'RISK_BASED') {
-
-            const totalEquity = store.cash + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
-
+            const totalEquity = Math.max(0, store.cash) + store.positions.reduce((acc, p) => acc + (p.shares * p.currentPrice), 0);
             const riskPct = options.riskPerTradePct || 1.5;
-
             const dollarRisk = totalEquity * (riskPct / 100);
-
-            const perShareRisk = Math.max(0.01, entryPrice - stopLoss);
-
+            const perShareRisk = Math.max(entryPrice * 0.01, entryPrice - stopLoss);
             const riskShares = Math.floor(dollarRisk / perShareRisk);
-
-            const maxCashShares = Math.floor((store.cash * (allocationPct || 0.20)) / entryPrice);
-
-            shares = Math.min(riskShares, maxCashShares);
-
+            shares = Math.min(shares, riskShares);
           }
 
-
-
-          if (shares > 0 && store.cash >= entryPrice) {
-
+          if (shares > 0 && availableCash >= entryPrice) {
             const region = detectMarketRegion(normSym);
-
             const friction = calculateRegionalFriction({
-
               region,
-
               side: "BUY",
-
               price: entryPrice,
-
               quantity: shares
-
             });
 
-
-
             const totalCost = (shares * entryPrice) + friction.totalFriction;
-
             if (store.cash >= totalCost) {
-
-              store.cash -= totalCost;
+              store.cash = Math.max(0, parseFloat((store.cash - totalCost).toFixed(2)));
 
               store.totalFrictionPaid += friction.totalFriction;
 

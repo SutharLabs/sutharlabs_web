@@ -83,7 +83,7 @@ export interface StrategySignal {
     catalystSummary: string;
     primaryCatalyst: string;
     circuitBreakerRecommended: boolean;
-    analyzedBy: 'GEMINI_AI' | 'AUTONOMOUS_RULE_ENGINE';
+    analyzedBy: 'GEMINI_AI' | 'AUTONOMOUS_RULE_ENGINE' | 'ORACLE_VM2_FINLLM';
   };
 }
 

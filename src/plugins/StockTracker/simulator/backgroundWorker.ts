@@ -1,4 +1,5 @@
 import { listSimulations, runEODSimulation } from "./tradeSimulator.js";
+import { getPrismaClient } from "../../../../api/_utils.js";
 
 let workerIntervalTimer: NodeJS.Timeout | null = null;
 let isWorkerRunning = false;
@@ -34,7 +35,35 @@ export async function executeAutomationCycle(): Promise<{ processedCount: number
   let errors = 0;
 
   try {
-    const simulations = listSimulations();
+    let simulations = listSimulations();
+
+    // Query Neon PostgreSQL simulation_stores to ensure any saved user instances are automatically discovered
+    try {
+      const prisma = getPrismaClient();
+      const dbStores = await prisma.simulationStore.findMany({
+        where: { simId: { not: "default" } },
+        select: { simId: true, label: true, isPublic: true, owner: true, market: true, productType: true, timeframe: true }
+      });
+      if (dbStores && dbStores.length > 0) {
+        const knownIds = new Set(simulations.map(s => s.id));
+        for (const store of dbStores) {
+          if (!knownIds.has(store.simId)) {
+            simulations.push({
+              id: store.simId,
+              label: store.label || store.simId,
+              isPublic: store.isPublic,
+              owner: store.owner || undefined,
+              market: store.market || "IN",
+              productType: (store.productType || "CNC") as any,
+              timeframe: (store.timeframe || "1d") as any
+            } as any);
+          }
+        }
+      }
+    } catch (dbErr) {
+      // Fallback silently to registry list if DB temporarily unavailable
+    }
+
     if (!simulations || simulations.length === 0) {
       lastCycleResult = { processedCount: 0, errors: 0, note: "No simulations registered." };
       lastCycleTimestamp = new Date().toISOString();
@@ -45,8 +74,8 @@ export async function executeAutomationCycle(): Promise<{ processedCount: number
       try {
         const simId = sim.id;
         await runEODSimulation({
-          simId,
-          replayMode: "SINGLE_STEP"
+          simulationId: simId,
+          isCron: true
         });
         processed += 1;
       } catch (err: any) {

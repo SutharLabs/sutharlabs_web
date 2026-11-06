@@ -458,14 +458,14 @@ Analyze the qualitative catalysts and financial polarity. Respond ONLY with a va
             })
           : [];
 
-        const report = {
+        const report: StockSentimentReport = {
           symbol,
           cleanSymbol,
           score: Math.max(-1.0, Math.min(1.0, Number(parsed.score) || 0.0)),
-          verdict: ['BULLISH', 'BEARISH', 'NEUTRAL'].includes(parsed.verdict) ? parsed.verdict : 'NEUTRAL',
+          verdict: (['BULLISH', 'BEARISH', 'NEUTRAL'].includes(parsed.verdict) ? parsed.verdict : 'NEUTRAL') as 'BULLISH' | 'BEARISH' | 'NEUTRAL',
           confidence: Math.max(0.1, Math.min(1.0, Number(parsed.confidence) || 0.8)),
           catalystSummary: parsed.catalystSummary || `Oracle VM 2 FinLLM evaluated news catalysts for ${cleanSymbol}.`,
-          primaryCatalyst: parsed.primaryCatalyst || 'GENERAL',
+          primaryCatalyst: (parsed.primaryCatalyst || 'GENERAL') as NewsCatalystType,
           circuitBreakerRecommended: Boolean(parsed.circuitBreakerRecommended),
           circuitBreakerReason: parsed.circuitBreakerReason || undefined,
           analyzedBy: 'ORACLE_VM2_FINLLM',

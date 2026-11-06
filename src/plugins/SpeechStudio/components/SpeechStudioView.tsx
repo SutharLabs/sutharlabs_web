@@ -599,6 +599,28 @@ export default function SpeechStudioView({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmClearHistory, setConfirmClearHistory] = useState<boolean>(false);
 
+  const copyToClipboard = (text: string, key: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const estimateVoiceGenderFromBuffer = (buffer: AudioBuffer): 'male' | 'female' => {
+    try {
+      const data = buffer.getChannelData(0);
+      let zeroCrossings = 0;
+      for (let i = 1; i < data.length; i++) {
+        if ((data[i] >= 0 && data[i - 1] < 0) || (data[i] < 0 && data[i - 1] >= 0)) {
+          zeroCrossings++;
+        }
+      }
+      const approxFreq = (zeroCrossings * buffer.sampleRate) / (2 * data.length);
+      return approxFreq > 165 ? 'female' : 'male';
+    } catch {
+      return 'male';
+    }
+  };
+
   // Cleanup audio URLs and streams on unmount
   useEffect(() => {
     return () => {
@@ -1287,7 +1309,7 @@ export default function SpeechStudioView({
           if (isSilent) {
             onAddLog({
               timestamp: new Date().toLocaleTimeString(),
-              type: 'WARNING',
+              type: 'ALERT',
               message: `⚠️ SILENCE DETECTED: Mic captured ${(wavBlob.size / 1024).toFixed(1)} KB but peak amplitude was ${peakPercent}% (${peakDb} dBFS). Please check Windows microphone input volume.`
             });
           } else {
@@ -1499,6 +1521,7 @@ export default function SpeechStudioView({
       const clonePayload = {
         text,
         sampleAudio: effectiveSample,
+        voiceId: activeProfileId || undefined,
         referenceText: referenceTranscript,
         speakerName: clonedSpeakerName,
         timbrePreference,
@@ -2445,17 +2468,23 @@ export default function SpeechStudioView({
 
                   {/* Voice Selection / Library Source Switcher */}
                   {clonedProfiles.length > 0 && (
-                    <div className={`p-3 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5 transition-all ${
+                    <div className={`p-3 rounded-xl border flex flex-col gap-2.5 transition-all ${
                       isLight ? 'bg-purple-50/70 border-purple-200' : 'bg-purple-500/10 border-purple-500/30'
                     }`}>
-                      <div className="flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
-                        <div>
-                          <div className="text-xs font-bold text-on-surface">Saved Voice Library ({clonedProfiles.length})</div>
-                          <div className="text-[10px] text-on-surface-variant font-mono">Select a saved voice or capture a new one below</div>
+                      <div className="flex items-center gap-2.5 min-w-0">
+                        <div className="w-8 h-8 rounded-lg bg-purple-500/15 border border-purple-500/30 flex items-center justify-center shrink-0">
+                          <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-bold text-on-surface whitespace-nowrap">
+                            Saved Voice Library ({clonedProfiles.length})
+                          </div>
+                          <div className="text-[10px] text-on-surface-variant font-mono truncate">
+                            Select a saved voice or capture a new one below
+                          </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1.5 w-full sm:w-auto">
+                      <div className="w-full">
                         <select
                           value={activeProfileId || ''}
                           onChange={(e) => {
@@ -2483,7 +2512,7 @@ export default function SpeechStudioView({
                               }
                             }
                           }}
-                          className={`h-8 px-2.5 rounded-lg text-xs font-mono font-bold border transition-colors cursor-pointer w-full sm:w-auto ${
+                          className={`w-full h-8 px-2.5 rounded-lg text-xs font-mono font-bold border transition-colors cursor-pointer ${
                             isLight ? 'bg-white border-purple-300 text-purple-900' : 'bg-[#181220] border-purple-500/40 text-purple-300'
                           }`}
                         >
