@@ -537,7 +537,7 @@ export default function SpeechStudioView({
 
   // New Voice Profile Ingestion Form State
   const [profileName, setProfileName] = useState<string>('Custom Studio Voice');
-  const [profileGender, setProfileGender] = useState<'female' | 'male' | 'neutral'>('neutral');
+  const [profileGender, setProfileGender] = useState<'female' | 'male' | 'neutral'>('male');
   const [profileLang, setProfileLang] = useState<string>('en-US');
   const [profileEmotion, setProfileEmotion] = useState<string>('Warm & Authoritative');
   const [profileDesc, setProfileDesc] = useState<string>('');
@@ -969,6 +969,8 @@ export default function SpeechStudioView({
         architecture: isCloned ? 'f5-tts' : selectedArchitecture,
         emotion: selectedEmotion,
         cfgStrength,
+        gender: activeCloned?.gender || (activeVoice as any).gender || 'male',
+        timbrePreference: activeCloned?.gender || (activeVoice as any).gender || 'male',
         referenceAudio: shouldSendClientAudio ? (activeVoice as any).referenceAudio : undefined
       };
 
@@ -1241,6 +1243,8 @@ export default function SpeechStudioView({
           const wavBlob = audioBufferToWavBlob(decodedBuffer);
           const blobUrl = URL.createObjectURL(wavBlob);
           setClonedSampleBlobUrl(blobUrl);
+          const autoGender = estimateVoiceGenderFromBuffer(decodedBuffer);
+          setProfileGender(autoGender);
 
           // Convert WAV to base64 Data URL for server transmission & storage
           const reader = new FileReader();

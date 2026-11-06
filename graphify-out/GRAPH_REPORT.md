@@ -1,17 +1,17 @@
-# Graph Report - website  (2026-11-05)
+# Graph Report - website  (2026-11-06)
 
 ## Corpus Check
-- 165 files · ~338,923 words
+- 165 files · ~339,047 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 7 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
 ## Summary
-- 1125 nodes · 2784 edges · 58 communities (53 shown, 5 thin omitted)
+- 1126 nodes · 2786 edges · 59 communities (52 shown, 7 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 18 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `b7c5777f`
+- Built from commit: `9e43396e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -22,14 +22,14 @@
 - indicatorEngine.ts
 - dependencies
 - StockTracker/routes.ts
-- MarkdownStudio.tsx
+- serverRegistry.ts
 - clientRegistry.ts
 - fetcher.ts
 - package.json
-- vite
+- StorageVaultView.tsx
 - sentimentEngine.ts
 - documentParsers.ts
-- DocNexusStudio.tsx
+- SpreadsheetStudio.tsx
 - TelemetryLoggerService
 - _utils.ts
 - databaseSyncService.ts
@@ -37,14 +37,14 @@
 - getPrismaClient
 - compilerOptions
 - LandingPage.tsx
-- _utils.ts
+- startServer
 - StockTracker/manifest.json
 - StockTrackerView.tsx
 - BugReportModal.tsx
 - DocNexusDocument
 - AdminAIChatView.tsx
 - telemetryService.ts
-- WorkspacePluginStore.tsx
+- @google/genai
 - Accounting/manifest.json
 - backtest/engine.ts
 - DocNexus/manifest.json
@@ -53,9 +53,9 @@
 - SlideDeckStudio.tsx
 - seed.ts
 - serverRegistry.ts
-- api/server.ts
+- DocNexus/index.ts
 - scripts
-- ManageDatabaseView.tsx
+- WorkspacePluginStore.tsx
 - ImageStudioView.tsx
 - DocNexusStudio
 - server.ts
@@ -64,14 +64,15 @@
 - dotenv
 - SpeechStudioView.tsx
 - vercel.json
+- multer
 - ImageStudio/manifest.json
 - deploy.sh
-- technicalindicators
+- @types/pg@^8.21.0
 - audioSynth.ts
 - strategies/types.ts
 - SpeechStudio/index.ts
 - StockTrackerView
-- PluginEngine
+- ref_fs
 - OpenLocalWorkspaceModal.tsx
 
 ## God Nodes (most connected - your core abstractions)
@@ -89,19 +90,19 @@
 ## Surprising Connections (you probably didn't know these)
 - `startServer()` --indirect_call--> `requireAdmin()`  [INFERRED]
   server.ts → src/middleware/auth.ts
+- `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
+  server.ts → src/middleware/auth.ts
 - `startServer()` --indirect_call--> `errorHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
 - `startServer()` --indirect_call--> `notFoundHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
-- `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
-  server.ts → src/middleware/auth.ts
 - `startServer()` --calls--> `PluginEngine`  [EXTRACTED]
   server.ts → src/plugins/PluginEngine.ts
 
 ## Import Cycles
 - 2-file cycle: `src/components/LandingPage.tsx -> src/components/ProjectBrowserMockup.tsx -> src/components/LandingPage.tsx`
 
-## Communities (58 total, 5 thin omitted)
+## Communities (59 total, 7 thin omitted)
 
 ### Community 0 - "react"
 Cohesion: 0.05
@@ -112,40 +113,40 @@ Cohesion: 0.09
 Nodes (30): react-router-dom@^7.15.1, react-router-dom, ADMIN_TOOLS, ALL_TABS, App(), INSTALLED_PLUGINS, PasswordResetModal(), ROUTE_MAP (+22 more)
 
 ### Community 2 - "TerminalLog"
-Cohesion: 0.07
-Nodes (43): AccountingViewProps, AdminAIChatViewProps, AdminConsoleProps, AdminConsoleView(), SystemTelemetry, CollapsibleLogDrawer(), CollapsibleLogDrawerProps, FlowDesignerViewProps (+35 more)
+Cohesion: 0.08
+Nodes (33): AccountingViewProps, AdminConsoleProps, AdminConsoleView(), SystemTelemetry, CollapsibleLogDrawer(), CollapsibleLogDrawerProps, FlowDesignerViewProps, initialNodes (+25 more)
 
 ### Community 3 - "indicatorEngine.ts"
-Cohesion: 0.13
-Nodes (25): lightweight-charts@^5.2.1, lightweight-charts, ChartLegend(), ChartLegendProps, HoveredBarData, calculateDonchian(), calculateIndicatorData(), calculateKeltner() (+17 more)
+Cohesion: 0.10
+Nodes (31): lightweight-charts, lucide-react, MarkdownStudio(), MarkdownStudioProps, COMMAND_LIST, CommandItem, SlashCommandMenu(), SlashCommandMenuProps (+23 more)
 
 ### Community 4 - "dependencies"
 Cohesion: 0.07
-Nodes (30): dependencies, express@^4.21.2, google-auth-library@^10.9.0, @google/genai@^2.4.0, lucide-react@^0.546.0, motion@^12.23.24, multer@^2.1.1, @neondatabase/serverless@^1.1.0 (+22 more)
+Nodes (30): dependencies, better-sqlite3@^12.10.0, lightweight-charts@^5.2.1, lucide-react@^0.546.0, motion@^12.23.24, @neondatabase/serverless@^1.1.0, pdfjs-dist@^6.4.299, @prisma/adapter-neon@^7.9.1 (+22 more)
 
 ### Community 5 - "StockTracker/routes.ts"
 Cohesion: 0.07
-Nodes (94): getPrismaClient(), main(), optionalAuth(), PluginManifest, AnalysisOptions, formatTickerDisplay(), getAnalysis(), getCurrencySymbol() (+86 more)
+Nodes (92): getPrismaClient(), main(), StockSimulatorPanelProps, optionalAuth(), AnalysisOptions, formatTickerDisplay(), getAnalysis(), getCurrencySymbol() (+84 more)
 
-### Community 6 - "MarkdownStudio.tsx"
-Cohesion: 0.32
-Nodes (6): MarkdownStudio(), MarkdownStudioProps, COMMAND_LIST, CommandItem, SlashCommandMenu(), SlashCommandMenuProps
+### Community 6 - "serverRegistry.ts"
+Cohesion: 0.22
+Nodes (9): manifest, ImageStudioView(), ImageStudioPlugin, manifest, MODEL_SPECS, registerRoutes(), processImageUpscale(), registerAllPluginRoutes() (+1 more)
 
 ### Community 7 - "clientRegistry.ts"
-Cohesion: 0.13
-Nodes (15): FlowDesignerView(), AccountingPlugin, manifest, CLIENT_PLUGIN_REGISTRY, ClientPluginEntry, DocNexusPlugin, manifest, FlowDesignerPlugin (+7 more)
+Cohesion: 0.17
+Nodes (11): FlowDesignerView(), AccountingPlugin, CLIENT_PLUGIN_REGISTRY, ClientPluginEntry, FlowDesignerPlugin, manifest, StockTrackerPlugin, manifest (+3 more)
 
 ### Community 8 - "fetcher.ts"
 Cohesion: 0.30
 Nodes (11): buildRegionalQueries(), CacheEntry, cleanRssText(), decodeHtmlEntities(), fetchGoogleNews(), fetchStockNews(), fetchYahooNews(), NEWS_CACHE (+3 more)
 
 ### Community 9 - "package.json"
-Cohesion: 0.11
-Nodes (25): devDependencies, autoprefixer@^10.4.21, cross-env@^10.1.0, esbuild@^0.25.0, tailwindcss@^4.1.14, tsx@^4.21.0, @types/better-sqlite3@^7.6.13, @types/express@^4.17.21 (+17 more)
+Cohesion: 0.09
+Nodes (30): vite@^6.2.3, devDependencies, autoprefixer@^10.4.21, cross-env@^10.1.0, esbuild@^0.25.0, tailwindcss@^4.1.14, tsx@^4.21.0, @types/better-sqlite3@^7.6.13 (+22 more)
 
-### Community 10 - "vite"
-Cohesion: 0.25
-Nodes (7): @tailwindcss/vite@^4.1.14, vite@^6.2.3, @vitejs/plugin-react@^5.0.4, vite@^6.2.3, @tailwindcss/vite, vite, @vitejs/plugin-react
+### Community 10 - "StorageVaultView.tsx"
+Cohesion: 0.38
+Nodes (10): CATEGORIES, StorageVaultView(), deleteVaultFile(), fetchVaultFiles(), fetchVaultStats(), formatBytes(), getVaultDownloadUrl(), uploadVaultFile() (+2 more)
 
 ### Community 11 - "sentimentEngine.ts"
 Cohesion: 0.18
@@ -155,73 +156,73 @@ Nodes (14): analyzeAutonomousFallback(), BEARISH_LEXICON, BULLISH_LEXICON, calcu
 Cohesion: 0.17
 Nodes (21): SheetColumn, SheetRow, SpreadsheetState, colLettersToNumber(), parseDOCX(), parseExcalidraw(), parseImageToCanvas(), parseJupyterNotebook() (+13 more)
 
-### Community 13 - "DocNexusStudio.tsx"
-Cohesion: 0.23
-Nodes (10): FORMAT_TABS, INITIAL_DOCS, DEFAULT_SHEET, SpreadsheetStudio(), SpreadsheetStudioProps, FORMAT_ICONS, TemplateLibraryModal(), TemplateLibraryModalProps (+2 more)
+### Community 13 - "SpreadsheetStudio.tsx"
+Cohesion: 0.50
+Nodes (3): DEFAULT_SHEET, SpreadsheetStudio(), SpreadsheetStudioProps
 
 ### Community 15 - "_utils.ts"
-Cohesion: 0.23
-Nodes (11): IN_TREE_PLUGINS, packageAllPlugins(), PluginConfig, decryptPluginPackage(), encryptPluginPackage(), getEncryptionKey(), isEncryptedPluginPackage(), isRawZipArchive() (+3 more)
+Cohesion: 0.18
+Nodes (13): generateToken(), SECRET_KEY, IN_TREE_PLUGINS, packageAllPlugins(), PluginConfig, decryptPluginPackage(), encryptPluginPackage(), getEncryptionKey() (+5 more)
 
 ### Community 16 - "databaseSyncService.ts"
-Cohesion: 0.22
-Nodes (14): runCronSync(), DatabaseSyncHistoryEntry, executeDatabaseSync(), getBackupPrismaClient(), getDatabaseStatus(), getSyncHistorySummary(), HISTORY_FILE, inMemoryHistory (+6 more)
+Cohesion: 0.20
+Nodes (15): runCronSync(), DatabaseSyncHistoryEntry, executeDatabaseSync(), exportDatabaseDump(), getBackupPrismaClient(), getDatabaseStatus(), getSyncHistorySummary(), HISTORY_FILE (+7 more)
 
 ### Community 17 - "DocNexus/storage.ts"
 Cohesion: 0.33
 Nodes (14): getValidatedUserEmail(), registerRoutes(), createDefaultUserDocuments(), createDocument(), deleteDocument(), duplicateDocument(), getDocument(), getLegacyDocument() (+6 more)
 
 ### Community 18 - "getPrismaClient"
-Cohesion: 0.16
-Nodes (19): hashPassword(), seedDatabase(), startServer(), BugReportItem, BugReportsStats, BUGS_FILE, createBugReport(), deleteBugReport() (+11 more)
+Cohesion: 0.19
+Nodes (15): BugReportItem, BugReportsStats, BUGS_FILE, createBugReport(), deleteBugReport(), getBugReports(), getLiveTelemetryLogs(), ingestTelemetryLogs() (+7 more)
 
 ### Community 19 - "compilerOptions"
 Cohesion: 0.12
 Nodes (16): compilerOptions, allowImportingTsExtensions, allowJs, experimentalDecorators, isolatedModules, jsx, lib, module (+8 more)
 
 ### Community 20 - "LandingPage.tsx"
-Cohesion: 0.20
-Nodes (14): lucide-react, ALL_PLUGIN_SLIDES, HeroStudioConsole(), HeroStudioConsoleProps, PLUGIN_SLIDES, PluginSlide, getProjectFeedbackDetails(), LandingPage() (+6 more)
+Cohesion: 0.19
+Nodes (14): ALL_PLUGIN_SLIDES, HeroStudioConsole(), HeroStudioConsoleProps, PLUGIN_SLIDES, PluginSlide, getProjectFeedbackDetails(), LandingPage(), PortfolioProject (+6 more)
 
-### Community 21 - "_utils.ts"
-Cohesion: 0.13
-Nodes (10): generateToken(), SECRET_KEY, verifyToken(), AuthenticatedRequest, AuthenticatedUser, requireAdmin(), errorHandler(), notFoundHandler() (+2 more)
+### Community 21 - "startServer"
+Cohesion: 0.19
+Nodes (13): hashPassword(), seedDatabase(), startServer(), errorHandler(), notFoundHandler(), BlobUploadOptions, deleteFromBlob(), fetchJsonBlob() (+5 more)
 
 ### Community 22 - "StockTracker/manifest.json"
 Cohesion: 0.18
 Nodes (10): category, description, iconSymbol, id, main, minEngineVersion, name, packagedAt (+2 more)
 
 ### Community 23 - "StockTrackerView.tsx"
-Cohesion: 0.06
-Nodes (20): StockTrackerAlertModalProps, StockTrackerAlertState, Analysis, Candle, CANDLE_INTERVAL_OPTIONS, CandleInterval, DEFAULT_CANDLE_FOR_SCALE, DEFAULT_UNIVERSES (+12 more)
+Cohesion: 0.07
+Nodes (18): Analysis, Candle, CANDLE_INTERVAL_OPTIONS, CandleInterval, DEFAULT_CANDLE_FOR_SCALE, DEFAULT_UNIVERSES, DEFAULT_WATCHLISTS, INDEX_TICKER_MAP (+10 more)
 
 ### Community 24 - "BugReportModal.tsx"
-Cohesion: 0.11
-Nodes (14): @react-oauth/google@^0.13.5, @react-oauth/google, BugReportModalProps, MODULE_OPTIONS, SEVERITY_LEVELS, ErrorBoundary, Props, State (+6 more)
+Cohesion: 0.12
+Nodes (13): BugReportModal(), BugReportModalProps, MODULE_OPTIONS, SEVERITY_LEVELS, ErrorBoundary, Props, State, EnvironmentSnapshot (+5 more)
 
 ### Community 25 - "DocNexusDocument"
-Cohesion: 0.19
-Nodes (12): CommandPaletteModal(), CommandPaletteModalProps, FORMAT_ICONS, DocExplorerSidebar(), DocExplorerSidebarProps, FILTER_LABELS, FORMAT_CONFIG, ExportModal() (+4 more)
+Cohesion: 0.15
+Nodes (19): CommandPaletteModal(), CommandPaletteModalProps, FORMAT_ICONS, DocExplorerSidebar(), DocExplorerSidebarProps, FILTER_LABELS, FORMAT_CONFIG, FORMAT_TABS (+11 more)
 
 ### Community 26 - "AdminAIChatView.tsx"
-Cohesion: 0.20
-Nodes (14): AdminAIChatView(), init(), INITIAL_PROMPTS, MarkdownMessage(), MarkdownMessageProps, AGENT_PERSONAS, fetchAIHealth(), fetchAIModels() (+6 more)
+Cohesion: 0.13
+Nodes (22): AdminAIChatView(), init(), AdminAIChatViewProps, INITIAL_PROMPTS, MarkdownMessage(), MarkdownMessageProps, AGENT_PERSONAS, fetchAIHealth() (+14 more)
 
 ### Community 27 - "telemetryService.ts"
 Cohesion: 0.25
 Nodes (8): requestLogger(), getCpuSnapshot(), getRequestMetrics(), getSystemTelemetry(), lastCpuSample, recentRequests, recordApiRequest(), RequestSample
 
-### Community 28 - "WorkspacePluginStore.tsx"
-Cohesion: 0.24
-Nodes (10): compareSemverDesc(), DEFAULT_METADATA, InstalledPlugin, isBetaVersion(), PLUGIN_METADATA_REGISTRY, WorkspacePlugin, WorkspacePluginReview, WorkspacePluginStore() (+2 more)
+### Community 28 - "@google/genai"
+Cohesion: 0.20
+Nodes (6): google-auth-library@^10.9.0, @google/genai@^2.4.0, @prisma/adapter-better-sqlite3@^7.8.0, google-auth-library, @google/genai, @prisma/adapter-better-sqlite3
 
 ### Community 29 - "Accounting/manifest.json"
 Cohesion: 0.18
 Nodes (10): category, description, iconSymbol, id, main, minEngineVersion, name, packagedAt (+2 more)
 
 ### Community 30 - "backtest/engine.ts"
-Cohesion: 0.26
-Nodes (12): fetchHistoricalBacktestBars(), RegionalFrictionParams, BacktestEquityPoint, BacktestMetrics, BacktestReport, BacktestRequest, ExecutionFillModel, FrictionBreakdown (+4 more)
+Cohesion: 0.24
+Nodes (13): StockBacktestPanelProps, fetchHistoricalBacktestBars(), RegionalFrictionParams, BacktestEquityPoint, BacktestMetrics, BacktestReport, BacktestRequest, ExecutionFillModel (+5 more)
 
 ### Community 31 - "DocNexus/manifest.json"
 Cohesion: 0.18
@@ -244,20 +245,16 @@ Cohesion: 0.22
 Nodes (9): pg@^8.23.0, @prisma/adapter-pg@^7.9.1, @prisma/client@^7.8.0, pg, @prisma/adapter-pg, @prisma/client, defaultPlugins, hashPassword() (+1 more)
 
 ### Community 36 - "serverRegistry.ts"
-Cohesion: 0.13
-Nodes (17): express, authenticateToken(), authLimiter, generalApiLimiter, RateLimitOptions, RateLimitRecord, stockApiLimiter, getDefaultUserNodes() (+9 more)
-
-### Community 37 - "api/server.ts"
-Cohesion: 0.29
-Nodes (7): BACKEND_TARGET, handler(), ORACLE_BACKEND_URL, @vercel/node@^5.9.7, @vercel/node, app, startPromise
+Cohesion: 0.11
+Nodes (16): express@^4.21.2, express, AuthenticatedRequest, AuthenticatedUser, authenticateToken(), requireAdmin(), authLimiter, generalApiLimiter (+8 more)
 
 ### Community 38 - "scripts"
 Cohesion: 0.20
 Nodes (10): scripts, build, clean, db:cron-sync, dev, dev:watch, lint, package:plugins (+2 more)
 
-### Community 39 - "ManageDatabaseView.tsx"
-Cohesion: 0.14
-Nodes (21): ConfirmModal(), ConfirmModalProps, ModalVariant, DatabaseEndpointInfo, DatabaseStatusResponse, ManageDatabaseProps, ManageDatabaseView(), SYNC_STAGES (+13 more)
+### Community 39 - "WorkspacePluginStore.tsx"
+Cohesion: 0.11
+Nodes (20): ConfirmModal(), ConfirmModalProps, ModalVariant, DatabaseEndpointInfo, DatabaseStatusResponse, ManageDatabaseProps, ManageDatabaseView(), SYNC_STAGES (+12 more)
 
 ### Community 40 - "ImageStudioView.tsx"
 Cohesion: 0.22
@@ -269,7 +266,7 @@ Nodes (11): DocNexusView(), DocNexusViewProps, CanvasStudio(), DocNexusStudio(),
 
 ### Community 42 - "server.ts"
 Cohesion: 0.09
-Nodes (12): defaultPlugins, prisma, upload, BlobUploadOptions, deleteFromBlob(), fetchJsonBlob(), listStoredBlobs(), uploadToBlob() (+4 more)
+Nodes (11): BACKEND_TARGET, handler(), ORACLE_BACKEND_URL, app, defaultPlugins, prisma, startPromise, upload (+3 more)
 
 ### Community 43 - "DocNexus/types.ts"
 Cohesion: 0.16
@@ -285,7 +282,7 @@ Nodes (4): dotenv@^16.4.5, prisma@^7.8.0, dotenv, prisma
 
 ### Community 46 - "SpeechStudioView.tsx"
 Cohesion: 0.12
-Nodes (30): audioBufferToWavBlob(), AudioDiagnostics, CALIBRATION_PROMPTS, CalibrationPromptItem, DEFAULT_ARCHITECTURES, DEFAULT_NEURAL_VOICES, SAMPLE_PROMPTS, SpeechStudioView() (+22 more)
+Nodes (33): verifyToken(), audioBufferToWavBlob(), AudioDiagnostics, CALIBRATION_PROMPTS, CalibrationPromptItem, DEFAULT_ARCHITECTURES, DEFAULT_NEURAL_VOICES, SAMPLE_PROMPTS (+25 more)
 
 ### Community 47 - "vercel.json"
 Cohesion: 0.50
@@ -295,43 +292,43 @@ Nodes (3): buildCommand, outputDirectory, rewrites
 Cohesion: 0.18
 Nodes (10): category, description, iconSymbol, id, main, minEngineVersion, name, packagedAt (+2 more)
 
-### Community 51 - "technicalindicators"
-Cohesion: 0.20
-Nodes (6): better-sqlite3@^12.10.0, @prisma/adapter-neon@^7.9.1, technicalindicators@^3.1.0, better-sqlite3, @prisma/adapter-neon, technicalindicators
-
 ### Community 52 - "audioSynth.ts"
 Cohesion: 0.67
 Nodes (3): createWavBuffer(), generateNeuralAudioWaveform(), SynthesizeOptions
 
 ### Community 53 - "strategies/types.ts"
-Cohesion: 0.15
-Nodes (16): StockBacktestPanelProps, StockScannerPanel(), StockScannerPanelProps, UNIVERSE_OPTIONS, StockSimulatorPanelProps, StockStrategyMarketplaceProps, ScannerCandidate, ScannerFilterOptions (+8 more)
+Cohesion: 0.19
+Nodes (12): StockScannerPanelProps, UNIVERSE_OPTIONS, ScannerCandidate, ScannerFilterOptions, ScannerReport, WebhookAlertPayload, IStrategy, StrategyIndicatorType (+4 more)
 
 ### Community 56 - "StockTrackerView"
-Cohesion: 0.31
-Nodes (9): StockBacktestPanel(), StockSimulatorPanel(), StockStrategyMarketplace(), StockTrackerAlertModal(), createWatchlistItem(), formatRelativeTime(), formatTickerDisplay(), normalizeTicker() (+1 more)
+Cohesion: 0.19
+Nodes (13): StockBacktestPanel(), StockScannerPanel(), StockSimulatorPanel(), StockStrategyMarketplace(), StockStrategyMarketplaceProps, StockTrackerAlertModal(), StockTrackerAlertModalProps, StockTrackerAlertState (+5 more)
+
+### Community 57 - "ref_fs"
+Cohesion: 0.18
+Nodes (4): @vitejs/plugin-react@^5.0.4, @vitejs/plugin-react, PluginEngine, PluginManifest
 
 ### Community 58 - "OpenLocalWorkspaceModal.tsx"
 Cohesion: 0.50
 Nodes (4): OpenLocalWorkspaceModal(), OpenLocalWorkspaceModalProps, readDirectoryHandleRecursively(), walk()
 
 ## Knowledge Gaps
-- **5 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **7 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `react` connect `react` to `App.tsx`, `TerminalLog`, `indicatorEngine.ts`, `dependencies`, `StockTracker/routes.ts`, `MarkdownStudio.tsx`, `clientRegistry.ts`, `package.json`, `DocNexusStudio.tsx`, `LandingPage.tsx`, `StockTrackerView.tsx`, `BugReportModal.tsx`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `backtest/engine.ts`, `SlideDeckStudio.tsx`, `ManageDatabaseView.tsx`, `ImageStudioView.tsx`, `DocNexusStudio`, `DocNexus/types.ts`, `SpeechStudioView.tsx`, `strategies/types.ts`, `OpenLocalWorkspaceModal.tsx`?**
-  _High betweenness centrality (0.201) - this node is a cross-community bridge._
+- **Why does `react` connect `react` to `App.tsx`, `TerminalLog`, `indicatorEngine.ts`, `dependencies`, `StockTracker/routes.ts`, `clientRegistry.ts`, `package.json`, `StorageVaultView.tsx`, `SpreadsheetStudio.tsx`, `LandingPage.tsx`, `StockTrackerView.tsx`, `BugReportModal.tsx`, `DocNexusDocument`, `AdminAIChatView.tsx`, `backtest/engine.ts`, `SlideDeckStudio.tsx`, `WorkspacePluginStore.tsx`, `ImageStudioView.tsx`, `DocNexusStudio`, `DocNexus/types.ts`, `SpeechStudioView.tsx`, `strategies/types.ts`, `StockTrackerView`, `OpenLocalWorkspaceModal.tsx`?**
+  _High betweenness centrality (0.244) - this node is a cross-community bridge._
 - **Are the 2 inferred relationships involving `registerRoutes()` (e.g. with `authenticateToken()` and `optionalAuth()`) actually correct?**
   _`registerRoutes()` has 2 INFERRED edges - model-reasoned connections that need verification._
 - **Should `react` be split into smaller, more focused modules?**
   _Cohesion score 0.052976658798846055 - nodes in this community are weakly interconnected._
-- **Why does `lucide-react` connect `LandingPage.tsx` to `App.tsx`, `TerminalLog`, `indicatorEngine.ts`, `dependencies`, `StockTracker/routes.ts`, `MarkdownStudio.tsx`, `package.json`, `DocNexusStudio.tsx`, `StockTrackerView.tsx`, `BugReportModal.tsx`, `DocNexusDocument`, `AdminAIChatView.tsx`, `WorkspacePluginStore.tsx`, `backtest/engine.ts`, `SlideDeckStudio.tsx`, `ManageDatabaseView.tsx`, `ImageStudioView.tsx`, `DocNexus/types.ts`, `SpeechStudioView.tsx`, `strategies/types.ts`, `OpenLocalWorkspaceModal.tsx`?**
-  _High betweenness centrality (0.085) - this node is a cross-community bridge._
+- **Why does `lucide-react` connect `indicatorEngine.ts` to `App.tsx`, `TerminalLog`, `dependencies`, `StockTracker/routes.ts`, `package.json`, `StorageVaultView.tsx`, `SpreadsheetStudio.tsx`, `LandingPage.tsx`, `StockTrackerView.tsx`, `BugReportModal.tsx`, `DocNexusDocument`, `AdminAIChatView.tsx`, `backtest/engine.ts`, `SlideDeckStudio.tsx`, `WorkspacePluginStore.tsx`, `ImageStudioView.tsx`, `DocNexus/types.ts`, `SpeechStudioView.tsx`, `strategies/types.ts`, `StockTrackerView`, `OpenLocalWorkspaceModal.tsx`?**
+  _High betweenness centrality (0.101) - this node is a cross-community bridge._
 - **Should `App.tsx` be split into smaller, more focused modules?**
-  _Cohesion score 0.09388335704125178 - nodes in this community are weakly interconnected._
-- **Why does `express` connect `serverRegistry.ts` to `react`, `dependencies`, `StockTracker/routes.ts`, `package.json`, `server.ts`, `SpeechStudioView.tsx`, `DocNexus/storage.ts`, `_utils.ts`, `telemetryService.ts`?**
-  _High betweenness centrality (0.085) - this node is a cross-community bridge._
+  _Cohesion score 0.0945945945945946 - nodes in this community are weakly interconnected._
+- **Why does `express` connect `serverRegistry.ts` to `react`, `StockTracker/routes.ts`, `serverRegistry.ts`, `package.json`, `server.ts`, `SpeechStudioView.tsx`, `DocNexus/storage.ts`, `startServer`, `ref_fs`, `telemetryService.ts`?**
+  _High betweenness centrality (0.064) - this node is a cross-community bridge._
 - **Should `TerminalLog` be split into smaller, more focused modules?**
-  _Cohesion score 0.06862745098039216 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.08170731707317073 - nodes in this community are weakly interconnected._

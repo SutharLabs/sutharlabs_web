@@ -248,3 +248,12 @@ export function getClonedAudioSample(profileId: string): { buffer: Buffer; mimeT
   return null;
 }
 
+/**
+ * Retrieve a specific cloned voice profile by ID.
+ */
+export function getClonedVoiceProfile(profileId: string): StoredClonedVoiceProfile | null {
+  if (cachedProfiles === null) {
+    cachedProfiles = loadProfilesFromDisk();
+  }
+  return cachedProfiles.find(p => p.id === profileId) || null;
+}

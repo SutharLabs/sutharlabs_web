@@ -458,20 +458,20 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
       {/* Mobile Navigation Slide-Over Drawer */}
       {isMobileDrawerOpen && (
         <div 
-          className="fixed inset-0 z-50 md:hidden flex"
+          className="fixed inset-0 z-[999] md:hidden flex"
           role="dialog"
           aria-modal="true"
           aria-label="Mobile Navigation Menu"
         >
           {/* Backdrop */}
           <div 
-            className="fixed inset-0 bg-black/70 backdrop-blur-sm transition-opacity duration-200"
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm transition-opacity duration-200 z-[999]"
             onClick={() => setIsMobileDrawerOpen(false)}
             aria-hidden="true"
           />
 
           {/* Drawer Content */}
-          <div className={`relative w-80 max-w-[85vw] flex flex-col h-full shadow-2xl z-10 border-r animate-in slide-in-from-left duration-200 select-none ${
+          <div className={`relative w-80 max-w-[85vw] flex flex-col h-full shadow-2xl z-[1000] border-r animate-in slide-in-from-left duration-200 select-none ${
             theme === 'light'
               ? 'bg-white border-slate-200 text-slate-800'
               : 'bg-[#131315] border-[#3a494b]/30 text-[#e5e1e4]'

@@ -1,7 +1,7 @@
 import { Router, Request, Response } from "express";
 import { verifyToken } from "../../../api/_utils.js";
 import { TTSQuotaStatus, TTSVoiceOption, TTSArchitectureOption, ClonedVoiceProfile } from "./types.js";
-import { getClonedVoiceProfiles, saveClonedVoiceProfile, deleteClonedVoiceProfile, getClonedAudioSample } from "./storage.js";
+import { getClonedVoiceProfiles, saveClonedVoiceProfile, deleteClonedVoiceProfile, getClonedAudioSample, getClonedVoiceProfile } from "./storage.js";
 
 // In-memory rate limiting store (Window: 1 hour)
 interface UserQuotaEntry {
@@ -460,7 +460,7 @@ export function registerRoutes(router: Router) {
         });
       }
 
-      const { referenceAudio } = req.body;
+      const { referenceAudio, gender, timbrePreference } = req.body;
       const isClonedVoice = Boolean(
         referenceAudio ||
         voiceId.startsWith("cloned-") ||
@@ -468,13 +468,27 @@ export function registerRoutes(router: Router) {
         engine === "cloned"
       );
 
-      // If reference audio is missing from payload, retrieve from persistent server storage
+      // If reference audio or voice metadata is missing from payload, retrieve from persistent server storage
       let effectiveSampleAudio = referenceAudio;
-      if (!effectiveSampleAudio && voiceId.startsWith("cloned-")) {
-        const storedSample = getClonedAudioSample(voiceId);
-        if (storedSample) {
-          effectiveSampleAudio = `data:${storedSample.mimeType};base64,${storedSample.buffer.toString("base64")}`;
+      let effectiveGender: string = timbrePreference || gender || "";
+
+      if (voiceId.startsWith("cloned-")) {
+        const storedProfile = getClonedVoiceProfile(voiceId);
+        if (storedProfile) {
+          if (!effectiveGender || effectiveGender === "neutral" || effectiveGender === "auto") {
+            effectiveGender = storedProfile.gender || "male";
+          }
         }
+        if (!effectiveSampleAudio) {
+          const storedSample = getClonedAudioSample(voiceId);
+          if (storedSample) {
+            effectiveSampleAudio = `data:${storedSample.mimeType};base64,${storedSample.buffer.toString("base64")}`;
+          }
+        }
+      }
+
+      if (!effectiveGender || effectiveGender === "neutral" || effectiveGender === "auto") {
+        effectiveGender = "male";
       }
 
       // Synthesize audio using VM 2 Neural Studio daemon
@@ -487,8 +501,8 @@ export function registerRoutes(router: Router) {
           : `${ORACLE_TTS_URL}/api/tts`;
 
         const payload = (isClonedVoice && effectiveSampleAudio)
-          ? { text, sampleAudio: effectiveSampleAudio, speakerName: voiceName, rate, pitch }
-          : { text, voiceId, rate, pitch, volume, architecture, emotion, cfgStrength };
+          ? { text, sampleAudio: effectiveSampleAudio, speakerName: voiceName, rate, pitch, timbrePreference: effectiveGender, gender: effectiveGender }
+          : { text, voiceId, rate, pitch, volume, architecture, emotion, cfgStrength, timbrePreference: effectiveGender, gender: effectiveGender };
 
         let vmResponse: Response | null = null;
         let lastError: any = null;

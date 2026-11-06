@@ -2744,7 +2744,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
       )}
 
       {/* ── 1. COMPACT STREAMLINED TOP CONTROL BAR (RESPONSIVE UNIFIED LAYOUT) ── */}
-      <div className="relative z-50 glass-panel rounded-xl p-2 sm:p-2.5 border border-outline/20 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 bg-surface-container-lowest/80 shadow-sm">
+      <div className="relative z-20 glass-panel rounded-xl p-2 sm:p-2.5 border border-outline/20 flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-2.5 bg-surface-container-lowest/80 shadow-sm">
         
         {/* Left Group: Continuous Active Market Selector, Session Pill, Search Box & Stock Price */}
         <div className="flex items-center gap-1.5 sm:gap-2 flex-1 min-w-0">
@@ -2778,7 +2778,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
           )}
 
           {/* Continuous Search & Ticker Input with Real-Time Suggestions (Fluid Width) */}
-          <div className="relative flex-1 min-w-[120px] max-w-sm sm:max-w-md h-8 z-50">
+          <div className="relative flex-1 min-w-[120px] max-w-sm sm:max-w-md h-8 z-20">
             <div className="relative flex items-center h-full">
               <input
                 value={symbolInput}
@@ -2830,7 +2830,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
             {/* Autocomplete Suggestions Dropdown */}
             {showDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/40 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-[100] overflow-hidden backdrop-blur-2xl max-h-80 overflow-y-auto custom-scrollbar">
+              <div className="absolute top-full left-0 right-0 mt-1.5 bg-surface-container-highest dark:bg-[#12161f] border border-[#00dbe7]/40 rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.6)] z-30 overflow-hidden backdrop-blur-2xl max-h-80 overflow-y-auto custom-scrollbar">
                 {/* Search Category Filter Tabs (Tickertape-style All / Stocks / Indices / ETFs) */}
                 <div className="flex items-center gap-1 p-1.5 border-b border-outline/10 bg-surface-container-low/70 sticky top-0 z-10 backdrop-blur-md">
                   {(['ALL', 'EQUITY', 'INDEX', 'ETF'] as const).map(cat => (
@@ -3301,7 +3301,7 @@ export default function StockTrackerView({ logs, onAddLog, userEmail, userToken,
 
                   {/* High-Fidelity Themed Dropdown Menu (Directly matches Light and Dark Themes) */}
                   {showIntervalMenu && (
-                    <div className="absolute left-0 top-full mt-1.5 w-64 rounded-xl bg-surface-container border border-outline/30 shadow-[0_15px_40px_rgba(0,0,0,0.35)] py-1.5 z-50 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="absolute left-0 top-full mt-1.5 w-64 rounded-xl bg-surface-container border border-outline/30 shadow-[0_15px_40px_rgba(0,0,0,0.35)] py-1.5 z-30 animate-in fade-in zoom-in-95 duration-150">
                       <div className="px-3 py-1.5 text-[10px] uppercase font-bold tracking-wider text-on-surface-variant/70 border-b border-outline/10 flex items-center justify-between">
                         <span>Candle Resolution</span>
                         <span className="text-[#00dbe7] font-mono text-[9px] font-semibold">Live Feed</span>
