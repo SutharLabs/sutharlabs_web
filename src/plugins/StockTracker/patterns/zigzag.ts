@@ -80,3 +80,4 @@ export function extractSwingExtrema(
 
   return alternating;
 }
+

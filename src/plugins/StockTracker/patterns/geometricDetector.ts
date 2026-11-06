@@ -391,3 +391,4 @@ export function detectGeometricPatterns(
 
   return patterns;
 }
+

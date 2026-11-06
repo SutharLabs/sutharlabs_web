@@ -167,3 +167,4 @@ export const ChartPatternsPanel: React.FC<ChartPatternsPanelProps> = ({
 };
 
 export default ChartPatternsPanel;
+

@@ -3,3 +3,4 @@ export * from './zigzag.js';
 export * from './geometricDetector.js';
 export * from './candlestickDetector.js';
 export * from './patternScanner.js';
+

@@ -55,3 +55,4 @@ export function getPatternColor(pattern: DetectedPattern, theme: 'light' | 'dark
   }
   return theme === 'light' ? '#0284c7' : '#00dbe7';
 }
+

@@ -64,3 +64,4 @@ export interface SwingExtremum {
   price: number;
   type: 'HIGH' | 'LOW';
 }
+

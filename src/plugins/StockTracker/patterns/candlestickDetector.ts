@@ -219,3 +219,4 @@ export function detectCandlestickPatterns(candles: CandleData[]): DetectedPatter
 
   return patterns;
 }
+
