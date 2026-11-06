@@ -356,9 +356,9 @@
     "semantic_hash": "8dab1d2f4b290c72f4b09fe1b159d0b2"
   },
   "src/plugins/Accounting/manifest.json": {
-    "mtime": 1793986616.509257,
-    "seen": 1793986776.4474676,
-    "ast_hash": "fb7b0c0a3e8cf67f401daf06fdf2ae9c",
+    "mtime": 1793986962.6921074,
+    "seen": 1793986992.9060323,
+    "ast_hash": "ac28793a11f613f272bb1036a92238f1",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/manifest.ts": {
@@ -470,9 +470,9 @@
     "semantic_hash": "2cf61e718991de61558a761f4a82f17b"
   },
   "src/plugins/DocNexus/manifest.json": {
-    "mtime": 1793986607.510093,
-    "seen": 1793986776.4478307,
-    "ast_hash": "ce14dac5deb5e15740a9eef73d9522f4",
+    "mtime": 1793986960.7298028,
+    "seen": 1793986992.9060943,
+    "ast_hash": "0ab57591af364cd8af13521f6b84252a",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/manifest.ts": {
@@ -536,9 +536,9 @@
     "semantic_hash": "60a8dc279c1c40a63b3d53988dbd2e61"
   },
   "src/plugins/FlowDesigner/manifest.json": {
-    "mtime": 1793986601.7055492,
-    "seen": 1793986776.4479566,
-    "ast_hash": "efed1d61fce4ca4c52d011e189128976",
+    "mtime": 1793986958.2771513,
+    "seen": 1793986992.906115,
+    "ast_hash": "4b874ef3a60127b569dc9cc504e4b48d",
     "semantic_hash": ""
   },
   "src/plugins/FlowDesigner/manifest.ts": {
@@ -644,9 +644,9 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1793986594.5405893,
-    "seen": 1793986776.4484606,
-    "ast_hash": "d05eeeaa1e585832feb600daeac45547",
+    "mtime": 1793986956.0104277,
+    "seen": 1793986992.9062011,
+    "ast_hash": "76983a73a2945a4c2ccdcb298043c782",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1793986623.3352284,
-    "seen": 1793986776.4482386,
-    "ast_hash": "f1180cf7293c69b53ae7d7ac5132caf7",
+    "mtime": 1793986964.5132823,
+    "seen": 1793986992.9061637,
+    "ast_hash": "a7ee9ab00c5ddf6213216cb34ca1edad",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {
@@ -1178,9 +1178,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.json": {
-    "mtime": 1793986629.1312332,
-    "seen": 1793986776.4480143,
-    "ast_hash": "46545bf14ddadc4a44d2bf3193269665",
+    "mtime": 1793986965.7652533,
+    "seen": 1793986992.9061253,
+    "ast_hash": "8a61333e71ce925dad9c7e352163ea6f",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.ts": {
@@ -1562,9 +1562,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.json": {
-    "mtime": 1793986634.6762033,
-    "seen": 1793986776.4481797,
-    "ast_hash": "67c1656d8b13d6d7fea7266cc0483033",
+    "mtime": 1793986967.4710903,
+    "seen": 1793986992.9061534,
+    "ast_hash": "09ad04d8fe3ce2a04d672593db17fbc5",
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.ts": {
@@ -1646,9 +1646,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ResumeStudio/manifest.json": {
-    "mtime": 1793986638.1727014,
-    "seen": 1793986776.4481213,
-    "ast_hash": "ffba910f942eecadfa4cae29564369c5",
+    "mtime": 1793986969.0719073,
+    "seen": 1793986992.9061434,
+    "ast_hash": "3a1fd9d482125876e5c2edb367d1a3c6",
     "semantic_hash": ""
   },
   "src/plugins/ResumeStudio/manifest.ts": {
@@ -1664,15 +1664,15 @@
     "semantic_hash": ""
   },
   "scripts/deploy-production.ps1": {
-    "mtime": 1793986165.0210128,
-    "seen": 1793986318.8174474,
-    "ast_hash": "5100db3aa03c1acdafcb531bc4650705",
+    "mtime": 1793986943.139934,
+    "seen": 1793986992.9059062,
+    "ast_hash": "3816b38179eda260c377b391691719bb",
     "semantic_hash": ""
   },
   "scripts/deploy-production.ts": {
-    "mtime": 1793986475.6698227,
-    "seen": 1793986776.446712,
-    "ast_hash": "f2b5dc74eb876d0f98499385562735fd",
+    "mtime": 1793986916.4680407,
+    "seen": 1793986992.9059098,
+    "ast_hash": "3fbb724dbcfc953731d4cf240193511b",
     "semantic_hash": ""
   },
   "docs/AUTOMATED_DEPLOYMENT_PROCEDURE.md": {

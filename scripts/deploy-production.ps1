@@ -203,25 +203,35 @@ Print-Success "Remote PM2 service reloaded cleanly."
 # ------------------------------------------------------------------------------
 Print-Step "8" "Verifying Live Production Health & APIs"
 
-Start-Sleep -Seconds 2
-
-try {
-    $landingProbe = Invoke-WebRequest -Uri "https://www.sutharlabs.com/" -UseBasicParsing -TimeoutSec 10
-    if ($landingProbe.StatusCode -eq 200) {
-        Print-Success "Landing page (https://www.sutharlabs.com/) -> 200 OK"
-    } else {
-        Print-Warn "Landing page returned status: $($landingProbe.StatusCode)"
+function Wait-EndpointHealthy($url, $maxAttempts = 5) {
+    for ($i = 1; $i -le $maxAttempts; $i++) {
+        try {
+            $resp = Invoke-WebRequest -Uri $url -UseBasicParsing -TimeoutSec 8 2>$null
+            if ($resp.StatusCode -eq 200) { return $resp }
+        } catch {}
+        Start-Sleep -Seconds 2
     }
-} catch {
-    Print-Warn "Landing page probe: $($_.Exception.Message)"
+    return $null
 }
 
-try {
-    $pluginsProbe = Invoke-RestMethod -Uri "https://www.sutharlabs.com/api/workspace-plugins" -TimeoutSec 10
-    $pluginCount = $pluginsProbe.plugins.Count
-    Print-Success "API /api/workspace-plugins -> 200 OK ($pluginCount plugins active in catalog)"
-} catch {
-    Print-Warn "Plugin API probe: $($_.Exception.Message)"
+$landing = Wait-EndpointHealthy "https://www.sutharlabs.com/"
+if ($landing) {
+    Print-Success "Landing page (https://www.sutharlabs.com/) -> 200 OK"
+} else {
+    Print-Warn "Landing page probe did not return 200 OK after retries."
+}
+
+$api = Wait-EndpointHealthy "https://www.sutharlabs.com/api/workspace-plugins"
+if ($api) {
+    try {
+        $json = $api.Content | ConvertFrom-Json
+        $count = if ($json -is [array]) { $json.Count } elseif ($json.plugins) { $json.plugins.Count } else { 0 }
+        Print-Success "API /api/workspace-plugins -> 200 OK ($count plugins active in catalog)"
+    } catch {
+        Print-Success "API /api/workspace-plugins -> 200 OK"
+    }
+} else {
+    Print-Warn "Plugin API probe did not return 200 OK after retries."
 }
 
 # ------------------------------------------------------------------------------

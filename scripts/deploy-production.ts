@@ -77,6 +77,16 @@ async function probeUrl(url: string): Promise<{ status: number; text: string }> 
   });
 }
 
+async function waitForHealthy(url: string, maxAttempts = 6, delayMs = 2500): Promise<{ status: number; text: string }> {
+  let lastResult = { status: 0, text: '' };
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    lastResult = await probeUrl(url);
+    if (lastResult.status === 200) return lastResult;
+    await new Promise(r => setTimeout(r, delayMs));
+  }
+  return lastResult;
+}
+
 async function main() {
   const startTime = Date.now();
   console.log(`${colors.cyan}${colors.bold}==============================================================================`);
@@ -189,15 +199,14 @@ async function main() {
 
   // 8. Live Health Probes
   logStep(8, 'Verifying Live Production Health & APIs');
-  await new Promise(r => setTimeout(r, 4000));
-  const landingProbe = await probeUrl('https://www.sutharlabs.com/');
+  const landingProbe = await waitForHealthy('https://www.sutharlabs.com/');
   if (landingProbe.status === 200) {
     logSuccess('Landing page (https://www.sutharlabs.com/) -> 200 OK');
   } else {
     logWarn(`Landing page returned status: ${landingProbe.status}`);
   }
 
-  const pluginsProbe = await probeUrl('https://www.sutharlabs.com/api/workspace-plugins');
+  const pluginsProbe = await waitForHealthy('https://www.sutharlabs.com/api/workspace-plugins');
   if (pluginsProbe.status === 200) {
     try {
       const data = JSON.parse(pluginsProbe.text);
