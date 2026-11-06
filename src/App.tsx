@@ -24,6 +24,7 @@ import CookieConsentBanner from './components/CookieConsentBanner';
 import PrivacyPolicyView from './components/PrivacyPolicyView';
 import CopyrightView from './components/CopyrightView';
 import UserProfileView from './components/UserProfileView';
+import PublicToolsHubView from './components/PublicToolsHubView.js';
 import { getClientPluginByName, getClientPluginByRoute, getClientPluginById } from './plugins/clientRegistry.js';
 
 
@@ -252,6 +253,8 @@ export default function App() {
         <Route path="/contact" element={
           <LandingPage user={user} onLaunch={handleLaunchWorkspace} onNavigateAuth={handleAuthNavigate} theme={theme} toggleTheme={toggleTheme} />
         } />
+        <Route path="/tools" element={<PublicToolsHubView theme={theme} user={user} />} />
+        <Route path="/tools/:toolId" element={<PublicToolsHubView theme={theme} user={user} />} />
         <Route path="/privacy" element={<PrivacyPolicyView />} />
         <Route path="/copyright" element={<CopyrightView />} />
         <Route path="/auth" element={

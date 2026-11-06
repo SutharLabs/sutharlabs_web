@@ -1,6 +1,6 @@
 import { TerminalLog } from "../../types.js";
 
-export type DocumentFormat = 'canvas' | 'markdown' | 'richtext' | 'sheet' | 'slides';
+export type DocumentFormat = 'canvas' | 'markdown' | 'richtext' | 'sheet' | 'slides' | 'pdftools';
 
 export type CanvasShapeType = 'rect' | 'circle' | 'diamond' | 'text' | 'sticky' | 'arrow' | 'badge' | 'card' | 'image';
 

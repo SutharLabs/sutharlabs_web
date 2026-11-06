@@ -6,6 +6,7 @@ import MarkdownStudio from './MarkdownStudio.js';
 import RichDocStudio from './RichDocStudio.js';
 import SpreadsheetStudio from './SpreadsheetStudio.js';
 import SlideDeckStudio from './SlideDeckStudio.js';
+import PdfToolsStudio from './PdfToolsStudio.js';
 import InspectorPanel from './InspectorPanel.js';
 import TemplateLibraryModal from './TemplateLibraryModal.js';
 import ExportModal from './ExportModal.js';
@@ -15,6 +16,7 @@ import CollapsibleLogDrawer from '../../../components/CollapsibleLogDrawer.js';
 import { saveVault, loadVault, getVaultStorageKey } from '../utils/vaultStorage.js';
 import { telemetryLogger } from '../../../services/telemetryLogger.js';
 import { 
+  Layers,
   Save, 
   Download, 
   Sparkles, 
@@ -54,7 +56,8 @@ const FORMAT_TABS: { format: DocumentFormat; label: string; icon: any }[] = [
   { format: 'markdown', label: 'Docs', icon: FileText },
   { format: 'sheet', label: 'Grid', icon: Table },
   { format: 'richtext', label: 'A4', icon: Layout },
-  { format: 'slides', label: 'Slides', icon: Presentation }
+  { format: 'slides', label: 'Slides', icon: Presentation },
+  { format: 'pdftools', label: 'PDF Tools', icon: Layers }
 ];
 
 export default function DocNexusStudio({
@@ -617,6 +620,15 @@ export default function DocNexusStudio({
               onChangeContent={handleContentChange}
               theme={theme}
             />
+          )}
+
+          {activeDocument && activeDocument.format === 'pdftools' && (
+            <div className="flex-1 h-full overflow-hidden flex flex-col">
+              <PdfToolsStudio
+                theme={theme}
+                onAddLog={onAddLog}
+              />
+            </div>
           )}
         </main>
 

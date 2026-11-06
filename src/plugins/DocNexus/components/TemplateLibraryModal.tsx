@@ -24,7 +24,8 @@ const FORMAT_ICONS: Record<DocumentFormat, any> = {
   markdown: FileText,
   richtext: Layout,
   sheet: Table,
-  slides: Presentation
+  slides: Presentation,
+  pdftools: FileText
 };
 
 export default function TemplateLibraryModal({

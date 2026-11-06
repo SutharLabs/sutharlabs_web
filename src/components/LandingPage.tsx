@@ -314,6 +314,13 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
           >
             App Store
           </button>
+          <a 
+            href="/tools"
+            className="text-on-surface-variant hover:text-[#00dbe7] hover:bg-[#00dbe7]/10 px-2.5 py-1.5 rounded transition-all duration-200 cursor-pointer bg-transparent border-none flex items-center gap-1 font-bold text-[#00dbe7]"
+          >
+            <span>Free Tools</span>
+            <span className="text-[9px] px-1 py-0.2 rounded bg-[#00dbe7]/20 text-[#00dbe7] uppercase font-sans">New</span>
+          </a>
           <button 
             onClick={() => {
               setCurrentView('CONTACT');

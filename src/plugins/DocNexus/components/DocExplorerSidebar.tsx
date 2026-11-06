@@ -44,7 +44,8 @@ const FILTER_LABELS: Record<string, string> = {
   markdown: 'Docs',
   sheet: 'Grid',
   richtext: 'A4',
-  slides: 'Slides'
+  slides: 'Slides',
+  pdftools: 'PDF Tools'
 };
 
 const FORMAT_CONFIG: Record<DocumentFormat, { 
@@ -88,6 +89,13 @@ const FORMAT_CONFIG: Record<DocumentFormat, {
     icon: Presentation, 
     color: '#f43f5e', 
     bg: 'rgba(244, 63, 94, 0.12)'
+  },
+  pdftools: {
+    label: 'PDF & Media Tools',
+    description: '100% Client-side PDF edit, convert, merge & sign',
+    icon: FileText,
+    color: '#00dbe7',
+    bg: 'rgba(0, 219, 231, 0.12)'
   }
 };
 
