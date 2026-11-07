@@ -299,7 +299,7 @@ def synthesize_with_xtts(text: str, audio_raw: bytes, speaker_name: str, rate: f
         except Exception as e:
             print(f"[Neural Gateway] Failed to read hash cache: {e}")
 
-    if gpt_cond_latent is None and name_cache_file and os.path.exists(name_cache_file):
+    if gpt_cond_latent is None and not audio_raw and name_cache_file and os.path.exists(name_cache_file):
         try:
             cached_data = torch.load(name_cache_file)
             gpt_cond_latent = cached_data["gpt_cond_latent"]
@@ -419,7 +419,12 @@ async def clone(request: Request):
         # Resilient Fallback to Edge-TTS with Acoustic Timbre Calibration
         try:
             is_hindi = any('\u0900' <= char <= '\u097F' for char in text)
-            fallback_voice = "hi-IN-MadhurNeural" if is_hindi else "en-US-GuyNeural"
+            raw_gender = str(data.get("timbrePreference") or data.get("gender") or "male").strip().lower()
+            is_female = raw_gender == "female" or raw_gender == "f"
+            if is_hindi:
+                fallback_voice = "hi-IN-SwaraNeural" if is_female else "hi-IN-MadhurNeural"
+            else:
+                fallback_voice = "en-US-AvaMultilingualNeural" if is_female else "en-US-GuyNeural"
             rate_str = format_rate(rate)
             pitch_str = format_pitch(pitch)
             audio_bytes = await generate_speech_with_retry(text, fallback_voice, rate_str, pitch_str)

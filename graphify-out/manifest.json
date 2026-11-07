@@ -6,9 +6,9 @@
     "semantic_hash": "6eab2f1626c4f1fbdd66aa25ee74fd00"
   },
   "api/server.ts": {
-    "mtime": 1794038885.7791226,
-    "seen": 1794040186.675658,
-    "ast_hash": "d071591a25922edaf07b831db7de6989",
+    "mtime": 1794041975.1940873,
+    "seen": 1794042798.1476817,
+    "ast_hash": "d7499009a11398ab589136d9f7077756",
     "semantic_hash": ""
   },
   "metadata.json": {
@@ -56,8 +56,8 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794038792.151711,
-    "seen": 1794040186.6757264,
+    "mtime": 1794040466.7298675,
+    "seen": 1794042798.14775,
     "ast_hash": "f788ed62545451795cd9e9c06b5e2e8b",
     "semantic_hash": ""
   },
@@ -68,9 +68,9 @@
     "semantic_hash": ""
   },
   "src/components/AccountingView.tsx": {
-    "mtime": 1794022558.7418242,
-    "seen": 1794022694.5095656,
-    "ast_hash": "324d281793af3e904803273abec4256c",
+    "mtime": 1794042878.8573732,
+    "seen": 1794042901.0615933,
+    "ast_hash": "25288816e2161fe38a313428e94209bc",
     "semantic_hash": ""
   },
   "src/components/AdminConsoleView.tsx": {
@@ -290,10 +290,10 @@
     "semantic_hash": "acd7dc9b5543041e915d56b959245b3f"
   },
   "src/plugins/Accounting/components/DayBookView.tsx": {
-    "mtime": 1791625128.9913523,
-    "seen": 1793772051.9678,
-    "ast_hash": "6462c3ee2a72427de3f608cda0be2535",
-    "semantic_hash": "6462c3ee2a72427de3f608cda0be2535"
+    "mtime": 1794042879.9911149,
+    "seen": 1794042901.0617664,
+    "ast_hash": "c3ca4cc6acc462d15bd9cad8dfd1f363",
+    "semantic_hash": ""
   },
   "src/plugins/Accounting/components/FinancialStatementsView.tsx": {
     "mtime": 1793781253.532334,
@@ -302,10 +302,10 @@
     "semantic_hash": ""
   },
   "src/plugins/Accounting/components/GeneralLedgerView.tsx": {
-    "mtime": 1791625128.997879,
-    "seen": 1793772051.967997,
-    "ast_hash": "db3c7c27108f901452f38ff676239ddc",
-    "semantic_hash": "db3c7c27108f901452f38ff676239ddc"
+    "mtime": 1794042881.6267073,
+    "seen": 1794042901.0617735,
+    "ast_hash": "3cc26a98aa5ae0ac92ed4898a9d266fb",
+    "semantic_hash": ""
   },
   "src/plugins/Accounting/components/GstrReportsView.tsx": {
     "mtime": 1791625128.9992023,
@@ -338,10 +338,10 @@
     "semantic_hash": "f19cd5fe9f0b47924ac9998dfbc3e173"
   },
   "src/plugins/Accounting/components/VoucherEntryModal.tsx": {
-    "mtime": 1791625129.0160007,
-    "seen": 1793772051.9685633,
-    "ast_hash": "405530a5ce1c1878018b490fe22a0cf8",
-    "semantic_hash": "405530a5ce1c1878018b490fe22a0cf8"
+    "mtime": 1794042882.7460985,
+    "seen": 1794042901.0618002,
+    "ast_hash": "adb6573e4a579117c9a86c56d11a9345",
+    "semantic_hash": ""
   },
   "src/plugins/Accounting/gstEngine.ts": {
     "mtime": 1791625129.0177412,
@@ -356,9 +356,9 @@
     "semantic_hash": "8dab1d2f4b290c72f4b09fe1b159d0b2"
   },
   "src/plugins/Accounting/manifest.json": {
-    "mtime": 1794040255.0328083,
-    "seen": 1794040336.9658442,
-    "ast_hash": "51e6d55de7541ab17d271706cab8c40b",
+    "mtime": 1794042823.1957967,
+    "seen": 1794042901.0618114,
+    "ast_hash": "e5feb806fbb50d9502c585dda5ebc436",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/manifest.ts": {
@@ -470,9 +470,9 @@
     "semantic_hash": "2cf61e718991de61558a761f4a82f17b"
   },
   "src/plugins/DocNexus/manifest.json": {
-    "mtime": 1794040253.2802732,
-    "seen": 1794040336.966051,
-    "ast_hash": "c5dc548b398d87ef96c1a4e02c8f6b20",
+    "mtime": 1794042821.3302808,
+    "seen": 1794042901.0619314,
+    "ast_hash": "cba8eb843a449dbe9de85e82a1cf6387",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/manifest.ts": {
@@ -536,9 +536,9 @@
     "semantic_hash": "60a8dc279c1c40a63b3d53988dbd2e61"
   },
   "src/plugins/FlowDesigner/manifest.json": {
-    "mtime": 1794040252.4731984,
-    "seen": 1794040336.9660864,
-    "ast_hash": "e94a6de5ca456178149bc8aa538b7466",
+    "mtime": 1794042819.9861586,
+    "seen": 1794042901.0619736,
+    "ast_hash": "2451bd863e5dee262a9477bf98e10e29",
     "semantic_hash": ""
   },
   "src/plugins/FlowDesigner/manifest.ts": {
@@ -644,9 +644,9 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1794040250.4886632,
-    "seen": 1794040336.966211,
-    "ast_hash": "441360dd858650c5a2decc112cdbf639",
+    "mtime": 1794042816.2154865,
+    "seen": 1794042901.06214,
+    "ast_hash": "c4e2ec96ee097d269b0ecb43298aad4f",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
@@ -1082,8 +1082,8 @@
     "semantic_hash": ""
   },
   "src/services/vaultStorageService.ts": {
-    "mtime": 1794038869.09551,
-    "seen": 1794040186.67645,
+    "mtime": 1794040478.5027893,
+    "seen": 1794042798.1484387,
     "ast_hash": "5166bbb76b07d2474843155f7e96e44f",
     "semantic_hash": ""
   },
@@ -1112,9 +1112,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
-    "mtime": 1794039897.658213,
-    "seen": 1794040186.6762092,
-    "ast_hash": "5ec57a9cda9fbfc2813c5f5588b1cfe3",
+    "mtime": 1794042885.4578269,
+    "seen": 1794042901.0620584,
+    "ast_hash": "defdada7b3c0c50fb8114c574ead11e3",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/index.ts": {
@@ -1130,9 +1130,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/routes.ts": {
-    "mtime": 1794039382.9156704,
-    "seen": 1794040186.6762228,
-    "ast_hash": "16ad2e11a50234eef760ea3ec88ab2f9",
+    "mtime": 1794042886.2655373,
+    "seen": 1794042901.062073,
+    "ast_hash": "7be55cb15800e89b4947091c1dc2d24f",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/types.ts": {
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1794040256.140743,
-    "seen": 1794040336.9661577,
-    "ast_hash": "911aa75996a0931cd117388964d35089",
+    "mtime": 1794042827.0696914,
+    "seen": 1794042901.0620658,
+    "ast_hash": "e95c73b621f21a3480a78010b3b5f233",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {
@@ -1178,9 +1178,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.json": {
-    "mtime": 1794040257.1918964,
-    "seen": 1794040336.9661007,
-    "ast_hash": "697347fa7d52aa2d0b0df169b84fae26",
+    "mtime": 1794042828.7431798,
+    "seen": 1794042901.0619926,
+    "ast_hash": "a7fa28ee405ecf89445c8c5145998ae9",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.ts": {
@@ -1562,9 +1562,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.json": {
-    "mtime": 1794040258.5684733,
-    "seen": 1794040336.966142,
-    "ast_hash": "14f6c6245ffe61e29bbf70ef9a83137e",
+    "mtime": 1794042830.583075,
+    "seen": 1794042901.0620468,
+    "ast_hash": "eb2306649db3fbbf02f4b53db7f137b5",
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.ts": {
@@ -1646,9 +1646,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ResumeStudio/manifest.json": {
-    "mtime": 1794040259.8739715,
-    "seen": 1794040336.966127,
-    "ast_hash": "3d64b060f6df3a73d24c3880a4ebd417",
+    "mtime": 1794042831.9842563,
+    "seen": 1794042901.0620277,
+    "ast_hash": "c3ec60dd96cdeeefc194a3e1d7ce6fde",
     "semantic_hash": ""
   },
   "src/plugins/ResumeStudio/manifest.ts": {
@@ -1742,8 +1742,8 @@
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/components/StudioCastView.tsx": {
-    "mtime": 1794039977.589072,
-    "seen": 1794040186.676379,
+    "mtime": 1794040479.3139572,
+    "seen": 1794042798.1483672,
     "ast_hash": "bd29235d1e2abf06735c297ef53779c4",
     "semantic_hash": ""
   },
@@ -1760,9 +1760,9 @@
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/manifest.json": {
-    "mtime": 1794040262.396458,
-    "seen": 1794040336.9663148,
-    "ast_hash": "ff2aa571b1ad49bfdaeeb5f46ca1979e",
+    "mtime": 1794042833.8263235,
+    "seen": 1794042901.0622537,
+    "ast_hash": "61c57cb5885a21db552f121b93aae387",
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/manifest.ts": {

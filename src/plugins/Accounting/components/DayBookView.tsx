@@ -125,7 +125,7 @@ export default function DayBookView({
         <div>
           <h2 className="text-sm font-bold flex items-center gap-2 text-slate-900 dark:text-white">
             <span className="material-symbols-outlined text-cyan-600 dark:text-[#00dbe7]">menu_book</span>
-            Tally Prime General Day Book Register
+            Traditional General Day Book Register
           </h2>
           <p className="text-[11px] text-slate-500 dark:text-gray-400 mt-0.5">
             Real-time chronological recording of Contra, Payments, Receipts, Sales, and Journal Adjustments

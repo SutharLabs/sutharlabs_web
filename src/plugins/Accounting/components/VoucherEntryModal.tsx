@@ -243,7 +243,7 @@ export default function VoucherEntryModal({
                     ? 'bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-500/30'
                     : 'bg-slate-200 dark:bg-white/10 text-slate-700 dark:text-gray-300'
                 }`}>
-                  {isEditMode ? `Revision v${nextVersion}` : 'Tally / SAP Core'}
+                  {isEditMode ? `Revision v${nextVersion}` : 'Traditional ERP Core'}
                 </span>
               </h2>
               <p className="text-[11px] font-mono text-slate-500 dark:text-gray-400">
@@ -451,7 +451,7 @@ export default function VoucherEntryModal({
           {/* Tally Narration */}
           <div>
             <label className="text-[10px] font-mono uppercase text-slate-500 dark:text-gray-400 block mb-1">
-              Narration (Tally Prime / SAP Remark Note)
+              Narration (Traditional Remark Note)
             </label>
             <textarea
               rows={2}

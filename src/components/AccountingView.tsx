@@ -346,7 +346,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
                 Enterprise Accounting & ERP Suite
               </h2>
               <span className="px-2 py-0.5 rounded text-[9px] font-mono font-bold bg-emerald-500/10 text-emerald-600 dark:text-[#00e476] border border-emerald-500/20">
-                Tally Prime & SAP ERP Parity
+                Traditional ERP Ledger Parity
               </span>
             </div>
             <p className="text-[11px] font-mono text-slate-500 dark:text-gray-400">
@@ -356,7 +356,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
         </div>
 
         <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end">
-          {/* Tally / MARG vs Modern Mode Toggle */}
+          {/* Traditional vs Modern Mode Toggle */}
           <div className="flex rounded-xl p-0.5 border text-xs font-mono bg-slate-100 dark:bg-[#18181c] border-slate-300 dark:border-[#3a494b]/40">
             <button
               onClick={() => { setUiMode('classic'); localStorage.setItem('sutharlabs_accounting_ui_mode', 'classic'); }}
@@ -365,10 +365,10 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
                   ? 'bg-white dark:bg-[#00dbe7]/15 text-slate-900 dark:text-[#74f5ff] border border-slate-300 dark:border-[#00dbe7]/40 shadow-xs'
                   : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
               }`}
-              title="Tally Prime & MARG ERP Dual-Pane Command View (Gateway + Function Keys)"
+              title="Traditional Dual-Pane Command View (Gateway + Function Keys)"
             >
               <span className="material-symbols-outlined text-sm">desktop_windows</span>
-              Tally / MARG ERP
+              Traditional View
             </button>
             <button
               onClick={() => { setUiMode('modern'); localStorage.setItem('sutharlabs_accounting_ui_mode', 'modern'); }}
@@ -417,7 +417,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
         <div className="flex items-center gap-2">
           <span className="font-mono text-[10px] font-bold uppercase text-slate-500 dark:text-gray-400 tracking-wider flex items-center gap-1">
             <span className="material-symbols-outlined text-sm text-cyan-600 dark:text-[#00dbe7]">keyboard</span>
-            Voucher Entry (Tally Hotkeys):
+            Voucher Entry (Quick Hotkeys):
           </span>
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -565,7 +565,7 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
                 </span>
               </div>
               <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/10 text-cyan-600 dark:text-[#00dbe7] border border-cyan-500/20">
-                Tally / MARG
+                Traditional View
               </span>
             </div>
 

@@ -55,6 +55,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         targetPath.startsWith('/api/vault/upload') ||
         targetPath.startsWith('/api/vault/complete-chunk-upload') ||
         targetPath.includes('ocr-receipt') ||
+        targetPath.includes('/speech-studio/clone-voice') ||
+        targetPath.includes('/speech-studio/synthesize') ||
         targetPath.startsWith('/api/vault/download');
 
       const isMultipart = (req.headers['content-type'] || '').toLowerCase().includes('multipart/form-data');

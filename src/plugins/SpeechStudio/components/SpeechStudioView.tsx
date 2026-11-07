@@ -759,7 +759,7 @@ export default function SpeechStudioView({
   // Input text and voice parameters for Studio synthesis
   const [text, setText] = useState<string>(SAMPLE_PROMPTS[0].text);
   const [selectedLang, setSelectedLang] = useState<'all' | 'en' | 'hi'>('all');
-  const [voiceFilter, setVoiceFilter] = useState<'all' | 'commercial' | 'hush' | 'hi' | 'en' | 'cloned'>('all');
+  const [voiceFilter, setVoiceFilter] = useState<'all' | 'commercial' | 'hi' | 'en' | 'cloned'>('all');
   const [neuralVoices, setNeuralVoices] = useState<TTSVoiceOption[]>(DEFAULT_NEURAL_VOICES);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('aarav-neural');
 
@@ -1051,7 +1051,6 @@ export default function SpeechStudioView({
       if (selectedLang === 'hi' && !v.lang.startsWith('hi')) return false;
       if (selectedLang === 'en' && !v.lang.startsWith('en')) return false;
     }
-    if (voiceFilter === 'hush') return v.architecture === 'voxcpm' || v.approach === 'hush_reference';
     if (voiceFilter === 'commercial') return v.commercialUse === 'commercial_safe';
     if (voiceFilter === 'hi') return v.lang.startsWith('hi');
     if (voiceFilter === 'en') return v.lang.startsWith('en');
@@ -1161,8 +1160,6 @@ export default function SpeechStudioView({
           }
         : (neuralVoices.find(v => v.id === selectedVoiceId) || neuralVoices[0]);
 
-      const shouldSendClientAudio = isCloned && !activeVoice.id.startsWith('cloned-');
-
       const payload = {
         text,
         lang: activeVoice.lang,
@@ -1174,7 +1171,7 @@ export default function SpeechStudioView({
         architecture: isCloned ? (activeCloned.architecture || 'voxcpm') : (activeVoice as any).architecture || 'edge-tts',
         gender: activeCloned?.gender || (activeVoice as any).gender || 'male',
         timbrePreference: activeCloned?.gender || (activeVoice as any).gender || 'male',
-        referenceAudio: shouldSendClientAudio ? (activeVoice as any).referenceAudio : undefined
+        referenceAudio: isCloned ? (activeVoice as any).referenceAudio : undefined
       };
 
       let res: Response;
@@ -1403,9 +1400,6 @@ export default function SpeechStudioView({
           const blobUrl = URL.createObjectURL(wavBlob);
           setClonedSampleBlobUrl(blobUrl);
 
-          const autoGender = estimateVoiceGenderFromBuffer(decodedBuffer);
-          setReplicateGender(autoGender);
-
           const reader = new FileReader();
           reader.onloadend = () => {
             setClonedSampleBase64(reader.result as string);
@@ -1518,8 +1512,6 @@ export default function SpeechStudioView({
       };
       reader.readAsDataURL(wavBlob);
 
-      const autoGender = estimateVoiceGenderFromBuffer(decodedBuffer);
-      setReplicateGender(autoGender);
 
       setAudioDiagnostics({
         totalBytes: file.size,
@@ -2241,7 +2233,6 @@ export default function SpeechStudioView({
                 {[
                   { id: 'all', label: 'All' },
                   { id: 'commercial', label: 'Commercial Safe' },
-                  { id: 'hush', label: 'Hush Studio' },
                   { id: 'hi', label: 'Hindi' },
                   { id: 'en', label: 'English' },
                   { id: 'cloned', label: `My Replicated (${clonedProfiles.length})` }

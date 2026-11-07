@@ -816,13 +816,14 @@ export function registerRoutes(router: Router) {
       }
 
       const { architecture: requestedArch, gender: requestedGender } = req.body;
-      const effectiveGender = (requestedGender || timbrePreference || "male").toLowerCase();
+      const rawGender = String(requestedGender || timbrePreference || "").trim().toLowerCase();
+      const effectiveGender: "male" | "female" = (rawGender === "female" || rawGender === "f") ? "female" : "male";
       const selectedArch = (requestedArch || "hush").toLowerCase();
 
       // Check if VM 2 Voice Cloning Engine is available
       const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://132.226.190.125/tts";
       let audioBuffer: Buffer | null = null;
-      let replicationEngine = "HUSH_STUDIO_VOXCPM";
+      let replicationEngine = selectedArch === "voxcpm" || selectedArch === "hush" ? "HUSH_STUDIO_IN_CONTEXT_VOXCPM" : "STYLETTS2_NEURAL_VOCODER";
       let latentsCached = false;
       let detectedLang = /[\u0900-\u097F]/.test(text) ? "hi" : "en";
       let inferenceTimeSec = 0;
@@ -831,14 +832,24 @@ export function registerRoutes(router: Router) {
       try {
         let vmResponse: globalThis.Response | null = null;
 
-        // If StyleTTS 2 / XTTS architecture selected, attempt neural zero-shot synthesis
-        if (selectedArch === "styletts2" || selectedArch === "xtts") {
+        // If neural zero-shot cloning architecture selected (Hush Studio VoxCPM, StyleTTS 2, or general cloning), call VM 2 /api/clone
+        if (selectedArch !== "edge") {
           try {
+            const t0 = Date.now();
             vmResponse = await fetch(`${ORACLE_TTS_URL}/api/clone`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text, sampleAudio, referenceText, speakerName, timbrePreference: effectiveGender, rate, pitch }),
-              signal: AbortSignal.timeout(60000)
+              body: JSON.stringify({
+                text,
+                sampleAudio,
+                referenceText,
+                speakerName,
+                timbrePreference: effectiveGender,
+                gender: effectiveGender,
+                rate,
+                pitch
+              }),
+              signal: AbortSignal.timeout(90000)
             });
 
             if (vmResponse.ok) {
@@ -847,10 +858,12 @@ export function registerRoutes(router: Router) {
               // Verify candidate contains real audio and not an error string
               if (candidateBuf.length > 500 && !candidateBuf.subarray(0, 10).toString().includes("Error")) {
                 audioBuffer = candidateBuf;
-                replicationEngine = vmResponse.headers.get("x-replication-engine") || "STYLETTS2_NEURAL_VOCODER";
+                replicationEngine = selectedArch === "voxcpm" || selectedArch === "hush"
+                  ? "HUSH_STUDIO_IN_CONTEXT_VOXCPM"
+                  : "STYLETTS2_NEURAL_VOCODER";
                 latentsCached = vmResponse.headers.get("x-speaker-latents-cached") === "True";
-                inferenceTimeSec = Number(vmResponse.headers.get("x-inference-time-sec") || 0);
-                totalTimeSec = Number(vmResponse.headers.get("x-total-time-sec") || 0);
+                inferenceTimeSec = Number(vmResponse.headers.get("x-inference-time-sec") || 0) || Number(((Date.now() - t0) / 1000).toFixed(2));
+                totalTimeSec = Number(vmResponse.headers.get("x-total-time-sec") || 0) || inferenceTimeSec;
               }
             }
           } catch (xttsErr: any) {
@@ -858,24 +871,27 @@ export function registerRoutes(router: Router) {
           }
         }
 
-        // Acoustic Formant & In-Context synthesis (Hush Studio VoxCPM or Edge Acoustic fallback)
+        // Acoustic Formant & In-Context synthesis (Edge Acoustic or resilient fallback)
         if (!audioBuffer) {
           const isHindi = /[\u0900-\u097F]/.test(text);
-          const isFem = effectiveGender === "female";
+          // Strictly map gender: male -> Madhur/Guy, female -> Swara/Ava
           const targetVoice = isHindi
-            ? (isFem ? "priya-neural" : "aarav-neural")
-            : (isFem ? "seraphina-neural" : "marcus-neural");
+            ? (effectiveGender === "female" ? "hi-IN-SwaraNeural" : "hi-IN-MadhurNeural")
+            : (effectiveGender === "female" ? "en-US-AvaMultilingualNeural" : "en-US-GuyNeural");
 
-          replicationEngine = selectedArch === "hush" || selectedArch === "voxcpm"
-            ? "HUSH_STUDIO_IN_CONTEXT_VOXCPM"
-            : "EDGE_NEURAL_ACOUSTIC_MATCHER";
+          replicationEngine = "EDGE_NEURAL_ACOUSTIC_MATCHER";
 
           const t0 = Date.now();
           const ttsRes = await fetch(`${ORACLE_TTS_URL}/api/tts`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ text, voiceId: targetVoice, rate, pitch }),
-            signal: AbortSignal.timeout(20000)
+            body: JSON.stringify({
+              text,
+              voiceId: targetVoice,
+              rate,
+              pitch: effectiveGender === "male" ? Math.min(1.0, pitch) : Math.max(1.0, pitch)
+            }),
+            signal: AbortSignal.timeout(25000)
           });
 
           if (ttsRes.ok) {

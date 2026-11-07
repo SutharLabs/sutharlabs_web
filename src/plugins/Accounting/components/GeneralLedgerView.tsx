@@ -88,7 +88,7 @@ export default function GeneralLedgerView({ userToken }: GeneralLedgerViewProps)
               ? 'bg-emerald-500/10 text-emerald-700 dark:text-[#00e476] border-emerald-500/30'
               : 'bg-rose-500/10 text-rose-700 dark:text-rose-400 border-rose-500/30'
           }`}>
-            {isTallyBalanced ? 'Tally Balanced ✓' : 'Discrepancy ⚠'}
+            {isTallyBalanced ? 'Ledger Balanced ✓' : 'Discrepancy ⚠'}
           </span>
         </div>
       </div>
