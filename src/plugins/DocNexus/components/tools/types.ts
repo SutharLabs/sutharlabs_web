@@ -36,5 +36,8 @@ export interface SubToolProps {
   setStatus: (msg: string | null) => void;
   setError: (err: string | null) => void;
   addLog: (type: 'INFO' | 'SUCCESS' | 'ERROR', message: string) => void;
+  checkDownloadAccess?: () => boolean;
 }
+
+export type ToolCommonProps = SubToolProps;
 

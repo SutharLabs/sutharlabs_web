@@ -12,3 +12,7 @@ prisma/*.db-journal
 # Graphify cache
 graphify-out/cache/
 
+data/*.json
+
+server.js
+server.js.map

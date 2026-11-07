@@ -393,7 +393,7 @@ export function extractContactDetails(text: string) {
   const phoneMatch = text.match(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}/);
   const linkedinMatch = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/in\/[a-zA-Z0-9_-]+/i);
   const githubMatch = text.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/[a-zA-Z0-9_-]+/i);
-  const urlMatches = text.match(/https?:\/\/[^\s,]+/g) || [];
+  const urlMatches: string[] = text.match(/https?:\/\/[^\s,]+/g) || [];
   const otherUrl = urlMatches.find(u => !u.includes('linkedin.com') && !u.includes('github.com'));
 
   return {

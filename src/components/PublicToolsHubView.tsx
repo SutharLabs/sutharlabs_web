@@ -202,7 +202,7 @@ export default function PublicToolsHubView({ theme = 'dark', user, toggleTheme }
           className="flex items-center gap-2.5 cursor-pointer group"
         >
           <img 
-            src="/sutharlabs-logo-sm.png" 
+            src="/sutharlabs-logo-sm.png?v=20261107-v3s" 
             alt="SutharLabs Emblem" 
             className="w-7 h-7 sm:w-8 sm:h-8 object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-[0_0_8px_rgba(0,219,231,0.4)]" 
           />
@@ -313,7 +313,7 @@ export default function PublicToolsHubView({ theme = 'dark', user, toggleTheme }
             <div className="space-y-6">
               <div className="flex items-center justify-between pb-4 border-b border-white/10">
                 <div className="flex items-center gap-2">
-                  <img src="/sutharlabs-logo-sm.png" alt="SutharLabs" className="w-6 h-6 object-contain" />
+                  <img src="/sutharlabs-logo-sm.png?v=20261107-v3s" alt="SutharLabs" className="w-6 h-6 object-contain" />
                   <span className="text-sm font-bold text-[#74f5ff] uppercase tracking-wider">SutharLabs</span>
                 </div>
                 <button 

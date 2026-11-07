@@ -29,7 +29,11 @@ import {
   X,
   Eye,
   BookOpen,
-  FileText
+  FileText,
+  Scale,
+  ExternalLink,
+  HelpCircle,
+  RefreshCw
 } from 'lucide-react';
 import { WorkspacePluginViewProps } from '../../types.js';
 import { TTSQuotaStatus, SpeechHistoryItem, TTSVoiceOption, TTSArchitectureOption, ClonedVoiceProfile } from '../types.js';
@@ -428,6 +432,151 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     commercialUse: 'personal_non_commercial',
     commercialLabel: 'Personal / Staging',
     description: 'Expressive, melodic narrator voice with subtle breathing pauses and vocal dynamics.'
+  },
+  // Authentic Hush Studio In-Context Acoustic Reference Voices (VoxCPM 0.5B Model)
+  {
+    id: 'vox-aria',
+    name: 'Aria (LJ Speech)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'female',
+    accent: 'American Narrator',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Audiobook Narrator',
+    architecture: 'voxcpm',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Public Domain (100% Free)',
+    description: 'Linda Johnson / LibriVox recording from LJ Speech 1.1. In-context acoustic reference clip from Hush Studio.',
+    previewSample: '/voices/aria.wav',
+    referenceAudioUrl: '/voices/aria.wav',
+    referenceTranscript: 'Trustworthy evidence is forthcoming to the effect that these high figures were constantly maintained for many months at a time.',
+    datasetName: 'LJ Speech Dataset 1.1',
+    datasetUrl: 'https://keithito.com/LJ-Speech-Dataset/',
+    licenseName: 'Public Domain',
+    licenseDetails: 'Public Domain (LJ Speech, Keith Ito; read by Linda Johnson for LibriVox). Free for commercial and non-commercial use with zero restrictions.',
+    credits: 'Recorded by Linda Johnson for LibriVox; curated by Keith Ito (LJ Speech 1.1, lj-002-0017.wav).',
+    approach: 'hush_reference'
+  },
+  {
+    id: 'vox-jenny',
+    name: 'Jenny (Dioco)',
+    lang: 'en-US',
+    languageLabel: 'English (US / Neutral)',
+    gender: 'female',
+    accent: 'Natural Conversational',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Expressive & Melodic',
+    architecture: 'voxcpm',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe (Attributed)',
+    description: 'Jenny TTS studio recording by Dioco. Natural, expressive conversational cadence with gentle prosody.',
+    previewSample: '/voices/jenny.wav',
+    referenceAudioUrl: '/voices/jenny.wav',
+    referenceTranscript: 'How funny... She did not finish her speech, for Belle shook her head at her and broke in, saying kindly...',
+    datasetName: 'Jenny TTS Dataset',
+    datasetUrl: 'https://github.com/dioco-group/jenny-tts-dataset',
+    licenseName: 'CC BY-SA 4.0 (Dioco)',
+    licenseDetails: "Jenny TTS dataset by Dioco. Commercial use permitted; voice model and audio must be attributed as 'Jenny (Dioco)'.",
+    credits: 'Dioco Group; recorded in Dublin studio (jenny/10092).',
+    approach: 'hush_reference'
+  },
+  {
+    id: 'vox-maya',
+    name: 'Maya (Hi-Fi TTS)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'female',
+    accent: 'American Studio',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Articulate & Engaging',
+    architecture: 'voxcpm',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'CC BY 4.0 Safe',
+    description: 'NVIDIA Hi-Fi TTS multi-speaker dataset (Speaker 92). Clean acoustic audio recorded with high-fidelity studio microphones.',
+    previewSample: '/voices/maya.wav',
+    referenceAudioUrl: '/voices/maya.wav',
+    referenceTranscript: 'They\'ve only to get somebody for the job who does not know you carry enough stuff in your pocket to blow yourself and everything within sixty yards of you to pieces.',
+    datasetName: 'Hi-Fi Multi-Speaker English TTS Dataset',
+    datasetUrl: 'https://openslr.org/109/',
+    licenseName: 'CC BY 4.0 (NVIDIA)',
+    licenseDetails: 'Hi-Fi Multi-Speaker English TTS Dataset (NVIDIA, E. Bakhturina, V. Lavrukhin, B. Ginsburg, Y. Zhang 2021). Licensed under Creative Commons Attribution 4.0.',
+    credits: 'NVIDIA Corp. & LibriVox public domain sources; Hi-Fi TTS speaker 92 (10425/secretagent_04_conrad_0178.flac).',
+    approach: 'hush_reference'
+  },
+  {
+    id: 'vox-ethan',
+    name: 'Ethan (Hi-Fi TTS)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'male',
+    accent: 'American Baritone',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Warm & Authoritative',
+    architecture: 'voxcpm',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'CC BY 4.0 Safe',
+    description: 'NVIDIA Hi-Fi TTS multi-speaker dataset (Speaker 6097). Deep, warm baritone voice suited for audiobooks and educational explainers.',
+    previewSample: '/voices/ethan.wav',
+    referenceAudioUrl: '/voices/ethan.wav',
+    referenceTranscript: 'The late Mr. Leslie, who died in eighteen seventy-four, tells it in his book',
+    datasetName: 'Hi-Fi Multi-Speaker English TTS Dataset',
+    datasetUrl: 'https://openslr.org/109/',
+    licenseName: 'CC BY 4.0 (NVIDIA)',
+    licenseDetails: 'Hi-Fi Multi-Speaker English TTS Dataset (NVIDIA, E. Bakhturina et al. 2021). Licensed under CC BY 4.0.',
+    credits: 'NVIDIA Corp. & LibriVox; Hi-Fi TTS speaker 6097 (14411/nada_lily_00_haggard_0201.flac).',
+    approach: 'hush_reference'
+  },
+  {
+    id: 'vox-cole',
+    name: 'Cole (Hi-Fi TTS)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'male',
+    accent: 'Documentary Narrator',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Calm & Measured',
+    architecture: 'voxcpm',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'CC BY 4.0 Safe',
+    description: 'NVIDIA Hi-Fi TTS multi-speaker dataset (Speaker 9017). Calm, measured cadence ideal for historical documentaries, long-form scripts, and technical manuals.',
+    previewSample: '/voices/cole.wav',
+    referenceAudioUrl: '/voices/cole.wav',
+    referenceTranscript: 'The royal ordinance of eighteen sixty-six resulted, which was to regulate the cutting on settled lands and in such new settlements as were thereafter allowed.',
+    datasetName: 'Hi-Fi Multi-Speaker English TTS Dataset',
+    datasetUrl: 'https://openslr.org/109/',
+    licenseName: 'CC BY 4.0 (NVIDIA)',
+    licenseDetails: 'Hi-Fi Multi-Speaker English TTS Dataset (NVIDIA, E. Bakhturina et al. 2021). Licensed under CC BY 4.0.',
+    credits: 'NVIDIA Corp. & LibriVox; Hi-Fi TTS speaker 9017 (13089/historyofforestry_15_fernow_0129.flac).',
+    approach: 'hush_reference'
+  },
+  {
+    id: 'vox-priya',
+    name: 'Priya (VCTK Indian English)',
+    lang: 'en-IN',
+    languageLabel: 'Indian English (IN)',
+    gender: 'female',
+    accent: 'Indian Professional',
+    isNeural: true,
+    engine: 'neural',
+    emotionTag: 'Clear & Measured',
+    architecture: 'voxcpm',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'CC BY 4.0 Safe',
+    description: 'CSTR VCTK Corpus (Speaker p248). Clear, articulate Indian English voice recorded by the University of Edinburgh Centre for Speech Technology Research.',
+    previewSample: '/voices/priya.wav',
+    referenceAudioUrl: '/voices/priya.wav',
+    referenceTranscript: 'The main concern is that it could interfere with air traffic. Because it\'s a waste of time for both sides.',
+    datasetName: 'CSTR VCTK Corpus 0.92',
+    datasetUrl: 'https://datashare.ed.ac.uk/handle/10283/3443',
+    licenseName: 'CC BY 4.0 (Edinburgh)',
+    licenseDetails: 'CSTR VCTK Corpus 0.92, Centre for Speech Technology Research, University of Edinburgh. Licensed under CC BY 4.0.',
+    credits: 'University of Edinburgh CSTR; speaker p248 (p248_029_mic1 + p248_031_mic1).',
+    approach: 'hush_reference'
   }
 ];
 
@@ -489,6 +638,20 @@ const DEFAULT_ARCHITECTURES: TTSArchitectureOption[] = [
     supportedEmotions: ['Conversational Laughter', 'Sighs & Breaths', 'Casual Chuckle', 'Empathetic Pause']
   },
   {
+    id: 'voxcpm',
+    name: 'VoxCPM (In-Context Reference)',
+    badge: 'Acoustic Reference • Hush Studio',
+    badgeColor: 'emerald',
+    description: 'Offline in-context acoustic reference matching engine pioneered in Hush Studio. Synthesizes speech by conditioning on a 5–10s reference WAV sample and exact transcript alignment. Zero model retraining required.',
+    status: 'online',
+    speed: '~0.35s (Acoustic Conditioning)',
+    emotionCapability: 'In-Context Timbre & Prosody Transfer',
+    keyFeature: 'Conditions directly on reference audio + transcript prompt for authentic voice replication without retraining.',
+    parameters: '0.5B Q4',
+    license: 'Apache 2.0',
+    supportedEmotions: ['Audiobook Narrator', 'Natural Conversational', 'Documentary Pacing', 'Clear Professional']
+  },
+  {
     id: 'cosyvoice-2',
     name: 'CosyVoice 2 (Alibaba FunAudioLLM)',
     badge: 'Style-Instruct Conditioning',
@@ -520,7 +683,7 @@ export default function SpeechStudioView({
   // Input text and voice parameters
   const [text, setText] = useState<string>(SAMPLE_PROMPTS[0].text);
   const [selectedLang, setSelectedLang] = useState<'all' | 'en' | 'hi'>('all');
-  const [voiceFilter, setVoiceFilter] = useState<'all' | 'commercial' | 'hi' | 'en'>('all');
+  const [voiceFilter, setVoiceFilter] = useState<'all' | 'commercial' | 'hush' | 'hi' | 'en'>('all');
   const [neuralVoices, setNeuralVoices] = useState<TTSVoiceOption[]>(DEFAULT_NEURAL_VOICES);
   const [selectedVoiceId, setSelectedVoiceId] = useState<string>('aarav-neural');
 
@@ -595,9 +758,47 @@ export default function SpeechStudioView({
     resetInSeconds: 3600
   });
 
+  // Synthesis Approach & Replication Approach State
+  const [synthesisApproach, setSynthesisApproach] = useState<'hush_reference' | 'neural_cloud' | 'flow_matching' | 'web_speech'>('hush_reference');
+  const [replicationApproach, setReplicationApproach] = useState<'hush_reference' | 'neural_zero_shot'>('hush_reference');
+
+  // License Credit Modal & Reference Audio Player State
+  const [licenseModalVoice, setLicenseModalVoice] = useState<TTSVoiceOption | null>(null);
+  const [referenceAudioPlaying, setReferenceAudioPlaying] = useState<string | null>(null);
+  const referenceAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [isVercelFallback, setIsVercelFallback] = useState<boolean>(false);
+
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [confirmClearHistory, setConfirmClearHistory] = useState<boolean>(false);
+
+  const handleToggleReferenceAudio = (url: string) => {
+    if (!url) return;
+    if (referenceAudioPlaying === url) {
+      if (referenceAudioRef.current) {
+        referenceAudioRef.current.pause();
+      }
+      setReferenceAudioPlaying(null);
+    } else {
+      if (referenceAudioRef.current) {
+        referenceAudioRef.current.pause();
+      }
+      const audio = new Audio(url);
+      referenceAudioRef.current = audio;
+      audio.onended = () => setReferenceAudioPlaying(null);
+      audio.onerror = () => setReferenceAudioPlaying(null);
+      audio.play().catch(() => setReferenceAudioPlaying(null));
+      setReferenceAudioPlaying(url);
+    }
+  };
+
+  const handleCloseLicenseModal = () => {
+    if (referenceAudioRef.current) {
+      referenceAudioRef.current.pause();
+    }
+    setReferenceAudioPlaying(null);
+    setLicenseModalVoice(null);
+  };
 
   const copyToClipboard = (text: string, key: string) => {
     navigator.clipboard.writeText(text);
@@ -651,6 +852,18 @@ export default function SpeechStudioView({
   // Fetch neural voices and model architectures from backend
   useEffect(() => {
     const fetchVoices = async () => {
+      try {
+        const healthRes = await fetch('/api/health');
+        if (healthRes.ok) {
+          const providerHeader = healthRes.headers.get('x-backend-provider');
+          const fallbackHeader = healthRes.headers.get('x-backend-fallback');
+          const hData = await healthRes.json().catch(() => ({}));
+          if (fallbackHeader === 'true' || providerHeader === 'vercel-serverless' || hData.isFallback === true || hData.provider === 'vercel-serverless') {
+            setIsVercelFallback(true);
+          }
+        }
+      } catch {}
+
       try {
         const res = await fetch('/api/plugins/speech-studio/voices');
         if (res.ok) {
@@ -876,12 +1089,21 @@ export default function SpeechStudioView({
     };
   }, []);
 
-  // Filter voices by selected language and commercial license
+  // Filter voices by selected language, commercial license, or Hush Studio architecture
   const filteredVoices = neuralVoices.filter(v => {
+    if (voiceFilter === 'hush') return v.architecture === 'voxcpm' || v.approach === 'hush_reference';
     if (voiceFilter === 'commercial') return v.commercialUse === 'commercial_safe';
     if (voiceFilter === 'hi') return v.lang.startsWith('hi');
     if (voiceFilter === 'en') return v.lang.startsWith('en');
     return true;
+  }).sort((a, b) => {
+    // When Hush Studio approach is active and filter is all/hush, prioritize Hush Studio reference models
+    if ((synthesisApproach === 'hush_reference' || voiceFilter === 'hush') && voiceFilter !== 'hi') {
+      const aHush = (a.architecture === 'voxcpm' || a.approach === 'hush_reference') ? 1 : 0;
+      const bHush = (b.architecture === 'voxcpm' || b.approach === 'hush_reference') ? 1 : 0;
+      return bHush - aHush;
+    }
+    return 0;
   });
 
   // Handle Play / Pause / Stop
@@ -1819,6 +2041,34 @@ export default function SpeechStudioView({
         </div>
       )}
 
+      {/* Vercel Serverless Edge Fallback Notice within Speech Studio */}
+      {isVercelFallback && (
+        <div className={`p-3 sm:p-3.5 rounded-xl border flex items-start justify-between gap-3 shadow-md animate-in fade-in transition-colors ${
+          isLight
+            ? 'bg-amber-50 border-amber-300 text-amber-950'
+            : 'bg-amber-950/30 border-amber-500/40 text-amber-200'
+        }`}>
+          <div className="flex items-start gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0 mt-0.5">
+              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+            </div>
+            <div className="text-xs">
+              <div className="flex items-center gap-2">
+                <span className="font-bold font-mono tracking-tight text-amber-500 uppercase text-[11px]">
+                  Vercel Serverless Fallback Active
+                </span>
+                <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                  Remote VM 2 Offline
+                </span>
+              </div>
+              <p className={`mt-0.5 text-[11px] leading-relaxed font-sans ${isLight ? 'text-amber-900/90' : 'text-amber-200/80'}`}>
+                The remote VM 2 neural synthesizer daemon is currently unreachable. The studio has activated <strong>Hush Studio In-Context Acoustic Reference</strong> mode and <strong>Native Browser Web Speech</strong>. All 6 built-in voice reference samples and script export remain fully operational.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* TAB 1: STUDIO VOICES SYNTHESIS */}
       {activeTab === 'synthesize' && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -1827,6 +2077,193 @@ export default function SpeechStudioView({
             <div className={`p-4 rounded-2xl border shadow-sm ${
               isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
             }`}>
+              {/* Synthesis Approach Selector (Hush Studio Reference vs Cloud vs Flow Matching vs Browser) */}
+              <div className="mb-4 pb-3.5 border-b border-outline/15">
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <span className="text-xs font-mono font-bold uppercase text-on-surface flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+                    Synthesis Approach
+                  </span>
+                  <span className="text-[10px] font-mono text-on-surface-variant hidden sm:inline">
+                    {synthesisApproach === 'hush_reference' && 'Hush Studio In-Context Reference (Offline-Ready SOTA)'}
+                    {synthesisApproach === 'neural_cloud' && 'Neural Edge Fleet (Sub-Second Cloud Streaming)'}
+                    {synthesisApproach === 'flow_matching' && 'F5 Flow Matching (Non-Autoregressive ODE)'}
+                    {synthesisApproach === 'web_speech' && 'Browser Web Speech (100% Offline & Private)'}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSynthesisApproach('hush_reference');
+                      setSelectedArchitecture('voxcpm');
+                      setVoiceFilter('hush');
+                      const ariaVoice = neuralVoices.find(v => v.id === 'vox-aria');
+                      if (ariaVoice) setSelectedVoiceId('vox-aria');
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      synthesisApproach === 'hush_reference'
+                        ? isLight
+                          ? 'bg-emerald-50 border-emerald-500 text-slate-900 shadow-sm ring-1 ring-emerald-400'
+                          : 'bg-emerald-500/15 border-emerald-500 text-emerald-300 shadow-sm ring-1 ring-emerald-500/30'
+                        : isLight
+                          ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                          : 'bg-[#201f21] hover:bg-[#28272a] border-[#3a494b]/40 text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span className="text-[11px] font-bold font-sans">Hush Studio</span>
+                      <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        Reference
+                      </span>
+                    </div>
+                    <span className="text-[9px] font-mono opacity-80 leading-tight">In-Context 5–10s WAV + Transcript Prompt</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSynthesisApproach('neural_cloud');
+                      setSelectedArchitecture('edge-tts');
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      synthesisApproach === 'neural_cloud'
+                        ? isLight
+                          ? 'bg-sky-50 border-sky-500 text-slate-900 shadow-sm ring-1 ring-sky-400'
+                          : 'bg-[#00dbe7]/15 border-[#00dbe7] text-[#00dbe7] shadow-sm ring-1 ring-[#00dbe7]/30'
+                        : isLight
+                          ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                          : 'bg-[#201f21] hover:bg-[#28272a] border-[#3a494b]/40 text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span className="text-[11px] font-bold font-sans">Neural Edge</span>
+                      <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                        Cloud
+                      </span>
+                    </div>
+                    <span className="text-[9px] font-mono opacity-80 leading-tight">Sub-Second Low Latency Streaming</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSynthesisApproach('flow_matching');
+                      setSelectedArchitecture('f5-tts');
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      synthesisApproach === 'flow_matching'
+                        ? isLight
+                          ? 'bg-purple-50 border-purple-500 text-slate-900 shadow-sm ring-1 ring-purple-400'
+                          : 'bg-purple-500/15 border-purple-500 text-purple-300 shadow-sm ring-1 ring-purple-500/30'
+                        : isLight
+                          ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                          : 'bg-[#201f21] hover:bg-[#28272a] border-[#3a494b]/40 text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span className="text-[11px] font-bold font-sans">F5-TTS</span>
+                      <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                        Diffusion
+                      </span>
+                    </div>
+                    <span className="text-[9px] font-mono opacity-80 leading-tight">ConvNeXt ODE Zero-Shot &amp; CFG</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSynthesisApproach('web_speech');
+                      setSelectedArchitecture('browser');
+                    }}
+                    className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                      synthesisApproach === 'web_speech'
+                        ? isLight
+                          ? 'bg-amber-50 border-amber-500 text-slate-900 shadow-sm ring-1 ring-amber-400'
+                          : 'bg-amber-500/15 border-amber-500 text-amber-300 shadow-sm ring-1 ring-amber-500/30'
+                        : isLight
+                          ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                          : 'bg-[#201f21] hover:bg-[#28272a] border-[#3a494b]/40 text-on-surface-variant hover:text-on-surface'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-1 mb-1">
+                      <span className="text-[11px] font-bold font-sans">Browser Speech</span>
+                      <span className="px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                        Offline
+                      </span>
+                    </div>
+                    <span className="text-[9px] font-mono opacity-80 leading-tight">Client-Side Zero Server Dependency</span>
+                  </button>
+                </div>
+
+                {/* Hush Studio Dedicated In-Context Reference Engine Banner */}
+                {synthesisApproach === 'hush_reference' && (
+                  <div className={`mt-3 p-3 rounded-xl border space-y-2 transition-all ${
+                    isLight ? 'bg-emerald-50/70 border-emerald-300' : 'bg-emerald-950/20 border-emerald-500/30'
+                  }`}>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center shrink-0">
+                          <Volume2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-on-surface">
+                            Hush Studio In-Context Acoustic Reference Engine
+                          </div>
+                          <div className="text-[10px] text-on-surface-variant font-mono">
+                            VoxCPM 0.5B • Zero-training voice synthesis conditioned on reference WAV
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActiveTab('clone');
+                          setReplicationApproach('hush_reference');
+                        }}
+                        className="h-7 px-2.5 rounded text-[10px] font-mono font-bold uppercase bg-emerald-500 hover:bg-emerald-600 text-white flex items-center gap-1 cursor-pointer transition-colors shrink-0"
+                      >
+                        <Mic className="w-3 h-3 shrink-0" />
+                        <span>Record Voice</span>
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1.5 pt-1">
+                      {[
+                        { id: 'vox-aria', name: 'Aria', tag: 'LJ Speech' },
+                        { id: 'vox-jenny', name: 'Jenny', tag: 'Dioco' },
+                        { id: 'vox-maya', name: 'Maya', tag: 'Hi-Fi 92' },
+                        { id: 'vox-ethan', name: 'Ethan', tag: 'Hi-Fi 6097' },
+                        { id: 'vox-cole', name: 'Cole', tag: 'Hi-Fi 9017' },
+                        { id: 'vox-priya', name: 'Priya', tag: 'VCTK 248' }
+                      ].map(v => (
+                        <button
+                          key={v.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedVoiceId(v.id);
+                            setVoiceFilter('hush');
+                          }}
+                          className={`p-1.5 rounded-lg border text-left cursor-pointer transition-all ${
+                            selectedVoiceId === v.id
+                              ? isLight
+                                ? 'bg-emerald-100 border-emerald-500 text-emerald-950 font-bold'
+                                : 'bg-emerald-500/25 border-emerald-400 text-emerald-200 font-bold'
+                              : isLight
+                                ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                                : 'bg-black/30 hover:bg-white/5 border-white/5 text-on-surface-variant'
+                          }`}
+                        >
+                          <div className="text-[11px] font-bold truncate">{v.name}</div>
+                          <div className="text-[9px] font-mono text-emerald-500 truncate">{v.tag}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Architecture Switcher Bar */}
               <div className="mb-4 pb-3.5 border-b border-outline/15">
                 <div className="flex items-center justify-between gap-2 mb-2">
@@ -1843,7 +2280,7 @@ export default function SpeechStudioView({
                     <Layers className="w-3 h-3 shrink-0" />
                   </button>
                 </div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5">
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-1.5">
                   {architectures.map(arch => {
                     const isSelected = selectedArchitecture === arch.id;
                     return (
@@ -2101,12 +2538,13 @@ export default function SpeechStudioView({
                 </span>
               </div>
 
-              {/* Quick Filter: All | Commercial Safe | Hindi | English */}
+              {/* Quick Filter: All | Hush Studio | Commercial Safe | Hindi | English */}
               <div className={`flex rounded-lg p-0.5 border text-[10px] font-mono ${
                 isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
               }`}>
                 {[
                   { id: 'all', label: 'All' },
+                  { id: 'hush', label: 'Hush Studio (6)', icon: Volume2 },
                   { id: 'commercial', label: 'Commercial Safe', icon: ShieldCheck },
                   { id: 'hi', label: 'Hindi' },
                   { id: 'en', label: 'English' }
@@ -2166,9 +2604,43 @@ export default function SpeechStudioView({
                       >
                         <div className="flex items-center justify-between gap-1">
                           <span className="text-xs font-bold font-sans truncate text-[#ce5dff]">{cloned.name}</span>
-                          <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5 shrink-0">
-                            <ShieldCheck className="w-2.5 h-2.5 shrink-0" /> Commercial Safe
-                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setLicenseModalVoice({
+                                  id: cloned.id,
+                                  name: cloned.name,
+                                  lang: cloned.language,
+                                  languageLabel: cloned.languageLabel,
+                                  gender: cloned.gender,
+                                  engine: 'cloned',
+                                  architecture: 'f5-tts',
+                                  commercialUse: 'commercial_safe',
+                                  commercialLabel: 'Commercial Safe (Self-Owned)',
+                                  description: cloned.description || 'Custom replicated user voice profile.',
+                                  referenceTranscript: cloned.referenceText || cloned.referenceTranscript,
+                                  referenceAudioUrl: cloned.sampleAudioDataUrl,
+                                  licenseName: 'Self-Owned Rights',
+                                  licenseDetails: 'Zero-shot cloned voice owned and authorized by user for commercial and personal narration.',
+                                  credits: `Created by user · ${new Date(cloned.createdAt).toLocaleDateString()}`
+                                });
+                              }}
+                              className={`p-1 px-1.5 rounded-md border text-[9px] flex items-center gap-1 transition-all cursor-pointer ${
+                                isLight
+                                  ? 'bg-white hover:bg-slate-100 text-purple-700 border-purple-200 hover:text-purple-900'
+                                  : 'bg-purple-950/40 hover:bg-purple-900/40 text-purple-300 hover:text-white border-purple-500/30'
+                              }`}
+                              title="Check Voice License & Credit"
+                            >
+                              <Scale className="w-3 h-3 text-purple-400 shrink-0" />
+                              <span className="font-mono uppercase font-bold text-[8px]">License</span>
+                            </button>
+                            <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 flex items-center gap-0.5 shrink-0">
+                              <ShieldCheck className="w-2.5 h-2.5 shrink-0" /> Commercial Safe
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center justify-between text-[9px] font-mono text-on-surface-variant mt-1.5">
                           <span>{cloned.languageLabel}</span>
@@ -2183,12 +2655,18 @@ export default function SpeechStudioView({
                 {filteredVoices.map(voice => (
                   <div
                     key={voice.id}
-                    onClick={() => setSelectedVoiceId(voice.id)}
+                    onClick={() => {
+                      setSelectedVoiceId(voice.id);
+                      if (voice.architecture === 'voxcpm') {
+                        setSynthesisApproach('hush_reference');
+                        setSelectedArchitecture('voxcpm');
+                      }
+                    }}
                     className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
                       selectedVoiceId === voice.id
                         ? isLight
-                          ? 'bg-sky-50 border-sky-400 text-sky-900 shadow-xs'
-                          : 'bg-[#00dbe7]/10 border-[#00dbe7]/50 text-white shadow-xs'
+                          ? 'bg-sky-50 border-sky-400 text-sky-900 shadow-xs ring-1 ring-sky-300'
+                          : 'bg-[#00dbe7]/10 border-[#00dbe7]/50 text-white shadow-xs ring-1 ring-[#00dbe7]/30'
                         : isLight
                           ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
                           : 'bg-white/5 hover:bg-white/10 border-white/5 text-on-surface-variant'
@@ -2197,6 +2675,24 @@ export default function SpeechStudioView({
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-bold font-sans truncate">{voice.name}</span>
                       <div className="flex items-center gap-1 shrink-0">
+                        {/* Voice License Credit Button */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setLicenseModalVoice(voice);
+                          }}
+                          className={`p-1 px-1.5 rounded-md border text-[9px] flex items-center gap-1 transition-all cursor-pointer ${
+                            isLight
+                              ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 hover:text-sky-600'
+                              : 'bg-white/5 hover:bg-white/10 text-gray-300 hover:text-[#00dbe7] border-white/10'
+                          }`}
+                          title="Check Voice License, Credit & Reference Sample"
+                          aria-label={`Check license for ${voice.name}`}
+                        >
+                          <Scale className="w-3 h-3 text-[#00dbe7] shrink-0" />
+                          <span className="font-mono uppercase font-bold text-[8px]">License</span>
+                        </button>
                         <span className={`px-1.5 py-0.5 rounded text-[9px] font-mono font-bold uppercase ${
                           voice.gender === 'female'
                             ? 'bg-pink-500/10 text-pink-400 border border-pink-500/20'
@@ -2214,6 +2710,11 @@ export default function SpeechStudioView({
                       ) : (
                         <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 flex items-center gap-0.5 shrink-0">
                           <AlertTriangle className="w-2.5 h-2.5 shrink-0 text-amber-400" /> Personal / Dev
+                        </span>
+                      )}
+                      {voice.architecture === 'voxcpm' && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
+                          Hush Studio
                         </span>
                       )}
                       {voice.emotionTag && (
@@ -2325,6 +2826,58 @@ export default function SpeechStudioView({
                   <div>
                     <h3 className="text-sm font-bold text-on-surface">Step 1: Capture & Label Voice</h3>
                     <p className="text-[10px] text-on-surface-variant font-mono">Replicate and name a custom vocal identity</p>
+                  </div>
+                </div>
+
+                {/* Replication Approach Selector */}
+                <div>
+                  <label className="block text-[11px] font-mono uppercase font-bold text-on-surface-variant mb-1">
+                    Replication Engine / Approach
+                  </label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setReplicationApproach('hush_reference')}
+                      className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        replicationApproach === 'hush_reference'
+                          ? isLight
+                            ? 'bg-emerald-50 border-emerald-500 text-slate-900 shadow-sm ring-1 ring-emerald-400'
+                            : 'bg-emerald-500/15 border-emerald-500 text-emerald-300 shadow-sm ring-1 ring-emerald-500/30'
+                          : isLight
+                            ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                            : 'bg-[#201f21] hover:bg-[#28272a] border-[#3a494b]/40 text-on-surface-variant'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="text-[11px] font-bold font-sans">Hush Studio</span>
+                        <span className="px-1 py-0.2 rounded text-[7px] font-mono font-bold uppercase bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          Reference
+                        </span>
+                      </div>
+                      <span className="text-[9px] font-mono opacity-80 leading-tight">Acoustic Reference Clip + Transcript</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setReplicationApproach('neural_zero_shot')}
+                      className={`p-2 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                        replicationApproach === 'neural_zero_shot'
+                          ? isLight
+                            ? 'bg-purple-50 border-purple-500 text-slate-900 shadow-sm ring-1 ring-purple-400'
+                            : 'bg-purple-500/15 border-purple-500 text-purple-300 shadow-sm ring-1 ring-purple-500/30'
+                          : isLight
+                            ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                            : 'bg-[#201f21] hover:bg-[#28272a] border-[#3a494b]/40 text-on-surface-variant'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="text-[11px] font-bold font-sans">Flow-Matching</span>
+                        <span className="px-1 py-0.2 rounded text-[7px] font-mono font-bold uppercase bg-purple-500/20 text-purple-400 border border-purple-500/30">
+                          Neural
+                        </span>
+                      </div>
+                      <span className="text-[9px] font-mono opacity-80 leading-tight">XTTS / F5 Latent Extraction</span>
+                    </button>
                   </div>
                 </div>
 
@@ -3378,6 +3931,246 @@ export default function SpeechStudioView({
         variant="danger"
         theme={theme}
       />
+
+      {/* Voice License Credit, Dataset Provenance & Reference Audio Modal */}
+      {licenseModalVoice && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-md animate-in fade-in duration-150"
+          role="dialog"
+          aria-modal="true"
+          onClick={handleCloseLicenseModal}
+        >
+          <div 
+            className={`relative w-full max-w-xl rounded-2xl border shadow-2xl overflow-hidden transition-all animate-in zoom-in-95 duration-150 ${
+              isLight
+                ? 'bg-white border-slate-200 text-slate-800'
+                : 'bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]'
+            }`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Top Single-Tone Accent Bar */}
+            <div className="h-1 w-full bg-[#00dbe7]" />
+
+            <div className="p-5 sm:p-6 space-y-4">
+              {/* Modal Header */}
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 shadow-sm">
+                    <Scale className="w-5 h-5 text-[#00dbe7] shrink-0" />
+                  </div>
+                  <div>
+                    <h3 className="text-base sm:text-lg font-bold tracking-tight text-on-surface font-sans">
+                      {licenseModalVoice.name}
+                    </h3>
+                    <p className="text-xs text-on-surface-variant font-mono mt-0.5">
+                      Open-Source License, Credit Notice &amp; Acoustic Sample
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleCloseLicenseModal}
+                  className={`p-1.5 rounded-lg border transition-colors cursor-pointer ${
+                    isLight
+                      ? 'border-slate-300 hover:bg-slate-100 text-slate-600'
+                      : 'border-[#3a494b]/40 hover:bg-white/10 text-on-surface-variant'
+                  }`}
+                  aria-label="Close license dialog"
+                >
+                  <X className="w-4 h-4 shrink-0" />
+                </button>
+              </div>
+
+              {/* Status and Usability Badges */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className={`px-2 py-0.5 rounded-md font-mono text-[10px] font-bold uppercase border ${
+                  licenseModalVoice.commercialUse === 'commercial_safe'
+                    ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                    : 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                }`}>
+                  {licenseModalVoice.commercialLabel || (licenseModalVoice.commercialUse === 'commercial_safe' ? 'Commercial Safe' : 'Personal / Staging')}
+                </span>
+                <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold uppercase bg-sky-500/10 text-sky-400 border border-sky-500/30">
+                  {licenseModalVoice.licenseName || 'Open Source'}
+                </span>
+                {licenseModalVoice.architecture === 'voxcpm' && (
+                  <span className="px-2 py-0.5 rounded-md font-mono text-[10px] font-bold uppercase bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+                    Hush Studio Reference Audio
+                  </span>
+                )}
+                <span className="px-2 py-0.5 rounded-md font-mono text-[10px] uppercase bg-surface-container-low text-on-surface-variant border border-outline/20">
+                  {licenseModalVoice.gender} · {licenseModalVoice.accent || licenseModalVoice.languageLabel}
+                </span>
+              </div>
+
+              {/* Original Studio Reference Sample Player (if audio clip is packaged) */}
+              {licenseModalVoice.referenceAudioUrl && (
+                <div className={`p-3.5 rounded-xl border transition-colors ${
+                  isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c]/60 border-[#3a494b]/40'
+                }`}>
+                  <div className="flex items-center justify-between gap-2 mb-2">
+                    <span className="text-xs font-mono font-bold text-on-surface flex items-center gap-1.5">
+                      <Volume2 className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+                      Original 16 kHz Reference Recording
+                    </span>
+                    <span className="text-[10px] font-mono text-on-surface-variant">
+                      Used for in-context timbre transfer
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => handleToggleReferenceAudio(licenseModalVoice.referenceAudioUrl!)}
+                      className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 leading-none border shadow-sm ${
+                        referenceAudioPlaying === licenseModalVoice.referenceAudioUrl
+                          ? isLight ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-amber-500/15 text-amber-400 border-amber-500/40'
+                          : isLight ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600' : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/50'
+                      }`}
+                    >
+                      {referenceAudioPlaying === licenseModalVoice.referenceAudioUrl ? (
+                        <>
+                          <Pause className="w-3.5 h-3.5 shrink-0" />
+                          <span>Pause Reference</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play className="w-3.5 h-3.5 shrink-0" />
+                          <span>Play Original Audio</span>
+                        </>
+                      )}
+                    </button>
+                    <a
+                      href={licenseModalVoice.referenceAudioUrl}
+                      download={`${licenseModalVoice.id}-reference.wav`}
+                      className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-all flex items-center gap-1.5 cursor-pointer shadow-sm ${
+                        isLight
+                          ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                          : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                      }`}
+                      title="Download reference WAV audio"
+                    >
+                      <Download className="w-3.5 h-3.5 shrink-0" />
+                      <span className="hidden sm:inline">Download WAV</span>
+                    </a>
+                  </div>
+                </div>
+              )}
+
+              {/* Exact Prompt Transcript Spoken */}
+              {licenseModalVoice.referenceTranscript && (
+                <div>
+                  <div className="flex items-center justify-between text-xs font-mono font-bold text-on-surface mb-1.5">
+                    <span className="flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+                      Reference Prompt Transcript
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setText(licenseModalVoice.referenceTranscript!);
+                        setSelectedVoiceId(licenseModalVoice.id);
+                        handleCloseLicenseModal();
+                      }}
+                      className="text-[10px] text-[#00dbe7] hover:underline cursor-pointer"
+                    >
+                      Use as Studio Script
+                    </button>
+                  </div>
+                  <div className={`p-3 rounded-xl border font-mono text-xs leading-relaxed select-all transition-colors ${
+                    isLight ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-[#121215] border-[#3a494b]/40 text-[#e5e1e4]'
+                  }`}>
+                    "{licenseModalVoice.referenceTranscript}"
+                  </div>
+                </div>
+              )}
+
+              {/* License Details and Dataset Source Notice */}
+              <div className="space-y-2 text-xs">
+                <div>
+                  <span className="text-[10px] font-mono font-bold text-on-surface-variant uppercase tracking-wider block mb-0.5">
+                    Dataset Source &amp; Institution
+                  </span>
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="font-semibold text-on-surface">
+                      {licenseModalVoice.datasetName || 'Open-Source Voice Dataset'}
+                    </span>
+                    {licenseModalVoice.datasetUrl && (
+                      <a
+                        href={licenseModalVoice.datasetUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline text-[11px] font-mono flex items-center gap-1"
+                      >
+                        <span>Source Page</span>
+                        <ExternalLink className="w-3 h-3 shrink-0" />
+                      </a>
+                    )}
+                  </div>
+                </div>
+
+                {licenseModalVoice.credits && (
+                  <div>
+                    <span className="text-[10px] font-mono font-bold text-on-surface-variant uppercase tracking-wider block mb-0.5">
+                      Contributors &amp; Attribution Credit
+                    </span>
+                    <p className={`p-2.5 rounded-lg border font-mono text-[11px] leading-relaxed ${
+                      isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-black/30 border-white/5 text-gray-300'
+                    }`}>
+                      {licenseModalVoice.credits}
+                    </p>
+                  </div>
+                )}
+
+                {licenseModalVoice.licenseDetails && (
+                  <div>
+                    <span className="text-[10px] font-mono font-bold text-on-surface-variant uppercase tracking-wider block mb-0.5">
+                      Legal Terms &amp; Permitted Use
+                    </span>
+                    <p className={`p-2.5 rounded-lg border font-mono text-[11px] leading-relaxed ${
+                      isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-black/30 border-white/5 text-gray-300'
+                    }`}>
+                      {licenseModalVoice.licenseDetails}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer Actions */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-outline/15 shrink-0 flex-nowrap">
+                <button
+                  type="button"
+                  onClick={handleCloseLicenseModal}
+                  className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer ${
+                    isLight
+                      ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                      : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                  }`}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedVoiceId(licenseModalVoice.id);
+                    if (licenseModalVoice.architecture === 'voxcpm') {
+                      setSynthesisApproach('hush_reference');
+                      setSelectedArchitecture('voxcpm');
+                    }
+                    handleCloseLicenseModal();
+                  }}
+                  className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border shadow-sm ${
+                    isLight
+                      ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                      : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/50'
+                  }`}
+                >
+                  Select This Voice
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

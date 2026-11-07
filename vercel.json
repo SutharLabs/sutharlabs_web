@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm install && npx prisma generate && vite build",
+  "buildCommand": "npm install && npx prisma generate && npm run build:server && vite build",
   "outputDirectory": "dist",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/server?apiPath=$1" },

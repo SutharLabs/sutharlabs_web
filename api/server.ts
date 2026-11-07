@@ -3,10 +3,18 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 // Backend routing provider: 'ORACLE' | 'VERCEL' (default: 'ORACLE' since dedicated VM 3 is live)
 const BACKEND_TARGET = (process.env.BACKEND_TARGET || 'ORACLE').toUpperCase();
 const ORACLE_BACKEND_URL = (
-  process.env.ORACLE_BACKEND_URL || 
-  process.env.ORACLE_WEB_URL || 
+  process.env.ORACLE_BACKEND_URL ||
+  process.env.ORACLE_WEB_URL ||
   'http://130.210.37.199'
 ).replace(/\/$/, '');
+
+// Disable Vercel's default body parser so multipart chunk streaming and raw file bodies pass through uncorrupted
+export const config = {
+  api: {
+    bodyParser: false,
+    responseLimit: false,
+  },
+};
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Restore original URL for Express routing via our explicit rewrite query parameter
@@ -42,9 +50,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       forwardHeaders['x-forwarded-host'] = req.headers.host || 'www.sutharlabs.com';
       forwardHeaders['x-forwarded-proto'] = 'https';
 
+      const isLongRunningRoute =
+        targetPath.startsWith('/api/ai/chat') ||
+        targetPath.startsWith('/api/vault/upload') ||
+        targetPath.includes('ocr-receipt') ||
+        targetPath.startsWith('/api/vault/download');
+
+      const isMultipart = (req.headers['content-type'] || '').toLowerCase().includes('multipart/form-data');
+
       let body: any = undefined;
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method || '')) {
-        if (req.body) {
+        if (isMultipart) {
+          // Pass raw body or stream for file uploads to preserve binary integrity
+          if (Buffer.isBuffer(req.body)) {
+            body = req.body;
+          } else if (typeof req.body === 'string') {
+            body = Buffer.from(req.body);
+          } else {
+            body = req;
+          }
+        } else if (req.body) {
           body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
           if (!forwardHeaders['content-type']) {
             forwardHeaders['content-type'] = 'application/json';
@@ -52,16 +77,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       }
 
-      // 8-second timeout safeguard (well under Vercel's 10s hard timeout)
+      // Dynamic timeout: 120s for AI inference, OCR, and large file uploads; 15s for standard API queries
+      const timeoutMs = isLongRunningRoute ? 120000 : 15000;
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
-      const proxyRes = await fetch(destinationUrl, {
+      const fetchOptions: any = {
         method: req.method,
         headers: forwardHeaders,
         body,
         signal: controller.signal
-      });
+      };
+
+      // For Node fetch streaming upload support
+      if (body === req || (body && typeof body.pipe === 'function')) {
+        fetchOptions.duplex = 'half';
+      }
+
+      const proxyRes = await fetch(destinationUrl, fetchOptions);
       clearTimeout(timeoutId);
 
       // Relay response headers (excluding hop-by-hop headers)
@@ -73,6 +106,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       });
       res.setHeader('x-backend-provider', 'oracle-vm');
       res.status(proxyRes.status);
+
+      const resContentType = proxyRes.headers.get('content-type') || '';
+      // Direct stream piping for SSE AI chat and large downloads to prevent mobile timeouts and memory bloat
+      if ((resContentType.includes('text/event-stream') || isLongRunningRoute) && proxyRes.body) {
+        const { Readable } = await import('stream');
+        const nodeStream = Readable.fromWeb(proxyRes.body as any);
+        return nodeStream.pipe(res);
+      }
 
       const data = Buffer.from(await proxyRes.arrayBuffer());
       return res.send(data);
@@ -87,6 +128,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   // LOCAL VERCEL SERVERLESS EXECUTION (LAZY LOADED FAILOVER ONLY)
   // =========================================================================
   try {
+    process.env.VERCEL = process.env.VERCEL || '1';
     const { default: app, startPromise } = await import('../server.js');
     await startPromise;
     res.setHeader('x-backend-provider', 'vercel-serverless');

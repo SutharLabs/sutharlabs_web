@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T17:42:36.010Z",
+    "packagedAt": "2026-11-07T05:22:33.689Z",
     "archiveFileName": "wp_stock_analyzer-v1.1.6.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.6.zip",
-    "sizeBytes": 123399,
-    "checksumSha256": "27910089a11732e2beeecd456a474e9c80a64f373a2805b7345d43225d9087bb",
+    "sizeBytes": 123400,
+    "checksumSha256": "82ce562abc72fd7a16db2861a394ed60b179f76e350f3d4e9d60d8df5f97f390",
     "changelog": "### v1.1.4 Subversion Release & Indicator Suite\n- **18 Professional Plottable Indicators on TradingView Graph**: Full mathematical calculation engine and plotting for EMA, SMA, WMA, VWAP, Bollinger Bands, Supertrend, Parabolic SAR, Donchian Channels, Keltner Channels, RSI, MACD, Stochastic Oscillator, ATR, ADX, CCI, Williams %R, OBV, and Volume.\n- **Dedicated Studies Ribbon Bar**: Clean, high-density studies bar situated directly above the chart canvas displaying active indicators, live telemetry at the hover crosshair, customizable parameters, visibility eye toggle, configuration settings gear modal, and removal controls.\n- **Unified Indicator Engine across Platform**:\n  - **Algo Creation (Strategy Builder)**: Categorized entry (BUY) and exit (SELL) rule builder with access to all 18 indicators.\n  - **Trade Simulator (EOD & Intraday)**: Dynamic calculation and evaluation of all 18 indicators across simulation runs.\n  - **Market Scanner Hub (Screener)**: Multi-indicator candidate metrics with quick filter buttons (Above VWAP, Supertrend Bull, RSI ≤ 35, RSI ≥ 50).\n- **Unobstructed Chart Canvas**: Relocated floating overlay from inside the canvas to the dedicated top ribbon, giving candles 100% full, unobstructed visibility.\n- **Toolbar Redundancy**: Removed redundant fixed indicator buttons from the chart toolbar.\n- **UI Polish**: Fixed duplicate '+' icon on the Study button."
   },
   {
@@ -26,11 +26,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T17:42:38.277Z",
+    "packagedAt": "2026-11-07T05:22:37.245Z",
     "archiveFileName": "wp_flow_designer-v0.2.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.2.0.zip",
     "sizeBytes": 2987,
-    "checksumSha256": "c0d1a12bf83890283d8d4467ec2f1f438f3556d8c69be5b5f3059ff070ebd60a",
+    "checksumSha256": "23f7be84832b873ef6cb14418a62967819bbca6dba02d1e33b8f83fa2b054d53",
     "changelog": "Interactive canvas for architectural node topologies, microservices modeling, and JSON state import/export."
   },
   {
@@ -43,11 +43,11 @@
     "iconSymbol": "auto_stories",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T17:42:40.729Z",
+    "packagedAt": "2026-11-07T05:22:38.562Z",
     "archiveFileName": "wp_doc_nexus-v0.3.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.3.0.zip",
-    "sizeBytes": 143897,
-    "checksumSha256": "4084b4cd98741e2b92a95e4677b5d9a64e9992c55c718be356fe3fed6f628fc9",
+    "sizeBytes": 144114,
+    "checksumSha256": "6d6d284d6a9d519482c3ab67bc83eb271f2ab831c2b9e1fb24d1280674ed4a0d",
     "changelog": "Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations."
   },
   {
@@ -60,11 +60,11 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T17:42:42.691Z",
+    "packagedAt": "2026-11-07T05:22:41.595Z",
     "archiveFileName": "wp_accounting-v0.2.3.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.2.3.zip",
-    "sizeBytes": 100338,
-    "checksumSha256": "b89d5ef2eef8fea636e8727b788c4cabac485230bd6b73c4ddd7e9f7c88e4259",
+    "sizeBytes": 101313,
+    "checksumSha256": "7802efd87f0d1413c054f4a5455b2faa98bfe09817d23946b51b938a9576d0f2",
     "changelog": "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync."
   },
   {
@@ -77,11 +77,11 @@
     "iconSymbol": "record_voice_over",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T17:42:44.513Z",
+    "packagedAt": "2026-11-07T05:22:43.395Z",
     "archiveFileName": "speech-studio-v0.3.3.zip",
     "packageUrl": "/storage/plugins/speech-studio-v0.3.3.zip",
-    "sizeBytes": 44668,
-    "checksumSha256": "a8c30f59c2ff99b598d2b1afc7c944362fa9956e504d0a238e5052a0a6796c95",
+    "sizeBytes": 53923,
+    "checksumSha256": "34d732323ad3ba9e129fed02382f09c21b4b7924dbbbe102210e797688e132c9",
     "changelog": "Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting."
   },
   {
@@ -94,11 +94,11 @@
     "iconSymbol": "photo_filter",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T17:42:45.765Z",
+    "packagedAt": "2026-11-07T05:22:44.899Z",
     "archiveFileName": "image-studio-v0.2.0.zip",
     "packageUrl": "/storage/plugins/image-studio-v0.2.0.zip",
-    "sizeBytes": 20507,
-    "checksumSha256": "1660e1f25a4057aac024439f4e261d30bfad5fd4cb64e41030b476f5cabc784d",
+    "sizeBytes": 20508,
+    "checksumSha256": "3ea1a95e4ccc8991cceaebb2d4e2a886f9c7f8b80dba6af247e1a8f18ba20903",
     "changelog": "Dual-mode AI image studio: Top-rated open-source text-to-image generation (FLUX.1 & SD 3.5) and 4K super-resolution upscaling."
   },
   {
@@ -111,11 +111,11 @@
     "iconSymbol": "build",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T17:42:47.471Z",
+    "packagedAt": "2026-11-07T05:22:46.773Z",
     "archiveFileName": "wp_sovereign_tools-v1.0.0.zip",
     "packageUrl": "/storage/plugins/wp_sovereign_tools-v1.0.0.zip",
-    "sizeBytes": 2796,
-    "checksumSha256": "48a11881ef0196aa4755ce7afc1f16e9e891a8fc4768e2848f3f76702208548f",
+    "sizeBytes": 2774,
+    "checksumSha256": "8afbfd7ca5a58631933f59f5cef835c4e00c35a4df6556cf99534397afe5fafc",
     "changelog": "High-performance client-side sovereign utility suite: Client-side PDF tools (Merge, Split, Compress, Watermark, Reorder, Page Extract), Image & Document Converters, Multilingual OCR (Devanagari & English), Receipt-to-CSV, Business Card Scanner, Developer Tools (JSON format/convert, QR codes, Cryptographic Hash utilities). Zero server uploads, 100% private."
   },
   {
@@ -128,11 +128,28 @@
     "iconSymbol": "description",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-06T17:42:49.071Z",
+    "packagedAt": "2026-11-07T05:22:48.402Z",
     "archiveFileName": "wp_resume_studio-v1.0.0.zip",
     "packageUrl": "/storage/plugins/wp_resume_studio-v1.0.0.zip",
-    "sizeBytes": 27430,
-    "checksumSha256": "bb9af29629c9edfc3b28b7708af2a28c8d52f81fe29daa1b0f59d6a5c2d39576",
+    "sizeBytes": 27409,
+    "checksumSha256": "60d9e4cb0c3e834777dd7fa6635e51adc94c82ca7b253c6e6c105fef6d45162f",
     "changelog": "Enterprise sovereign Resume & CV Studio supporting multi-format ingestion (DOCX Word, PDF, LaTeX, Markdown, Text, JSON) and 4-format vector export (PDF, Word DOCX, LaTeX .tex, Plain Text, JSON). Zero server uploads, 100% private."
+  },
+  {
+    "id": "wp_studiocast",
+    "name": "StudioCast",
+    "version": "1.0.0",
+    "category": "Media & Podcasting",
+    "type": "Native",
+    "description": "Enterprise Sovereign Broadcast & Podcast Recording Studio. Peer-to-peer WebRTC video/audio calling, instant room link sharing, isolated raw ISO track recording & download, and real-time virtual format presets (Split, Grid, PIP, Newsroom, Cyberpunk).",
+    "iconSymbol": "podcasts",
+    "main": "index.ts",
+    "minEngineVersion": "0.1.0",
+    "packagedAt": "2026-11-07T05:22:49.835Z",
+    "archiveFileName": "wp_studiocast-v1.0.0.zip",
+    "packageUrl": "/storage/plugins/wp_studiocast-v1.0.0.zip",
+    "sizeBytes": 18140,
+    "checksumSha256": "c3a2e943918e7fa959792064ec72f6de33b528dd20d61b4d2b2eecba7cfb8fa3",
+    "changelog": "Enterprise Sovereign Broadcast & Podcast Recording Studio. Peer-to-peer WebRTC video/audio calling, instant room link sharing, isolated raw ISO track recording & download, and real-time virtual format presets (Split, Grid, PIP, Newsroom, Cyberpunk)."
   }
 ]

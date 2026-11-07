@@ -26,6 +26,7 @@ import CopyrightView from './components/CopyrightView';
 import UserProfileView from './components/UserProfileView';
 import PublicToolsHubView from './components/PublicToolsHubView.js';
 import { getClientPluginByName, getClientPluginByRoute, getClientPluginById } from './plugins/clientRegistry.js';
+import { Menu, X, AlertTriangle, CloudOff, CheckCircle, Info, ChevronRight, Activity } from 'lucide-react';
 
 
 const STORE_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
@@ -40,7 +41,8 @@ const INSTALLED_PLUGINS: { name: WorkspaceTab; icon: string; size: string }[] = 
   { name: 'Resume Studio', icon: 'description', size: '28.4 KB' },
   { name: 'Doc Nexus', icon: 'menu_book', size: '15.6 KB' },
   { name: 'Speech Studio', icon: 'record_voice_over', size: '14.8 KB' },
-  { name: 'Image Studio', icon: 'photo_filter', size: '16.5 KB' }
+  { name: 'Image Studio', icon: 'photo_filter', size: '16.5 KB' },
+  { name: 'StudioCast', icon: 'podcasts', size: '32.1 KB' }
 ];
 
 const ADMIN_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
@@ -79,6 +81,7 @@ const ROUTE_MAP: Record<string, string> = {
   'Speech Studio': '/workspace/speech-studio',
   'Image Studio': '/workspace/image-studio',
   'Image Studio & 4K Upscaler': '/workspace/image-studio',
+  'StudioCast': '/workspace/podcast',
   'Manage Plugins': '/admin/manage-plugins',
   'Manage Apps': '/admin/manage-apps',
   'Manage Portfolios': '/admin/manage-portfolios',
@@ -305,18 +308,60 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
     setIsMobileDrawerOpen(false);
   }, [activeTab, location.pathname]);
 
-  // Compute mobile scroller tabs dynamically based on user role (includes Admin tools if admin)
-  const mobileNavTabs = React.useMemo(() => {
-    const base = [
-      ...STORE_TOOLS,
-      ...activeInstalledPlugins,
-      { name: 'Profile & Settings' as WorkspaceTab, icon: 'manage_accounts', size: '' }
-    ];
-    if (user.role === 'Admin') {
-      return [...base, ...ADMIN_TOOLS];
-    }
-    return base;
-  }, [activeInstalledPlugins, user.role]);
+  // Fallback detection state for Vercel Serverless vs Dedicated Oracle VM
+  const [fallbackStatus, setFallbackStatus] = React.useState<{
+    isFallback: boolean;
+    provider: string;
+    reason?: string;
+    dismissed?: boolean;
+    degradedPlugins?: { id: string; name: string; reason: string }[];
+  } | null>(null);
+
+  // Probe backend health to detect Vercel serverless edge fallback vs Oracle VM
+  React.useEffect(() => {
+    let isMounted = true;
+    const probeHealth = async () => {
+      try {
+        const res = await fetch('/api/health');
+        if (!isMounted) return;
+        const providerHeader = res.headers.get('x-backend-provider');
+        const fallbackHeader = res.headers.get('x-backend-fallback');
+        const fallbackReason = res.headers.get('x-backend-fallback-reason');
+
+        let data: any = {};
+        try { data = await res.json(); } catch {}
+
+        const isFallback = fallbackHeader === 'true' || 
+          providerHeader === 'vercel-serverless' || 
+          data.isFallback === true || 
+          data.provider === 'vercel-serverless';
+
+        if (isFallback) {
+          setFallbackStatus({
+            isFallback: true,
+            provider: 'vercel-serverless',
+            reason: fallbackReason || data.fallbackReason || 'Oracle VM proxy unavailable',
+            degradedPlugins: data.degradedPlugins || [
+              {
+                id: 'speech-studio',
+                name: 'Speech Studio',
+                reason: 'Remote VM2 Neural Synthesizer offline. Using Browser Web Speech & In-Context reference clips.'
+              },
+              {
+                id: 'wp_flow_designer',
+                name: 'Flow Designer',
+                reason: 'Persistent automation daemon workers require dedicated VM compute.'
+              }
+            ]
+          });
+        }
+      } catch {
+        // Network or fetch error
+      }
+    };
+    probeHealth();
+    return () => { isMounted = false; };
+  }, []);
   
   if (!user.isLoggedIn) return <Navigate to="/auth" />;
 
@@ -343,7 +388,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             aria-label="Open mobile navigation menu"
             title="Open Menu"
           >
-            <span className="material-symbols-outlined text-lg leading-none select-none">menu</span>
+            <Menu className="w-4 h-4 shrink-0" />
           </button>
 
           {/* Logo brand home return */}
@@ -353,7 +398,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
             title="Return to Home"
           >
             <img 
-              src="/sutharlabs-logo-sm.png" 
+              src="/sutharlabs-logo-sm.png?v=20261107-v3s" 
               alt="SutharLabs Logo" 
               className="w-5 h-5 sm:w-6 sm:h-6 object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-[0_0_6px_rgba(0,219,231,0.4)]" 
             />
@@ -486,17 +531,11 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 onClick={() => { navigate('/'); setIsMobileDrawerOpen(false); }}
                 className="flex items-center gap-2 cursor-pointer group"
               >
-                <svg className="w-5 h-5 shrink-0" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <defs>
-                    <linearGradient id="sutharGlowWorkNavMob" x1="0%" y1="0%" x2="100%" y2="100%">
-                      <stop offset="0%" stopColor="#00dbe7" />
-                      <stop offset="50%" stopColor="#ce5dff" />
-                      <stop offset="100%" stopColor="#00e476" />
-                    </linearGradient>
-                  </defs>
-                  <path d="M50 5 L90 28 L90 72 L50 95 L10 72 L10 28 Z" stroke="url(#sutharGlowWorkNavMob)" strokeWidth="6" strokeLinejoin="round" fill="none" />
-                  <path d="M65 32 C65 25, 35 25, 35 37 C35 49, 65 51, 65 63 C65 75, 35 75, 35 68" stroke="url(#sutharGlowWorkNavMob)" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" fill="none" />
-                </svg>
+                <img 
+                  src="/sutharlabs-logo-sm.png?v=20261107-v3s" 
+                  alt="SutharLabs Logo" 
+                  className="w-5 h-5 sm:w-6 sm:h-6 object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-[0_0_6px_rgba(0,219,231,0.4)]" 
+                />
                 <span className="text-base font-bold text-[#74f5ff] tracking-tight neon-text-glow">
                   SutharLabs
                 </span>
@@ -521,7 +560,7 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 }`}
                 aria-label="Close menu"
               >
-                <span className="material-symbols-outlined text-base leading-none">close</span>
+                <X className="w-4 h-4 shrink-0" />
               </button>
             </div>
 
@@ -932,45 +971,56 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
           theme === 'light' ? 'bg-slate-50 text-slate-800' : 'bg-[#050505] text-[#e5e1e4]'
         }`}>
           
-          {/* Top responsive filename tabs drawer for touch/mobile devices */}
-          <div className="flex md:hidden gap-1.5 mb-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden shrink-0 pb-1 px-1 -mx-1 pr-6">
-            {mobileNavTabs.map((file) => {
-              const isAdmin = ADMIN_TOOLS.some(a => a.name === file.name);
-              const isSelected = activeTab === file.name;
-              return (
-                <button
-                  key={file.name}
-                  type="button"
-                  onClick={() => setActiveTab(file.name)}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono text-xs shrink-0 cursor-pointer transition-all whitespace-nowrap shadow-xs ${
-                    isSelected
-                      ? isAdmin
-                        ? 'bg-rose-500/20 text-rose-300 border border-rose-500/50 font-bold shadow-[0_0_8px_rgba(244,63,94,0.25)]'
-                        : 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/40 font-bold shadow-[0_0_8px_rgba(0,219,231,0.2)]'
-                      : theme === 'light'
-                        ? isAdmin
-                          ? 'bg-rose-50 text-rose-800 border border-rose-200 hover:bg-rose-100'
-                          : 'bg-white text-slate-700 border border-slate-200 hover:text-slate-900'
-                        : isAdmin
-                          ? 'bg-[#1e1315] text-[#ffb4ab]/80 border border-rose-500/20 hover:text-[#ffb4ab]'
-                          : 'bg-[#131315] text-[#b9cacb] border border-[#3a494b]/30 hover:text-white hover:border-[#00dbe7]/30'
-                  }`}
-                >
-                  <span className={`material-symbols-outlined text-sm select-none leading-none ${
-                    isAdmin && isSelected ? 'text-rose-400' : ''
-                  }`}>
-                    {file.icon}
-                  </span>
-                  <span>{file.name}</span>
-                  {isAdmin && (
-                    <span className="text-[8px] px-1 py-0.2 rounded font-bold uppercase bg-rose-500/20 text-rose-400 border border-rose-500/30">
-                      Admin
+          {/* Fallback Banner: Displayed when Vercel Serverless Edge Fallback is active */}
+          {fallbackStatus?.isFallback && !fallbackStatus.dismissed && (
+            <div className={`mb-4 p-3 sm:p-3.5 rounded-xl border flex items-start justify-between gap-3 shadow-md animate-in fade-in duration-200 transition-colors shrink-0 ${
+              theme === 'light'
+                ? 'bg-amber-50/95 border-amber-300 text-amber-950 shadow-amber-500/5'
+                : 'bg-amber-950/30 border-amber-500/40 text-amber-200 shadow-amber-500/10'
+            }`}>
+              <div className="flex items-start gap-2.5 sm:gap-3 min-w-0">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-500/30 flex items-center justify-center shrink-0 mt-0.5">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                </div>
+                <div className="min-w-0 text-xs">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-bold font-mono tracking-tight text-amber-500 uppercase text-[11px]">
+                      Vercel Serverless Edge Fallback Active
                     </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-mono font-bold bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase">
+                      VM Unreachable
+                    </span>
+                  </div>
+                  <p className={`mt-0.5 text-[11px] leading-relaxed font-sans ${theme === 'light' ? 'text-amber-900/90' : 'text-amber-200/80'}`}>
+                    The primary Oracle Cloud VM is temporarily unreachable. The platform has automatically failed over to the Vercel Serverless Edge network. Neon PostgreSQL, client-side tools, and sovereign document suites remain 100% operational.
+                  </p>
+                  <div className="mt-2 flex items-center gap-2.5 sm:gap-4 text-[10px] font-mono flex-wrap">
+                    <span className="flex items-center gap-1 text-rose-500 font-semibold">
+                      <CloudOff className="w-3 h-3 shrink-0" />
+                      Speech Studio VM2 Daemon: Degraded (Using Browser Web Speech &amp; Voice Clips)
+                    </span>
+                    <span className="flex items-center gap-1 text-rose-500 font-semibold">
+                      <CloudOff className="w-3 h-3 shrink-0" />
+                      Flow Designer Daemon: Paused
+                    </span>
+                    <span className="flex items-center gap-1 text-emerald-500 font-semibold">
+                      <CheckCircle className="w-3 h-3 shrink-0" />
+                      Sovereign Tools, Resume Studio &amp; DB: Online
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFallbackStatus(prev => prev ? { ...prev, dismissed: true } : null)}
+                className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 text-amber-500 transition-colors shrink-0 cursor-pointer"
+                title="Dismiss fallback banner"
+                aria-label="Dismiss fallback notice"
+              >
+                <X className="w-4 h-4 shrink-0" />
+              </button>
+            </div>
+          )}
 
           {/* Render Active Component File Workspace Panel */}
           <div className="flex-grow flex flex-col">

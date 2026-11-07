@@ -249,7 +249,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
           className="flex items-center gap-2.5 cursor-pointer group"
         >
           <img 
-            src="/sutharlabs-logo-sm.png" 
+            src="/sutharlabs-logo-sm.png?v=20261107-v3s" 
             alt="SutharLabs Emblem" 
             className="w-7 h-7 sm:w-8 sm:h-8 object-contain transition-transform duration-300 group-hover:scale-105 shrink-0 drop-shadow-[0_0_8px_rgba(0,219,231,0.4)]" 
           />
@@ -397,7 +397,7 @@ export default function LandingPage({ user, onLaunch, onNavigateAuth, theme = 'l
               <div className="flex items-center justify-between pb-6 border-b border-outline/15 mb-8">
                 <div className="flex items-center gap-2">
                   <img 
-                    src="/sutharlabs-logo-sm.png" 
+                    src="/sutharlabs-logo-sm.png?v=20261107-v3s" 
                     alt="SutharLabs" 
                     className="w-6 h-6 object-contain shrink-0 drop-shadow-[0_0_6px_rgba(0,219,231,0.4)]" 
                   />

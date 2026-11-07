@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "tsx server.ts",
     "dev:watch": "nodemon --exec tsx server.ts --ext ts",
-    "build": "vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
+    "build:server": "esbuild server.ts --bundle --platform=node --format=esm --packages=external --sourcemap --outfile=server.js",
+    "build": "npm run build:server && vite build && esbuild server.ts --bundle --platform=node --format=cjs --packages=external --sourcemap --outfile=dist/server.cjs",
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js plugins-db.json",

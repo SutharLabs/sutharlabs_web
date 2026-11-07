@@ -15,12 +15,14 @@ This milestone establishes the official **SutharLabs visual identity**, extracts
 ## 2. Branding & Asset Generation Engine
 
 ### Official 3D Metallic S Emblem Integration
-* Replaced temporary SVG placeholders across the platform with the official custom 3D metallic blue "S" emblem:
-  * [`public/favicon.ico`](file:///d:/Code/SutharLabs/website/public/favicon.ico): Multi-resolution container (16x16, 32x32, 48x48, 64x64).
-  * [`public/apple-touch-icon.png`](file:///d:/Code/SutharLabs/website/public/apple-touch-icon.png): 180x180 px iOS icon with alpha preservation and rounded corner tolerance.
+* Replaced temporary SVG placeholders and legacy outline renders across the platform with the official custom 3D metallic blue "S" emblem with native alpha transparency:
+  * [`public/favicon.ico`](file:///d:/Code/SutharLabs/website/public/favicon.ico): Multi-resolution container (16x16, 32x32, 48x48, 64x64) with edge contrast enhancement for browser tabs.
+  * [`public/favicon-16x16.png`](file:///d:/Code/SutharLabs/website/public/favicon-16x16.png) & [`public/favicon-32x32.png`](file:///d:/Code/SutharLabs/website/public/favicon-32x32.png): High-DPI transparent PNG favicons.
+  * [`public/apple-touch-icon.png`](file:///d:/Code/SutharLabs/website/public/apple-touch-icon.png): 180x180 px iOS icon with alpha preservation and 4.5% breathing room.
   * [`public/android-chrome-192x192.png`](file:///d:/Code/SutharLabs/website/public/android-chrome-192x192.png) & `512x512.png`: PWA manifest compliance.
-  * [`public/sutharlabs-logo.png`](file:///d:/Code/SutharLabs/website/public/sutharlabs-logo.png) & `sutharlabs-logo-sm.png`: Clean transparent navbar and brand headers.
-* Linked in [`index.html`](file:///d:/Code/SutharLabs/website/index.html), [`LandingPage.tsx`](file:///d:/Code/SutharLabs/website/src/components/LandingPage.tsx), [`PublicToolsHubView.tsx`](file:///d:/Code/SutharLabs/website/src/components/PublicToolsHubView.tsx), and [`App.tsx`](file:///d:/Code/SutharLabs/website/src/App.tsx).
+  * [`public/sutharlabs-logo.png`](file:///d:/Code/SutharLabs/website/public/sutharlabs-logo.png) & [`src/assets/sutharlabs-logo.png`](file:///d:/Code/SutharLabs/website/src/assets/sutharlabs-logo.png): High-resolution 1024x1024 transparent master brand emblem.
+  * [`public/sutharlabs-logo-sm.png`](file:///d:/Code/SutharLabs/website/public/sutharlabs-logo-sm.png): 256x256 transparent emblem for razor-sharp 8x retina scaling in navbar and mobile drawer headers.
+* Fully connected and responsive in [`index.html`](file:///d:/Code/SutharLabs/website/index.html), [`LandingPage.tsx`](file:///d:/Code/SutharLabs/website/src/components/LandingPage.tsx), [`PublicToolsHubView.tsx`](file:///d:/Code/SutharLabs/website/src/components/PublicToolsHubView.tsx), [`AuthPage.tsx`](file:///d:/Code/SutharLabs/website/src/components/AuthPage.tsx), and [`App.tsx`](file:///d:/Code/SutharLabs/website/src/App.tsx).
 
 ---
 
@@ -133,3 +135,42 @@ flowchart LR
   * `npm run deploy`: Full 8-stage pipeline (preflight, package plugins, build `dist/`, sync graph, git push, SCP sync, remote PM2 reload, health check).
   * `npm run deploy:quick`: Fast sync and reload skipping local rebuild.
 * **Documentation**: Detailed in [`docs/AUTOMATED_DEPLOYMENT_PROCEDURE.md`](file:///d:/Code/SutharLabs/website/docs/AUTOMATED_DEPLOYMENT_PROCEDURE.md).
+
+---
+
+## 8. Sovereign Storage Vault Chunked Streaming Upload Protocol
+
+* **Diagnosis of 25MB Upload Failure**:
+  * `https://www.sutharlabs.com` edge routing through Vercel enforces a strict 4.5 MB request body ceiling on all serverless function calls.
+  * When uploading files > 4.5 MB in a single multipart HTTP POST, Vercel edge returned plaintext HTTP 413 `Request Entity Too Large`, which caused `JSON.parse` to throw `Unexpected token 'R', "Request En"... is not valid JSON`.
+* **Sovereign Chunking Engine**:
+  * **Client-side Chunk Slicing**: Files larger than 3 MB are automatically sliced into **3 MB parts** via `file.slice(start, end)`, comfortably beneath Vercel's 4.5 MB threshold.
+  * **Sequential Upload with Progress & Retries**: [`src/services/vaultStorageService.ts`](file:///d:/Code/SutharLabs/website/src/services/vaultStorageService.ts) uploads chunks sequentially to `POST /api/vault/upload-chunk` with live 0–100% progress tracking and automatic 3x retries per chunk with exponential backoff.
+  * **Server-side Part Assembly**: [`server.ts`](file:///d:/Code/SutharLabs/website/server.ts) persists chunk parts to `data/vault_chunks/` (or `/tmp/vault_chunks` on Vercel), verifies integrity, concatenates parts into the complete binary payload, streams to Oracle VM 1 (`http://137.23.61.191/api/upload`) for permanent encrypted block storage and SHA-256 verification, and cleanly purges temporary files.
+  * **Safe Non-JSON Response Handling**: Updated all upload handlers to parse HTTP status codes and plaintext error previews safely without throwing unhandled `JSON.parse` exceptions.
+
+---
+
+## 9. StudioCast Virtual Broadcast Plugin, Hush Studio Engine Fix & Brand Cache Invalidation
+
+* **Speech Studio Routing & Hush Studio Visibility**:
+  * **Route Mounting**: Mounted both `/api/speech` and `/api/plugins/speech-studio` in `src/plugins/serverRegistry.ts`, resolving 404 errors during client-side voice and model queries.
+  * **Hush Studio Filter**: Added a dedicated `Hush Studio (6)` filter pill in `SpeechStudioView.tsx`, immediately prioritizing the 6 VoxCPM SOTA in-context reference voices (`Aria`, `Jenny`, `Maya`, `Ethan`, `Cole`, `Priya`).
+  * **Engine Banner & Recording Shortcut**: Displayed the dedicated *Hush Studio In-Context Acoustic Reference Engine* banner with instant reference audio testing and direct microphone recording launch.
+* **Logo & Favicon Client Cache Invalidation**:
+  * Injected cache-busting version identifiers (`?v=20261107-matrix`) into `index.html` favicon links and across all React headers and mobile drawer components (`App.tsx`, `LandingPage.tsx`, `AuthPage.tsx`, `PublicToolsHubView.tsx`).
+  * Synced `public/sutharlabs-logo-sm.png` to `src/assets/sutharlabs-logo-sm.png`.
+* **New Plugin: StudioCast (`wp_studiocast`)**:
+  * **WebRTC Video/Audio Calling**: Peer-to-peer mesh connectivity with camera toggle, microphone muting, screen sharing, and live audio VU meter.
+  * **Shareable Invite Link**: One-click generation and clipboard copy of podcast room link (`/workspace?plugin=studiocast&room=POD-XXXX`) allowing guests to connect with zero friction.
+  * **Live Canvas Video Compositor**: Real-time 1080p stream compositor inspired by OBS Studio and StreamYard supporting 5 fixed virtual presets:
+    1. *Side-by-Side (50/50 Split)*
+    2. *Studio Grid (2x2)*
+    3. *Speaker Spotlight + Picture-in-Picture (PIP)*
+    4. *Broadcast Newsroom with Lower-Thirds Banner*
+    5. *Cyberpunk Sovereign Minimal*
+  * **Multi-Track ISO Recording Engine**: Main user (host) can record both composed virtual program output and isolated raw camera/mic ISO tracks, exporting `.webm` / `.wav` assets for post-production NLE workflows.
+  * **Show Notes & Room Chat**: Integrated timestamped chat and question tagging.
+
+
+

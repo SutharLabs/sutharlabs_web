@@ -117,6 +117,17 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     description: 'Enterprise sovereign Resume & CV Studio supporting multi-format ingestion (DOCX Word, PDF, LaTeX, Markdown, Text, JSON) and 4-format vector export (PDF, Word DOCX, LaTeX .tex, Plain Text, JSON). Zero server uploads, 100% private.',
     iconSymbol: 'description',
     minEngineVersion: '0.1.0'
+  },
+  {
+    dirName: 'StudioCast',
+    id: 'wp_studiocast',
+    name: 'StudioCast',
+    version: '1.0.0',
+    category: 'Media & Podcasting',
+    type: 'Native',
+    description: 'Enterprise Sovereign Broadcast & Podcast Recording Studio. Peer-to-peer WebRTC video/audio calling, instant room link sharing, isolated raw ISO track recording & download, and real-time virtual format presets (Split, Grid, PIP, Newsroom, Cyberpunk).',
+    iconSymbol: 'podcasts',
+    minEngineVersion: '0.1.0'
   }
 ];
 

@@ -138,7 +138,7 @@ export default function AuthPage({ onLoginSuccess, initialTab = 'signin', onBack
         {/* Back to Home Logo Header */}
         <div className="text-center mb-8 cursor-pointer flex flex-col items-center group" onClick={onBackToHome}>
           <img 
-            src="/sutharlabs-logo-sm.png" 
+            src="/sutharlabs-logo-sm.png?v=20261107-v3s" 
             alt="SutharLabs" 
             className="w-14 h-14 object-contain mb-2.5 drop-shadow-[0_0_12px_rgba(0,219,231,0.4)] group-hover:scale-105 transition-transform" 
           />

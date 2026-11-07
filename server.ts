@@ -8,6 +8,8 @@ import path from "path";
 
 import fs from "fs";
 
+import os from "os";
+
 import crypto from "crypto";
 
 import { getPrismaClient, hashPassword, generateToken, verifyToken } from "./api/_utils.js";
@@ -100,7 +102,7 @@ const upload = multer({
 
   storage: multer.memoryStorage(),
 
-  limits: { fileSize: 25 * 1024 * 1024 }
+  limits: { fileSize: 250 * 1024 * 1024 } // 250MB limit for high-capacity sovereign vault storage
 
 });
 
@@ -415,6 +417,24 @@ async function seedDatabase() {
         description: "Enterprise sovereign Resume & CV Studio supporting multi-format ingestion (DOCX Word, PDF, LaTeX, Markdown, Text, JSON) and 4-format vector export (PDF, Word DOCX, LaTeX .tex, Plain Text, JSON). Zero server uploads, 100% private.",
 
         iconSymbol: "description",
+
+        version: "1.0.0"
+
+      },
+
+      {
+
+        id: "wp_studiocast",
+
+        name: "StudioCast",
+
+        category: "Media & Podcasting",
+
+        type: "Native",
+
+        description: "Enterprise Sovereign Broadcast & Podcast Recording Studio. Peer-to-peer WebRTC video/audio calling, instant room link sharing, isolated raw ISO track recording & download, and real-time virtual format presets (Split, Grid, PIP, Newsroom, Cyberpunk).",
+
+        iconSymbol: "podcasts",
 
         version: "1.0.0"
 
@@ -871,11 +891,28 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
 
 
   // API health
-
   app.get("/api/health", (req, res) => {
-
-    res.json({ status: "ok", mode: process.env.NODE_ENV || "development" });
-
+    const isVercel = !!process.env.VERCEL;
+    res.json({
+      status: "ok",
+      mode: process.env.NODE_ENV || "development",
+      provider: isVercel ? "vercel-serverless" : "oracle-vm",
+      isFallback: isVercel,
+      degradedPlugins: isVercel ? [
+        {
+          id: "speech-studio",
+          name: "Speech Studio (VM2 Neural Synthesizer)",
+          status: "degraded",
+          reason: "Remote VM 2 GPU/CPU Neural TTS daemon requires Oracle VM. Client-side browser synthesis, Hush Studio reference audio clips, and WAV export remain active."
+        },
+        {
+          id: "wp_flow_designer",
+          name: "Flow Designer (Automation Workers)",
+          status: "degraded",
+          reason: "Persistent automation daemon workers require dedicated VM compute. Visual flow modeling remains operational."
+        }
+      ] : []
+    });
   });
 
 
@@ -3944,8 +3981,17 @@ app.get("/api/vault/files", authenticateToken, requireAdmin, async (_req: any, r
 
 
 // POST /api/vault/upload - Stream file upload to Oracle VM
-
-app.post("/api/vault/upload", authenticateToken, requireAdmin, upload.single("file"), async (req: any, res: any) => {
+app.post("/api/vault/upload", authenticateToken, requireAdmin, (req: any, res: any, next: any) => {
+  upload.single("file")(req, res, (err: any) => {
+    if (err) {
+      if (err.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ error: "File exceeds 250MB limit for sovereign vault storage." });
+      }
+      return res.status(400).json({ error: `Upload validation error: ${err.message}` });
+    }
+    next();
+  });
+}, async (req: any, res: any) => {
 
   try {
 
@@ -3995,6 +4041,143 @@ app.post("/api/vault/upload", authenticateToken, requireAdmin, upload.single("fi
 
   }
 
+});
+
+
+
+// Clean up abandoned chunk uploads older than 1 hour
+function cleanOldVaultChunks(chunksDir: string) {
+  try {
+    if (!fs.existsSync(chunksDir)) return;
+    const files = fs.readdirSync(chunksDir);
+    const now = Date.now();
+    for (const file of files) {
+      if (file.endsWith(".part") || file.endsWith(".tmp")) {
+        const filePath = path.join(chunksDir, file);
+        const stats = fs.statSync(filePath);
+        if (now - stats.mtimeMs > 3600 * 1000) {
+          try { fs.unlinkSync(filePath); } catch {}
+        }
+      }
+    }
+  } catch {}
+}
+
+// POST /api/vault/upload-chunk - Sovereign chunked streaming upload to Oracle VM
+app.post("/api/vault/upload-chunk", authenticateToken, requireAdmin, (req: any, res: any, next: any) => {
+  upload.single("chunk")(req, res, (err: any) => {
+    if (err) {
+      return res.status(400).json({ error: `Chunk upload validation error: ${err.message}` });
+    }
+    next();
+  });
+}, async (req: any, res: any) => {
+  const { uploadId, chunkIndex, totalChunks, fileName, fileType, category } = req.body;
+
+  if (!uploadId || chunkIndex === undefined || !totalChunks || !req.file) {
+    return res.status(400).json({ error: "Missing required chunk fields (uploadId, chunkIndex, totalChunks, chunk)." });
+  }
+
+  const cIdx = parseInt(chunkIndex, 10);
+  const tChunks = parseInt(totalChunks, 10);
+  const safeUploadId = uploadId.replace(/[^a-zA-Z0-9_-]/g, "");
+
+  if (isNaN(cIdx) || isNaN(tChunks) || cIdx < 0 || cIdx >= tChunks) {
+    return res.status(400).json({ error: `Invalid chunkIndex (${chunkIndex}) or totalChunks (${totalChunks}).` });
+  }
+
+  const chunksDir = process.env.VERCEL
+    ? path.join(os.tmpdir(), "vault_chunks")
+    : path.join(process.cwd(), "data", "vault_chunks");
+
+  cleanOldVaultChunks(chunksDir);
+
+  try {
+    if (!fs.existsSync(chunksDir)) {
+      fs.mkdirSync(chunksDir, { recursive: true });
+    }
+
+    const partPath = path.join(chunksDir, `${safeUploadId}_${cIdx}.part`);
+    fs.writeFileSync(partPath, req.file.buffer);
+
+    // Intermediate chunk received
+    if (cIdx < tChunks - 1) {
+      return res.json({
+        success: true,
+        uploadId: safeUploadId,
+        chunkIndex: cIdx,
+        totalChunks: tChunks,
+        received: true
+      });
+    }
+
+    // Final chunk reached - assemble and stream to Oracle VM 1
+    console.log(`[Vault Chunk Assembly] All ${tChunks} chunks received for ${safeUploadId} (${fileName}). Assembling file...`);
+
+    const chunkFiles: string[] = [];
+    for (let i = 0; i < tChunks; i++) {
+      const p = path.join(chunksDir, `${safeUploadId}_${i}.part`);
+      if (!fs.existsSync(p)) {
+        throw new Error(`Missing chunk part ${i} of ${tChunks} during assembly.`);
+      }
+      chunkFiles.push(p);
+    }
+
+    const assembledPath = path.join(chunksDir, `${safeUploadId}_assembled.tmp`);
+    const writeStream = fs.createWriteStream(assembledPath);
+
+    for (const p of chunkFiles) {
+      const data = fs.readFileSync(p);
+      writeStream.write(data);
+    }
+    await new Promise<void>((resolve, reject) => {
+      writeStream.end(() => resolve());
+      writeStream.on("error", reject);
+    });
+
+    const assembledBuffer = fs.readFileSync(assembledPath);
+    console.log(`[Vault Chunk Assembly] Assembled ${assembledBuffer.length} bytes for "${fileName}". Streaming to Oracle VM 1 (${ORACLE_VAULT_URL})...`);
+
+    // Clean up temporary chunk and assembled files
+    for (const p of chunkFiles) {
+      try { fs.unlinkSync(p); } catch {}
+    }
+    try { fs.unlinkSync(assembledPath); } catch {}
+
+    const formData = new FormData();
+    const blob = new Blob([assembledBuffer], { type: fileType || "application/octet-stream" });
+    formData.append("file", blob, fileName || "uploaded_file");
+    if (category) formData.append("category", category);
+
+    const response = await fetch(`${ORACLE_VAULT_URL}/api/upload`, {
+      method: "POST",
+      headers: { "x-vault-token": ORACLE_VAULT_SECRET },
+      body: formData
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      return res.status(response.status).json(data);
+    }
+
+    console.log(`[Vault Chunk Assembly] Oracle VM 1 storage confirmed: id=${data.file?.id}, size=${data.file?.size}`);
+    return res.json(data);
+  } catch (err: any) {
+    console.error(`[Vault Chunk Assembly Error] ${err.message}`);
+    // Cleanup on error
+    for (let i = 0; i < tChunks; i++) {
+      try {
+        const p = path.join(chunksDir, `${safeUploadId}_${i}.part`);
+        if (fs.existsSync(p)) fs.unlinkSync(p);
+      } catch {}
+    }
+    const assembledPath = path.join(chunksDir, `${safeUploadId}_assembled.tmp`);
+    try {
+      if (fs.existsSync(assembledPath)) fs.unlinkSync(assembledPath);
+    } catch {}
+
+    return res.status(500).json({ error: "Failed to assemble or upload chunked file to Oracle VM Vault", details: err.message });
+  }
 });
 
 
@@ -4386,25 +4569,18 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
 
     });
 
-    // Send immediate initial comment so TCP stream starts flowing
-
+    // Send immediate initial comment and 1KB padding so mobile network proxies (iOS Safari, cellular gateways) flush TCP buffers immediately
     res.write(": keep-alive\n\n");
+    res.write(": " + " ".repeat(1024) + "\n\n");
 
-    // Heartbeat every 15s to prevent Cloudflare 100s timeout while LLM loads/evals
-
+    // Heartbeat every 5s to prevent mobile cellular TCP disconnects while LLM evaluates
     keepAliveInterval = setInterval(() => {
-
       try {
-
         res.write(": keep-alive\n\n");
-
       } catch {
-
         if (keepAliveInterval) clearInterval(keepAliveInterval);
-
       }
-
-    }, 15000);
+    }, 5000);
 
   }
 

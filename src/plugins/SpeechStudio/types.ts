@@ -13,6 +13,15 @@ export interface TTSVoiceOption {
   architecture?: string;
   commercialUse?: 'commercial_safe' | 'personal_non_commercial' | 'conditional';
   commercialLabel?: string;
+  referenceAudioUrl?: string;
+  referenceTranscript?: string;
+  datasetName?: string;
+  datasetUrl?: string;
+  licenseName?: string;
+  licenseText?: string;
+  licenseDetails?: string;
+  credits?: string;
+  approach?: 'hush_reference' | 'neural_cloud' | 'flow_matching' | 'web_speech';
 }
 
 export interface TTSArchitectureOption {
@@ -44,6 +53,8 @@ export interface ClonedVoiceProfile {
   emotionTag?: string;
   commercialUse?: 'commercial_safe' | 'personal_non_commercial';
   commercialLabel?: string;
+  referenceTranscript?: string;
+  approach?: 'hush_reference' | 'neural_zero_shot';
 }
 
 export interface TTSQuotaStatus {
@@ -68,6 +79,9 @@ export interface TTSSynthesizePayload {
   emotion?: string;
   cfgStrength?: number;
   referenceAudio?: string; // Base64 audio for voice cloning
+  approach?: 'hush_reference' | 'neural_cloud' | 'flow_matching' | 'web_speech';
+  referenceTranscript?: string;
+  referenceAudioUrl?: string;
 }
 
 export interface SpeechHistoryItem {

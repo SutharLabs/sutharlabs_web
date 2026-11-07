@@ -30,6 +30,7 @@ export type WorkspaceTab =
   | 'Doc Nexus'
   | 'Speech Studio' 
   | 'Image Studio'
+  | 'StudioCast'
   | 'README' 
   | 'Plugin Store' 
   | 'Profile & Settings';

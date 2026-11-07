@@ -171,7 +171,9 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         isOpen: true,
         title: 'Upload Failed',
         message: err.message || 'Failed to upload file to Oracle VM Vault.',
-        subtext: 'Verify the VM storage daemon is running on port 80 and network is healthy.',
+        subtext: err.message?.includes('413') || err.message?.includes('exceeded')
+          ? 'File slice exceeded gateway limits. Ensure the file upload uses sovereign chunking (2 MB slices).'
+          : 'Verify the VM storage daemon is running on port 80 and network is healthy.',
         variant: 'danger',
         isAlert: true,
         confirmLabel: 'Dismiss',
@@ -489,7 +491,11 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                 {isUploading && (
                   <div className="w-full max-w-xs space-y-1 mt-2">
                     <div className="flex justify-between text-[10px] font-mono text-on-surface-variant">
-                      <span>Uploading...</span>
+                      <span>
+                        {uploadProgress < 100
+                          ? (selectedFile.size > 3 * 1024 * 1024 ? 'Streaming sovereign chunks...' : 'Uploading...')
+                          : 'Securing & Storing in Vault...'}
+                      </span>
                       <span>{uploadProgress}%</span>
                     </div>
                     <div className="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">

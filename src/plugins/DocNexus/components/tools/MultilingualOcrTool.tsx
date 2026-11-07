@@ -139,6 +139,35 @@ export default function MultilingualOcrTool({
     }
   };
 
+  const compressImage = (dataUrl: string, maxDim: number = 1800): Promise<string> => {
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        if (w <= maxDim && h <= maxDim && dataUrl.length < 1000000) {
+          return resolve(dataUrl);
+        }
+        if (w > h && w > maxDim) {
+          h = Math.round((h * maxDim) / w);
+          w = maxDim;
+        } else if (h > maxDim) {
+          w = Math.round((w * maxDim) / h);
+          h = maxDim;
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return resolve(dataUrl);
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', 0.88));
+      };
+      img.onerror = () => resolve(dataUrl);
+      img.src = dataUrl;
+    });
+  };
+
   const handleFileUpload = async (file: File) => {
     setError(null);
     setIsProcessing(true);
@@ -148,7 +177,8 @@ export default function MultilingualOcrTool({
 
     const reader = new FileReader();
     reader.onload = async () => {
-      const dataUrl = reader.result as string;
+      const rawDataUrl = reader.result as string;
+      const dataUrl = await compressImage(rawDataUrl);
       setUploadedImage(dataUrl);
 
       try {

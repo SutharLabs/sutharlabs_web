@@ -27,6 +27,16 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
   const effectiveTheme: 'light' | 'dark' = theme || (typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light');
   // Navigation tabs across the Tally / SAP Enterprise Suite
   const [activeTab, setActiveTab] = useState<'DayBook' | 'Statements' | 'Invoices' | 'GSTR' | 'Ledger' | 'Parties' | 'Catalog'>('DayBook');
+  const [uiMode, setUiMode] = useState<'classic' | 'modern'>(() => {
+    return (localStorage.getItem('sutharlabs_accounting_ui_mode') as any) || 'classic';
+  });
+  const [isGatewayOpen, setIsGatewayOpen] = useState(true);
+
+  const toggleUiMode = () => {
+    const next = uiMode === 'classic' ? 'modern' : 'classic';
+    setUiMode(next);
+    localStorage.setItem('sutharlabs_accounting_ui_mode', next);
+  };
 
   // Core Data States
   const [invoices, setInvoices] = useState<GSTInvoice[]>([]);
@@ -202,10 +212,20 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
     setIsVoucherModalOpen(true);
   };
 
-  // Keyboard shortcut listener for F4..F9 (with e.preventDefault() preventing browser refresh/focus) and Alt+4..Alt+9
+  // Keyboard shortcut listener for Tally & MARG ERP: F1..F12, Alt+0..Alt+9, Esc, and hotkey letters
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'F4' || (e.altKey && e.key === '4')) {
+      const isInput = ['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName);
+
+      if (e.key === 'F1' || (e.altKey && e.key === '1')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsSettingsOpen(true);
+      } else if (e.key === 'F2' || (e.altKey && e.key === '2')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setActiveTab('DayBook');
+      } else if (e.key === 'F4' || (e.altKey && e.key === '4')) {
         e.preventDefault();
         e.stopPropagation();
         openVoucherEntry('Contra');
@@ -229,12 +249,56 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
         e.preventDefault();
         e.stopPropagation();
         openVoucherEntry('Purchase');
+      } else if (e.key === 'F10' || (e.altKey && e.key === '0')) {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsOcrOpen(true);
+      } else if (e.key === 'F11') {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsSettingsOpen(true);
+      } else if (e.key === 'F12') {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleUiMode();
+      } else if (e.key === 'Escape') {
+        if (!isVoucherModalOpen && !isCreateOpen && !isSettingsOpen && !isOcrOpen) {
+          setActiveTab('DayBook');
+        }
+      } else if (!isInput && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        // Tally / MARG Single-key hotkey jumps
+        const k = e.key.toLowerCase();
+        if (k === 'd') {
+          e.preventDefault();
+          setActiveTab('DayBook');
+        } else if (k === 'b') {
+          e.preventDefault();
+          setActiveTab('Statements');
+        } else if (k === 't') {
+          e.preventDefault();
+          setActiveTab('Invoices');
+        } else if (k === 'g') {
+          e.preventDefault();
+          setActiveTab('GSTR');
+        } else if (k === 'l') {
+          e.preventDefault();
+          setActiveTab('Ledger');
+        } else if (k === 'p') {
+          e.preventDefault();
+          setActiveTab('Parties');
+        } else if (k === 'i') {
+          e.preventDefault();
+          setActiveTab('Catalog');
+        } else if (k === 'o') {
+          e.preventDefault();
+          setIsOcrOpen(true);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [isVoucherModalOpen, isCreateOpen, isSettingsOpen, isOcrOpen, uiMode]);
 
   // Safe invoice collections
   const safeInvoices = Array.isArray(invoices) ? invoices : [];
@@ -291,18 +355,47 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
           </div>
         </div>
 
-        <div className="flex items-center gap-2.5 w-full md:w-auto">
+        <div className="flex items-center gap-2 w-full md:w-auto flex-wrap justify-end">
+          {/* Tally / MARG vs Modern Mode Toggle */}
+          <div className="flex rounded-xl p-0.5 border text-xs font-mono bg-slate-100 dark:bg-[#18181c] border-slate-300 dark:border-[#3a494b]/40">
+            <button
+              onClick={() => { setUiMode('classic'); localStorage.setItem('sutharlabs_accounting_ui_mode', 'classic'); }}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer font-bold transition-all ${
+                uiMode === 'classic'
+                  ? 'bg-white dark:bg-[#00dbe7]/15 text-slate-900 dark:text-[#74f5ff] border border-slate-300 dark:border-[#00dbe7]/40 shadow-xs'
+                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Tally Prime & MARG ERP Dual-Pane Command View (Gateway + Function Keys)"
+            >
+              <span className="material-symbols-outlined text-sm">desktop_windows</span>
+              Tally / MARG ERP
+            </button>
+            <button
+              onClick={() => { setUiMode('modern'); localStorage.setItem('sutharlabs_accounting_ui_mode', 'modern'); }}
+              className={`px-3 py-1.5 rounded-lg flex items-center gap-1.5 cursor-pointer font-bold transition-all ${
+                uiMode === 'modern'
+                  ? 'bg-white dark:bg-[#00dbe7]/15 text-slate-900 dark:text-[#74f5ff] border border-slate-300 dark:border-[#00dbe7]/40 shadow-xs'
+                  : 'text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+              title="Modern Clean Tabbed Workspace View"
+            >
+              <span className="material-symbols-outlined text-sm">view_compact</span>
+              Modern View
+            </button>
+          </div>
+
           <button
             onClick={() => setIsOcrOpen(true)}
-            className="flex-1 md:flex-none px-3.5 py-2 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-[#00dbe7] border border-cyan-500/30 font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
-            title="Scan Hindi or English bills & receipts with AI OCR"
+            className="px-3 py-1.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-[#00dbe7] border border-cyan-500/30 font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm transition-all cursor-pointer"
+            title="Multilingual OCR Bill / Receipt Scanner (Press F10)"
           >
             <span className="material-symbols-outlined text-sm">document_scanner</span>
-            OCR Scan Bill / रसीद
+            OCR Bill / रसीद
           </button>
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="flex-1 md:flex-none px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#18181c] dark:hover:bg-[#201f21] border border-slate-200 dark:border-[#3a494b]/30 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white font-mono text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 dark:bg-[#18181c] dark:hover:bg-[#201f21] border border-slate-200 dark:border-[#3a494b]/30 text-slate-700 dark:text-gray-300 hover:text-slate-900 dark:hover:text-white font-mono text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+            title="GST Rule 46 Configuration (Press F11)"
           >
             <span className="material-symbols-outlined text-sm">settings</span>
             GST Settings
@@ -310,10 +403,11 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
 
           <button
             onClick={() => setIsCreateOpen(true)}
-            className="flex-1 md:flex-none px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 dark:bg-[#00e476] dark:hover:brightness-110 text-white dark:text-[#00210c] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 dark:bg-[#00e476] dark:hover:brightness-110 text-white dark:text-[#00210c] font-mono text-xs font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md shadow-emerald-500/20 transition-all cursor-pointer"
+            title="Issue GST Tax Invoice (Press F8)"
           >
             <span className="material-symbols-outlined text-sm">add_circle</span>
-            Issue GST Invoice
+            Issue Invoice
           </button>
         </div>
       </div>
@@ -386,33 +480,272 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
         </div>
       </div>
 
-      {/* Module Navigation Tabs */}
-      <div className="flex overflow-x-auto gap-2 border-b border-slate-200 dark:border-[#3a494b]/20 pb-2 scrollbar-hide">
-        {[
-          { id: 'DayBook', label: 'Day Book (Vouchers)', icon: 'menu_book' },
-          { id: 'Statements', label: 'Financial Statements (BS / P&L / TB)', icon: 'query_stats' },
-          { id: 'Invoices', label: 'Tax Invoices Ledger', icon: 'receipt_long' },
-          { id: 'GSTR', label: 'GST Returns (GSTR-1 / 3B)', icon: 'assignment' },
-          { id: 'Ledger', label: 'General Ledger Book', icon: 'balance' },
-          { id: 'Parties', label: 'Customers & Vendors', icon: 'domain' },
-          { id: 'Catalog', label: 'Items & HSN Catalog', icon: 'inventory_2' }
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold shrink-0 transition-all cursor-pointer ${
-              activeTab === tab.id
-                ? 'bg-cyan-50 dark:bg-[#00dbe7]/15 border border-cyan-400 dark:border-[#00dbe7]/50 text-cyan-800 dark:text-[#74f5ff] shadow-xs'
-                : 'bg-white dark:bg-[#131316] border border-slate-200 dark:border-[#3a494b]/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
-            }`}
-          >
-            <span className="material-symbols-outlined text-sm">{tab.icon}</span>
-            {tab.label}
-          </button>
-        ))}
-      </div>
+      {/* Module Navigation Tabs (Visible in Modern View or as quick switcher) */}
+      {uiMode === 'modern' ? (
+        <div className="flex overflow-x-auto gap-2 border-b border-slate-200 dark:border-[#3a494b]/20 pb-2 scrollbar-hide">
+          {[
+            { id: 'DayBook', label: 'Day Book (Vouchers)', icon: 'menu_book' },
+            { id: 'Statements', label: 'Financial Statements (BS / P&L / TB)', icon: 'query_stats' },
+            { id: 'Invoices', label: 'Tax Invoices Ledger', icon: 'receipt_long' },
+            { id: 'GSTR', label: 'GST Returns (GSTR-1 / 3B)', icon: 'assignment' },
+            { id: 'Ledger', label: 'General Ledger Book', icon: 'balance' },
+            { id: 'Parties', label: 'Customers & Vendors', icon: 'domain' },
+            { id: 'Catalog', label: 'Items & HSN Catalog', icon: 'inventory_2' }
+          ].map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id as any)}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-mono text-xs font-semibold shrink-0 transition-all cursor-pointer ${
+                activeTab === tab.id
+                  ? 'bg-cyan-50 dark:bg-[#00dbe7]/15 border border-cyan-400 dark:border-[#00dbe7]/50 text-cyan-800 dark:text-[#74f5ff] shadow-xs'
+                  : 'bg-white dark:bg-[#131316] border border-slate-200 dark:border-[#3a494b]/20 text-slate-600 dark:text-gray-400 hover:text-slate-900 dark:hover:text-white'
+              }`}
+            >
+              <span className="material-symbols-outlined text-sm">{tab.icon}</span>
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center justify-between pb-1 font-mono text-xs text-slate-500 dark:text-gray-400">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsGatewayOpen(!isGatewayOpen)}
+              className="px-2.5 py-1 rounded-lg border text-[11px] font-bold flex items-center gap-1.5 cursor-pointer bg-white dark:bg-[#18181c] border-slate-200 dark:border-[#3a494b]/40 text-slate-700 dark:text-gray-300"
+            >
+              <span className="material-symbols-outlined text-xs">{isGatewayOpen ? 'side_navigation' : 'menu'}</span>
+              <span>{isGatewayOpen ? 'Hide Gateway' : 'Show Gateway'}</span>
+            </button>
+            <span className="hidden sm:inline text-slate-400">•</span>
+            <span className="hidden sm:inline font-bold text-slate-800 dark:text-[#74f5ff]">
+              Active Book: {
+                activeTab === 'DayBook' ? 'Day Book (Vouchers)' :
+                activeTab === 'Statements' ? 'Balance Sheet & P&L' :
+                activeTab === 'Invoices' ? 'Tax Invoices Register' :
+                activeTab === 'GSTR' ? 'GST Returns (GSTR-1 / 3B)' :
+                activeTab === 'Ledger' ? 'General Ledger Book' :
+                activeTab === 'Parties' ? 'Sundry Debtors & Creditors' : 'Item & HSN Catalog'
+              }
+            </span>
+          </div>
 
-      {/* ==================== TAB 1: DAY BOOK (VOUCHERS) ==================== */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-slate-400 hidden md:inline">Quick Jump:</span>
+            {['DayBook', 'Statements', 'Invoices', 'GSTR', 'Ledger', 'Parties', 'Catalog'].map(t => (
+              <button
+                key={t}
+                onClick={() => setActiveTab(t as any)}
+                className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold cursor-pointer transition-colors ${
+                  activeTab === t
+                    ? 'bg-cyan-500/15 text-cyan-600 dark:text-[#00dbe7] border border-cyan-500/30'
+                    : 'text-slate-500 hover:text-slate-800 dark:text-gray-400 dark:hover:text-white'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+            {/* ==================== GATEWAY OF TALLY & MARG DUAL-PANE LAYOUT ==================== */}
+      <div className="flex flex-col lg:flex-row items-start gap-4">
+        {/* Left Column: Authentic Gateway of Tally & MARG Command Center */}
+        {uiMode === 'classic' && isGatewayOpen && (
+          <div className={`w-full lg:w-72 shrink-0 rounded-2xl border shadow-xs overflow-hidden transition-all ${
+            effectiveTheme === 'light' ? 'bg-white border-slate-200' : 'bg-[#121215] border-[#3a494b]/30'
+          }`}>
+            <div className={`p-3 border-b flex items-center justify-between ${
+              effectiveTheme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c] border-[#3a494b]/30'
+            }`}>
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shrink-0"></span>
+                <span className="font-mono text-xs font-bold uppercase tracking-wider text-slate-800 dark:text-[#e5e1e4]">
+                  Gateway of ERP
+                </span>
+              </div>
+              <span className="px-1.5 py-0.5 rounded text-[9px] font-mono font-bold bg-cyan-500/10 text-cyan-600 dark:text-[#00dbe7] border border-cyan-500/20">
+                Tally / MARG
+              </span>
+            </div>
+
+            <div className="p-3 space-y-4 font-mono text-xs">
+              {/* SECTION 1: MASTERS */}
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500 mb-1.5 px-2">
+                  Masters Info
+                </div>
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => setActiveTab('Ledger')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                      activeTab === 'Ledger'
+                        ? effectiveTheme === 'light' ? 'bg-sky-50 text-sky-700 font-bold' : 'bg-[#00dbe7]/15 text-[#74f5ff] font-bold'
+                        : 'text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <span><span className="font-bold underline text-cyan-600 dark:text-[#00dbe7]">A</span>ccounts Info (Ledgers)</span>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500">[A]</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('Catalog')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                      activeTab === 'Catalog'
+                        ? effectiveTheme === 'light' ? 'bg-sky-50 text-sky-700 font-bold' : 'bg-[#00dbe7]/15 text-[#74f5ff] font-bold'
+                        : 'text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <span><span className="font-bold underline text-cyan-600 dark:text-[#00dbe7]">I</span>nventory Info (Items)</span>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500">[I]</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('Parties')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                      activeTab === 'Parties'
+                        ? effectiveTheme === 'light' ? 'bg-sky-50 text-sky-700 font-bold' : 'bg-[#00dbe7]/15 text-[#74f5ff] font-bold'
+                        : 'text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <span><span className="font-bold underline text-cyan-600 dark:text-[#00dbe7]">P</span>arties (Debtors/Creditors)</span>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500">[P]</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SECTION 2: VOUCHERS */}
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500 mb-1.5 px-2">
+                  Vouchers (Transactions)
+                </div>
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => openVoucherEntry('Contra')}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between text-slate-700 dark:text-gray-300 hover:bg-cyan-500/10 hover:text-cyan-600 dark:hover:text-[#74f5ff] transition-colors cursor-pointer"
+                  >
+                    <span><span className="font-bold underline text-cyan-600 dark:text-[#00dbe7]">C</span>ontra (Bank / Cash)</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-[#74f5ff] border border-cyan-500/20">F4</span>
+                  </button>
+                  <button
+                    onClick={() => openVoucherEntry('Payment')}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between text-slate-700 dark:text-gray-300 hover:bg-rose-500/10 hover:text-rose-600 dark:hover:text-rose-400 transition-colors cursor-pointer"
+                  >
+                    <span><span className="font-bold underline text-rose-600 dark:text-rose-400">P</span>ayment Outflow</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20">F5</span>
+                  </button>
+                  <button
+                    onClick={() => openVoucherEntry('Receipt')}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between text-slate-700 dark:text-gray-300 hover:bg-emerald-500/10 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer"
+                  >
+                    <span><span className="font-bold underline text-emerald-600 dark:text-emerald-400">R</span>eceipt Inflow</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">F6</span>
+                  </button>
+                  <button
+                    onClick={() => openVoucherEntry('Journal')}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between text-slate-700 dark:text-gray-300 hover:bg-purple-500/10 hover:text-purple-600 dark:hover:text-purple-400 transition-colors cursor-pointer"
+                  >
+                    <span><span className="font-bold underline text-purple-600 dark:text-purple-400">J</span>ournal Adjustment</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">F7</span>
+                  </button>
+                  <button
+                    onClick={() => setIsCreateOpen(true)}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between text-slate-700 dark:text-gray-300 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+                  >
+                    <span><span className="font-bold underline text-blue-600 dark:text-blue-400">S</span>ales (Tax Invoice)</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">F8</span>
+                  </button>
+                  <button
+                    onClick={() => openVoucherEntry('Purchase')}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between text-slate-700 dark:text-gray-300 hover:bg-amber-500/10 hover:text-amber-600 dark:hover:text-amber-400 transition-colors cursor-pointer"
+                  >
+                    <span>P<span className="font-bold underline text-amber-600 dark:text-amber-400">u</span>rchase Voucher</span>
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">F9</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SECTION 3: UTILITIES */}
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500 mb-1.5 px-2">
+                  Utilities &amp; OCR
+                </div>
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => setIsOcrOpen(true)}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between text-cyan-700 dark:text-[#00dbe7] hover:bg-cyan-500/10 transition-colors cursor-pointer font-bold"
+                  >
+                    <span><span className="underline">O</span>CR Bill / रसीद Scanner</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-500/15 border border-cyan-500/30">F10</span>
+                  </button>
+                  <button
+                    onClick={() => setIsSettingsOpen(true)}
+                    className="w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors cursor-pointer"
+                  >
+                    <span><span className="underline">F</span>eatures &amp; GST Setup</span>
+                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-gray-400">F11</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* SECTION 4: REPORTS */}
+              <div>
+                <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500 mb-1.5 px-2">
+                  Reports &amp; Registers
+                </div>
+                <div className="space-y-0.5">
+                  <button
+                    onClick={() => setActiveTab('DayBook')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                      activeTab === 'DayBook'
+                        ? effectiveTheme === 'light' ? 'bg-sky-50 text-sky-700 font-bold' : 'bg-[#00dbe7]/15 text-[#74f5ff] font-bold'
+                        : 'text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <span><span className="font-bold underline text-cyan-600 dark:text-[#00dbe7]">D</span>ay Book (Vouchers)</span>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500">[D]</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('Statements')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                      activeTab === 'Statements'
+                        ? effectiveTheme === 'light' ? 'bg-sky-50 text-sky-700 font-bold' : 'bg-[#00dbe7]/15 text-[#74f5ff] font-bold'
+                        : 'text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <span><span className="font-bold underline text-cyan-600 dark:text-[#00dbe7]">B</span>alance Sheet / P&amp;L</span>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500">[B]</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('Invoices')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                      activeTab === 'Invoices'
+                        ? effectiveTheme === 'light' ? 'bg-sky-50 text-sky-700 font-bold' : 'bg-[#00dbe7]/15 text-[#74f5ff] font-bold'
+                        : 'text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <span><span className="font-bold underline text-cyan-600 dark:text-[#00dbe7]">T</span>ax Invoices Ledger</span>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500">[T]</span>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('GSTR')}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg flex items-center justify-between transition-colors cursor-pointer ${
+                      activeTab === 'GSTR'
+                        ? effectiveTheme === 'light' ? 'bg-sky-50 text-sky-700 font-bold' : 'bg-[#00dbe7]/15 text-[#74f5ff] font-bold'
+                        : 'text-slate-700 dark:text-gray-300 hover:bg-slate-100 dark:hover:bg-white/5'
+                    }`}
+                  >
+                    <span><span className="font-bold underline text-cyan-600 dark:text-[#00dbe7]">G</span>ST Returns (GSTR-1/3B)</span>
+                    <span className="text-[10px] text-slate-400 dark:text-gray-500">[G]</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Center/Main Column: Active Ledger & Voucher View */}
+        <div className="flex-grow w-full min-w-0 space-y-4">
+
+{/* ==================== TAB 1: DAY BOOK (VOUCHERS) ==================== */}
       {activeTab === 'DayBook' && (
         <DayBookView
           vouchers={vouchers}
@@ -892,7 +1225,134 @@ export default function AccountingView({ logs = [], onAddLog, userToken, theme }
         />
       )}
 
-      {isSettingsOpen && company && (
+              </div>
+
+        {/* Right Column: Iconic Tally & MARG Vertical Function Key Rail */}
+        {uiMode === 'classic' && (
+          <div className={`hidden xl:flex flex-col gap-1 w-36 shrink-0 p-2 rounded-2xl border shadow-xs ${
+            effectiveTheme === 'light' ? 'bg-slate-50 border-slate-200' : 'bg-[#151518] border-[#3a494b]/30'
+          }`}>
+            <div className="text-[9px] font-mono font-bold uppercase tracking-widest text-slate-400 dark:text-gray-500 px-1 py-0.5 text-center border-b border-slate-200 dark:border-white/5 mb-1">
+              Function Keys
+            </div>
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="w-full text-left px-2 py-1.5 rounded-lg border text-[11px] font-mono font-semibold flex items-center justify-between cursor-pointer bg-white dark:bg-[#1f1f24] border-slate-200 dark:border-[#3a494b]/30 hover:border-cyan-400 hover:text-cyan-600 dark:hover:text-[#74f5ff] transition-all"
+              title="Select Company & GST Settings (F1)"
+            >
+              <span>Co Info</span>
+              <span className="font-bold text-[10px] text-cyan-600 dark:text-[#00dbe7]">F1</span>
+            </button>
+            <button
+              onClick={() => setActiveTab('DayBook')}
+              className="w-full text-left px-2 py-1.5 rounded-lg border text-[11px] font-mono font-semibold flex items-center justify-between cursor-pointer bg-white dark:bg-[#1f1f24] border-slate-200 dark:border-[#3a494b]/30 hover:border-cyan-400 hover:text-cyan-600 dark:hover:text-[#74f5ff] transition-all"
+              title="Period / Date Filter (F2)"
+            >
+              <span>Period</span>
+              <span className="font-bold text-[10px] text-cyan-600 dark:text-[#00dbe7]">F2</span>
+            </button>
+            <button
+              onClick={() => openVoucherEntry('Contra')}
+              className="w-full text-left px-2 py-1.5 rounded-lg border text-[11px] font-mono font-semibold flex items-center justify-between cursor-pointer bg-white dark:bg-[#1f1f24] border-cyan-400/30 text-cyan-700 dark:text-[#74f5ff] hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition-all"
+              title="Contra Voucher (F4)"
+            >
+              <span>Contra</span>
+              <span className="font-bold text-[10px] px-1 rounded bg-cyan-500/10 border border-cyan-500/20">F4</span>
+            </button>
+            <button
+              onClick={() => openVoucherEntry('Payment')}
+              className="w-full text-left px-2 py-1.5 rounded-lg border text-[11px] font-mono font-semibold flex items-center justify-between cursor-pointer bg-white dark:bg-[#1f1f24] border-rose-400/30 text-rose-700 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all"
+              title="Payment Voucher (F5)"
+            >
+              <span>Payment</span>
+              <span className="font-bold text-[10px] px-1 rounded bg-rose-500/10 border border-rose-500/20">F5</span>
+            </button>
+            <button
+              onClick={() => openVoucherEntry('Receipt')}
+              className="w-full text-left px-2 py-1.5 rounded-lg border text-[11px] font-mono font-semibold flex items-center justify-between cursor-pointer bg-white dark:bg-[#1f1f24] border-emerald-400/30 text-emerald-700 dark:text-[#00e476] hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all"
+              title="Receipt Voucher (F6)"
+            >
+              <span>Receipt</span>
+              <span className="font-bold text-[10px] px-1 rounded bg-emerald-500/10 border border-emerald-500/20">F6</span>
+            </button>
+            <button
+              onClick={() => openVoucherEntry('Journal')}
+              className="w-full text-left px-2 py-1.5 rounded-lg border text-[11px] font-mono font-semibold flex items-center justify-between cursor-pointer bg-white dark:bg-[#1f1f24] border-purple-400/30 text-purple-700 dark:text-[#ebb2ff] hover:bg-purple-50 dark:hover:bg-purple-950/30 transition-all"
+              title="Journal Adjustment (F7)"
+            >
+              <span>Journal</span>
+              <span className="font-bold text-[10px] px-1 rounded bg-purple-500/10 border border-purple-500/20">F7</span>
+            </button>
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="w-full text-left px-2 py-1.5 rounded-lg border text-[11px] font-mono font-semibold flex items-center justify-between cursor-pointer bg-white dark:bg-[#1f1f24] border-blue-400/30 text-blue-700 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 transition-all"
+              title="Sales Tax Invoice (F8)"
+            >
+              <span>Sales</span>
+              <span className="font-bold text-[10px] px-1 rounded bg-blue-500/10 border border-blue-500/20">F8</span>
+            </button>
+            <button
+              onClick={() => openVoucherEntry('Purchase')}
+              className="w-full text-left px-2 py-1.5 rounded-lg border text-[11px] font-mono font-semibold flex items-center justify-between cursor-pointer bg-white dark:bg-[#1f1f24] border-amber-400/30 text-amber-700 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/30 transition-all"
+              title="Purchase Voucher (F9)"
+            >
+              <span>Purchase</span>
+              <span className="font-bold text-[10px] px-1 rounded bg-amber-500/10 border border-amber-500/20">F9</span>
+            </button>
+            <button
+              onClick={() => setIsOcrOpen(true)}
+              className="w-full text-left px-2 py-1.5 rounded-lg border text-[11px] font-mono font-semibold flex items-center justify-between cursor-pointer bg-white dark:bg-[#1f1f24] border-cyan-400/40 text-cyan-700 dark:text-[#00dbe7] hover:bg-cyan-50 dark:hover:bg-cyan-950/30 transition-all font-bold"
+              title="Multilingual OCR Bill / रसीद Scanner (F10)"
+            >
+              <span>OCR Scan</span>
+              <span className="font-bold text-[10px] px-1 rounded bg-cyan-500/15 border border-cyan-500/30">F10</span>
+            </button>
+            <button
+              onClick={() => setIsSettingsOpen(true)}
+              className="w-full text-left px-2 py-1.5 rounded-lg border text-[11px] font-mono font-semibold flex items-center justify-between cursor-pointer bg-white dark:bg-[#1f1f24] border-slate-200 dark:border-[#3a494b]/30 hover:border-slate-400 transition-all"
+              title="GST Features & Setup (F11)"
+            >
+              <span>Features</span>
+              <span className="font-bold text-[10px] text-slate-500">F11</span>
+            </button>
+            <button
+              onClick={toggleUiMode}
+              className="w-full text-left px-2 py-1.5 rounded-lg border text-[11px] font-mono font-semibold flex items-center justify-between cursor-pointer bg-white dark:bg-[#1f1f24] border-slate-200 dark:border-[#3a494b]/30 hover:border-slate-400 transition-all"
+              title="Configure / Switch Layout (F12)"
+            >
+              <span>Configure</span>
+              <span className="font-bold text-[10px] text-slate-500">F12</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* ==================== TALLY & MARG ERP BOTTOM STATUS BAR ==================== */}
+      <div className={`p-2.5 sm:p-3 rounded-xl border flex flex-col sm:flex-row items-center justify-between gap-2 font-mono text-xs ${
+        effectiveTheme === 'light' ? 'bg-slate-100 border-slate-200 text-slate-700' : 'bg-[#121215] border-[#3a494b]/30 text-gray-400'
+      }`}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-bold text-slate-900 dark:text-[#74f5ff]">
+            {company?.legalName || 'SutharLabs Enterprise'}
+          </span>
+          <span>•</span>
+          <span>GSTIN: <code className="font-bold">{company?.gstin || '24AAACS1234A1Z5'}</code></span>
+          <span>•</span>
+          <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+            FY 2026-27 (01-Apr-2026 to 31-Mar-2027)
+          </span>
+        </div>
+
+        <div className="flex items-center gap-3 text-[11px]">
+          <span>DayBook Vouchers: <strong className="text-cyan-600 dark:text-[#00dbe7]">{vouchers.length}</strong></span>
+          <span>Invoices: <strong className="text-emerald-600 dark:text-emerald-400">{safeInvoices.length}</strong></span>
+          <span className="hidden md:inline px-2 py-0.5 rounded bg-slate-200 dark:bg-white/10 font-bold text-[10px]">
+            ERP MODE: {uiMode.toUpperCase()}
+          </span>
+        </div>
+      </div>
+
+{isSettingsOpen && company && (
         <CompanySettingsModal
           company={company}
           userToken={userToken}

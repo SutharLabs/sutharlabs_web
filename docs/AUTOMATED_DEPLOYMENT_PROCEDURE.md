@@ -114,3 +114,4 @@ ssh -i "D:\Code\SutharLabs\OracleFreeTier\ssh-key-2026-11-03.key" ubuntu@130.210
 git checkout <previous-commit-hash>
 npm run deploy
 ```
+
