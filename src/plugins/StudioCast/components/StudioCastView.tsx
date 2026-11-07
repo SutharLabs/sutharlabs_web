@@ -28,7 +28,8 @@ import {
   X,
   Volume2,
   Film,
-  Plus
+  Plus,
+  UploadCloud
 } from 'lucide-react';
 import { WorkspacePluginViewProps } from '../../types.js';
 import { 
@@ -41,12 +42,13 @@ import {
 } from '../types.js';
 import { StudioCastCompositor, ParticipantStreamSource } from '../compositor.js';
 import ConfirmModal, { ModalVariant } from '../../../components/ConfirmModal.js';
+import { uploadVaultFile } from '../../../services/vaultStorageService.js';
 
 export default function StudioCastView({
   logs: _logs,
   onAddLog,
   userEmail,
-  userToken: _userToken,
+  userToken,
   theme,
   userRole: _userRole
 }: WorkspacePluginViewProps) {
@@ -89,6 +91,7 @@ export default function StudioCastView({
   const [isRecordingRawHost, setIsRecordingRawHost] = useState<boolean>(false);
   const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
   const [recordedTracks, setRecordedTracks] = useState<IsoRecordingTrack[]>([]);
+  const [vaultUploadingTrackId, setVaultUploadingTrackId] = useState<string | null>(null);
 
   // Chat State
   const [chatMessages, setChatMessages] = useState<StudioCastChatMessage[]>([]);
@@ -152,6 +155,8 @@ export default function StudioCastView({
     compositorRef.current = compositor;
     compositor.setPreset(currentPreset);
     compositor.setLowerThird(lowerThird);
+    compositor.setTheme(effectiveTheme);
+    compositor.setIsRecording(isRecordingComposed || isRecordingRawHost);
     compositor.start();
 
     if (canvasContainerRef.current) {
@@ -165,6 +170,13 @@ export default function StudioCastView({
       compositor.stop();
     };
   }, []);
+
+  // Sync theme changes to compositor
+  useEffect(() => {
+    if (compositorRef.current) {
+      compositorRef.current.setTheme(effectiveTheme);
+    }
+  }, [effectiveTheme]);
 
   // Sync preset changes to compositor
   useEffect(() => {
@@ -409,6 +421,7 @@ export default function StudioCastView({
       recorder.start(1000);
       composedRecorderRef.current = recorder;
       setIsRecordingComposed(true);
+      compositorRef.current?.setIsRecording(true);
       setRecordingSeconds(0);
       recordingTimerRef.current = setInterval(() => {
         setRecordingSeconds(s => s + 1);
@@ -430,6 +443,7 @@ export default function StudioCastView({
         console.warn('Error requesting final composed recorder data:', err);
       }
       setIsRecordingComposed(false);
+      compositorRef.current?.setIsRecording(false);
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
         recordingTimerRef.current = null;
@@ -517,6 +531,57 @@ export default function StudioCastView({
     setChatInput('');
   };
 
+  const isRecordingAny = isRecordingComposed || isRecordingRawHost;
+
+  const startFullSessionRecording = () => {
+    startComposedRecording();
+    startRawHostRecording();
+  };
+
+  const stopFullSessionRecording = () => {
+    stopComposedRecording();
+    stopRawHostRecording();
+  };
+
+  const saveTrackToVault = async (track: IsoRecordingTrack) => {
+    try {
+      setVaultUploadingTrackId(track.id);
+      addLog(`Streaming podcast track "${track.title}" to Oracle Cloud Storage Vault...`, 'INFO');
+      const res = await fetch(track.blobUrl);
+      const blob = await res.blob();
+      const ext = track.format || 'webm';
+      const file = new File([blob], `${track.title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${track.id}.${ext}`, {
+        type: `video/${ext}`
+      });
+
+      await uploadVaultFile(file, 'Podcasts', userToken);
+      addLog(`Successfully archived "${track.title}" to Oracle VM Storage Vault.`, 'SUCCESS');
+      setModalConfig({
+        isOpen: true,
+        title: 'Archived to Vault',
+        message: `Track "${track.title}" was permanently stored in the Oracle Cloud Storage Vault.`,
+        subtext: `Encrypted SHA-256 block storage verified on VM 1 (sutharlabs-db-store).`,
+        variant: 'info',
+        isAlert: true,
+        confirmLabel: 'Done',
+        onConfirm: () => setModalConfig(null)
+      });
+    } catch (err: any) {
+      addLog(`Failed to save to vault: ${err.message}`, 'ERROR');
+      setModalConfig({
+        isOpen: true,
+        title: 'Vault Upload Failed',
+        message: err.message || 'Could not archive track to storage vault.',
+        variant: 'danger',
+        isAlert: true,
+        confirmLabel: 'Dismiss',
+        onConfirm: () => setModalConfig(null)
+      });
+    } finally {
+      setVaultUploadingTrackId(null);
+    }
+  };
+
   function formatBytes(bytes: number): string {
     if (bytes === 0) return '0 Bytes';
     const k = 1024;
@@ -600,50 +665,59 @@ export default function StudioCastView({
             )}
           </button>
 
-          {/* Master Composed Stream Record Button */}
-          {!isRecordingComposed ? (
+          {/* Master Full Podcast Session Record Button (Composed + ISO Multi-Track) */}
+          {!isRecordingAny ? (
             <button
               type="button"
-              onClick={startComposedRecording}
+              onClick={startFullSessionRecording}
               className="h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors"
+              title="Record Master Composed Broadcast + Raw Host ISO Tracks simultaneously (Riverside.fm double-ender style)"
             >
               <Circle className="w-3 h-3 fill-white shrink-0" />
-              <span>Record Program</span>
+              <span>Record Full Podcast</span>
             </button>
           ) : (
             <button
               type="button"
-              onClick={stopComposedRecording}
+              onClick={stopFullSessionRecording}
               className="h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-600 hover:bg-rose-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer animate-pulse"
             >
               <Square className="w-3 h-3 fill-white shrink-0" />
-              <span>Stop REC ({formatTime(recordingSeconds)})</span>
+              <span>Stop Session ({formatTime(recordingSeconds)})</span>
+            </button>
+          )}
+
+          {/* Granular Composed Only Toggle */}
+          {!isRecordingComposed && !isRecordingAny && (
+            <button
+              type="button"
+              onClick={startComposedRecording}
+              className={`h-8 px-2.5 rounded-lg text-[11px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow-sm ${
+                isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+                  : 'bg-white/5 hover:bg-white/10 text-[#e5e1e4] border border-[#3a494b]/40'
+              }`}
+              title="Record only the composed virtual stage stream"
+            >
+              <Tv className="w-3 h-3 text-[#00dbe7] shrink-0" />
+              <span>Program Only</span>
             </button>
           )}
 
           {/* Raw Host ISO Track Record Button */}
-          {!isRecordingRawHost ? (
+          {!isRecordingRawHost && !isRecordingAny && (
             <button
               type="button"
               onClick={startRawHostRecording}
-              className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+              className={`h-8 px-2.5 rounded-lg text-[11px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow-sm ${
                 isLight
                   ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-300'
                   : 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30'
               }`}
               title="Record uncompressed host ISO camera track"
             >
-              <Film className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-              <span>Record ISO Track</span>
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={stopRawHostRecording}
-              className="h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-purple-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer animate-pulse"
-            >
-              <Square className="w-3 h-3 fill-white shrink-0" />
-              <span>Stop Host ISO</span>
+              <Film className="w-3 h-3 text-purple-400 shrink-0" />
+              <span>ISO Only</span>
             </button>
           )}
         </div>
@@ -652,7 +726,7 @@ export default function StudioCastView({
       {/* Main Studio Viewport & Side Rail Grid */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-12 min-h-0 overflow-hidden">
         {/* Left & Center Viewport (8 Columns) */}
-        <div className="lg:col-span-8 flex flex-col p-4 space-y-3.5 overflow-y-auto">
+        <div className="lg:col-span-8 flex flex-col p-3 sm:p-4 space-y-2.5 sm:space-y-3 overflow-y-auto">
           {/* Quick Virtual Presets Rail */}
           <div className={`p-2.5 rounded-xl border flex items-center justify-between gap-2 overflow-x-auto ${
             isLight ? 'bg-white border-slate-200' : 'bg-[#141418] border-[#3a494b]/30'
@@ -693,23 +767,136 @@ export default function StudioCastView({
             </div>
           </div>
 
-          {/* Main Composed Virtual Stage Canvas */}
-          <div className="flex-1 min-h-[380px] bg-black rounded-2xl border border-[#3a494b]/30 overflow-hidden relative flex items-center justify-center shadow-2xl">
-            <div ref={canvasContainerRef} className="w-full h-full flex items-center justify-center" />
+          {/* Main Stage Viewport (Toggles between 16:9 Virtual Stage Canvas and Multi-Track ISO Library) */}
+          {activeTab === 'virtual_studio' ? (
+            /* Main Composed Virtual Stage Canvas (Locks strictly to 16:9 aspect-video to eliminate vertical dead space) */
+            <div className={`relative w-full aspect-video max-h-[calc(100vh-250px)] rounded-2xl border overflow-hidden flex items-center justify-center shadow-xl transition-all ${
+              isLight
+                ? 'bg-slate-900 border-slate-300'
+                : 'bg-black border-[#3a494b]/40 shadow-2xl'
+            }`}>
+              <div ref={canvasContainerRef} className="w-full h-full flex items-center justify-center" />
 
-            {/* Live Status Overlay Badges */}
-            <div className="absolute top-3 right-3 flex items-center gap-2 pointer-events-none">
-              {(isRecordingComposed || isRecordingRawHost) && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/90 text-white text-[10px] font-mono font-bold shadow-md animate-pulse">
-                  <Circle className="w-2.5 h-2.5 fill-white shrink-0" />
-                  <span>REC {formatTime(recordingSeconds)}</span>
+              {/* Live Status Overlay Badges */}
+              <div className="absolute top-3 right-3 flex items-center gap-2 pointer-events-none">
+                {isRecordingAny && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-rose-500/90 text-white text-[10px] font-mono font-bold shadow-md animate-pulse">
+                    <Circle className="w-2.5 h-2.5 fill-white shrink-0" />
+                    <span>REC {formatTime(recordingSeconds)}</span>
+                  </div>
+                )}
+                <div className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white text-[10px] font-mono">
+                  1080p • 30 FPS
                 </div>
-              )}
-              <div className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white text-[10px] font-mono">
-                1080p • 30 FPS
               </div>
             </div>
-          </div>
+          ) : (
+            /* Dedicated Multi-Track ISO Podcast Library (Riverside.fm double-ender style) */
+            <div className={`p-4 sm:p-5 rounded-2xl border space-y-4 ${
+              isLight ? 'bg-white border-slate-200' : 'bg-[#141418] border-[#3a494b]/30'
+            }`}>
+              <div className="flex items-center justify-between pb-3 border-b border-outline/15">
+                <div>
+                  <h3 className={`text-base font-bold font-sans ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                    Podcast Multi-Track Master Library
+                  </h3>
+                  <p className="text-xs font-mono text-on-surface-variant mt-0.5">
+                    Isolated local double-ender recordings ready for editing in Premiere, DaVinci Resolve or Final Cut
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30">
+                    {recordedTracks.length} ISO Tracks
+                  </span>
+                </div>
+              </div>
+
+              {recordedTracks.length === 0 ? (
+                <div className="py-12 text-center space-y-2">
+                  <Film className="w-8 h-8 mx-auto text-on-surface-variant opacity-40" />
+                  <p className="text-sm font-mono text-on-surface-variant">
+                    No podcast recordings in this session yet.
+                  </p>
+                  <p className="text-xs text-on-surface-variant/75">
+                    Click "Record Full Podcast" or "Record Program" above to capture isolated master tracks.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {recordedTracks.map(track => (
+                    <div
+                      key={track.id}
+                      className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
+                        isLight ? 'bg-slate-50 border-slate-200 hover:border-slate-300' : 'bg-black/30 border-white/10 hover:border-[#00dbe7]/40'
+                      }`}
+                    >
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
+                            track.type === 'composed_virtual'
+                              ? 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
+                              : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                          }`}>
+                            {track.type === 'composed_virtual' ? 'Composed Broadcast' : 'Raw Isolated ISO'}
+                          </span>
+                          <span className="text-[10px] font-mono text-on-surface-variant">
+                            {track.createdAt}
+                          </span>
+                        </div>
+                        <h4 className="text-sm font-bold text-on-surface truncate">{track.title}</h4>
+                        <div className="text-xs font-mono text-on-surface-variant">
+                          Duration: <span className="font-bold text-on-surface">{formatTime(track.durationSeconds)}</span> • Size: <span className="font-bold text-on-surface">{formatBytes(track.sizeBytes)}</span> • Codec: <span className="font-bold uppercase text-on-surface">{track.format}</span>
+                        </div>
+                      </div>
+
+                      {/* Video Player Preview */}
+                      <video
+                        src={track.blobUrl}
+                        controls
+                        playsInline
+                        className="w-full aspect-video rounded-lg bg-black object-contain max-h-40 border border-white/5"
+                      />
+
+                      {/* Action Buttons */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <a
+                          href={track.blobUrl}
+                          download={`${track.title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${track.id}.${track.format}`}
+                          className={`flex-1 h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-sm transition-all ${
+                            isLight
+                              ? 'bg-sky-500 hover:bg-sky-600 text-white'
+                              : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40'
+                          }`}
+                        >
+                          <Download className="w-3.5 h-3.5 shrink-0" />
+                          <span>Export File</span>
+                        </a>
+
+                        <button
+                          type="button"
+                          disabled={vaultUploadingTrackId === track.id}
+                          onClick={() => saveTrackToVault(track)}
+                          className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 border shadow-sm transition-all cursor-pointer ${
+                            isLight
+                              ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300'
+                              : 'bg-white/5 hover:bg-white/10 text-white border-white/10'
+                          }`}
+                          title="Save to Oracle VM Storage Vault"
+                        >
+                          {vaultUploadingTrackId === track.id ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#00dbe7] shrink-0" />
+                          ) : (
+                            <UploadCloud className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                          )}
+                          <span>{vaultUploadingTrackId === track.id ? 'Archiving...' : 'Vault Backup'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Bottom Stream Controls Bar */}
           <div className={`p-3 rounded-xl border flex flex-wrap items-center justify-between gap-3 ${
@@ -1059,14 +1246,39 @@ export default function StudioCastView({
                         {formatBytes(track.sizeBytes)} • {formatTime(track.durationSeconds)} • {track.format.toUpperCase()}
                       </div>
                     </div>
-                    <a
-                      href={track.blobUrl}
-                      download={`${track.title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${track.id}.${track.format}`}
-                      className="h-7 px-2.5 rounded bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40 flex items-center gap-1 text-[10px] font-mono uppercase font-bold shrink-0"
-                    >
-                      <Download className="w-3 h-3 shrink-0" />
-                      <span>Export</span>
-                    </a>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        disabled={vaultUploadingTrackId === track.id}
+                        onClick={() => saveTrackToVault(track)}
+                        className={`h-7 px-2.5 rounded border flex items-center gap-1 text-[10px] font-mono uppercase font-bold shrink-0 transition-all cursor-pointer ${
+                          isLight
+                            ? 'bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-300'
+                            : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40'
+                        }`}
+                        title="Archive track directly to Oracle Cloud Storage Vault"
+                      >
+                        {vaultUploadingTrackId === track.id ? (
+                          <RefreshCw className="w-3 h-3 animate-spin shrink-0" />
+                        ) : (
+                          <UploadCloud className="w-3 h-3 shrink-0" />
+                        )}
+                        <span>{vaultUploadingTrackId === track.id ? 'Saving...' : 'Vault'}</span>
+                      </button>
+
+                      <a
+                        href={track.blobUrl}
+                        download={`${track.title.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${track.id}.${track.format}`}
+                        className={`h-7 px-2.5 rounded border flex items-center gap-1 text-[10px] font-mono uppercase font-bold shrink-0 transition-all ${
+                          isLight
+                            ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                            : 'bg-white/10 hover:bg-white/20 text-white border-white/10'
+                        }`}
+                      >
+                        <Download className="w-3 h-3 shrink-0" />
+                        <span>Export</span>
+                      </a>
+                    </div>
                   </div>
                 ))}
               </div>

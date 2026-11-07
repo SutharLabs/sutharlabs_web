@@ -3899,11 +3899,11 @@ app.get("/api/admin/database/sync-history", authenticateToken, requireAdmin, asy
 // ORACLE CLOUD STORAGE VAULT API (VM1: 137.23.61.191)
 
 // ==========================================
-// Dynamic Oracle Vault URL (prefers 10.0.0.122 internal VCN on Linux VM for 10Gbps line rate)
+// Dynamic Oracle Vault URL (prefers 10.0.0.169 internal VCN on Linux VM for 10Gbps line rate)
 const getOracleVaultUrl = () => {
   if (process.env.ORACLE_VAULT_URL) return process.env.ORACLE_VAULT_URL;
   if (process.platform === 'linux' && !process.env.VERCEL) {
-    return "http://10.0.0.122";
+    return "http://10.0.0.169";
   }
   return "http://137.23.61.191";
 };

@@ -215,24 +215,37 @@ async function completeChunkedUpload(params: {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (params.token) headers['Authorization'] = `Bearer ${params.token}`;
 
-  const res = await fetch('/api/vault/complete-chunk-upload', {
-    method: 'POST',
-    headers,
-    body: JSON.stringify(params)
-  });
+  let lastError: any = null;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const res = await fetch('/api/vault/complete-chunk-upload', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(params),
+        signal: AbortSignal.timeout(120000)
+      });
 
-  const resText = await res.text();
-  let data: any = {};
-  try {
-    data = JSON.parse(resText);
-  } catch {
-    throw new Error(`Server returned non-JSON response (${res.status}): ${resText.slice(0, 150)}`);
-  }
+      const resText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(resText);
+      } catch {
+        throw new Error(`Server returned non-JSON response (${res.status}): ${resText.slice(0, 150)}`);
+      }
 
-  if (!res.ok || !data.success) {
-    throw new Error(data.error || `Failed to assemble uploaded file (HTTP ${res.status}): ${resText.slice(0, 150)}`);
+      if (res.ok && data.success) {
+        return data.file;
+      }
+      throw new Error(data.error || `Failed to assemble uploaded file (HTTP ${res.status}): ${resText.slice(0, 150)}`);
+    } catch (err: any) {
+      lastError = err;
+      if (attempt < 2) {
+        // Wait 1.5s before retry as assembly may still be finalizing on Oracle VM
+        await new Promise(r => setTimeout(r, 1500));
+      }
+    }
   }
-  return data.file;
+  throw lastError || new Error('Failed to assemble uploaded file after retry.');
 }
 
 /**

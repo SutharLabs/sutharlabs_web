@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794046250.9985018,
-    "seen": 1794046471.9799855,
-    "ast_hash": "936ed1927049bf1ee2aec94af333a280",
+    "mtime": 1794047018.455937,
+    "seen": 1794047467.5542364,
+    "ast_hash": "8ab2618be46cf2626d47d35bc441c832",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -356,9 +356,9 @@
     "semantic_hash": "8dab1d2f4b290c72f4b09fe1b159d0b2"
   },
   "src/plugins/Accounting/manifest.json": {
-    "mtime": 1794044311.7884312,
-    "seen": 1794044370.4913406,
-    "ast_hash": "06c32e544273c411a72adcd96b177cb6",
+    "mtime": 1794046517.7128801,
+    "seen": 1794046543.5967216,
+    "ast_hash": "25d10b67e41bceb97b4047bf7f0dd457",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/manifest.ts": {
@@ -470,9 +470,9 @@
     "semantic_hash": "2cf61e718991de61558a761f4a82f17b"
   },
   "src/plugins/DocNexus/manifest.json": {
-    "mtime": 1794044310.5492034,
-    "seen": 1794044370.4914079,
-    "ast_hash": "5aba685c9f083653f116e0c6718b877c",
+    "mtime": 1794046515.8222792,
+    "seen": 1794046543.596814,
+    "ast_hash": "cea9bd7c07466c2d816f7ffe6032a28d",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/manifest.ts": {
@@ -536,9 +536,9 @@
     "semantic_hash": "60a8dc279c1c40a63b3d53988dbd2e61"
   },
   "src/plugins/FlowDesigner/manifest.json": {
-    "mtime": 1794044309.853863,
-    "seen": 1794044370.4914415,
-    "ast_hash": "a0eaa61960b7a05676dc53e00a09e19b",
+    "mtime": 1794046513.719761,
+    "seen": 1794046543.5968475,
+    "ast_hash": "9fc46040a4aa06e7026c698f0d2b4ce2",
     "semantic_hash": ""
   },
   "src/plugins/FlowDesigner/manifest.ts": {
@@ -644,9 +644,9 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1794044308.2848537,
-    "seen": 1794044370.4915369,
-    "ast_hash": "5f509beec3a54bbc5cfba886ae2269d0",
+    "mtime": 1794046511.756368,
+    "seen": 1794046543.5969763,
+    "ast_hash": "a27dd8790b5d156a452a5a787e7a0f9e",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
@@ -1082,9 +1082,9 @@
     "semantic_hash": ""
   },
   "src/services/vaultStorageService.ts": {
-    "mtime": 1794046225.697268,
-    "seen": 1794046471.9806883,
-    "ast_hash": "f87c550098058be951d5d770f74e1c16",
+    "mtime": 1794047042.3601599,
+    "seen": 1794047467.5550387,
+    "ast_hash": "83d4c63513538b28d617291b70906ee4",
     "semantic_hash": ""
   },
   "docs/llm_inference_node_setup_and_benchmarks.md": {
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1794044312.684835,
-    "seen": 1794044370.4914918,
-    "ast_hash": "1d938d3c25de25a7d8484c8e83149aa9",
+    "mtime": 1794046519.165355,
+    "seen": 1794046543.5969195,
+    "ast_hash": "e5038ade5aef364cc206fb245c13bff5",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {
@@ -1178,9 +1178,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.json": {
-    "mtime": 1794044314.0365067,
-    "seen": 1794044370.4914517,
-    "ast_hash": "58692a674b57dcab794df23079faf076",
+    "mtime": 1794046521.1829586,
+    "seen": 1794046543.5968628,
+    "ast_hash": "b3009625cc90c77c3c9dbd84dd33a1ee",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.ts": {
@@ -1562,9 +1562,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.json": {
-    "mtime": 1794044314.878403,
-    "seen": 1794044370.4914815,
-    "ast_hash": "ccd9b33211f9d8fe1c41e2036cf6ceeb",
+    "mtime": 1794046522.6134036,
+    "seen": 1794046543.5969043,
+    "ast_hash": "afb0ff34f95eb02d4815c6693c5eddd9",
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.ts": {
@@ -1646,9 +1646,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ResumeStudio/manifest.json": {
-    "mtime": 1794044315.6445253,
-    "seen": 1794044370.491471,
-    "ast_hash": "99f2839da59b9d11ac4d46c040dd4755",
+    "mtime": 1794046523.6384604,
+    "seen": 1794046543.5968902,
+    "ast_hash": "b3c06b37531731fdb90686697a2fc48a",
     "semantic_hash": ""
   },
   "src/plugins/ResumeStudio/manifest.ts": {
@@ -1742,15 +1742,15 @@
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/components/StudioCastView.tsx": {
-    "mtime": 1794040479.3139572,
-    "seen": 1794042798.1483672,
-    "ast_hash": "bd29235d1e2abf06735c297ef53779c4",
+    "mtime": 1794047372.4436755,
+    "seen": 1794047467.5549667,
+    "ast_hash": "ce79e0c2bf6d577bd6f0f3dbfa4f29c1",
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/compositor.ts": {
-    "mtime": 1794028725.1010053,
-    "seen": 1794029055.419404,
-    "ast_hash": "ae289481e448c08d823bcf461f7420e4",
+    "mtime": 1794047111.3424954,
+    "seen": 1794047467.5549715,
+    "ast_hash": "79adcc1194228453d15d07b3b2d19d0f",
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/index.ts": {
@@ -1760,9 +1760,9 @@
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/manifest.json": {
-    "mtime": 1794044316.446184,
-    "seen": 1794044370.4915993,
-    "ast_hash": "19bed8bb7a2b43a66235f0370b6562a3",
+    "mtime": 1794046524.9939895,
+    "seen": 1794046543.5970623,
+    "ast_hash": "2f81809ddd64e6538effc657913f4895",
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/manifest.ts": {

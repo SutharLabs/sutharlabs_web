@@ -23,7 +23,9 @@ export class StudioCastCompositor {
 
   private participants: ParticipantStreamSource[] = [];
   private isRunning: boolean = false;
-  private timecodeStart: number = Date.now();
+  private isRecording: boolean = false;
+  private recordingStartTime: number = 0;
+  private theme: 'light' | 'dark' = 'dark';
 
   constructor(width: number = 1280, height: number = 720) {
     this.canvas = document.createElement('canvas');
@@ -44,6 +46,17 @@ export class StudioCastCompositor {
 
   public setPreset(preset: VirtualPreset) {
     this.currentPreset = preset;
+  }
+
+  public setTheme(theme: 'light' | 'dark') {
+    this.theme = theme;
+  }
+
+  public setIsRecording(recording: boolean) {
+    this.isRecording = recording;
+    if (recording) {
+      this.recordingStartTime = Date.now();
+    }
   }
 
   public setLowerThird(config: Partial<LowerThirdConfig>) {
@@ -82,7 +95,11 @@ export class StudioCastCompositor {
 
     // 1. Studio Background Gradient
     const bgGradient = ctx.createLinearGradient(0, 0, w, h);
-    if (this.currentPreset === 'minimal_cyber') {
+    if (this.theme === 'light') {
+      bgGradient.addColorStop(0, '#f8fafc');
+      bgGradient.addColorStop(0.5, '#f1f5f9');
+      bgGradient.addColorStop(1, '#e2e8f0');
+    } else if (this.currentPreset === 'minimal_cyber') {
       bgGradient.addColorStop(0, '#04070a');
       bgGradient.addColorStop(0.5, '#071015');
       bgGradient.addColorStop(1, '#020305');
@@ -95,7 +112,7 @@ export class StudioCastCompositor {
     ctx.fillRect(0, 0, w, h);
 
     // Subtle Studio Grid Pattern
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.02)';
+    ctx.strokeStyle = this.theme === 'light' ? 'rgba(0, 0, 0, 0.04)' : 'rgba(255, 255, 255, 0.02)';
     ctx.lineWidth = 1;
     const gridSize = 40;
     for (let x = 0; x < w; x += gridSize) {
@@ -392,25 +409,32 @@ export class StudioCastCompositor {
     ctx.fillText(this.lowerThird.subtitle, margin + boxW + 16, bannerY + 48);
 
     // Right-hand Clock & Timecode
-    const elapsedSeconds = Math.floor((Date.now() - this.timecodeStart) / 1000);
-    const mm = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
-    const ss = String(elapsedSeconds % 60).padStart(2, '0');
-    const timecodeStr = `REC ${mm}:${ss}`;
+    if (this.isRecording) {
+      const elapsedSeconds = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+      const mm = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
+      const ss = String(elapsedSeconds % 60).padStart(2, '0');
+      const timecodeStr = `● REC ${mm}:${ss}`;
 
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#ff5c5c';
-    ctx.font = 'bold 12px "JetBrains Mono", monospace';
-    ctx.fillText(timecodeStr, margin + bannerW - 16, bannerY + 36);
+      ctx.textAlign = 'right';
+      ctx.fillStyle = '#ff4d4f';
+      ctx.font = 'bold 12px "JetBrains Mono", monospace';
+      ctx.fillText(timecodeStr, margin + bannerW - 16, bannerY + 36);
+    } else {
+      ctx.textAlign = 'right';
+      ctx.fillStyle = this.theme === 'light' ? '#64748b' : '#94a3b8';
+      ctx.font = '11px "JetBrains Mono", monospace';
+      ctx.fillText('STANDBY // READY', margin + bannerW - 16, bannerY + 36);
+    }
 
     ctx.restore();
   }
 
   // TOP STATUS HEADER
-  private drawStudioHeader(w: number, _h: number) {
+  private drawStudioHeader(_w: number, _h: number) {
     const { ctx } = this;
     ctx.save();
 
-    ctx.fillStyle = 'rgba(10, 12, 18, 0.7)';
+    ctx.fillStyle = this.theme === 'light' ? 'rgba(255, 255, 255, 0.85)' : 'rgba(10, 12, 18, 0.7)';
     ctx.beginPath();
     ctx.roundRect(24, 16, 170, 24, 6);
     ctx.fill();
@@ -420,7 +444,7 @@ export class StudioCastCompositor {
     ctx.arc(36, 28, 4, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = '#e2e8f0';
+    ctx.fillStyle = this.theme === 'light' ? '#0f172a' : '#e2e8f0';
     ctx.font = 'bold 10px "JetBrains Mono", monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
