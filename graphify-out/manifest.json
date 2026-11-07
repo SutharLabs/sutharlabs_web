@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794040466.7298675,
-    "seen": 1794042798.14775,
-    "ast_hash": "f788ed62545451795cd9e9c06b5e2e8b",
+    "mtime": 1794046250.9985018,
+    "seen": 1794046471.9799855,
+    "ast_hash": "936ed1927049bf1ee2aec94af333a280",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -1076,15 +1076,15 @@
     "semantic_hash": ""
   },
   "src/components/StorageVaultView.tsx": {
-    "mtime": 1794028725.8299472,
-    "seen": 1794029055.418797,
-    "ast_hash": "1891220b077180dbb8d8007bf2cc0f82",
+    "mtime": 1794046238.0765226,
+    "seen": 1794046471.9801092,
+    "ast_hash": "727ec8603ad6297d422eac1b681fb404",
     "semantic_hash": ""
   },
   "src/services/vaultStorageService.ts": {
-    "mtime": 1794040478.5027893,
-    "seen": 1794042798.1484387,
-    "ast_hash": "5166bbb76b07d2474843155f7e96e44f",
+    "mtime": 1794046225.697268,
+    "seen": 1794046471.9806883,
+    "ast_hash": "f87c550098058be951d5d770f74e1c16",
     "semantic_hash": ""
   },
   "docs/llm_inference_node_setup_and_benchmarks.md": {
@@ -1112,9 +1112,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
-    "mtime": 1794044337.3363876,
-    "seen": 1794044370.491488,
-    "ast_hash": "fcfc8e946d0975cf7fded30386ba902f",
+    "mtime": 1794046295.8049324,
+    "seen": 1794046471.980438,
+    "ast_hash": "2c9bc5500dc8f7adb91ce394eb0aebcf",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/index.ts": {
@@ -1130,9 +1130,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/routes.ts": {
-    "mtime": 1794044338.1699674,
-    "seen": 1794044370.4914958,
-    "ast_hash": "cdea6043c16d51b510b7be51b382df38",
+    "mtime": 1794046319.5652866,
+    "seen": 1794046471.9804535,
+    "ast_hash": "0c75fc701618f4a37c7e6372f050757c",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/types.ts": {

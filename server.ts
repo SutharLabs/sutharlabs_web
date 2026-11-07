@@ -4179,7 +4179,16 @@ app.post("/api/vault/complete-chunk-upload", authenticateToken, requireAdmin, as
       body: formData
     });
 
-    const data = await response.json();
+    const resText = await response.text();
+    let data: any;
+    try {
+      data = JSON.parse(resText);
+    } catch {
+      return res.status(response.status || 502).json({
+        error: `Storage Vault Daemon on Oracle VM 1 returned invalid response (HTTP ${response.status}): ${resText.slice(0, 150)}`
+      });
+    }
+
     if (!response.ok) {
       return res.status(response.status).json(data);
     }

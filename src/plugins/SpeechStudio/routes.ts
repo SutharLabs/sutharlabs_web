@@ -619,11 +619,19 @@ export function registerRoutes(router: Router) {
         });
       }
 
+      const rawArch = String(architecture || "").toLowerCase();
+      const normalizedArch = (rawArch.includes("voxcpm") || rawArch.includes("hush"))
+        ? "voxcpm"
+        : rawArch.includes("styletts")
+        ? "styletts2"
+        : architecture;
+
       const { referenceAudio, gender, timbrePreference } = req.body;
       const isClonedVoice = Boolean(
         referenceAudio ||
         voiceId.startsWith("cloned-") ||
-        architecture === "f5-tts" ||
+        normalizedArch === "voxcpm" ||
+        normalizedArch === "f5-tts" ||
         engine === "cloned"
       );
 
@@ -669,10 +677,11 @@ export function registerRoutes(router: Router) {
         let vmResponse: globalThis.Response | null = null;
         let lastError: any = null;
 
-        // Neural zero-shot cloning on CPU takes 18-35s on idle CPU; cap at 45s to stay well within proxy timeouts
-        const requestTimeoutMs = (isClonedVoice && effectiveSampleAudio) ? 45000 : 25000;
+        const isNeuralClone = Boolean(isClonedVoice && effectiveSampleAudio);
+        const requestTimeoutMs = isNeuralClone ? 38000 : 25000;
+        const maxAttempts = isNeuralClone ? 1 : 2;
 
-        for (let attempt = 1; attempt <= 2; attempt++) {
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
           try {
             vmResponse = await fetch(targetUrl, {
               method: "POST",

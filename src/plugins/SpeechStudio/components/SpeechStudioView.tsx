@@ -1160,6 +1160,15 @@ export default function SpeechStudioView({
           }
         : (neuralVoices.find(v => v.id === selectedVoiceId) || neuralVoices[0]);
 
+      const rawArch = (activeCloned?.architecture || '').toLowerCase();
+      const normalizedArch = (rawArch.includes('voxcpm') || rawArch.includes('hush'))
+        ? 'voxcpm'
+        : rawArch.includes('styletts')
+        ? 'styletts2'
+        : isCloned
+        ? 'voxcpm'
+        : (activeVoice as any).architecture || 'edge-tts';
+
       const payload = {
         text,
         lang: activeVoice.lang,
@@ -1168,7 +1177,7 @@ export default function SpeechStudioView({
         rate,
         pitch,
         volume,
-        architecture: isCloned ? (activeCloned.architecture || 'voxcpm') : (activeVoice as any).architecture || 'edge-tts',
+        architecture: normalizedArch,
         gender: activeCloned?.gender || (activeVoice as any).gender || 'male',
         timbrePreference: activeCloned?.gender || (activeVoice as any).gender || 'male',
         referenceAudio: isCloned ? (activeVoice as any).referenceAudio : undefined
@@ -1195,14 +1204,21 @@ export default function SpeechStudioView({
         }
       }
 
-      const data = await res.json();
+      const resText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(resText);
+      } catch {
+        throw new Error(`Server returned unexpected response (${res.status}): ${resText.slice(0, 140)}`);
+      }
+
       if (!res.ok) {
         if (res.status === 429) {
           setErrorMessage(data.error || 'Rate limit reached.');
           if (data.quota) setQuota(data.quota);
           return;
         }
-        throw new Error(data.message || data.error || data.details || 'Speech synthesis failed.');
+        throw new Error(data.message || data.error || data.details || `Speech synthesis failed (HTTP ${res.status}).`);
       }
 
       if (data.quota) setQuota(data.quota);
@@ -1623,8 +1639,15 @@ export default function SpeechStudioView({
         throw firstErr;
       }
 
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || data.error || data.details || 'Voice cloning synthesis failed.');
+      const resText = await res.text();
+      let data: any = {};
+      try {
+        data = JSON.parse(resText);
+      } catch {
+        throw new Error(`Server returned unexpected response (${res.status}): ${resText.slice(0, 140)}`);
+      }
+
+      if (!res.ok) throw new Error(data.message || data.error || data.details || `Voice cloning synthesis failed (HTTP ${res.status}).`);
 
       if (data.quota) setQuota(data.quota);
       if (data.telemetry) setVerificationTelemetry(data.telemetry);

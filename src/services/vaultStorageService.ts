@@ -36,9 +36,9 @@ export async function uploadVaultFile(
   token?: string,
   onProgress?: (percent: number) => void
 ): Promise<VaultFileItem> {
-  // Files over 3.5 MB are split into 3.5 MB sovereign chunks to bypass edge gateway limits (Vercel 4.5MB ceiling)
+  // Files over 2.5 MB are split into 2.5 MB sovereign chunks to safely bypass edge gateway limits (Vercel 4.5MB ceiling)
   // Uploads are processed with 3x parallel streams for saturating mobile 5G bandwidth
-  const CHUNK_SIZE = Math.floor(3.5 * 1024 * 1024); // 3.5 MB chunks
+  const CHUNK_SIZE = Math.floor(2.5 * 1024 * 1024); // 2.5 MB chunks
   if (file.size > CHUNK_SIZE) {
     return uploadChunkedFile(file, category, token, onProgress);
   }
@@ -111,7 +111,7 @@ async function uploadChunkedFile(
   token?: string,
   onProgress?: (percent: number) => void
 ): Promise<VaultFileItem> {
-  const CHUNK_SIZE = Math.floor(3.5 * 1024 * 1024); // 3.5 MB chunks
+  const CHUNK_SIZE = Math.floor(2.5 * 1024 * 1024); // 2.5 MB chunks for reliable line-rate transmission
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
   const uploadId = `vault_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
@@ -221,9 +221,16 @@ async function completeChunkedUpload(params: {
     body: JSON.stringify(params)
   });
 
-  const data = await res.json().catch(() => ({}));
+  const resText = await res.text();
+  let data: any = {};
+  try {
+    data = JSON.parse(resText);
+  } catch {
+    throw new Error(`Server returned non-JSON response (${res.status}): ${resText.slice(0, 150)}`);
+  }
+
   if (!res.ok || !data.success) {
-    throw new Error(data.error || `Failed to assemble uploaded file (HTTP ${res.status})`);
+    throw new Error(data.error || `Failed to assemble uploaded file (HTTP ${res.status}): ${resText.slice(0, 150)}`);
   }
   return data.file;
 }
