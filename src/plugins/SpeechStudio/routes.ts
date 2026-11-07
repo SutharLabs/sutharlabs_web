@@ -514,6 +514,15 @@ const SOTA_ARCHITECTURES: TTSArchitectureOption[] = [
   }
 ];
 
+function getOracleTtsUrls(): string[] {
+  if (process.env.ORACLE_TTS_URL) {
+    const custom = process.env.ORACLE_TTS_URL.replace(/\/$/, "");
+    return [custom, "http://10.0.0.188/tts", "http://132.226.190.125/tts"];
+  }
+  // Internal Oracle VCN line-rate (0.2ms latency) preferred first, with public IP as automatic failover
+  return ["http://10.0.0.188/tts", "http://132.226.190.125/tts"];
+}
+
 function getUserIdentifierAndRole(req: Request): { identifier: string; role: string; email?: string } {
   const authHeader = req.headers.authorization;
   if (authHeader && authHeader.startsWith("Bearer ")) {
@@ -659,17 +668,13 @@ export function registerRoutes(router: Router) {
       }
 
       // Synthesize audio using VM 2 Neural Studio daemon
-      const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://132.226.190.125/tts";
+      const ttsUrls = getOracleTtsUrls();
       let audioBuffer: Buffer;
       let replicationEngine = "NEURAL_EDGE";
       let latentsCached = false;
       let inferenceTimeSec = 0;
 
       try {
-        const targetUrl = (isClonedVoice && effectiveSampleAudio)
-          ? `${ORACLE_TTS_URL}/api/clone`
-          : `${ORACLE_TTS_URL}/api/tts`;
-
         const payload = (isClonedVoice && effectiveSampleAudio)
           ? { text, sampleAudio: effectiveSampleAudio, speakerName: voiceName, rate, pitch, timbrePreference: effectiveGender, gender: effectiveGender }
           : { text, voiceId, rate, pitch, volume, architecture, emotion, cfgStrength, timbrePreference: effectiveGender, gender: effectiveGender };
@@ -679,28 +684,36 @@ export function registerRoutes(router: Router) {
 
         const isNeuralClone = Boolean(isClonedVoice && effectiveSampleAudio);
         const requestTimeoutMs = isNeuralClone ? 38000 : 25000;
-        const maxAttempts = isNeuralClone ? 1 : 2;
 
-        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-          try {
-            vmResponse = await fetch(targetUrl, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(payload),
-              signal: AbortSignal.timeout(requestTimeoutMs)
-            });
+        for (const baseUrl of ttsUrls) {
+          const targetUrl = (isClonedVoice && effectiveSampleAudio)
+            ? `${baseUrl}/api/clone`
+            : `${baseUrl}/api/tts`;
 
-            if (vmResponse.ok) break;
+          const maxAttempts = isNeuralClone ? 1 : 2;
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+              vmResponse = await fetch(targetUrl, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+                signal: AbortSignal.timeout(requestTimeoutMs)
+              });
 
-            const errorMsg = await vmResponse.text().catch(() => "");
-            lastError = new Error(`VM2 Neural TTS service returned HTTP ${vmResponse.status}: ${errorMsg || vmResponse.statusText}`);
-          } catch (netErr: any) {
-            lastError = netErr;
+              if (vmResponse.ok) break;
+
+              const errorMsg = await vmResponse.text().catch(() => "");
+              lastError = new Error(`VM2 Neural TTS (${baseUrl}) returned HTTP ${vmResponse.status}: ${errorMsg || vmResponse.statusText}`);
+            } catch (netErr: any) {
+              lastError = netErr;
+            }
+
+            if (attempt < 2 && !isNeuralClone) {
+              await new Promise(r => setTimeout(r, 600));
+            }
           }
 
-          if (attempt < 2) {
-            await new Promise(r => setTimeout(r, 600));
-          }
+          if (vmResponse && vmResponse.ok) break;
         }
 
         if (!vmResponse || !vmResponse.ok) {
@@ -830,7 +843,7 @@ export function registerRoutes(router: Router) {
       const selectedArch = (requestedArch || "hush").toLowerCase();
 
       // Check if VM 2 Voice Cloning Engine is available
-      const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://132.226.190.125/tts";
+      const cloneUrls = getOracleTtsUrls();
       let audioBuffer: Buffer | null = null;
       let replicationEngine = selectedArch === "voxcpm" || selectedArch === "hush" ? "HUSH_STUDIO_IN_CONTEXT_VOXCPM" : "STYLETTS2_NEURAL_VOCODER";
       let latentsCached = false;
@@ -843,40 +856,43 @@ export function registerRoutes(router: Router) {
 
         // If neural zero-shot cloning architecture selected (Hush Studio VoxCPM, StyleTTS 2, or general cloning), call VM 2 /api/clone
         if (selectedArch !== "edge") {
-          try {
-            const t0 = Date.now();
-            vmResponse = await fetch(`${ORACLE_TTS_URL}/api/clone`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                text,
-                sampleAudio,
-                referenceText,
-                speakerName,
-                timbrePreference: effectiveGender,
-                gender: effectiveGender,
-                rate,
-                pitch
-              }),
-              signal: AbortSignal.timeout(45000)
-            });
+          for (const baseUrl of cloneUrls) {
+            try {
+              const t0 = Date.now();
+              vmResponse = await fetch(`${baseUrl}/api/clone`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  text,
+                  sampleAudio,
+                  referenceText,
+                  speakerName,
+                  timbrePreference: effectiveGender,
+                  gender: effectiveGender,
+                  rate,
+                  pitch
+                }),
+                signal: AbortSignal.timeout(45000)
+              });
 
-            if (vmResponse.ok) {
-              const arrayBuf = await vmResponse.arrayBuffer();
-              const candidateBuf = Buffer.from(arrayBuf);
-              // Verify candidate contains real audio and not an error string
-              if (candidateBuf.length > 500 && !candidateBuf.subarray(0, 10).toString().includes("Error")) {
-                audioBuffer = candidateBuf;
-                replicationEngine = selectedArch === "voxcpm" || selectedArch === "hush"
-                  ? "HUSH_STUDIO_IN_CONTEXT_VOXCPM"
-                  : "STYLETTS2_NEURAL_VOCODER";
-                latentsCached = vmResponse.headers.get("x-speaker-latents-cached") === "True";
-                inferenceTimeSec = Number(vmResponse.headers.get("x-inference-time-sec") || 0) || Number(((Date.now() - t0) / 1000).toFixed(2));
-                totalTimeSec = Number(vmResponse.headers.get("x-total-time-sec") || 0) || inferenceTimeSec;
+              if (vmResponse.ok) {
+                const arrayBuf = await vmResponse.arrayBuffer();
+                const candidateBuf = Buffer.from(arrayBuf);
+                // Verify candidate contains real audio and not an error string
+                if (candidateBuf.length > 500 && !candidateBuf.subarray(0, 10).toString().includes("Error")) {
+                  audioBuffer = candidateBuf;
+                  replicationEngine = selectedArch === "voxcpm" || selectedArch === "hush"
+                    ? "HUSH_STUDIO_IN_CONTEXT_VOXCPM"
+                    : "STYLETTS2_NEURAL_VOCODER";
+                  latentsCached = vmResponse.headers.get("x-speaker-latents-cached") === "True";
+                  inferenceTimeSec = Number(vmResponse.headers.get("x-inference-time-sec") || 0) || Number(((Date.now() - t0) / 1000).toFixed(2));
+                  totalTimeSec = Number(vmResponse.headers.get("x-total-time-sec") || 0) || inferenceTimeSec;
+                  break;
+                }
               }
+            } catch (xttsErr: any) {
+              console.warn(`[SpeechStudio] Neural clone attempt at ${baseUrl} failed:`, xttsErr.message);
             }
-          } catch (xttsErr: any) {
-            console.warn("[SpeechStudio] Neural clone attempt failed, falling back to acoustic matcher:", xttsErr.message);
           }
         }
 

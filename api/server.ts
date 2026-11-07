@@ -61,23 +61,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         targetPath.includes('/speech-studio/synthesize') ||
         targetPath.startsWith('/api/vault/download');
 
-      const isMultipart = (req.headers['content-type'] || '').toLowerCase().includes('multipart/form-data');
-
       let body: any = undefined;
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method || '')) {
-        if (isMultipart) {
-          // Pass raw body or stream for file uploads to preserve binary integrity
-          if (Buffer.isBuffer(req.body)) {
-            body = req.body;
-          } else if (typeof req.body === 'string') {
-            body = Buffer.from(req.body);
-          } else {
-            body = req;
-          }
-        } else if (req.body) {
-          body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+        if (Buffer.isBuffer(req.body)) {
+          body = req.body;
+        } else if (typeof req.body === 'string') {
+          body = Buffer.from(req.body);
+        } else if (req.body && typeof req.body === 'object') {
+          body = JSON.stringify(req.body);
           if (!forwardHeaders['content-type']) {
             forwardHeaders['content-type'] = 'application/json';
+          }
+        } else {
+          // When bodyParser: false, Vercel leaves req.body undefined and req is an IncomingMessage stream.
+          // Read all chunks into a complete Buffer so JSON payloads, multipart streams, and binary chunks pass intact.
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) {
+            chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+          }
+          if (chunks.length > 0) {
+            body = Buffer.concat(chunks);
           }
         }
       }

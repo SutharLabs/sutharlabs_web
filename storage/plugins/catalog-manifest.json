@@ -9,11 +9,11 @@
     "iconSymbol": "monitoring",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-07T10:15:11.754Z",
+    "packagedAt": "2026-11-07T13:31:00.793Z",
     "archiveFileName": "wp_stock_analyzer-v1.1.6.zip",
     "packageUrl": "/storage/plugins/wp_stock_analyzer-v1.1.6.zip",
     "sizeBytes": 123399,
-    "checksumSha256": "8afe2a30578aacfcad8d13e9278ab36b37fdaf81840b190709272701376eec02",
+    "checksumSha256": "f2f7c5aa75d8ecc984838ad738ba9b937d1a236e782cad902c1681670a08e58f",
     "changelog": "### v1.1.4 Subversion Release & Indicator Suite\n- **18 Professional Plottable Indicators on TradingView Graph**: Full mathematical calculation engine and plotting for EMA, SMA, WMA, VWAP, Bollinger Bands, Supertrend, Parabolic SAR, Donchian Channels, Keltner Channels, RSI, MACD, Stochastic Oscillator, ATR, ADX, CCI, Williams %R, OBV, and Volume.\n- **Dedicated Studies Ribbon Bar**: Clean, high-density studies bar situated directly above the chart canvas displaying active indicators, live telemetry at the hover crosshair, customizable parameters, visibility eye toggle, configuration settings gear modal, and removal controls.\n- **Unified Indicator Engine across Platform**:\n  - **Algo Creation (Strategy Builder)**: Categorized entry (BUY) and exit (SELL) rule builder with access to all 18 indicators.\n  - **Trade Simulator (EOD & Intraday)**: Dynamic calculation and evaluation of all 18 indicators across simulation runs.\n  - **Market Scanner Hub (Screener)**: Multi-indicator candidate metrics with quick filter buttons (Above VWAP, Supertrend Bull, RSI ≤ 35, RSI ≥ 50).\n- **Unobstructed Chart Canvas**: Relocated floating overlay from inside the canvas to the dedicated top ribbon, giving candles 100% full, unobstructed visibility.\n- **Toolbar Redundancy**: Removed redundant fixed indicator buttons from the chart toolbar.\n- **UI Polish**: Fixed duplicate '+' icon on the Study button."
   },
   {
@@ -26,11 +26,11 @@
     "iconSymbol": "account_tree",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-07T10:15:13.719Z",
+    "packagedAt": "2026-11-07T13:31:05.505Z",
     "archiveFileName": "wp_flow_designer-v0.2.0.zip",
     "packageUrl": "/storage/plugins/wp_flow_designer-v0.2.0.zip",
-    "sizeBytes": 2986,
-    "checksumSha256": "ff6e5a987224e22117d6cf272dc537d12568e2ac8ca9770286a3b7d07bb82100",
+    "sizeBytes": 2987,
+    "checksumSha256": "4aabbb7b92dc055111f7e2b5516590cf67a3694f82a1124fda8339713b59b3ef",
     "changelog": "Interactive canvas for architectural node topologies, microservices modeling, and JSON state import/export."
   },
   {
@@ -43,11 +43,11 @@
     "iconSymbol": "auto_stories",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-07T10:15:15.822Z",
+    "packagedAt": "2026-11-07T13:31:06.972Z",
     "archiveFileName": "wp_doc_nexus-v0.3.0.zip",
     "packageUrl": "/storage/plugins/wp_doc_nexus-v0.3.0.zip",
     "sizeBytes": 144114,
-    "checksumSha256": "66fad819a8d6eaf310edc2b134048568ed91657dcd7ac565e80f1cb1913f16e4",
+    "checksumSha256": "5ffe2a96e02de1e88702bb38886fb750c03c28c6ed29986a93623376fde73801",
     "changelog": "Omni-format creative document processing engine supporting visual vector canvas design, technical markdown & diagrams, paginated executive docs, spreadsheets, and slide presentations."
   },
   {
@@ -60,11 +60,11 @@
     "iconSymbol": "currency_exchange",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-07T10:15:17.712Z",
+    "packagedAt": "2026-11-07T13:31:10.448Z",
     "archiveFileName": "wp_accounting-v0.2.3.zip",
     "packageUrl": "/storage/plugins/wp_accounting-v0.2.3.zip",
     "sizeBytes": 101307,
-    "checksumSha256": "2d4c19569920796efeb8680361a8f3803274d1b84dcdf0af1c53409a0f3ea5d8",
+    "checksumSha256": "960e8f41476e6a10f60b0ecb0cbb984a2a500b477e71c892f73c7984d05c6ed5",
     "changelog": "Enterprise Indian GST Accounting, Rule 46 Tax Invoicing, GSTR-1 & GSTR-3B Returns, E-Invoicing (IRN), Double-Entry General Ledger, and Multi-Tenant PostgreSQL Cloud Sync."
   },
   {
@@ -77,11 +77,11 @@
     "iconSymbol": "record_voice_over",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-07T10:15:19.165Z",
+    "packagedAt": "2026-11-07T13:31:13.821Z",
     "archiveFileName": "speech-studio-v0.3.3.zip",
     "packageUrl": "/storage/plugins/speech-studio-v0.3.3.zip",
-    "sizeBytes": 48911,
-    "checksumSha256": "7a843e82b9f1129b9096dd9f308cd915c89767c1bd8b744dd5e187466e1132ca",
+    "sizeBytes": 49522,
+    "checksumSha256": "0f700ca7cf94cc8691d723dbb6a4ee25c988c5fb65e2d01c93af775666c73ee0",
     "changelog": "Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting."
   },
   {
@@ -94,11 +94,11 @@
     "iconSymbol": "photo_filter",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-07T10:15:21.182Z",
+    "packagedAt": "2026-11-07T13:31:15.297Z",
     "archiveFileName": "image-studio-v0.2.0.zip",
     "packageUrl": "/storage/plugins/image-studio-v0.2.0.zip",
-    "sizeBytes": 20506,
-    "checksumSha256": "d338c1cb202e1a975bcacc0627d46df80b361322dac852c46e849d869b8ed5c0",
+    "sizeBytes": 20508,
+    "checksumSha256": "22d7aaae59c96ad2008ca20e992aba3a8661521bc1a14296b60f95870e321a93",
     "changelog": "Dual-mode AI image studio: Top-rated open-source text-to-image generation (FLUX.1 & SD 3.5) and 4K super-resolution upscaling."
   },
   {
@@ -111,11 +111,11 @@
     "iconSymbol": "build",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-07T10:15:22.612Z",
+    "packagedAt": "2026-11-07T13:31:16.652Z",
     "archiveFileName": "wp_sovereign_tools-v1.0.0.zip",
     "packageUrl": "/storage/plugins/wp_sovereign_tools-v1.0.0.zip",
-    "sizeBytes": 2772,
-    "checksumSha256": "b4d6f76be0bd79c4959053a0141e81eb63c142c6756ba7b3d96c47ef88ac2216",
+    "sizeBytes": 2773,
+    "checksumSha256": "227b4c2913686a1d57d4d5dbfcf71e22e7c1962276a6e0627eb20a3bceb22e4b",
     "changelog": "High-performance client-side sovereign utility suite: Client-side PDF tools (Merge, Split, Compress, Watermark, Reorder, Page Extract), Image & Document Converters, Multilingual OCR (Devanagari & English), Receipt-to-CSV, Business Card Scanner, Developer Tools (JSON format/convert, QR codes, Cryptographic Hash utilities). Zero server uploads, 100% private."
   },
   {
@@ -128,11 +128,11 @@
     "iconSymbol": "description",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-07T10:15:23.638Z",
+    "packagedAt": "2026-11-07T13:31:17.951Z",
     "archiveFileName": "wp_resume_studio-v1.0.0.zip",
     "packageUrl": "/storage/plugins/wp_resume_studio-v1.0.0.zip",
     "sizeBytes": 27410,
-    "checksumSha256": "7ac0b5c8338479d9f543d8310d8b586b8e805defbbeb159fcc770051ea42e287",
+    "checksumSha256": "175d11d10acf7dfbad0a4c971e413046b51823ee46669a470ce6e600dbdea7af",
     "changelog": "Enterprise sovereign Resume & CV Studio supporting multi-format ingestion (DOCX Word, PDF, LaTeX, Markdown, Text, JSON) and 4-format vector export (PDF, Word DOCX, LaTeX .tex, Plain Text, JSON). Zero server uploads, 100% private."
   },
   {
@@ -145,11 +145,11 @@
     "iconSymbol": "podcasts",
     "main": "index.ts",
     "minEngineVersion": "0.1.0",
-    "packagedAt": "2026-11-07T10:15:24.993Z",
+    "packagedAt": "2026-11-07T13:31:20.166Z",
     "archiveFileName": "wp_studiocast-v1.0.0.zip",
     "packageUrl": "/storage/plugins/wp_studiocast-v1.0.0.zip",
-    "sizeBytes": 18634,
-    "checksumSha256": "4e1d502f0125c3450a330305a3ed3141d88bd6809609cc963962d6692ce882cd",
+    "sizeBytes": 20729,
+    "checksumSha256": "8017711fb2aa0af23bfc1e08b323c5ec318a993634de8f9e1a7338c1453ff613",
     "changelog": "Enterprise Sovereign Broadcast & Podcast Recording Studio. Peer-to-peer WebRTC video/audio calling, instant room link sharing, isolated raw ISO track recording & download, and real-time virtual format presets (Split, Grid, PIP, Newsroom, Cyberpunk)."
   }
 ]

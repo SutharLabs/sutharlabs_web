@@ -6,9 +6,9 @@
     "semantic_hash": "6eab2f1626c4f1fbdd66aa25ee74fd00"
   },
   "api/server.ts": {
-    "mtime": 1794044154.9838164,
-    "seen": 1794044297.5779953,
-    "ast_hash": "78f534de17974d9cd98f2b275e845d63",
+    "mtime": 1794058004.7775512,
+    "seen": 1794058316.872953,
+    "ast_hash": "9d641b414247132c5b61b9fc3e22f1bb",
     "semantic_hash": ""
   },
   "metadata.json": {
@@ -56,8 +56,8 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794047018.455937,
-    "seen": 1794047467.5542364,
+    "mtime": 1794056537.2743971,
+    "seen": 1794058316.8730123,
     "ast_hash": "8ab2618be46cf2626d47d35bc441c832",
     "semantic_hash": ""
   },
@@ -356,9 +356,9 @@
     "semantic_hash": "8dab1d2f4b290c72f4b09fe1b159d0b2"
   },
   "src/plugins/Accounting/manifest.json": {
-    "mtime": 1794046517.7128801,
-    "seen": 1794046543.5967216,
-    "ast_hash": "25d10b67e41bceb97b4047bf7f0dd457",
+    "mtime": 1794058270.448553,
+    "seen": 1794058316.8731709,
+    "ast_hash": "60df71196e331e98824b6187f749fbb6",
     "semantic_hash": ""
   },
   "src/plugins/Accounting/manifest.ts": {
@@ -470,9 +470,9 @@
     "semantic_hash": "2cf61e718991de61558a761f4a82f17b"
   },
   "src/plugins/DocNexus/manifest.json": {
-    "mtime": 1794046515.8222792,
-    "seen": 1794046543.596814,
-    "ast_hash": "cea9bd7c07466c2d816f7ffe6032a28d",
+    "mtime": 1794058266.9727194,
+    "seen": 1794058316.8732572,
+    "ast_hash": "4a3087a622b010f5155b2af192a1b75d",
     "semantic_hash": ""
   },
   "src/plugins/DocNexus/manifest.ts": {
@@ -536,9 +536,9 @@
     "semantic_hash": "60a8dc279c1c40a63b3d53988dbd2e61"
   },
   "src/plugins/FlowDesigner/manifest.json": {
-    "mtime": 1794046513.719761,
-    "seen": 1794046543.5968475,
-    "ast_hash": "9fc46040a4aa06e7026c698f0d2b4ce2",
+    "mtime": 1794058265.5062175,
+    "seen": 1794058316.8732924,
+    "ast_hash": "70ef496ee4582e29262dff054a0fb57f",
     "semantic_hash": ""
   },
   "src/plugins/FlowDesigner/manifest.ts": {
@@ -644,9 +644,9 @@
     "semantic_hash": "7759d863a7fc15bd9158aa11c193ee11"
   },
   "src/plugins/StockTracker/manifest.json": {
-    "mtime": 1794046511.756368,
-    "seen": 1794046543.5969763,
-    "ast_hash": "a27dd8790b5d156a452a5a787e7a0f9e",
+    "mtime": 1794058260.7951388,
+    "seen": 1794058316.873434,
+    "ast_hash": "60f1459a3a32db346c7b1070daf120e0",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/manifest.ts": {
@@ -1076,14 +1076,14 @@
     "semantic_hash": ""
   },
   "src/components/StorageVaultView.tsx": {
-    "mtime": 1794046238.0765226,
-    "seen": 1794046471.9801092,
-    "ast_hash": "727ec8603ad6297d422eac1b681fb404",
+    "mtime": 1794058075.0306103,
+    "seen": 1794058316.8731072,
+    "ast_hash": "15fb08a98f9cff7021f6e9b860702c8d",
     "semantic_hash": ""
   },
   "src/services/vaultStorageService.ts": {
-    "mtime": 1794047042.3601599,
-    "seen": 1794047467.5550387,
+    "mtime": 1794056539.2532272,
+    "seen": 1794058316.8735676,
     "ast_hash": "83d4c63513538b28d617291b70906ee4",
     "semantic_hash": ""
   },
@@ -1112,9 +1112,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
-    "mtime": 1794046295.8049324,
-    "seen": 1794046471.980438,
-    "ast_hash": "2c9bc5500dc8f7adb91ce394eb0aebcf",
+    "mtime": 1794058064.2268648,
+    "seen": 1794058316.8733697,
+    "ast_hash": "390edc98fe2af4bd756ca98a4cb39a12",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/index.ts": {
@@ -1130,9 +1130,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/routes.ts": {
-    "mtime": 1794046319.5652866,
-    "seen": 1794046471.9804535,
-    "ast_hash": "0c75fc701618f4a37c7e6372f050757c",
+    "mtime": 1794058049.6628263,
+    "seen": 1794058316.8733828,
+    "ast_hash": "0325676c72f795a04c9b14162d1a3de9",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/types.ts": {
@@ -1148,9 +1148,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
-    "mtime": 1794046519.165355,
-    "seen": 1794046543.5969195,
-    "ast_hash": "e5038ade5aef364cc206fb245c13bff5",
+    "mtime": 1794058273.8223224,
+    "seen": 1794058316.8733766,
+    "ast_hash": "9c9af33029d8255f2888f61680f08488",
     "semantic_hash": ""
   },
   ".agents/rules/plugin-versioning-and-pre-commit.md": {
@@ -1178,9 +1178,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.json": {
-    "mtime": 1794046521.1829586,
-    "seen": 1794046543.5968628,
-    "ast_hash": "b3009625cc90c77c3c9dbd84dd33a1ee",
+    "mtime": 1794058275.2976367,
+    "seen": 1794058316.87331,
+    "ast_hash": "196b42646c4dbd97100174cc769edcf1",
     "semantic_hash": ""
   },
   "src/plugins/ImageStudio/manifest.ts": {
@@ -1562,9 +1562,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.json": {
-    "mtime": 1794046522.6134036,
-    "seen": 1794046543.5969043,
-    "ast_hash": "afb0ff34f95eb02d4815c6693c5eddd9",
+    "mtime": 1794058276.6534088,
+    "seen": 1794058316.8733585,
+    "ast_hash": "8d4f571792076baeae2f85703505afae",
     "semantic_hash": ""
   },
   "src/plugins/SovereignTools/manifest.ts": {
@@ -1646,9 +1646,9 @@
     "semantic_hash": ""
   },
   "src/plugins/ResumeStudio/manifest.json": {
-    "mtime": 1794046523.6384604,
-    "seen": 1794046543.5968902,
-    "ast_hash": "b3c06b37531731fdb90686697a2fc48a",
+    "mtime": 1794058277.9523895,
+    "seen": 1794058316.8733425,
+    "ast_hash": "98c845bba1fc68d33cb261c888e233ae",
     "semantic_hash": ""
   },
   "src/plugins/ResumeStudio/manifest.ts": {
@@ -1742,14 +1742,14 @@
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/components/StudioCastView.tsx": {
-    "mtime": 1794047372.4436755,
-    "seen": 1794047467.5549667,
+    "mtime": 1794056537.7910247,
+    "seen": 1794058316.8735125,
     "ast_hash": "ce79e0c2bf6d577bd6f0f3dbfa4f29c1",
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/compositor.ts": {
-    "mtime": 1794047111.3424954,
-    "seen": 1794047467.5549715,
+    "mtime": 1794056538.191348,
+    "seen": 1794058316.8735156,
     "ast_hash": "79adcc1194228453d15d07b3b2d19d0f",
     "semantic_hash": ""
   },
@@ -1760,9 +1760,9 @@
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/manifest.json": {
-    "mtime": 1794046524.9939895,
-    "seen": 1794046543.5970623,
-    "ast_hash": "2f81809ddd64e6538effc657913f4895",
+    "mtime": 1794058280.1671095,
+    "seen": 1794058316.8735204,
+    "ast_hash": "23e9217e1dde057ddf00b5990248e562",
     "semantic_hash": ""
   },
   "src/plugins/StudioCast/manifest.ts": {

@@ -966,10 +966,45 @@ export default function SpeechStudioView({
           if (data.voices && Array.isArray(data.voices)) {
             setClonedProfiles(prev => {
               const map = new Map<string, ClonedVoiceProfile>();
-              data.voices.forEach((v: ClonedVoiceProfile) => map.set(v.id, v));
-              prev.forEach(v => {
-                if (!map.has(v.id)) map.set(v.id, v);
+              const serverIds = new Set<string>();
+
+              data.voices.forEach((v: ClonedVoiceProfile) => {
+                map.set(v.id, v);
+                serverIds.add(v.id);
               });
+
+              // Detect locally cached profiles (e.g. from mobile or another tab) not yet on server
+              const missingOnServer: ClonedVoiceProfile[] = [];
+              prev.forEach(v => {
+                if (!serverIds.has(v.id)) {
+                  map.set(v.id, v);
+                  missingOnServer.push(v);
+                } else {
+                  // Keep local sampleAudioDataUrl if server record only has disk reference
+                  const existing = map.get(v.id);
+                  if (existing && !existing.sampleAudioDataUrl && v.sampleAudioDataUrl) {
+                    map.set(v.id, { ...existing, sampleAudioDataUrl: v.sampleAudioDataUrl });
+                  }
+                }
+              });
+
+              // Automatically synchronize orphaned local profiles up to the central server
+              if (missingOnServer.length > 0) {
+                missingOnServer.forEach(async (profileToSync) => {
+                  try {
+                    const postHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
+                    if (userToken) postHeaders['Authorization'] = `Bearer ${userToken}`;
+                    await fetch('/api/plugins/speech-studio/cloned-voices', {
+                      method: 'POST',
+                      headers: postHeaders,
+                      body: JSON.stringify(profileToSync)
+                    });
+                  } catch (syncErr) {
+                    console.warn('[SpeechStudio] Auto-sync local voice to server warning:', syncErr);
+                  }
+                });
+              }
+
               const combined = Array.from(map.values());
               try {
                 localStorage.setItem('sutharlabs_cloned_voice_profiles', JSON.stringify(combined));
