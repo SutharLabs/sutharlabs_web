@@ -669,8 +669,8 @@ export function registerRoutes(router: Router) {
         let vmResponse: globalThis.Response | null = null;
         let lastError: any = null;
 
-        // Neural zero-shot cloning on CPU takes 25-60s, allow up to 180s timeout
-        const requestTimeoutMs = (isClonedVoice && effectiveSampleAudio) ? 180000 : 45000;
+        // Neural zero-shot cloning on CPU takes 18-35s on idle CPU; cap at 45s to stay well within proxy timeouts
+        const requestTimeoutMs = (isClonedVoice && effectiveSampleAudio) ? 45000 : 25000;
 
         for (let attempt = 1; attempt <= 2; attempt++) {
           try {
@@ -849,7 +849,7 @@ export function registerRoutes(router: Router) {
                 rate,
                 pitch
               }),
-              signal: AbortSignal.timeout(90000)
+              signal: AbortSignal.timeout(45000)
             });
 
             if (vmResponse.ok) {

@@ -1613,20 +1613,14 @@ export default function SpeechStudioView({
         res = await fetch('/api/plugins/speech-studio/clone-voice', {
           method: 'POST',
           headers,
-          body: JSON.stringify(clonePayload)
+          body: JSON.stringify(clonePayload),
+          signal: AbortSignal.timeout(52000)
         });
       } catch (firstErr: any) {
-        if (firstErr?.name === 'TypeError' || firstErr?.message?.includes('fetch')) {
-          console.warn('[SpeechStudio] Transient clone network glitch, retrying once...', firstErr);
-          await new Promise(r => setTimeout(r, 750));
-          res = await fetch('/api/plugins/speech-studio/clone-voice', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(clonePayload)
-          });
-        } else {
-          throw firstErr;
+        if (firstErr?.name === 'TimeoutError' || firstErr?.name === 'AbortError') {
+          throw new Error('Neural voice synthesis exceeded the 50s cloud execution window. Please try a shorter test sentence (5-10 words) or select Edge Neural Acoustic Matcher for instant generation.');
         }
+        throw firstErr;
       }
 
       const data = await res.json();
@@ -2530,20 +2524,20 @@ export default function SpeechStudioView({
                       {
                         id: 'voxcpm',
                         name: 'Hush Studio VoxCPM',
-                        tag: 'In-Context Reference',
-                        desc: 'Faithful acoustic matching from reference audio. Zero model training.'
+                        tag: 'Deep Neural • ~20s',
+                        desc: 'Faithful zero-shot autoregressive flow matching on CPU. Turnaround ~18–25s.'
                       },
                       {
                         id: 'styletts2',
                         name: 'StyleTTS 2 Neural Vocoder',
-                        tag: 'Style Latents',
-                        desc: 'Neural vocoder formant synthesis with expressive emotional prosody.'
+                        tag: 'Style Latents • ~20s',
+                        desc: 'Neural vocoder formant synthesis with expressive emotional prosody (~20s).'
                       },
                       {
                         id: 'edge',
                         name: 'Edge Neural Acoustic Matcher',
-                        tag: 'Low-Latency',
-                        desc: 'Sub-second cloud formant mapping tuned to gender pitch characteristics.'
+                        tag: 'Instant • ~1.5s',
+                        desc: 'Instant cloud acoustic mapping calibrated to gender and formant pitch characteristics.'
                       }
                     ].map(arch => {
                       const isSelected = replicateArchitecture === arch.id;
@@ -2831,8 +2825,8 @@ export default function SpeechStudioView({
                   >
                     {isReplicating ? (
                       <>
-                        <Zap className="w-4 h-4 animate-spin shrink-0" />
-                        <span>SYNTHESIZING WITH REPLICATED VOICE...</span>
+                        <Zap className="w-4 h-4 animate-spin shrink-0 text-amber-300" />
+                        <span>SYNTHESIZING WITH REPLICATED VOICE (~20s)...</span>
                       </>
                     ) : (
                       <>
@@ -2842,11 +2836,15 @@ export default function SpeechStudioView({
                     )}
                   </button>
 
-                  {!clonedSampleBase64 && (
+                  {isReplicating ? (
+                    <span className="text-[10px] font-mono text-purple-400 animate-pulse flex items-center gap-1">
+                      <Cpu className="w-3 h-3 shrink-0" /> Neural zero-shot flow matching on Cloud CPU (turnaround ~18–25s)...
+                    </span>
+                  ) : !clonedSampleBase64 ? (
                     <span className="text-[10px] font-mono text-amber-400">
                       * Record or upload audio in Step 1 first
                     </span>
-                  )}
+                  ) : null}
                 </div>
 
                 {/* VERIFICATION AUDIO PLAYER & APPROVAL (User Request 4) */}

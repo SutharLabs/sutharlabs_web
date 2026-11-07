@@ -14,7 +14,9 @@ export const config = {
     bodyParser: false,
     responseLimit: false,
   },
+  maxDuration: 60,
 };
+export const maxDuration = 60;
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // Restore original URL for Express routing via our explicit rewrite query parameter
