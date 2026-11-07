@@ -113,6 +113,8 @@ export default function StudioCastView({
   const guestVideoRef = useRef<HTMLVideoElement | null>(null);
   const canvasContainerRef = useRef<HTMLDivElement | null>(null);
   const compositorRef = useRef<StudioCastCompositor | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
   const composedRecorderRef = useRef<MediaRecorder | null>(null);
   const rawRecorderRef = useRef<MediaRecorder | null>(null);
   const composedChunksRef = useRef<Blob[]>([]);
@@ -181,10 +183,17 @@ export default function StudioCastView({
   // 2. Local Media Acquisition & Audio Meter
   const startLocalMedia = useCallback(async () => {
     try {
+      // Clean up previous local stream tracks before requesting new ones
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(t => t.stop());
+        localStreamRef.current = null;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { width: { ideal: 1280 }, height: { ideal: 720 } },
         audio: true
       });
+      localStreamRef.current = stream;
       setLocalStream(stream);
 
       if (localVideoRef.current) {
@@ -194,6 +203,9 @@ export default function StudioCastView({
 
       // Audio Meter Visualizer via Web Audio API
       try {
+        if (audioContextRef.current) {
+          audioContextRef.current.close().catch(() => {});
+        }
         const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
         audioContextRef.current = audioCtx;
         const source = audioCtx.createMediaStreamSource(stream);
@@ -203,7 +215,7 @@ export default function StudioCastView({
 
         const dataArray = new Uint8Array(analyser.frequencyBinCount);
         const checkAudio = () => {
-          if (!analyser) return;
+          if (!analyser || !audioContextRef.current || audioContextRef.current.state === 'closed') return;
           analyser.getByteFrequencyData(dataArray);
           let sum = 0;
           for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
@@ -226,11 +238,40 @@ export default function StudioCastView({
   useEffect(() => {
     startLocalMedia();
     return () => {
-      if (localStream) {
-        localStream.getTracks().forEach(t => t.stop());
+      // Clean up all hardware camera & mic tracks immediately on leaving the plugin
+      if (localStreamRef.current) {
+        localStreamRef.current.getTracks().forEach(t => {
+          t.stop();
+        });
+        localStreamRef.current = null;
+      }
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(t => {
+          t.stop();
+        });
+        screenStreamRef.current = null;
+      }
+      if (composedRecorderRef.current && composedRecorderRef.current.state !== 'inactive') {
+        try { composedRecorderRef.current.stop(); } catch {}
+        composedRecorderRef.current = null;
+      }
+      if (rawRecorderRef.current && rawRecorderRef.current.state !== 'inactive') {
+        try { rawRecorderRef.current.stop(); } catch {}
+        rawRecorderRef.current = null;
+      }
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
       }
       if (audioContextRef.current) {
         audioContextRef.current.close().catch(() => {});
+        audioContextRef.current = null;
+      }
+      if (localVideoRef.current) {
+        localVideoRef.current.srcObject = null;
+      }
+      if (compositorRef.current) {
+        compositorRef.current.stop();
       }
     };
   }, []);
@@ -265,39 +306,58 @@ export default function StudioCastView({
 
   // 3. Toggle Controls
   const toggleCamera = () => {
-    if (localStream) {
-      localStream.getVideoTracks().forEach(t => {
-        t.enabled = !isCameraOn;
+    const stream = localStreamRef.current;
+    if (stream) {
+      const nextState = !isCameraOn;
+      stream.getVideoTracks().forEach(t => {
+        t.enabled = nextState;
       });
-      setIsCameraOn(!isCameraOn);
+      setIsCameraOn(nextState);
+      addLog(`Camera ${nextState ? 'resumed' : 'stopped (hardware blanked)'}.`, 'INFO');
     }
   };
 
   const toggleMic = () => {
-    if (localStream) {
-      localStream.getAudioTracks().forEach(t => {
-        t.enabled = !isMicOn;
+    const stream = localStreamRef.current;
+    if (stream) {
+      const nextState = !isMicOn;
+      stream.getAudioTracks().forEach(t => {
+        t.enabled = nextState;
       });
-      setIsMicOn(!isMicOn);
+      setIsMicOn(nextState);
+      addLog(`Microphone ${nextState ? 'unmuted' : 'muted'}.`, 'INFO');
     }
   };
 
   const toggleScreenShare = async () => {
     if (isScreenSharing) {
-      startLocalMedia();
+      if (screenStreamRef.current) {
+        screenStreamRef.current.getTracks().forEach(t => t.stop());
+        screenStreamRef.current = null;
+      }
       setIsScreenSharing(false);
+      startLocalMedia();
+      addLog('Screen sharing stopped; returned to camera feed.', 'INFO');
     } else {
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+        screenStreamRef.current = screenStream;
         setLocalStream(screenStream);
         if (localVideoRef.current) {
           localVideoRef.current.srcObject = screenStream;
           localVideoRef.current.play().catch(() => {});
         }
         setIsScreenSharing(true);
+        addLog('Screen sharing active.', 'SUCCESS');
+
         screenStream.getVideoTracks()[0].onended = () => {
+          if (screenStreamRef.current) {
+            screenStreamRef.current.getTracks().forEach(t => t.stop());
+            screenStreamRef.current = null;
+          }
           setIsScreenSharing(false);
           startLocalMedia();
+          addLog('Screen sharing ended via browser controls.', 'INFO');
         };
       } catch (err: any) {
         console.warn('Screen share cancelled:', err);
@@ -363,16 +423,26 @@ export default function StudioCastView({
 
   const stopComposedRecording = () => {
     if (composedRecorderRef.current && composedRecorderRef.current.state !== 'inactive') {
-      composedRecorderRef.current.stop();
+      try {
+        composedRecorderRef.current.requestData();
+        composedRecorderRef.current.stop();
+      } catch (err) {
+        console.warn('Error requesting final composed recorder data:', err);
+      }
       setIsRecordingComposed(false);
-      clearInterval(recordingTimerRef.current);
+      if (recordingTimerRef.current) {
+        clearInterval(recordingTimerRef.current);
+        recordingTimerRef.current = null;
+      }
+      addLog('Composed broadcast recording finalized and added to ISO library.', 'SUCCESS');
     }
   };
 
   const startRawHostRecording = () => {
-    if (!localStream) return;
+    const stream = localStreamRef.current || localStream;
+    if (!stream) return;
     try {
-      const recorder = new MediaRecorder(localStream, { mimeType: 'video/webm;codecs=vp8,opus' });
+      const recorder = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp8,opus' });
       rawChunksRef.current = [];
 
       recorder.ondataavailable = (e) => {
@@ -408,8 +478,14 @@ export default function StudioCastView({
 
   const stopRawHostRecording = () => {
     if (rawRecorderRef.current && rawRecorderRef.current.state !== 'inactive') {
-      rawRecorderRef.current.stop();
+      try {
+        rawRecorderRef.current.requestData();
+        rawRecorderRef.current.stop();
+      } catch (err) {
+        console.warn('Error requesting final raw recorder data:', err);
+      }
       setIsRecordingRawHost(false);
+      addLog('Raw host ISO recording finalized and added to ISO library.', 'SUCCESS');
     }
   };
 

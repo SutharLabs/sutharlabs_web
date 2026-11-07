@@ -3899,9 +3899,16 @@ app.get("/api/admin/database/sync-history", authenticateToken, requireAdmin, asy
 // ORACLE CLOUD STORAGE VAULT API (VM1: 137.23.61.191)
 
 // ==========================================
+// Dynamic Oracle Vault URL (prefers 10.0.0.122 internal VCN on Linux VM for 10Gbps line rate)
+const getOracleVaultUrl = () => {
+  if (process.env.ORACLE_VAULT_URL) return process.env.ORACLE_VAULT_URL;
+  if (process.platform === 'linux' && !process.env.VERCEL) {
+    return "http://10.0.0.122";
+  }
+  return "http://137.23.61.191";
+};
 
-const ORACLE_VAULT_URL = process.env.ORACLE_VAULT_URL || "http://137.23.61.191";
-
+const ORACLE_VAULT_URL = getOracleVaultUrl();
 const ORACLE_VAULT_SECRET = process.env.ORACLE_VAULT_SECRET || "sutharlabs-vault-master-sec-2026-matrix";
 
 
@@ -4100,29 +4107,44 @@ app.post("/api/vault/upload-chunk", authenticateToken, requireAdmin, (req: any, 
     const partPath = path.join(chunksDir, `${safeUploadId}_${cIdx}.part`);
     fs.writeFileSync(partPath, req.file.buffer);
 
-    // Intermediate chunk received
-    if (cIdx < tChunks - 1) {
-      return res.json({
-        success: true,
-        uploadId: safeUploadId,
-        chunkIndex: cIdx,
-        totalChunks: tChunks,
-        received: true
-      });
-    }
+    return res.json({
+      success: true,
+      uploadId: safeUploadId,
+      chunkIndex: cIdx,
+      totalChunks: tChunks,
+      received: true
+    });
+  } catch (err: any) {
+    return res.status(500).json({ error: "Failed to store chunk part", details: err.message });
+  }
+});
 
-    // Final chunk reached - assemble and stream to Oracle VM 1
-    console.log(`[Vault Chunk Assembly] All ${tChunks} chunks received for ${safeUploadId} (${fileName}). Assembling file...`);
+// POST /api/vault/complete-chunk-upload - High-speed parallel chunk assembly and line-rate VCN transmission to VM 1
+app.post("/api/vault/complete-chunk-upload", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  const { uploadId, totalChunks, fileName, fileType, category } = req.body;
 
+  if (!uploadId || !totalChunks) {
+    return res.status(400).json({ error: "Missing uploadId or totalChunks for assembly." });
+  }
+
+  const safeUploadId = uploadId.replace(/[^a-zA-Z0-9_-]/g, "");
+  const tChunks = parseInt(totalChunks, 10);
+
+  const chunksDir = process.env.VERCEL
+    ? path.join(os.tmpdir(), "vault_chunks")
+    : path.join(process.cwd(), "data", "vault_chunks");
+
+  try {
     const chunkFiles: string[] = [];
     for (let i = 0; i < tChunks; i++) {
       const p = path.join(chunksDir, `${safeUploadId}_${i}.part`);
       if (!fs.existsSync(p)) {
-        throw new Error(`Missing chunk part ${i} of ${tChunks} during assembly.`);
+        return res.status(400).json({ error: `Missing chunk part ${i} of ${tChunks} during assembly.` });
       }
       chunkFiles.push(p);
     }
 
+    console.log(`[Vault Assembly] Assembling ${tChunks} chunks for ${safeUploadId} (${fileName})...`);
     const assembledPath = path.join(chunksDir, `${safeUploadId}_assembled.tmp`);
     const writeStream = fs.createWriteStream(assembledPath);
 
@@ -4135,13 +4157,15 @@ app.post("/api/vault/upload-chunk", authenticateToken, requireAdmin, (req: any, 
       writeStream.on("error", reject);
     });
 
-    const assembledBuffer = fs.readFileSync(assembledPath);
-    console.log(`[Vault Chunk Assembly] Assembled ${assembledBuffer.length} bytes for "${fileName}". Streaming to Oracle VM 1 (${ORACLE_VAULT_URL})...`);
-
-    // Clean up temporary chunk and assembled files
+    // Clean up temporary part files immediately to free disk space
     for (const p of chunkFiles) {
       try { fs.unlinkSync(p); } catch {}
     }
+
+    const targetVaultUrl = getOracleVaultUrl();
+    console.log(`[Vault Assembly] Assembled file created. Streaming via VCN line rate to Oracle VM 1 (${targetVaultUrl})...`);
+
+    const assembledBuffer = fs.readFileSync(assembledPath);
     try { fs.unlinkSync(assembledPath); } catch {}
 
     const formData = new FormData();
@@ -4149,7 +4173,7 @@ app.post("/api/vault/upload-chunk", authenticateToken, requireAdmin, (req: any, 
     formData.append("file", blob, fileName || "uploaded_file");
     if (category) formData.append("category", category);
 
-    const response = await fetch(`${ORACLE_VAULT_URL}/api/upload`, {
+    const response = await fetch(`${targetVaultUrl}/api/upload`, {
       method: "POST",
       headers: { "x-vault-token": ORACLE_VAULT_SECRET },
       body: formData
@@ -4160,23 +4184,11 @@ app.post("/api/vault/upload-chunk", authenticateToken, requireAdmin, (req: any, 
       return res.status(response.status).json(data);
     }
 
-    console.log(`[Vault Chunk Assembly] Oracle VM 1 storage confirmed: id=${data.file?.id}, size=${data.file?.size}`);
+    console.log(`[Vault Assembly] Oracle VM 1 storage confirmed: id=${data.file?.id}, size=${data.file?.size}`);
     return res.json(data);
   } catch (err: any) {
-    console.error(`[Vault Chunk Assembly Error] ${err.message}`);
-    // Cleanup on error
-    for (let i = 0; i < tChunks; i++) {
-      try {
-        const p = path.join(chunksDir, `${safeUploadId}_${i}.part`);
-        if (fs.existsSync(p)) fs.unlinkSync(p);
-      } catch {}
-    }
-    const assembledPath = path.join(chunksDir, `${safeUploadId}_assembled.tmp`);
-    try {
-      if (fs.existsSync(assembledPath)) fs.unlinkSync(assembledPath);
-    } catch {}
-
-    return res.status(500).json({ error: "Failed to assemble or upload chunked file to Oracle VM Vault", details: err.message });
+    console.error(`[Vault Assembly Error] ${err.message}`);
+    return res.status(500).json({ error: "Failed to assemble or store chunked file", details: err.message });
   }
 });
 

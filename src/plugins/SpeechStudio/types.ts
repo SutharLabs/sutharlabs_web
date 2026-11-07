@@ -10,7 +10,10 @@ export interface TTSVoiceOption {
   description?: string;
   previewSample?: string;
   emotionTag?: string;
+  usageTag?: string; // e.g. "Conversational & Podcast", "Narrative & Audiobooks", "Customer Support"
   architecture?: string;
+  sampleRate?: string; // e.g. "24,000 Hz", "48,000 Hz"
+  latency?: string; // e.g. "~250ms"
   commercialUse?: 'commercial_safe' | 'personal_non_commercial' | 'conditional';
   commercialLabel?: string;
   referenceAudioUrl?: string;
@@ -46,6 +49,9 @@ export interface ClonedVoiceProfile {
   createdAt: string;
   sampleDurationSec: number;
   sampleAudioDataUrl?: string;
+  verifiedAudioUrl?: string; // Verified synthesized sample audio
+  architecture?: string; // e.g. "Hush Studio VoxCPM", "StyleTTS 2 Neural", "Edge Acoustic Matcher"
+  usageTag?: string; // e.g. "Personal Voice", "Podcast Co-Host"
   referenceText?: string;
   language: string;
   languageLabel: string;

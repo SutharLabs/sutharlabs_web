@@ -36,8 +36,9 @@ export async function uploadVaultFile(
   token?: string,
   onProgress?: (percent: number) => void
 ): Promise<VaultFileItem> {
-  // Files over 2 MB are split into 2 MB sovereign chunks to bypass edge gateway limits (Vercel 4.5MB ceiling)
-  const CHUNK_SIZE = 2 * 1024 * 1024; // 2 MB
+  // Files over 3.5 MB are split into 3.5 MB sovereign chunks to bypass edge gateway limits (Vercel 4.5MB ceiling)
+  // Uploads are processed with 3x parallel streams for saturating mobile 5G bandwidth
+  const CHUNK_SIZE = Math.floor(3.5 * 1024 * 1024); // 3.5 MB chunks
   if (file.size > CHUNK_SIZE) {
     return uploadChunkedFile(file, category, token, onProgress);
   }
@@ -45,7 +46,7 @@ export async function uploadVaultFile(
 }
 
 /**
- * Direct single-request upload for small files (<= 3 MB)
+ * Direct single-request upload for small files (<= 3.5 MB)
  */
 async function uploadSingleFile(
   file: File,
@@ -101,8 +102,8 @@ async function uploadSingleFile(
 }
 
 /**
- * Resilient chunked streaming upload for large files (> 3 MB, up to 250 MB+)
- * Slices file into 3 MB parts, ensuring seamless transmission past Vercel's 4.5 MB ceiling
+ * High-Speed Parallel Chunked Streaming Upload for large files (> 3.5 MB, up to 250 MB+)
+ * Slices file into 3.5 MB parts and uploads 3 chunks concurrently to maximize 5G mobile bandwidth
  */
 async function uploadChunkedFile(
   file: File,
@@ -110,72 +111,121 @@ async function uploadChunkedFile(
   token?: string,
   onProgress?: (percent: number) => void
 ): Promise<VaultFileItem> {
-  const CHUNK_SIZE = 2 * 1024 * 1024; // 2 MB chunks
+  const CHUNK_SIZE = Math.floor(3.5 * 1024 * 1024); // 3.5 MB chunks
   const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
   const uploadId = `vault_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
-  let lastFileRecord: VaultFileItem | null = null;
+  // Track loaded bytes across all parallel streams to yield a smooth aggregate progress bar
+  const loadedBytes = new Array(totalChunks).fill(0);
+  const updateAggregateProgress = () => {
+    if (onProgress) {
+      const totalLoaded = loadedBytes.reduce((acc, curr) => acc + curr, 0);
+      const overallPercent = Math.min(98, Math.round((totalLoaded / file.size) * 100));
+      onProgress(overallPercent);
+    }
+  };
 
-  for (let chunkIndex = 0; chunkIndex < totalChunks; chunkIndex++) {
-    const start = chunkIndex * CHUNK_SIZE;
-    const end = Math.min(start + CHUNK_SIZE, file.size);
-    const chunkBlob = file.slice(start, end);
+  // Work queue of chunk indices
+  const queue: number[] = Array.from({ length: totalChunks }, (_, i) => i);
+  const CONCURRENCY = Math.min(3, totalChunks);
 
-    let attempt = 0;
-    const maxAttempts = 3;
-    let success = false;
-    let lastError: any = null;
+  const worker = async () => {
+    while (queue.length > 0) {
+      const chunkIndex = queue.shift();
+      if (chunkIndex === undefined) break;
 
-    while (attempt < maxAttempts && !success) {
-      attempt++;
-      try {
-        const result = await uploadSingleChunk({
-          uploadId,
-          chunkIndex,
-          totalChunks,
-          chunkBlob,
-          fileName: file.name,
-          fileType: file.type || 'application/octet-stream',
-          totalSize: file.size,
-          category,
-          token,
-          onChunkProgress: (chunkPercent) => {
-            if (onProgress) {
-              const baseBytes = start;
-              const chunkLoaded = (chunkPercent / 100) * (end - start);
-              const totalLoaded = baseBytes + chunkLoaded;
-              const overallPercent = Math.min(99, Math.round((totalLoaded / file.size) * 100));
-              onProgress(overallPercent);
+      const start = chunkIndex * CHUNK_SIZE;
+      const end = Math.min(start + CHUNK_SIZE, file.size);
+      const chunkBlob = file.slice(start, end);
+      const chunkTotalBytes = end - start;
+
+      let attempt = 0;
+      const maxAttempts = 3;
+      let success = false;
+      let lastError: any = null;
+
+      while (attempt < maxAttempts && !success) {
+        attempt++;
+        try {
+          await uploadSingleChunk({
+            uploadId,
+            chunkIndex,
+            totalChunks,
+            chunkBlob,
+            fileName: file.name,
+            fileType: file.type || 'application/octet-stream',
+            totalSize: file.size,
+            category,
+            token,
+            onChunkProgress: (bytesInChunk) => {
+              loadedBytes[chunkIndex] = Math.min(bytesInChunk, chunkTotalBytes);
+              updateAggregateProgress();
             }
+          });
+          loadedBytes[chunkIndex] = chunkTotalBytes;
+          updateAggregateProgress();
+          success = true;
+        } catch (err: any) {
+          lastError = err;
+          console.warn(`[Vault Chunk Upload] Chunk ${chunkIndex + 1}/${totalChunks} attempt ${attempt} failed:`, err.message);
+          if (attempt < maxAttempts) {
+            await new Promise((r) => setTimeout(r, 600 * attempt));
           }
-        });
-
-        if (chunkIndex === totalChunks - 1 && result.file) {
-          lastFileRecord = result.file;
-        }
-        success = true;
-      } catch (err: any) {
-        lastError = err;
-        console.warn(`[Vault Chunk Upload] Chunk ${chunkIndex + 1}/${totalChunks} attempt ${attempt} failed:`, err.message);
-        if (attempt < maxAttempts) {
-          // Exponential backoff: 1s, 2s
-          await new Promise((r) => setTimeout(r, 1000 * attempt));
         }
       }
-    }
 
-    if (!success) {
-      throw new Error(`Failed to upload chunk ${chunkIndex + 1} of ${totalChunks}: ${lastError?.message || 'Network error'}`);
+      if (!success) {
+        throw new Error(`Failed to upload chunk ${chunkIndex + 1} of ${totalChunks}: ${lastError?.message || 'Network error'}`);
+      }
     }
-  }
+  };
+
+  // Launch parallel workers
+  const workers = Array.from({ length: CONCURRENCY }, () => worker());
+  await Promise.all(workers);
+
+  // All parallel slices arrived! Now trigger server assembly
+  onProgress?.(99);
+  const finalFile = await completeChunkedUpload({
+    uploadId,
+    totalChunks,
+    fileName: file.name,
+    fileType: file.type || 'application/octet-stream',
+    totalSize: file.size,
+    category,
+    token
+  });
 
   onProgress?.(100);
+  return finalFile;
+}
 
-  if (!lastFileRecord) {
-    throw new Error('Upload completed all chunks but server did not return file metadata.');
+/**
+ * Triggers server-side assembly of all uploaded chunks
+ */
+async function completeChunkedUpload(params: {
+  uploadId: string;
+  totalChunks: number;
+  fileName: string;
+  fileType: string;
+  totalSize: number;
+  category: string;
+  token?: string;
+}): Promise<VaultFileItem> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (params.token) headers['Authorization'] = `Bearer ${params.token}`;
+
+  const res = await fetch('/api/vault/complete-chunk-upload', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(params)
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.success) {
+    throw new Error(data.error || `Failed to assemble uploaded file (HTTP ${res.status})`);
   }
-
-  return lastFileRecord;
+  return data.file;
 }
 
 /**
@@ -191,7 +241,7 @@ function uploadSingleChunk(params: {
   totalSize: number;
   category: string;
   token?: string;
-  onChunkProgress?: (percent: number) => void;
+  onChunkProgress?: (bytesLoaded: number) => void;
 }): Promise<{ success: boolean; file?: VaultFileItem; [key: string]: any }> {
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
@@ -213,8 +263,7 @@ function uploadSingleChunk(params: {
     if (xhr.upload && params.onChunkProgress) {
       xhr.upload.onprogress = (event) => {
         if (event.lengthComputable) {
-          const percent = Math.round((event.loaded / event.total) * 100);
-          params.onChunkProgress?.(percent);
+          params.onChunkProgress?.(event.loaded);
         }
       };
     }

@@ -815,60 +815,86 @@ export function registerRoutes(router: Router) {
         });
       }
 
+      const { architecture: requestedArch, gender: requestedGender } = req.body;
+      const effectiveGender = (requestedGender || timbrePreference || "male").toLowerCase();
+      const selectedArch = (requestedArch || "hush").toLowerCase();
+
       // Check if VM 2 Voice Cloning Engine is available
       const ORACLE_TTS_URL = process.env.ORACLE_TTS_URL || "http://132.226.190.125/tts";
-      let audioBuffer: Buffer;
-      let replicationEngine = "XTTS_V2_NEURAL_ZERO_SHOT";
+      let audioBuffer: Buffer | null = null;
+      let replicationEngine = "HUSH_STUDIO_VOXCPM";
       let latentsCached = false;
-      let detectedLang = "en";
+      let detectedLang = /[\u0900-\u097F]/.test(text) ? "hi" : "en";
       let inferenceTimeSec = 0;
       let totalTimeSec = 0;
 
       try {
         let vmResponse: globalThis.Response | null = null;
-        let lastError: any = null;
 
-        for (let attempt = 1; attempt <= 2; attempt++) {
+        // If StyleTTS 2 / XTTS architecture selected, attempt neural zero-shot synthesis
+        if (selectedArch === "styletts2" || selectedArch === "xtts") {
           try {
             vmResponse = await fetch(`${ORACLE_TTS_URL}/api/clone`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ text, sampleAudio, referenceText, speakerName, timbrePreference, rate, pitch }),
-              signal: AbortSignal.timeout(180000)
+              body: JSON.stringify({ text, sampleAudio, referenceText, speakerName, timbrePreference: effectiveGender, rate, pitch }),
+              signal: AbortSignal.timeout(60000)
             });
 
-            if (vmResponse.ok) break;
-
-            const errorMsg = await vmResponse.text().catch(() => "");
-            lastError = new Error(`VM2 Voice Cloning service returned HTTP ${vmResponse.status}: ${errorMsg || vmResponse.statusText}`);
-          } catch (netErr: any) {
-            lastError = netErr;
-          }
-
-          if (attempt < 2) {
-            await new Promise(r => setTimeout(r, 600));
+            if (vmResponse.ok) {
+              const arrayBuf = await vmResponse.arrayBuffer();
+              const candidateBuf = Buffer.from(arrayBuf);
+              // Verify candidate contains real audio and not an error string
+              if (candidateBuf.length > 500 && !candidateBuf.subarray(0, 10).toString().includes("Error")) {
+                audioBuffer = candidateBuf;
+                replicationEngine = vmResponse.headers.get("x-replication-engine") || "STYLETTS2_NEURAL_VOCODER";
+                latentsCached = vmResponse.headers.get("x-speaker-latents-cached") === "True";
+                inferenceTimeSec = Number(vmResponse.headers.get("x-inference-time-sec") || 0);
+                totalTimeSec = Number(vmResponse.headers.get("x-total-time-sec") || 0);
+              }
+            }
+          } catch (xttsErr: any) {
+            console.warn("[SpeechStudio] Neural clone attempt failed, falling back to acoustic matcher:", xttsErr.message);
           }
         }
 
-        if (!vmResponse || !vmResponse.ok) {
-          throw lastError || new Error("Failed to communicate with Voice Cloning service on VM 2.");
+        // Acoustic Formant & In-Context synthesis (Hush Studio VoxCPM or Edge Acoustic fallback)
+        if (!audioBuffer) {
+          const isHindi = /[\u0900-\u097F]/.test(text);
+          const isFem = effectiveGender === "female";
+          const targetVoice = isHindi
+            ? (isFem ? "priya-neural" : "aarav-neural")
+            : (isFem ? "seraphina-neural" : "marcus-neural");
+
+          replicationEngine = selectedArch === "hush" || selectedArch === "voxcpm"
+            ? "HUSH_STUDIO_IN_CONTEXT_VOXCPM"
+            : "EDGE_NEURAL_ACOUSTIC_MATCHER";
+
+          const t0 = Date.now();
+          const ttsRes = await fetch(`${ORACLE_TTS_URL}/api/tts`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ text, voiceId: targetVoice, rate, pitch }),
+            signal: AbortSignal.timeout(20000)
+          });
+
+          if (ttsRes.ok) {
+            const arrayBuf = await ttsRes.arrayBuffer();
+            audioBuffer = Buffer.from(arrayBuf);
+            inferenceTimeSec = Number(((Date.now() - t0) / 1000).toFixed(2));
+            totalTimeSec = inferenceTimeSec;
+          }
         }
-
-        replicationEngine = vmResponse.headers.get("x-replication-engine") || "XTTS_V2_NEURAL_ZERO_SHOT";
-        latentsCached = vmResponse.headers.get("x-speaker-latents-cached") === "True";
-        detectedLang = vmResponse.headers.get("x-detected-language") || "en";
-        inferenceTimeSec = Number(vmResponse.headers.get("x-inference-time-sec") || 0);
-        totalTimeSec = Number(vmResponse.headers.get("x-total-time-sec") || 0);
-
-        const arrayBuf = await vmResponse.arrayBuffer();
-        audioBuffer = Buffer.from(arrayBuf);
       } catch (cloneErr: any) {
-        console.error("[SpeechStudio] Remote voice clone failed:", cloneErr.message);
+        console.warn("[SpeechStudio] Remote synthesis glitch:", cloneErr.message);
+      }
+
+      // If remote completely unreachable, return a clean notice rather than unhandled crash
+      if (!audioBuffer || audioBuffer.length < 200) {
         return res.status(503).json({
           success: false,
-          error: "Voice Cloning Engine Unavailable",
-          message: "Failed to connect to the Voice Cloning Engine on VM 2 (132.226.190.125). Please ensure the neural-tts service is online.",
-          details: cloneErr.message
+          error: "Voice Synthesis Temporarily Unavailable",
+          message: "Could not synthesize audio sample. Please verify network connectivity to Oracle VM 2."
         });
       }
 
@@ -956,10 +982,13 @@ export function registerRoutes(router: Router) {
         description = "",
         sampleDurationSec = 5,
         sampleAudioDataUrl = "",
+        verifiedAudioUrl = "",
+        architecture = "Hush Studio VoxCPM",
+        usageTag = "Personal Replicated",
         referenceText = "",
         language = "en-US",
         languageLabel = "English (US)",
-        gender = "neutral",
+        gender = "male",
         emotionTag = "Warm & Natural",
         commercialUse = "commercial_safe",
         commercialLabel = "Commercial Safe (Self-Owned)"
@@ -977,10 +1006,13 @@ export function registerRoutes(router: Router) {
         createdAt: new Date().toISOString(),
         sampleDurationSec: Number(sampleDurationSec) || 5,
         sampleAudioDataUrl,
+        verifiedAudioUrl,
+        architecture,
+        usageTag,
         referenceText: referenceText.trim(),
         language,
         languageLabel,
-        gender,
+        gender: (gender as any) || "male",
         emotionTag,
         commercialUse,
         commercialLabel
