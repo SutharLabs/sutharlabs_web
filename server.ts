@@ -4168,19 +4168,28 @@ app.post("/api/vault/complete-chunk-upload", authenticateToken, requireAdmin, as
     const targetVaultUrl = getOracleVaultUrl();
     console.log(`[Vault Assembly] Assembled file created. Streaming via VCN line rate to Oracle VM 1 (${targetVaultUrl})...`);
 
-    const assembledBuffer = fs.readFileSync(assembledPath);
-    try { fs.unlinkSync(assembledPath); } catch {}
+    let fileBlob: any;
+    if (typeof (fs as any).openAsBlob === 'function') {
+      fileBlob = await (fs as any).openAsBlob(assembledPath, { type: fileType || "application/octet-stream" });
+    } else {
+      const assembledBuffer = fs.readFileSync(assembledPath);
+      fileBlob = new Blob([assembledBuffer], { type: fileType || "application/octet-stream" });
+    }
 
     const formData = new FormData();
-    const blob = new Blob([assembledBuffer], { type: fileType || "application/octet-stream" });
-    formData.append("file", blob, fileName || "uploaded_file");
+    formData.append("file", fileBlob, fileName || "uploaded_file");
     if (category) formData.append("category", category);
 
-    const response = await fetch(`${targetVaultUrl}/api/upload`, {
-      method: "POST",
-      headers: { "x-vault-token": ORACLE_VAULT_SECRET },
-      body: formData
-    });
+    let response: any;
+    try {
+      response = await fetch(`${targetVaultUrl}/api/upload`, {
+        method: "POST",
+        headers: { "x-vault-token": ORACLE_VAULT_SECRET },
+        body: formData
+      });
+    } finally {
+      try { fs.unlinkSync(assembledPath); } catch {}
+    }
 
     const resText = await response.text();
     let data: any;

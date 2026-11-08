@@ -29,7 +29,9 @@ import {
   Volume2,
   Film,
   Plus,
-  UploadCloud
+  UploadCloud,
+  Headphones,
+  Music
 } from 'lucide-react';
 import { WorkspacePluginViewProps } from '../../types.js';
 import { 
@@ -89,9 +91,11 @@ export default function StudioCastView({
   // Recording State
   const [isRecordingComposed, setIsRecordingComposed] = useState<boolean>(false);
   const [isRecordingRawHost, setIsRecordingRawHost] = useState<boolean>(false);
+  const [isRecordingRawAudio, setIsRecordingRawAudio] = useState<boolean>(false);
   const [recordingSeconds, setRecordingSeconds] = useState<number>(0);
   const [recordedTracks, setRecordedTracks] = useState<IsoRecordingTrack[]>([]);
   const [vaultUploadingTrackId, setVaultUploadingTrackId] = useState<string | null>(null);
+  const [libraryFilter, setLibraryFilter] = useState<'all' | 'composed' | 'video' | 'audio'>('all');
 
   // Chat State
   const [chatMessages, setChatMessages] = useState<StudioCastChatMessage[]>([]);
@@ -120,8 +124,10 @@ export default function StudioCastView({
   const screenStreamRef = useRef<MediaStream | null>(null);
   const composedRecorderRef = useRef<MediaRecorder | null>(null);
   const rawRecorderRef = useRef<MediaRecorder | null>(null);
+  const rawAudioRecorderRef = useRef<MediaRecorder | null>(null);
   const composedChunksRef = useRef<Blob[]>([]);
   const rawChunksRef = useRef<Blob[]>([]);
+  const rawAudioChunksRef = useRef<Blob[]>([]);
   const audioContextRef = useRef<AudioContext | null>(null);
   const recordingTimerRef = useRef<any>(null);
 
@@ -149,6 +155,8 @@ export default function StudioCastView({
     }
   }, [addLog]);
 
+  const isRecordingAny = isRecordingComposed || isRecordingRawHost || isRecordingRawAudio;
+
   // 1. Initialize Compositor Canvas
   useEffect(() => {
     const compositor = new StudioCastCompositor(1280, 720);
@@ -156,13 +164,13 @@ export default function StudioCastView({
     compositor.setPreset(currentPreset);
     compositor.setLowerThird(lowerThird);
     compositor.setTheme(effectiveTheme);
-    compositor.setIsRecording(isRecordingComposed || isRecordingRawHost);
+    compositor.setIsRecording(isRecordingAny);
     compositor.start();
 
     if (canvasContainerRef.current) {
       canvasContainerRef.current.innerHTML = '';
       const canvasEl = compositor.getCanvas();
-      canvasEl.className = 'w-full h-full object-contain rounded-xl shadow-2xl';
+      canvasEl.className = 'w-full h-full object-contain rounded-xl';
       canvasContainerRef.current.appendChild(canvasEl);
     }
 
@@ -177,6 +185,13 @@ export default function StudioCastView({
       compositorRef.current.setTheme(effectiveTheme);
     }
   }, [effectiveTheme]);
+
+  // Sync isRecordingAny status to compositor lower-third timer
+  useEffect(() => {
+    if (compositorRef.current) {
+      compositorRef.current.setIsRecording(isRecordingAny);
+    }
+  }, [isRecordingAny]);
 
   // Sync preset changes to compositor
   useEffect(() => {
@@ -271,6 +286,10 @@ export default function StudioCastView({
         try { rawRecorderRef.current.stop(); } catch {}
         rawRecorderRef.current = null;
       }
+      if (rawAudioRecorderRef.current && rawAudioRecorderRef.current.state !== 'inactive') {
+        try { rawAudioRecorderRef.current.stop(); } catch {}
+        rawAudioRecorderRef.current = null;
+      }
       if (recordingTimerRef.current) {
         clearInterval(recordingTimerRef.current);
         recordingTimerRef.current = null;
@@ -285,6 +304,18 @@ export default function StudioCastView({
       if (compositorRef.current) {
         compositorRef.current.stop();
       }
+    };
+  }, []);
+
+  // Listen to window beforeunload to guarantee camera hardware sensors are released if user navigates away or refreshes
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      localStreamRef.current?.getTracks().forEach(t => t.stop());
+      screenStreamRef.current?.getTracks().forEach(t => t.stop());
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
     };
   }, []);
 
@@ -317,15 +348,44 @@ export default function StudioCastView({
   }, [myPeerId, userName, userRole, isCameraOn, isMicOn, localAudioLevel, participants]);
 
   // 3. Toggle Controls
-  const toggleCamera = () => {
-    const stream = localStreamRef.current;
-    if (stream) {
-      const nextState = !isCameraOn;
-      stream.getVideoTracks().forEach(t => {
-        t.enabled = nextState;
-      });
-      setIsCameraOn(nextState);
-      addLog(`Camera ${nextState ? 'resumed' : 'stopped (hardware blanked)'}.`, 'INFO');
+  const toggleCamera = async () => {
+    if (isCameraOn) {
+      // User turning camera OFF:
+      // Completely stop physical video tracks so the camera hardware indicator LED turns off
+      if (localStreamRef.current) {
+        localStreamRef.current.getVideoTracks().forEach(t => {
+          t.stop();
+        });
+      }
+      setIsCameraOn(false);
+      addLog('Camera hardware powered off (sensor stopped).', 'INFO');
+    } else {
+      // User turning camera ON:
+      try {
+        const videoStream = await navigator.mediaDevices.getUserMedia({
+          video: { width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+        const newVideoTrack = videoStream.getVideoTracks()[0];
+        if (localStreamRef.current) {
+          localStreamRef.current.getVideoTracks().forEach(t => {
+            localStreamRef.current?.removeTrack(t);
+            t.stop();
+          });
+          localStreamRef.current.addTrack(newVideoTrack);
+        } else {
+          localStreamRef.current = videoStream;
+          setLocalStream(videoStream);
+        }
+        if (localVideoRef.current) {
+          localVideoRef.current.srcObject = localStreamRef.current;
+          localVideoRef.current.play().catch(() => {});
+        }
+        setIsCameraOn(true);
+        addLog('Camera hardware powered on.', 'SUCCESS');
+      } catch (err: any) {
+        addLog(`Could not restart camera: ${err.message}`, 'ERROR');
+      }
     }
   };
 
@@ -503,6 +563,66 @@ export default function StudioCastView({
     }
   };
 
+  const startRawAudioRecording = () => {
+    const stream = localStreamRef.current || localStream;
+    if (!stream || stream.getAudioTracks().length === 0) return;
+    try {
+      const audioStream = new MediaStream(stream.getAudioTracks());
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : 'audio/webm';
+      const recorder = new MediaRecorder(audioStream, { mimeType, audioBitsPerSecond: 192000 });
+      rawAudioChunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) rawAudioChunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(rawAudioChunksRef.current, { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const newTrack: IsoRecordingTrack = {
+          id: `raw_audio_${Date.now()}`,
+          title: `Master Lossless Audio Stem (${userName})`,
+          participantName: userName,
+          type: 'raw_audio',
+          format: 'webm',
+          durationSeconds: recordingSeconds,
+          sizeBytes: blob.size,
+          blobUrl: url,
+          createdAt: new Date().toLocaleTimeString()
+        };
+        setRecordedTracks(prev => [newTrack, ...prev]);
+        addLog(`Master audio stem recorded (${formatBytes(blob.size)}).`, 'SUCCESS');
+      };
+
+      recorder.start(1000);
+      rawAudioRecorderRef.current = recorder;
+      setIsRecordingRawAudio(true);
+      if (!recordingTimerRef.current) {
+        recordingTimerRef.current = setInterval(() => {
+          setRecordingSeconds(s => s + 1);
+        }, 1000);
+      }
+      addLog('Started recording isolated master audio stem (192kbps Opus 48kHz).', 'SUCCESS');
+    } catch (err: any) {
+      console.warn('Audio stem recording start error:', err);
+    }
+  };
+
+  const stopRawAudioRecording = () => {
+    if (rawAudioRecorderRef.current && rawAudioRecorderRef.current.state !== 'inactive') {
+      try {
+        rawAudioRecorderRef.current.requestData();
+        rawAudioRecorderRef.current.stop();
+      } catch (err) {
+        console.warn('Error requesting final audio recorder data:', err);
+      }
+      setIsRecordingRawAudio(false);
+      addLog('Master audio stem finalized and added to ISO library.', 'SUCCESS');
+    }
+  };
+
   // 6. Copy Links & Utilities
   const copyToClipboard = (text: string, keyId: string) => {
     navigator.clipboard.writeText(text);
@@ -531,16 +651,16 @@ export default function StudioCastView({
     setChatInput('');
   };
 
-  const isRecordingAny = isRecordingComposed || isRecordingRawHost;
-
   const startFullSessionRecording = () => {
     startComposedRecording();
     startRawHostRecording();
+    startRawAudioRecording();
   };
 
   const stopFullSessionRecording = () => {
     stopComposedRecording();
     stopRawHostRecording();
+    stopRawAudioRecording();
   };
 
   const saveTrackToVault = async (track: IsoRecordingTrack) => {
@@ -769,13 +889,13 @@ export default function StudioCastView({
 
           {/* Main Stage Viewport (Toggles between 16:9 Virtual Stage Canvas and Multi-Track ISO Library) */}
           {activeTab === 'virtual_studio' ? (
-            /* Main Composed Virtual Stage Canvas (Locks strictly to 16:9 aspect-video to eliminate vertical dead space) */
-            <div className={`relative w-full aspect-video max-h-[calc(100vh-250px)] rounded-2xl border overflow-hidden flex items-center justify-center shadow-xl transition-all ${
+            /* Main Composed Virtual Stage Canvas (Locks strictly to 16:9 aspect ratio to eliminate vertical dead space) */
+            <div className={`relative w-full aspect-[16/9] max-h-[min(540px,calc(100vh-260px))] rounded-2xl border overflow-hidden flex items-center justify-center transition-all ${
               isLight
-                ? 'bg-slate-900 border-slate-300'
-                : 'bg-black border-[#3a494b]/40 shadow-2xl'
+                ? 'bg-slate-100 border-slate-200 shadow-sm'
+                : 'bg-[#0a0a0e] border-[#3a494b]/40 shadow-2xl'
             }`}>
-              <div ref={canvasContainerRef} className="w-full h-full flex items-center justify-center" />
+              <div ref={canvasContainerRef} className="w-full h-full flex items-center justify-center overflow-hidden" />
 
               {/* Live Status Overlay Badges */}
               <div className="absolute top-3 right-3 flex items-center gap-2 pointer-events-none">
@@ -785,7 +905,11 @@ export default function StudioCastView({
                     <span>REC {formatTime(recordingSeconds)}</span>
                   </div>
                 )}
-                <div className="px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/10 text-white text-[10px] font-mono">
+                <div className={`px-2.5 py-1 rounded-full backdrop-blur-md border text-[10px] font-mono ${
+                  isLight
+                    ? 'bg-white/80 border-slate-300 text-slate-700 shadow-xs'
+                    : 'bg-black/60 border-white/10 text-white'
+                }`}>
                   1080p • 30 FPS
                 </div>
               </div>
@@ -795,19 +919,39 @@ export default function StudioCastView({
             <div className={`p-4 sm:p-5 rounded-2xl border space-y-4 ${
               isLight ? 'bg-white border-slate-200' : 'bg-[#141418] border-[#3a494b]/30'
             }`}>
-              <div className="flex items-center justify-between pb-3 border-b border-outline/15">
+              <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-outline/15">
                 <div>
                   <h3 className={`text-base font-bold font-sans ${isLight ? 'text-slate-900' : 'text-white'}`}>
                     Podcast Multi-Track Master Library
                   </h3>
                   <p className="text-xs font-mono text-on-surface-variant mt-0.5">
-                    Isolated local double-ender recordings ready for editing in Premiere, DaVinci Resolve or Final Cut
+                    Riverside.fm-style local double-ender recordings: isolated uncompressed program, camera ISO, and master audio stems
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30">
-                    {recordedTracks.length} ISO Tracks
-                  </span>
+                  <div className={`flex rounded-lg p-0.5 border text-[10px] font-mono ${
+                    isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
+                  }`}>
+                    {[
+                      { id: 'all' as const, label: `All (${recordedTracks.length})` },
+                      { id: 'composed' as const, label: `Program (${recordedTracks.filter(t => t.type === 'composed_virtual').length})` },
+                      { id: 'video' as const, label: `Camera ISO (${recordedTracks.filter(t => t.type === 'raw_video').length})` },
+                      { id: 'audio' as const, label: `Master Audio (${recordedTracks.filter(t => t.type === 'raw_audio').length})` }
+                    ].map(f => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => setLibraryFilter(f.id)}
+                        className={`px-2 py-0.5 rounded cursor-pointer transition-all ${
+                          libraryFilter === f.id
+                            ? isLight ? 'bg-white text-slate-900 font-bold shadow-xs' : 'bg-[#00dbe7]/20 text-[#00dbe7] font-bold'
+                            : 'text-on-surface-variant hover:text-on-surface'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
@@ -818,12 +962,19 @@ export default function StudioCastView({
                     No podcast recordings in this session yet.
                   </p>
                   <p className="text-xs text-on-surface-variant/75">
-                    Click "Record Full Podcast" or "Record Program" above to capture isolated master tracks.
+                    Click "Record Full Podcast" or "ISO Only" above to capture isolated master tracks.
                   </p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {recordedTracks.map(track => (
+                  {recordedTracks
+                    .filter(track => {
+                      if (libraryFilter === 'composed') return track.type === 'composed_virtual';
+                      if (libraryFilter === 'video') return track.type === 'raw_video';
+                      if (libraryFilter === 'audio') return track.type === 'raw_audio';
+                      return true;
+                    })
+                    .map(track => (
                     <div
                       key={track.id}
                       className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
@@ -835,9 +986,11 @@ export default function StudioCastView({
                           <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
                             track.type === 'composed_virtual'
                               ? 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
-                              : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
+                              : track.type === 'raw_audio'
+                                ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                : 'bg-purple-500/15 text-purple-400 border border-purple-500/30'
                           }`}>
-                            {track.type === 'composed_virtual' ? 'Composed Broadcast' : 'Raw Isolated ISO'}
+                            {track.type === 'composed_virtual' ? 'Composed Broadcast' : track.type === 'raw_audio' ? 'Master Audio Stem' : 'Raw Isolated ISO'}
                           </span>
                           <span className="text-[10px] font-mono text-on-surface-variant">
                             {track.createdAt}
@@ -849,13 +1002,28 @@ export default function StudioCastView({
                         </div>
                       </div>
 
-                      {/* Video Player Preview */}
-                      <video
-                        src={track.blobUrl}
-                        controls
-                        playsInline
-                        className="w-full aspect-video rounded-lg bg-black object-contain max-h-40 border border-white/5"
-                      />
+                      {/* Video or Audio Preview Player */}
+                      {track.type === 'raw_audio' ? (
+                        <div className={`p-3 rounded-lg border flex items-center gap-3 ${
+                          isLight ? 'bg-white border-slate-200' : 'bg-black/40 border-white/5'
+                        }`}>
+                          <div className="w-9 h-9 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0">
+                            <Headphones className="w-4 h-4 text-emerald-400 shrink-0" />
+                          </div>
+                          <audio
+                            src={track.blobUrl}
+                            controls
+                            className="flex-1 h-8 rounded"
+                          />
+                        </div>
+                      ) : (
+                        <video
+                          src={track.blobUrl}
+                          controls
+                          playsInline
+                          className="w-full aspect-video rounded-lg bg-black object-contain max-h-40 border border-white/5"
+                        />
+                      )}
 
                       {/* Action Buttons */}
                       <div className="flex items-center gap-2 pt-1">
@@ -869,7 +1037,7 @@ export default function StudioCastView({
                           }`}
                         >
                           <Download className="w-3.5 h-3.5 shrink-0" />
-                          <span>Export File</span>
+                          <span>{track.type === 'raw_audio' ? 'Export Audio' : 'Export File'}</span>
                         </a>
 
                         <button
@@ -1241,7 +1409,16 @@ export default function StudioCastView({
                     }`}
                   >
                     <div className="min-w-0">
-                      <div className="font-bold truncate text-on-surface">{track.title}</div>
+                      <div className="font-bold truncate text-on-surface flex items-center gap-1.5">
+                        {track.type === 'raw_audio' ? (
+                          <Headphones className="w-3 h-3 text-emerald-400 shrink-0" />
+                        ) : track.type === 'composed_virtual' ? (
+                          <Tv className="w-3 h-3 text-[#00dbe7] shrink-0" />
+                        ) : (
+                          <Film className="w-3 h-3 text-purple-400 shrink-0" />
+                        )}
+                        <span className="truncate">{track.title}</span>
+                      </div>
                       <div className="text-[9px] text-on-surface-variant">
                         {formatBytes(track.sizeBytes)} • {formatTime(track.durationSeconds)} • {track.format.toUpperCase()}
                       </div>

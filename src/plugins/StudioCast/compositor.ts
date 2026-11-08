@@ -53,9 +53,13 @@ export class StudioCastCompositor {
   }
 
   public setIsRecording(recording: boolean) {
-    this.isRecording = recording;
-    if (recording) {
-      this.recordingStartTime = Date.now();
+    this.isRecording = Boolean(recording);
+    if (this.isRecording) {
+      if (!this.recordingStartTime) {
+        this.recordingStartTime = Date.now();
+      }
+    } else {
+      this.recordingStartTime = 0;
     }
   }
 
@@ -295,13 +299,19 @@ export class StudioCastCompositor {
       ctx.drawImage(vid, drawX, drawY, drawW, drawH);
     } else {
       // Offline Avatar Placeholder
-      ctx.fillStyle = '#10121a';
-      ctx.fillRect(x, y, w, h);
-
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-      ctx.strokeRect(x, y, w, h);
-
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      if (this.theme === 'light') {
+        ctx.fillStyle = '#e2e8f0';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.08)';
+        ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.5)';
+      } else {
+        ctx.fillStyle = '#10121a';
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+        ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+      }
       ctx.font = '12px "JetBrains Mono", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -314,7 +324,7 @@ export class StudioCastCompositor {
     if (rounded) {
       ctx.save();
       const isSpeaking = p && p.audioLevel > 15;
-      ctx.strokeStyle = isSpeaking ? accentColor : 'rgba(255, 255, 255, 0.12)';
+      ctx.strokeStyle = isSpeaking ? accentColor : (this.theme === 'light' ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.12)');
       ctx.lineWidth = isSpeaking ? 3 : 1.5;
       if (isSpeaking) {
         ctx.shadowColor = accentColor;
@@ -374,9 +384,15 @@ export class StudioCastCompositor {
 
     // Banner Background Glass
     const grad = ctx.createLinearGradient(margin, bannerY, margin + bannerW, bannerY);
-    grad.addColorStop(0, 'rgba(12, 15, 24, 0.94)');
-    grad.addColorStop(0.7, 'rgba(18, 22, 34, 0.92)');
-    grad.addColorStop(1, 'rgba(10, 12, 18, 0.94)');
+    if (this.theme === 'light') {
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.95)');
+      grad.addColorStop(0.7, 'rgba(248, 250, 252, 0.92)');
+      grad.addColorStop(1, 'rgba(241, 245, 249, 0.95)');
+    } else {
+      grad.addColorStop(0, 'rgba(12, 15, 24, 0.94)');
+      grad.addColorStop(0.7, 'rgba(18, 22, 34, 0.92)');
+      grad.addColorStop(1, 'rgba(10, 12, 18, 0.94)');
+    }
 
     ctx.fillStyle = grad;
     ctx.beginPath();
@@ -389,7 +405,7 @@ export class StudioCastCompositor {
 
     // Left Icon Badge Box
     const boxW = 56;
-    ctx.fillStyle = 'rgba(0, 219, 231, 0.12)';
+    ctx.fillStyle = this.theme === 'light' ? 'rgba(0, 219, 231, 0.18)' : 'rgba(0, 219, 231, 0.12)';
     ctx.fillRect(margin, bannerY + 3, boxW, bannerH - 3);
 
     ctx.fillStyle = this.lowerThird.accentColor || '#00dbe7';
@@ -400,23 +416,23 @@ export class StudioCastCompositor {
 
     // Show Title & Subtitle
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = this.theme === 'light' ? '#0f172a' : '#ffffff';
     ctx.font = 'bold 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillText(this.lowerThird.showTitle, margin + boxW + 16, bannerY + 24);
 
-    ctx.fillStyle = '#a0aec0';
+    ctx.fillStyle = this.theme === 'light' ? '#475569' : '#a0aec0';
     ctx.font = '12px "JetBrains Mono", monospace';
     ctx.fillText(this.lowerThird.subtitle, margin + boxW + 16, bannerY + 48);
 
     // Right-hand Clock & Timecode
-    if (this.isRecording) {
-      const elapsedSeconds = Math.floor((Date.now() - this.recordingStartTime) / 1000);
+    if (this.isRecording && this.recordingStartTime > 0) {
+      const elapsedSeconds = Math.max(0, Math.floor((Date.now() - this.recordingStartTime) / 1000));
       const mm = String(Math.floor(elapsedSeconds / 60)).padStart(2, '0');
       const ss = String(elapsedSeconds % 60).padStart(2, '0');
       const timecodeStr = `● REC ${mm}:${ss}`;
 
       ctx.textAlign = 'right';
-      ctx.fillStyle = '#ff4d4f';
+      ctx.fillStyle = '#ef4444';
       ctx.font = 'bold 12px "JetBrains Mono", monospace';
       ctx.fillText(timecodeStr, margin + bannerW - 16, bannerY + 36);
     } else {
