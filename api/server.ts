@@ -116,11 +116,18 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       res.status(proxyRes.status);
 
       const resContentType = proxyRes.headers.get('content-type') || '';
-      // Direct stream piping for SSE AI chat and large downloads to prevent mobile timeouts and memory bloat
-      if ((resContentType.includes('text/event-stream') || isLongRunningRoute) && proxyRes.body) {
+      const isSseStream = resContentType.includes('text/event-stream');
+      const isVaultDownload = targetPath.startsWith('/api/vault/download');
+
+      // Only stream for genuine continuous streams (SSE AI chat) and heavy file downloads (Vault).
+      // Standard JSON endpoints (synthesize, clone-voice, complete-chunk-upload, OCR) must NOT be piped
+      // as raw streams because unclosed stream adapters cause Vercel FUNCTION_INVOCATION_TIMEOUT (504).
+      if ((isSseStream || isVaultDownload) && proxyRes.body) {
+        const { pipeline } = await import('stream/promises');
         const { Readable } = await import('stream');
         const nodeStream = Readable.fromWeb(proxyRes.body as any);
-        return nodeStream.pipe(res);
+        await pipeline(nodeStream, res);
+        return;
       }
 
       const data = Buffer.from(await proxyRes.arrayBuffer());
