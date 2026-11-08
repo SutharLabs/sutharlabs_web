@@ -1,11 +1,10 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { 
   HardDrive, 
   Upload, 
   Download, 
   Trash2, 
   RefreshCw, 
-  ShieldCheck, 
   FileText, 
   FileArchive, 
   Database, 
@@ -17,11 +16,18 @@ import {
   Server, 
   AlertCircle,
   Search,
-  FolderLock,
-  Layers,
-  ArrowUpDown,
+  FolderPlus,
+  Plus,
+  Grid,
+  List as ListIcon,
+  Star,
+  Clock,
+  ExternalLink,
+  Share2,
+  X,
+  ChevronDown,
   CheckCircle2,
-  Lock
+  Globe
 } from 'lucide-react';
 import { VaultFileItem, VaultStatsResponse, TerminalLog } from '../types';
 import { 
@@ -43,23 +49,39 @@ interface StorageVaultViewProps {
 
 const CATEGORIES = [
   'General',
-  'Credentials',
+  'Documents',
+  'Media',
   'Backups',
-  'Database Dump',
-  'Config & Keys',
-  'Sensitive Docs'
+  'Credentials & Keys',
+  'Database Dumps'
 ];
 
 export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   onAddLog,
   userToken,
-  theme = 'dark'
+  theme
 }) => {
-  const isLight = theme === 'light';
+  const effectiveTheme: 'light' | 'dark' = theme || (
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+  );
+  const isLight = effectiveTheme === 'light';
+
+  // Navigation & View Mode: Native Drive vs Embedded File Browser (filebrowser/filebrowser)
+  const [viewMode, setViewMode] = useState<'drive' | 'filebrowser'>('drive');
+  const [activeTab, setActiveTab] = useState<'my-drive' | 'recent' | 'starred' | 'trash'>('my-drive');
+  const [layoutMode, setLayoutMode] = useState<'list' | 'grid'>('list');
 
   // Data state
   const [stats, setStats] = useState<VaultStatsResponse | null>(null);
   const [files, setFiles] = useState<VaultFileItem[]>([]);
+  const [starredIds, setStarredIds] = useState<Set<string>>(() => {
+    try {
+      const stored = localStorage.getItem('sutharlabs_drive_starred');
+      return stored ? new Set(JSON.parse(stored)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
@@ -70,6 +92,8 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [isNewMenuOpen, setIsNewMenuOpen] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Filter & Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -79,6 +103,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
 
   // UI helpers
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
 
   // Confirm Modal state
   const [modalConfig, setModalConfig] = useState<{
@@ -117,12 +142,12 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
       setStats(statsData);
       setFiles(filesData);
       if (isRefresh) {
-        addLog('STORAGE', 'Vault telemetry and file directory updated successfully.', 'SUCCESS');
+        addLog('DRIVE', 'Drive files and storage capacity synchronized.', 'SUCCESS');
       }
     } catch (err: any) {
-      console.error('Failed to load vault data:', err);
-      setError(err.message || 'Unable to connect to Oracle VM Storage Vault.');
-      addLog('STORAGE', `Failed to query Oracle Storage Vault: ${err.message}`, 'ERROR');
+      console.error('Failed to load drive data:', err);
+      setError(err.message || 'Unable to connect to Cloud Storage Drive.');
+      addLog('DRIVE', `Storage sync error: ${err.message}`, 'ERROR');
     } finally {
       setIsLoading(false);
       setIsRefreshing(false);
@@ -133,10 +158,31 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
     loadVaultData();
   }, [loadVaultData]);
 
+  const toggleStar = (id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setStarredIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      try {
+        localStorage.setItem('sutharlabs_drive_starred', JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  };
+
   const copyToClipboard = (text: string, keyId: string) => {
     navigator.clipboard.writeText(text);
     setCopiedKey(keyId);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const shareFileLink = (file: VaultFileItem) => {
+    const url = `${window.location.origin}${getVaultDownloadUrl(file.id, userToken)}`;
+    navigator.clipboard.writeText(url);
+    setShareFeedback(file.id);
+    setTimeout(() => setShareFeedback(null), 2500);
+    addLog('DRIVE', `Generated secure share link for "${file.originalName}".`, 'INFO');
   };
 
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -153,7 +199,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
     setIsUploading(true);
     setUploadProgress(0);
     try {
-      addLog('STORAGE', `Starting upload for "${selectedFile.name}" (${formatBytes(selectedFile.size)})...`, 'INFO');
+      addLog('DRIVE', `Starting upload for "${selectedFile.name}" (${formatBytes(selectedFile.size)})...`, 'INFO');
       const uploaded = await uploadVaultFile(
         selectedFile,
         selectedCategory,
@@ -161,7 +207,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         (percent) => setUploadProgress(percent)
       );
       
-      addLog('STORAGE', `Successfully stored "${uploaded.originalName}" in Oracle VM vault. Checksum: ${uploaded.checksum.slice(0, 12)}...`, 'SUCCESS');
+      addLog('DRIVE', `File uploaded: "${uploaded.originalName}" (${formatBytes(uploaded.size)}).`, 'SUCCESS');
       setSelectedFile(null);
       setUploadProgress(0);
       await loadVaultData(true);
@@ -169,17 +215,17 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
       console.error('Upload error:', err);
       setModalConfig({
         isOpen: true,
-        title: 'Upload Failed',
-        message: err.message || 'Failed to upload file to Oracle VM Vault.',
-        subtext: err.message?.includes('413') || err.message?.includes('exceeded') || err.message?.includes('Entity') || err.message?.includes('payload') || err.message?.includes('Request En')
-          ? 'Gateway payload limit was exceeded. Large files are safely handled via parallel 2.5 MB sovereign chunking.'
-          : 'Verify the VM storage daemon is running on port 80 and network is healthy.',
+        title: 'Upload Incomplete',
+        message: err.message || 'Failed to upload file to Cloud Drive.',
+        subtext: err.message?.includes('413') || err.message?.includes('payload')
+          ? 'Network gateway payload limit was encountered. File chunking is active.'
+          : 'Please check your connection and retry.',
         variant: 'danger',
         isAlert: true,
         confirmLabel: 'Dismiss',
         onConfirm: () => setModalConfig(null)
       });
-      addLog('STORAGE', `Upload failed: ${err.message}`, 'ERROR');
+      addLog('DRIVE', `Upload failed: ${err.message}`, 'ERROR');
     } finally {
       setIsUploading(false);
     }
@@ -188,25 +234,25 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   const promptDeleteFile = (file: VaultFileItem) => {
     setModalConfig({
       isOpen: true,
-      title: 'Delete Private File',
-      message: `Permanently delete "${file.originalName}" from Oracle Cloud Storage Vault?`,
-      subtext: `File size: ${formatBytes(file.size)}. This action unlinks physical disk blocks on sutharlabs-db-store and cannot be undone.`,
-      confirmLabel: 'Confirm & Delete',
+      title: 'Delete File',
+      message: `Permanently delete "${file.originalName}"?`,
+      subtext: `Size: ${formatBytes(file.size)}. This action frees disk space on VM 1 storage and cannot be undone.`,
+      confirmLabel: 'Delete',
       cancelLabel: 'Cancel',
       variant: 'danger',
       onConfirm: async () => {
         setModalConfig(null);
         try {
-          addLog('STORAGE', `Deleting file "${file.originalName}"...`, 'INFO');
+          addLog('DRIVE', `Deleting "${file.originalName}"...`, 'INFO');
           await deleteVaultFile(file.id, userToken);
-          addLog('STORAGE', `File "${file.originalName}" permanently deleted from vault.`, 'SUCCESS');
+          addLog('DRIVE', `Deleted "${file.originalName}".`, 'SUCCESS');
           await loadVaultData(true);
         } catch (err: any) {
           console.error('Delete error:', err);
           setModalConfig({
             isOpen: true,
             title: 'Delete Failed',
-            message: err.message || 'Could not delete file from vault.',
+            message: err.message || 'Could not delete file from drive.',
             variant: 'danger',
             isAlert: true,
             confirmLabel: 'Dismiss',
@@ -220,10 +266,10 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   const getFileIcon = (mimeType: string, filename: string) => {
     const ext = filename.split('.').pop()?.toLowerCase() || '';
     if (['zip', 'tar', 'gz', '7z', 'rar'].includes(ext)) {
-      return <FileArchive className="w-4 h-4 text-amber-400 shrink-0" />;
+      return <FileArchive className="w-4 h-4 text-amber-500 shrink-0" />;
     }
     if (['sql', 'dump', 'db', 'sqlite'].includes(ext)) {
-      return <Database className="w-4 h-4 text-emerald-400 shrink-0" />;
+      return <Database className="w-4 h-4 text-emerald-500 shrink-0" />;
     }
     if (['key', 'pem', 'crt', 'env'].includes(ext) || ext.includes('key')) {
       return <Key className="w-4 h-4 text-purple-400 shrink-0" />;
@@ -231,8 +277,8 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
     if (['png', 'jpg', 'jpeg', 'svg', 'webp', 'gif'].includes(ext) || mimeType.startsWith('image/')) {
       return <ImageIcon className="w-4 h-4 text-cyan-400 shrink-0" />;
     }
-    if (['pdf', 'txt', 'md', 'json', 'csv', 'log'].includes(ext)) {
-      return <FileText className="w-4 h-4 text-sky-400 shrink-0" />;
+    if (['pdf', 'txt', 'md', 'json', 'csv', 'log', 'docx', 'xlsx'].includes(ext)) {
+      return <FileText className="w-4 h-4 text-sky-500 shrink-0" />;
     }
     return <File className="w-4 h-4 text-slate-400 shrink-0" />;
   };
@@ -244,7 +290,17 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
           file.originalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           file.checksum.toLowerCase().includes(searchQuery.toLowerCase());
         const matchesCategory = categoryFilter === 'ALL' || file.category === categoryFilter;
-        return matchesSearch && matchesCategory;
+        
+        let matchesTab = true;
+        if (activeTab === 'starred') {
+          matchesTab = starredIds.has(file.id);
+        } else if (activeTab === 'recent') {
+          const uploadTime = new Date(file.uploadedAt).getTime();
+          const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+          matchesTab = uploadTime >= oneDayAgo;
+        }
+
+        return matchesSearch && matchesCategory && matchesTab;
       })
       .sort((a, b) => {
         if (sortBy === 'date') {
@@ -261,53 +317,129 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         }
         return 0;
       });
-  }, [files, searchQuery, categoryFilter, sortBy, sortOrder]);
+  }, [files, searchQuery, categoryFilter, activeTab, starredIds, sortBy, sortOrder]);
+
+  const usedBytes = stats?.totalVaultBytes || files.reduce((acc, f) => acc + f.size, 0);
+  const totalCapacityBytes = stats?.disk.totalBytes || (50 * 1024 * 1024 * 1024);
+  const percentUsed = Math.min(100, Math.round((usedBytes / totalCapacityBytes) * 100)) || 11;
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-background relative">
       
-      {/* 1. Header Toolbar */}
-      <div className={`p-4 sm:p-5 border-b shrink-0 flex items-center justify-between gap-4 flex-wrap transition-colors ${
-        isLight ? 'bg-white/90 border-slate-200' : 'bg-surface-container-low/40 border-outline/15'
+      {/* 1. Header View Bar */}
+      <div className={`p-3.5 sm:p-5 border-b shrink-0 flex items-center justify-between gap-3 flex-wrap transition-colors ${
+        isLight ? 'bg-white/95 border-slate-200 shadow-xs' : 'bg-surface-container-low/40 border-outline/15'
       }`}>
-        <div className="flex items-center gap-3.5">
-          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 shadow-sm">
-            <HardDrive className="w-5 h-5 text-[#00dbe7] shrink-0" />
+        {/* Title + Container Badge */}
+        <div className="flex items-center gap-3">
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border shadow-xs ${
+            isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-primary/10 border-primary/25 text-[#00dbe7]'
+          }`}>
+            <HardDrive className="w-5 h-5 shrink-0" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-xl font-bold tracking-tight text-on-surface font-sans">
-                Oracle VM Private Storage Vault
+            <div className="flex items-center gap-2 flex-wrap">
+              <h2 className="text-lg sm:text-xl font-bold tracking-tight text-on-surface font-sans">
+                Cloud Drive
               </h2>
-              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
-                137.23.61.191 (Live)
+              <span className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider border shadow-xs ${
+                isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+              }`}>
+                50 GB Cloud Storage
               </span>
             </div>
-            <p className="text-xs text-on-surface-variant font-mono mt-0.5">
-              Secure persistent storage hosted on sutharlabs-db-store (AMD E2.1.Micro / 50 GB SSD)
+            <p className="text-xs text-on-surface-variant font-mono mt-0.5 hidden sm:block">
+              Persistent cloud storage powered by File Browser &amp; Oracle Always Free VM
             </p>
           </div>
         </div>
 
+        {/* Action Controls & View Switcher */}
         <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+          
+          {/* Switcher: Drive View vs File Browser Web */}
+          <div className={`flex rounded-lg p-0.5 border text-xs ${
+            isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
+          }`}>
+            <button
+              type="button"
+              onClick={() => setViewMode('drive')}
+              className={`px-3 py-1 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+                viewMode === 'drive'
+                  ? isLight
+                    ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-300'
+                    : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <HardDrive className="w-3.5 h-3.5 shrink-0" />
+              <span>Drive</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('filebrowser')}
+              className={`px-3 py-1 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+                viewMode === 'filebrowser'
+                  ? isLight
+                    ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-300'
+                    : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                  : 'text-on-surface-variant hover:text-on-surface'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5 shrink-0" />
+              <span>File Browser</span>
+            </button>
+          </div>
+
+          {/* Sync Button */}
           <button
             type="button"
             onClick={() => loadVaultData(true)}
             disabled={isRefreshing || isLoading}
-            className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none ${
+            className={`h-8 px-2.5 sm:px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-xs select-none ${
               isLight
-                ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 hover:text-sky-600 hover:border-sky-400'
-                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border border-[#3a494b]/40 hover:text-[#00dbe7] hover:border-[#00dbe7]/50'
+                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 hover:text-sky-600 hover:border-sky-400'
+                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
             }`}
           >
             <RefreshCw className={`w-3.5 h-3.5 shrink-0 ${isRefreshing ? 'animate-spin text-[#00dbe7]' : ''}`} />
-            <span>{isRefreshing ? 'Syncing...' : 'Refresh Vault'}</span>
+            <span className="hidden sm:inline">{isRefreshing ? 'Syncing...' : 'Refresh'}</span>
           </button>
         </div>
       </div>
 
-      {/* 2. Main Content Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6">
+      {/* ========================================================================= */}
+      {/* VIEW MODE 1: FILE BROWSER (OPEN SOURCE filebrowser/filebrowser EMBED) */}
+      {/* ========================================================================= */}
+      {viewMode === 'filebrowser' ? (
+        <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
+          <div className={`px-4 py-2 border-b flex items-center justify-between text-xs font-mono ${
+            isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-[#18181c]/60 border-[#3a494b]/30 text-gray-300'
+          }`}>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>File Browser (v2.63) • Single-container Go File Manager on VM 1</span>
+            </div>
+            <a
+              href="/filebrowser/login"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sky-500 hover:underline flex items-center gap-1 font-bold"
+            >
+              <span>Open in New Tab</span>
+              <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+            </a>
+          </div>
+          <iframe
+            src="/filebrowser/login"
+            title="File Browser"
+            className="w-full flex-1 border-0"
+            sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups"
+          />
+        </div>
+      ) : (
+        /* VIEW MODE 2: SUTHARLABS NATIVE CLOUD DRIVE */
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-5">
         
         {/* Error Alert Banner */}
         {error && (
@@ -318,245 +450,248 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
             </div>
             <button
               onClick={() => loadVaultData()}
-              className="px-2.5 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-[11px] font-mono font-bold"
+              className="px-2.5 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-[11px] font-mono font-bold cursor-pointer"
             >
               Retry
             </button>
           </div>
         )}
 
-        {/* Telemetry Cards Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Popular Drive Navigation & Standard + New Dropdown */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           
-          {/* Card 1: Node State */}
-          <div className={`p-4 rounded-xl border transition-colors ${
-            isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-surface-container-low/40 border-outline/15'
-          }`}>
-            <div className="flex items-center justify-between text-xs font-mono text-on-surface-variant mb-2">
-              <span className="flex items-center gap-1.5">
-                <Server className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                Target Node
-              </span>
-              <span className="px-1.5 py-0.5 rounded text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                ACTIVE
-              </span>
-            </div>
-            <div className="text-base font-bold font-mono text-on-surface truncate">
-              sutharlabs-db-store
-            </div>
-            <div className="text-[11px] font-mono text-on-surface-variant mt-1 flex items-center gap-1.5">
-              <span>Port: 80 (HTTP)</span>
-              <span>•</span>
-              <span className="text-emerald-400">Docker Daemon</span>
-            </div>
+          {/* + New Button with Upload Trigger */}
+          <div className="relative inline-block text-left shrink-0">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className={`h-10 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md select-none ${
+                isLight
+                  ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-sky-500/20'
+                  : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border border-[#00dbe7]/50 hover:border-[#00dbe7] shadow-[#00dbe7]/10'
+              }`}
+            >
+              <Plus className="w-4 h-4 shrink-0" />
+              <span>New Upload</span>
+            </button>
           </div>
 
-          {/* Card 2: Disk Free */}
-          <div className={`p-4 rounded-xl border transition-colors ${
-            isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-surface-container-low/40 border-outline/15'
-          }`}>
-            <div className="flex items-center justify-between text-xs font-mono text-on-surface-variant mb-2">
-              <span className="flex items-center gap-1.5">
-                <HardDrive className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                Free Volume Space
-              </span>
-              <span className="text-emerald-400 font-bold">
-                {stats?.disk.percentUsed ? `${100 - parseInt(stats.disk.percentUsed, 10)}% Free` : '--'}
-              </span>
-            </div>
-            <div className="text-base font-bold font-mono text-on-surface">
-              {stats?.disk.availBytes ? formatBytes(stats.disk.availBytes) : '44.0 GB'}
-            </div>
-            <div className="text-[11px] font-mono text-on-surface-variant mt-1">
-              Total Capacity: {stats?.disk.totalBytes ? formatBytes(stats.disk.totalBytes) : '50.0 GB'}
-            </div>
+          {/* Drive Navigation Tabs: My Drive | Recent | Starred | Storage */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setActiveTab('my-drive')}
+              className={`h-8 px-3 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
+                activeTab === 'my-drive'
+                  ? isLight
+                    ? 'bg-sky-50 text-sky-700 border border-sky-300 shadow-xs'
+                    : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30 shadow-xs'
+                  : isLight
+                    ? 'text-slate-600 hover:bg-slate-100 border border-transparent'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <HardDrive className="w-3.5 h-3.5 shrink-0" />
+              <span>My Drive</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('recent')}
+              className={`h-8 px-3 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
+                activeTab === 'recent'
+                  ? isLight
+                    ? 'bg-sky-50 text-sky-700 border border-sky-300 shadow-xs'
+                    : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30 shadow-xs'
+                  : isLight
+                    ? 'text-slate-600 hover:bg-slate-100 border border-transparent'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5 shrink-0" />
+              <span>Recent (24h)</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('starred')}
+              className={`h-8 px-3 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
+                activeTab === 'starred'
+                  ? isLight
+                    ? 'bg-amber-50 text-amber-700 border border-amber-300 shadow-xs'
+                    : 'bg-amber-500/15 text-amber-300 border border-amber-500/30 shadow-xs'
+                  : isLight
+                    ? 'text-slate-600 hover:bg-slate-100 border border-transparent'
+                    : 'text-on-surface-variant hover:text-on-surface hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <Star className="w-3.5 h-3.5 shrink-0" />
+              <span>Starred ({starredIds.size})</span>
+            </button>
           </div>
 
-          {/* Card 3: Vault Items */}
-          <div className={`p-4 rounded-xl border transition-colors ${
-            isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-surface-container-low/40 border-outline/15'
+          {/* Storage Capacity Pill */}
+          <div className={`p-2 px-3 rounded-xl border text-xs font-mono flex items-center gap-2.5 shrink-0 ${
+            isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-surface-container-low/40 border-outline/15 text-gray-300'
           }`}>
-            <div className="flex items-center justify-between text-xs font-mono text-on-surface-variant mb-2">
-              <span className="flex items-center gap-1.5">
-                <Layers className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                Vault Records
-              </span>
-              <span className="text-purple-400 font-bold font-mono">
-                {files.length} Files
-              </span>
-            </div>
-            <div className="text-base font-bold font-mono text-on-surface">
-              {stats?.totalVaultBytes ? formatBytes(stats.totalVaultBytes) : formatBytes(files.reduce((acc, f) => acc + f.size, 0))}
-            </div>
-            <div className="text-[11px] font-mono text-on-surface-variant mt-1">
-              Encrypted at rest on SSD
+            <HardDrive className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="font-bold">{formatBytes(usedBytes)}</span>
+                <span className="text-[10px] text-on-surface-variant">of 50 GB used</span>
+              </div>
+              <div className="w-28 h-1 bg-surface-container-highest rounded-full overflow-hidden mt-0.5">
+                <div 
+                  className={`h-full transition-all duration-300 ${percentUsed > 85 ? 'bg-rose-500' : 'bg-sky-500'}`}
+                  style={{ width: `${Math.max(5, percentUsed)}%` }}
+                />
+              </div>
             </div>
           </div>
-
-          {/* Card 4: Memory Footprint */}
-          <div className={`p-4 rounded-xl border transition-colors ${
-            isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-surface-container-low/40 border-outline/15'
-          }`}>
-            <div className="flex items-center justify-between text-xs font-mono text-on-surface-variant mb-2">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                Memory Safety
-              </span>
-              <span className="text-cyan-400 font-bold font-mono">
-                &lt; 60 MB RAM
-              </span>
-            </div>
-            <div className="text-base font-bold font-mono text-on-surface">
-              0% DB Overhead
-            </div>
-            <div className="text-[11px] font-mono text-on-surface-variant mt-1">
-              Zero contention with Postgres 16
-            </div>
-          </div>
-
         </div>
 
-        {/* Upload Zone */}
-        <div className={`p-5 rounded-2xl border transition-all ${
-          isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-surface-container-low/40 border-outline/15'
-        }`}>
-          <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0">
-                <Upload className="w-4 h-4 text-[#00dbe7] shrink-0" />
+        {/* Selected File Upload Staging Banner */}
+        {selectedFile && (
+          <div className={`p-4 rounded-xl border transition-all animate-in fade-in duration-150 ${
+            isLight ? 'bg-sky-50/70 border-sky-200' : 'bg-[#00dbe7]/5 border-[#00dbe7]/30'
+          }`}>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 border ${
+                  isLight ? 'bg-white border-sky-300 text-sky-600' : 'bg-[#00dbe7]/15 border-[#00dbe7]/40 text-[#00dbe7]'
+                }`}>
+                  <Upload className="w-4 h-4 shrink-0" />
+                </div>
+                <div>
+                  <div className="text-sm font-bold font-mono text-on-surface truncate max-w-xs sm:max-w-md">
+                    {selectedFile.name}
+                  </div>
+                  <div className="text-xs text-on-surface-variant font-mono mt-0.5">
+                    {formatBytes(selectedFile.size)} • Destination: <span className="text-sky-500 font-bold">{selectedCategory}</span>
+                  </div>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-bold text-on-surface">Upload Private Artifact</h3>
-                <p className="text-[11px] text-on-surface-variant font-mono">
-                  Files are streamed directly to persistent storage in Oracle Mumbai
-                </p>
+
+              {/* Upload Controls */}
+              <div className="flex items-center gap-2 shrink-0">
+                <select
+                  value={selectedCategory}
+                  onChange={(e) => setSelectedCategory(e.target.value)}
+                  className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
+                    isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/40 text-[#e5e1e4]'
+                  }`}
+                >
+                  {CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={() => setSelectedFile(null)}
+                  disabled={isUploading}
+                  className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border ${
+                    isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                  }`}
+                >
+                  Cancel
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleUpload}
+                  disabled={isUploading}
+                  className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border shadow-sm flex items-center gap-1.5 ${
+                    isLight
+                      ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                      : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border-[#00dbe7]/50'
+                  }`}
+                >
+                  <Upload className="w-3.5 h-3.5 shrink-0" />
+                  <span>{isUploading ? 'Uploading...' : 'Upload'}</span>
+                </button>
               </div>
             </div>
 
-            {/* Category Selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-mono text-on-surface-variant">Category:</span>
-              <select
-                value={selectedCategory}
-                onChange={(e) => setSelectedCategory(e.target.value)}
-                className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
-                  isLight
-                    ? 'bg-slate-100 border-slate-300 text-slate-800'
-                    : 'bg-[#201f21] border-[#3a494b]/40 text-[#e5e1e4]'
-                }`}
-              >
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
+            {/* Progress Bar */}
+            {isUploading && (
+              <div className="w-full space-y-1 mt-3">
+                <div className="flex justify-between text-[11px] font-mono text-on-surface-variant">
+                  <span>Uploading files to Cloud Drive...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-sky-500 transition-all duration-150"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
+        )}
 
-          {/* Drag & Drop Area */}
+        {/* Hidden File Input */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files && e.target.files[0]) {
+              setSelectedFile(e.target.files[0]);
+            }
+          }}
+        />
+
+        {/* Drag & Drop Hero Box (Active when dragging or when files empty) */}
+        {files.length === 0 && !isLoading && (
           <div
             onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleFileDrop}
-            className={`border-2 border-dashed rounded-xl p-6 text-center transition-all ${
+            className={`border-2 border-dashed rounded-2xl p-8 sm:p-12 text-center transition-all ${
               isDragging
-                ? 'border-[#00dbe7] bg-[#00dbe7]/5'
+                ? 'border-sky-500 bg-sky-500/5'
                 : isLight
                   ? 'border-slate-300 hover:border-slate-400 bg-slate-50/50'
                   : 'border-[#3a494b]/40 hover:border-[#3a494b]/80 bg-[#121215]/40'
             }`}
           >
-            <input
-              type="file"
-              id="vault-file-input"
-              className="hidden"
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  setSelectedFile(e.target.files[0]);
-                }
-              }}
-            />
-
-            {selectedFile ? (
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-[#00dbe7] shrink-0" />
-                </div>
-                <div>
-                  <div className="text-sm font-bold font-mono text-on-surface">{selectedFile.name}</div>
-                  <div className="text-xs text-on-surface-variant font-mono mt-0.5">
-                    {formatBytes(selectedFile.size)} • Ready to upload to category: <span className="text-[#00dbe7] font-semibold">{selectedCategory}</span>
-                  </div>
-                </div>
-
-                {isUploading && (
-                  <div className="w-full max-w-xs space-y-1 mt-2">
-                    <div className="flex justify-between text-[10px] font-mono text-on-surface-variant">
-                      <span>
-                        {uploadProgress < 100
-                          ? (selectedFile.size > 3 * 1024 * 1024 ? 'Streaming sovereign chunks...' : 'Uploading...')
-                          : 'Securing & Storing in Vault...'}
-                      </span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-surface-container-high rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-[#00dbe7] transition-all duration-150"
-                        style={{ width: `${uploadProgress}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2.5 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedFile(null)}
-                    disabled={isUploading}
-                    className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer ${
-                      isLight
-                        ? 'bg-slate-200 hover:bg-slate-300 text-slate-700'
-                        : 'bg-white/5 hover:bg-white/10 text-on-surface'
-                    }`}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={handleUpload}
-                    disabled={isUploading}
-                    className="h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border border-[#00dbe7]/50 hover:border-[#00dbe7] transition-all cursor-pointer shadow-sm flex items-center gap-1.5"
-                  >
-                    <Upload className="w-3.5 h-3.5 shrink-0" />
-                    <span>{isUploading ? 'Streaming to VM...' : 'Store in Vault'}</span>
-                  </button>
-                </div>
+            <div className="flex flex-col items-center gap-3">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border ${
+                isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-primary/10 border-primary/25 text-[#00dbe7]'
+              }`}>
+                <FolderPlus className="w-6 h-6 shrink-0" />
               </div>
-            ) : (
-              <label htmlFor="vault-file-input" className="cursor-pointer flex flex-col items-center gap-2">
-                <div className="w-11 h-11 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center mb-1">
-                  <FolderLock className="w-5 h-5 text-[#00dbe7] shrink-0" />
-                </div>
-                <div className="text-sm font-semibold text-on-surface">
-                  Drop sensitive files here, or <span className="text-[#00dbe7] underline">browse files</span>
-                </div>
-                <div className="text-[11px] text-on-surface-variant font-mono">
-                  Accepts .pem, .key, .sql, .dump, .zip, .tar.gz, .env, and sensitive records up to 2 GB
-                </div>
-              </label>
-            )}
+              <h3 className="text-base font-bold text-on-surface">Your Cloud Drive is empty</h3>
+              <p className="text-xs text-on-surface-variant font-mono max-w-sm">
+                Drag and drop files here, or click to upload documents, images, code backups, and archives.
+              </p>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={`mt-2 h-9 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border shadow-sm ${
+                  isLight
+                    ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                    : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/50'
+                }`}
+              >
+                Select Files to Upload
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
-        {/* File Directory Header & Filters */}
-        <div className={`p-4 rounded-xl border transition-colors flex items-center justify-between gap-3 flex-wrap ${
-          isLight ? 'bg-white border-slate-200' : 'bg-surface-container-low/40 border-outline/15'
+        {/* Search Bar & Filter Toolbar */}
+        <div className={`p-3 sm:p-4 rounded-xl border transition-colors flex items-center justify-between gap-3 flex-wrap ${
+          isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-surface-container-low/40 border-outline/15'
         }`}>
-          {/* Search Box */}
-          <div className="relative flex-1 min-w-[220px]">
+          {/* Search Box: "Search in Drive" */}
+          <div className="relative flex-1 min-w-[200px]">
             <Search className="w-4 h-4 text-on-surface-variant absolute left-3 top-1/2 -translate-y-1/2 shrink-0" />
             <input
               type="text"
-              placeholder="Search filename or SHA-256..."
+              placeholder="Search in Drive..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className={`w-full h-8 pl-9 pr-3 rounded-lg text-xs font-mono border transition-colors outline-hidden ${
@@ -569,85 +704,167 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
             {/* Category Filter */}
-            <div className="flex items-center gap-1.5 text-xs font-mono text-on-surface-variant">
-              <span>Category:</span>
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
-                  isLight
-                    ? 'bg-slate-100 border-slate-300 text-slate-800'
-                    : 'bg-[#201f21] border-[#3a494b]/40 text-[#e5e1e4]'
-                }`}
-              >
-                <option value="ALL">All Categories</option>
-                {CATEGORIES.map((cat) => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Sort Dropdown */}
-            <div className="flex items-center gap-1.5 text-xs font-mono text-on-surface-variant">
-              <span>Sort:</span>
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as any)}
-                className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
-                  isLight
-                    ? 'bg-slate-100 border-slate-300 text-slate-800'
-                    : 'bg-[#201f21] border-[#3a494b]/40 text-[#e5e1e4]'
-                }`}
-              >
-                <option value="date">Upload Date</option>
-                <option value="size">File Size</option>
-                <option value="name">File Name</option>
-              </select>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-              title={`Sorting: ${sortOrder.toUpperCase()}`}
-              className={`h-8 w-8 rounded-lg flex items-center justify-center border transition-colors cursor-pointer ${
-                isLight
-                  ? 'bg-slate-100 border-slate-300 text-slate-700 hover:bg-slate-200'
-                  : 'bg-[#201f21] border-[#3a494b]/40 text-on-surface hover:border-[#00dbe7]/40'
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
+                isLight ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-[#201f21] border-[#3a494b]/40 text-[#e5e1e4]'
               }`}
             >
-              <ArrowUpDown className="w-3.5 h-3.5 shrink-0" />
-            </button>
+              <option value="ALL">All Categories</option>
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+
+            {/* Sort Selector */}
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as any)}
+              className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
+                isLight ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-[#201f21] border-[#3a494b]/40 text-[#e5e1e4]'
+              }`}
+            >
+              <option value="date">Date Modified</option>
+              <option value="size">File Size</option>
+              <option value="name">Name</option>
+            </select>
+
+            {/* Layout Toggle: List vs Grid */}
+            <div className={`flex rounded-lg p-0.5 border text-xs ${
+              isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
+            }`}>
+              <button
+                type="button"
+                onClick={() => setLayoutMode('list')}
+                title="List View"
+                className={`p-1 rounded cursor-pointer transition-all ${
+                  layoutMode === 'list'
+                    ? isLight ? 'bg-white text-slate-900 shadow-xs' : 'bg-[#00dbe7]/20 text-[#00dbe7]'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                <ListIcon className="w-3.5 h-3.5 shrink-0" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setLayoutMode('grid')}
+                title="Grid View"
+                className={`p-1 rounded cursor-pointer transition-all ${
+                  layoutMode === 'grid'
+                    ? isLight ? 'bg-white text-slate-900 shadow-xs' : 'bg-[#00dbe7]/20 text-[#00dbe7]'
+                    : 'text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                <Grid className="w-3.5 h-3.5 shrink-0" />
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Files Table / List */}
-        <div className={`rounded-xl border overflow-hidden transition-colors ${
-          isLight ? 'bg-white border-slate-200 shadow-sm' : 'bg-surface-container-low/40 border-outline/15'
-        }`}>
-          {isLoading ? (
-            <div className="p-12 text-center text-xs font-mono text-on-surface-variant flex flex-col items-center gap-3">
-              <RefreshCw className="w-6 h-6 animate-spin text-[#00dbe7] shrink-0" />
-              <span>Querying Oracle Storage Vault catalog...</span>
-            </div>
-          ) : filteredFiles.length === 0 ? (
-            <div className="p-12 text-center text-xs font-mono text-on-surface-variant flex flex-col items-center gap-2">
-              <FolderLock className="w-8 h-8 text-on-surface-variant/40 shrink-0" />
-              <span className="font-semibold text-on-surface">No vault files found</span>
-              <span>{searchQuery ? 'Try matching another query or clearing your filter.' : 'Upload your first private archive or credential using the form above.'}</span>
-            </div>
-          ) : (
+        {/* ========================================================================= */}
+        {/* FILES DISPLAY: LIST VIEW VS GRID VIEW */}
+        {/* ========================================================================= */}
+        {isLoading ? (
+          <div className="p-12 text-center text-xs font-mono text-on-surface-variant flex flex-col items-center gap-3">
+            <RefreshCw className="w-6 h-6 animate-spin text-sky-500 shrink-0" />
+            <span>Loading files from Cloud Drive...</span>
+          </div>
+        ) : filteredFiles.length === 0 ? (
+          <div className="p-12 text-center text-xs font-mono text-on-surface-variant flex flex-col items-center gap-2">
+            <Search className="w-8 h-8 text-on-surface-variant/40 shrink-0" />
+            <span className="font-semibold text-on-surface">No files match your filter</span>
+            <span>Try searching with a different term or clearing your category filter.</span>
+          </div>
+        ) : layoutMode === 'grid' ? (
+          /* GRID VIEW */
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+            {filteredFiles.map((file) => (
+              <div
+                key={file.id}
+                className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
+                  isLight 
+                    ? 'bg-white border-slate-200 shadow-xs hover:shadow-md hover:border-sky-300' 
+                    : 'bg-surface-container-low/40 border-outline/15 hover:border-[#00dbe7]/40 hover:bg-white/[0.03]'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className={`w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 ${
+                      isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/10'
+                    }`}>
+                      {getFileIcon(file.mimeType, file.originalName)}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs text-on-surface truncate font-sans" title={file.originalName}>
+                        {file.originalName}
+                      </div>
+                      <div className="text-[10px] text-on-surface-variant font-mono mt-0.5">
+                        {formatBytes(file.size)}
+                      </div>
+                    </div>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={(e) => toggleStar(file.id, e)}
+                    className="p-1 rounded hover:bg-white/10 cursor-pointer transition-colors"
+                  >
+                    <Star className={`w-3.5 h-3.5 shrink-0 ${starredIds.has(file.id) ? 'text-amber-400 fill-amber-400' : 'text-on-surface-variant'}`} />
+                  </button>
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] font-mono text-on-surface-variant pt-2 border-t border-outline/10">
+                  <span className="truncate">{new Date(file.uploadedAt).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => shareFileLink(file)}
+                      title="Share link"
+                      className="p-1 rounded hover:bg-white/10 cursor-pointer"
+                    >
+                      {shareFeedback === file.id ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <Share2 className="w-3.5 h-3.5 shrink-0" />}
+                    </button>
+                    <a
+                      href={getVaultDownloadUrl(file.id, userToken)}
+                      download={file.originalName}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Download"
+                      className="p-1 rounded hover:bg-white/10 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5 shrink-0 text-sky-500" />
+                    </a>
+                    <button
+                      type="button"
+                      onClick={() => promptDeleteFile(file)}
+                      title="Delete"
+                      className="p-1 rounded hover:bg-white/10 cursor-pointer text-rose-400"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 shrink-0" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          /* LIST VIEW (Table on tablet/desktop, touch cards on mobile) */
+          <div className={`rounded-xl border overflow-hidden transition-colors ${
+            isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-surface-container-low/40 border-outline/15'
+          }`}>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs font-mono">
                 <thead>
                   <tr className={`border-b text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ${
                     isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-outline/15'
                   }`}>
-                    <th className="py-3 px-4">File Name</th>
-                    <th className="py-3 px-4">Category</th>
-                    <th className="py-3 px-4 text-right">Size</th>
-                    <th className="py-3 px-4">SHA-256 Checksum</th>
-                    <th className="py-3 px-4">Uploaded</th>
-                    <th className="py-3 px-4 text-center">Actions</th>
+                    <th className="py-3 px-3 sm:px-4">Name</th>
+                    <th className="py-3 px-3 sm:px-4 hidden md:table-cell">Category</th>
+                    <th className="py-3 px-3 sm:px-4 text-right">Size</th>
+                    <th className="py-3 px-3 sm:px-4 hidden lg:table-cell">Checksum</th>
+                    <th className="py-3 px-3 sm:px-4 hidden sm:table-cell">Date Modified</th>
+                    <th className="py-3 px-3 sm:px-4 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-outline/10">
@@ -659,50 +876,53 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                       }`}
                     >
                       {/* Name */}
-                      <td className="py-3 px-4 font-semibold text-on-surface">
+                      <td className="py-3 px-3 sm:px-4 font-semibold text-on-surface">
                         <div className="flex items-center gap-2.5">
+                          <button
+                            type="button"
+                            onClick={(e) => toggleStar(file.id, e)}
+                            className="p-0.5 rounded cursor-pointer"
+                          >
+                            <Star className={`w-3.5 h-3.5 shrink-0 ${starredIds.has(file.id) ? 'text-amber-400 fill-amber-400' : 'text-on-surface-variant/40 hover:text-amber-400'}`} />
+                          </button>
                           <div className={`w-7 h-7 rounded-md border flex items-center justify-center shrink-0 ${
                             isLight ? 'bg-slate-100 border-slate-300' : 'bg-white/5 border-white/10'
                           }`}>
                             {getFileIcon(file.mimeType, file.originalName)}
                           </div>
-                          <span className="truncate max-w-[240px] sm:max-w-xs" title={file.originalName}>
+                          <span className="truncate max-w-[180px] sm:max-w-xs" title={file.originalName}>
                             {file.originalName}
                           </span>
                         </div>
                       </td>
 
                       {/* Category */}
-                      <td className="py-3 px-4">
+                      <td className="py-3 px-3 sm:px-4 hidden md:table-cell">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider border ${
-                          file.category === 'Credentials' || file.category === 'Config & Keys'
-                            ? 'bg-purple-500/10 text-purple-400 border-purple-500/30'
-                            : file.category === 'Backups' || file.category === 'Database Dump'
-                              ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                              : 'bg-cyan-500/10 text-cyan-400 border-cyan-500/30'
+                          isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-white/5 text-gray-300 border-white/10'
                         }`}>
                           {file.category || 'General'}
                         </span>
                       </td>
 
                       {/* Size */}
-                      <td className="py-3 px-4 text-right font-mono text-on-surface-variant font-medium">
+                      <td className="py-3 px-3 sm:px-4 text-right font-mono text-on-surface-variant font-medium">
                         {formatBytes(file.size)}
                       </td>
 
                       {/* Checksum */}
-                      <td className="py-3 px-4 text-on-surface-variant">
+                      <td className="py-3 px-3 sm:px-4 text-on-surface-variant hidden lg:table-cell">
                         <div className="flex items-center gap-1.5">
                           <code className={`px-1.5 py-0.5 rounded text-[10px] font-mono border ${
                             isLight ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-white/5 border-white/10 text-on-surface'
                           }`}>
-                            {file.checksum.slice(0, 10)}...{file.checksum.slice(-6)}
+                            {file.checksum.slice(0, 8)}...{file.checksum.slice(-4)}
                           </code>
                           <button
                             type="button"
                             onClick={() => copyToClipboard(file.checksum, file.id)}
-                            title="Copy full SHA-256 Checksum"
-                            className="p-1 rounded hover:bg-white/10 text-on-surface-variant hover:text-on-surface cursor-pointer"
+                            title="Copy checksum"
+                            className="p-1 rounded hover:bg-white/10 cursor-pointer"
                           >
                             {copiedKey === file.id ? (
                               <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -714,23 +934,37 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                       </td>
 
                       {/* Date */}
-                      <td className="py-3 px-4 text-on-surface-variant text-[11px]">
-                        {new Date(file.uploadedAt).toLocaleString()}
+                      <td className="py-3 px-3 sm:px-4 text-on-surface-variant text-[11px] hidden sm:table-cell">
+                        {new Date(file.uploadedAt).toLocaleDateString()}
                       </td>
 
                       {/* Actions */}
-                      <td className="py-3 px-4 text-center">
-                        <div className="flex items-center justify-center gap-2">
+                      <td className="py-3 px-3 sm:px-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => shareFileLink(file)}
+                            title="Share Link"
+                            className={`h-7 px-2 rounded text-[10px] font-mono border transition-all flex items-center gap-1 cursor-pointer select-none shadow-xs ${
+                              isLight
+                                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                            }`}
+                          >
+                            {shareFeedback === file.id ? <Check className="w-3 h-3 text-emerald-400 shrink-0" /> : <Share2 className="w-3 h-3 shrink-0" />}
+                            <span className="hidden sm:inline">Share</span>
+                          </button>
+
                           <a
                             href={getVaultDownloadUrl(file.id, userToken)}
                             download={file.originalName}
                             target="_blank"
                             rel="noopener noreferrer"
-                            title="Download file"
-                            className={`h-7 px-2.5 rounded text-[11px] font-mono border transition-all flex items-center gap-1 cursor-pointer select-none shadow-sm ${
+                            title="Download"
+                            className={`h-7 px-2 rounded text-[10px] font-mono border transition-all flex items-center gap-1 cursor-pointer select-none shadow-xs ${
                               isLight
-                                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 hover:text-sky-600'
-                                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
+                                ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                                : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/40'
                             }`}
                           >
                             <Download className="w-3 h-3 shrink-0" />
@@ -740,7 +974,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                           <button
                             type="button"
                             onClick={() => promptDeleteFile(file)}
-                            title="Delete file"
+                            title="Delete"
                             className={`h-7 w-7 rounded flex items-center justify-center border transition-all cursor-pointer ${
                               isLight
                                 ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300'
@@ -756,9 +990,22 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                 </tbody>
               </table>
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
+      </div>
+      )}
+
+      {/* Floating Action Button (FAB) for Mobile Quick Upload */}
+      <div className="sm:hidden fixed bottom-6 right-6 z-40">
+        <button
+          type="button"
+          onClick={() => fileInputRef.current?.click()}
+          aria-label="New Upload"
+          className="w-14 h-14 rounded-full bg-sky-500 text-white shadow-2xl flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+        >
+          <Plus className="w-7 h-7 shrink-0" />
+        </button>
       </div>
 
       {/* Confirmation & Alert Modal */}
@@ -774,7 +1021,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
           cancelLabel={modalConfig.cancelLabel}
           variant={modalConfig.variant}
           isAlert={modalConfig.isAlert}
-          theme={theme}
+          theme={effectiveTheme}
         />
       )}
 

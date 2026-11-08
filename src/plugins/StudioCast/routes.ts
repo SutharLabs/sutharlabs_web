@@ -1,5 +1,8 @@
 import { Router, Request, Response } from "express";
 import { StudioCastRoom, StudioCastParticipant, StudioCastChatMessage, SignalMessage, IsoRecordingTrack } from "./types.js";
+import { createPluginLogger } from "../common/pluginLogger.js";
+
+const logger = createPluginLogger("studiocast", "routes");
 
 // In-memory state with fast thread-safe lookups
 const roomsStore = new Map<string, StudioCastRoom>();
@@ -13,14 +16,14 @@ function getOrCreateRoom(roomId: string, title?: string, hostName?: string): Stu
   if (!room) {
     room = {
       id: roomId,
-      title: title || `Sovereign Podcast #${roomId}`,
+      title: title || `StudioCast Podcast #${roomId}`,
       hostId: `host_${Date.now()}`,
       hostName: hostName || 'Host',
       preset: 'split',
       lowerThird: {
-        showTitle: title || 'SutharLabs Sovereign Studio',
+        showTitle: title || 'SutharLabs StudioCast',
         subtitle: 'Live Multi-Track Podcast Broadcast',
-        topicTicker: 'SOVEREIGN CLOUD • WEBRTC MESH • RAW ISO TRACKS',
+        topicTicker: 'CLOUD MEDIA • WEBRTC MESH • RAW ISO TRACKS',
         isVisible: true,
         accentColor: '#00dbe7'
       },

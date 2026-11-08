@@ -4313,6 +4313,48 @@ app.delete("/api/vault/files/:id", authenticateToken, requireAdmin, async (req: 
 
 });
 
+// ==========================================
+// FILE BROWSER PROXY (filebrowser/filebrowser on VM 1)
+// ==========================================
+app.use("/filebrowser", async (req: any, res: any) => {
+  try {
+    const targetUrl = `${ORACLE_VAULT_URL}/filebrowser${req.url}`;
+    const headers: Record<string, string> = {};
+    for (const [k, v] of Object.entries(req.headers)) {
+      if (k.toLowerCase() !== "host") {
+        headers[k] = Array.isArray(v) ? v.join(", ") : String(v);
+      }
+    }
+    const fetchOptions: any = {
+      method: req.method,
+      headers,
+    };
+    if (["POST", "PUT", "PATCH"].includes(req.method)) {
+      fetchOptions.body = req;
+      fetchOptions.duplex = "half";
+    }
+
+    const proxyRes = await fetch(targetUrl, fetchOptions);
+    proxyRes.headers.forEach((val, key) => {
+      const lower = key.toLowerCase();
+      if (!["content-encoding", "transfer-encoding", "connection"].includes(lower)) {
+        res.setHeader(key, val);
+      }
+    });
+    res.status(proxyRes.status);
+    if (proxyRes.body) {
+      const { Readable } = await import("stream");
+      const { pipeline } = await import("stream/promises");
+      const nodeStream = Readable.fromWeb(proxyRes.body as any);
+      await pipeline(nodeStream, res);
+    } else {
+      res.end();
+    }
+  } catch (err: any) {
+    res.status(502).json({ error: "File Browser gateway error", details: err.message });
+  }
+});
+
 
 
 // ==========================================

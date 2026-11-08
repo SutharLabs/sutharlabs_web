@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { authenticateToken } from "../../middleware/auth.js";
 import { BUILT_IN_TEMPLATES } from "./templates.js";
+import { createPluginLogger } from "../common/pluginLogger.js";
+
+const logger = createPluginLogger("doc-nexus", "routes");
 import {
   listDocuments,
   getDocument,

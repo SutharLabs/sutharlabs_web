@@ -59,7 +59,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         targetPath.includes('ocr-receipt') ||
         targetPath.includes('/speech-studio/clone-voice') ||
         targetPath.includes('/speech-studio/synthesize') ||
-        targetPath.startsWith('/api/vault/download');
+        targetPath.startsWith('/api/vault/download') ||
+        targetPath.startsWith('/filebrowser');
 
       let body: any = undefined;
       if (['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method || '')) {
@@ -117,7 +118,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const resContentType = proxyRes.headers.get('content-type') || '';
       const isSseStream = resContentType.includes('text/event-stream');
-      const isVaultDownload = targetPath.startsWith('/api/vault/download');
+      const isVaultDownload = targetPath.startsWith('/api/vault/download') || targetPath.startsWith('/filebrowser');
 
       // Only stream for genuine continuous streams (SSE AI chat) and heavy file downloads (Vault).
       // Standard JSON endpoints (synthesize, clone-voice, complete-chunk-upload, OCR) must NOT be piped

@@ -73,6 +73,7 @@ const ROUTE_MAP: Record<string, string> = {
   'Resume Studio': '/workspace/resume',
   'Admin Console': '/admin',
   'Manage Database': '/admin/database',
+  'Cloud Drive': '/admin/storage',
   'Storage Vault': '/admin/storage',
   'AI Agent Studio': '/admin/ai-studio',
   'Reported Bugs': '/admin/bug-reports',

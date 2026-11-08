@@ -1,5 +1,8 @@
 import { scanChartPatterns } from "./patterns/index.js";
 import { Router } from "express";
+import { createPluginLogger } from "../common/pluginLogger.js";
+
+const logger = createPluginLogger("stock-tracker", "routes");
 
 import path from "path";
 

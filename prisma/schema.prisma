@@ -24,15 +24,25 @@ model User {
   workspacePlugins    UserWorkspacePlugin[]
   pluginReviews       WorkspacePluginReview[]
   accountingStore     AccountingTenantStore?
+  documents           Document[]
+  voiceProfiles       UserVoiceProfile[]
+  vaultFiles          VaultFileRecord[]
+  invoices            Invoice[]
 }
 
 // 2. Financial Ledgers
 model Invoice {
-  id      String   @id // e.g. ST-00241
-  date    String
-  client  String
-  amount  Float
-  status  String   // Paid, Pending
+  id        String   @id // e.g. ST-00241
+  userEmail String   @default("developer@sutharlabs.com") @map("user_email")
+  date      String
+  client    String
+  amount    Float
+  status    String   // Paid, Pending
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User?    @relation(fields: [userEmail], references: [email], onDelete: Cascade)
+
+  @@index([userEmail])
 }
 
 // 3. Workflow Layout Nodes
@@ -149,10 +159,17 @@ model Trade {
 
 // 7. DocNexus Document Store
 model Document {
-  id        String   @id @default("doc_nexus_default")
-  title     String
-  content   String
-  updatedAt DateTime @updatedAt
+  id         String   @id @default("doc_nexus_default")
+  userEmail  String   @default("developer@sutharlabs.com") @map("user_email")
+  title      String
+  content    String
+  isArchived Boolean  @default(false) @map("is_archived")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt
+
+  user       User?    @relation(fields: [userEmail], references: [email], onDelete: Cascade)
+
+  @@index([userEmail])
 }
 
 // 8. Development Projects Showcase
@@ -270,3 +287,67 @@ model LiveTelemetryLog {
   @@map("live_telemetry_logs")
 }
 
+
+
+// 14. Neural Voice Profiles & Replicated Voices (Speech Studio)
+model UserVoiceProfile {
+  id                String   @id @default(uuid())
+  userEmail         String   @map("user_email")
+  name              String
+  gender            String   @default("male") // male, female, neutral
+  language          String   @default("hi-IN")
+  accent            String?  @default("Studio")
+  architecture      String   @default("voxcpm") // voxcpm, edge-tts, styletts2, f5-tts
+  sampleAudioBase64 String?  @map("sample_audio_base64")
+  referenceText     String?  @map("reference_text")
+  speakerLatents    String?  @map("speaker_latents")
+  isPublic          Boolean  @default(false) @map("is_public")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  user              User     @relation(fields: [userEmail], references: [email], onDelete: Cascade)
+
+  @@unique([userEmail, name])
+  @@index([userEmail])
+  @@map("user_voice_profiles")
+}
+
+// 15. Cloud Drive & File Browser Storage Records
+model VaultFileRecord {
+  id          String   @id @default(uuid())
+  userEmail   String   @map("user_email")
+  fileName    String   @map("file_name")
+  fileSize    BigInt   @default(0) @map("file_size")
+  mimeType    String   @default("application/octet-stream") @map("mime_type")
+  storagePath String   @map("storage_path")
+  isStarred   Boolean  @default(false) @map("is_starred")
+  isTrash     Boolean  @default(false) @map("is_trash")
+  checksum    String?
+  metadata    String   @default("{}")
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user        User     @relation(fields: [userEmail], references: [email], onDelete: Cascade)
+
+  @@index([userEmail, isTrash])
+  @@index([userEmail, isStarred])
+  @@map("vault_file_records")
+}
+
+
+// 16. Database Replication & Sync Telemetry History
+model database_sync_history {
+  id                 String  @id
+  timestamp          String
+  trigger            String
+  status             String
+  durationMs         Int
+  totalRecordsSynced Int
+  syncedCounts       Json?
+  sourceDatabase     String?
+  targetDatabase     String?
+  errorMessage       String?
+  initiatedBy        String?
+
+  @@map("_database_sync_history")
+}

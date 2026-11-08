@@ -1117,7 +1117,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
                   onClick={() => navigate('/admin/storage')}
                   className="text-purple-400 hover:text-purple-300 font-bold flex items-center gap-0.5 cursor-pointer"
                 >
-                  <span>Open Vault</span>
+                  <span>Open Drive</span>
                   <ArrowUpRight className="w-3 h-3" />
                 </button>
               </div>
@@ -1614,7 +1614,7 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
           className="h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer bg-[#ce5dff]/10 hover:bg-[#ce5dff]/20 text-[#c084fc] border border-[#ce5dff]/30 flex items-center gap-1.5 shrink-0 shadow-sm"
         >
           <HardDrive className="w-3.5 h-3.5 shrink-0" />
-          <span>Open Storage Vault</span>
+          <span>Open Cloud Drive</span>
         </button>
       </div>
 

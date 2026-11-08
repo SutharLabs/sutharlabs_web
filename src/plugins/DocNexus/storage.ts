@@ -1,6 +1,9 @@
 import { DocNexusDocument, DocumentFormat } from "./types.js";
 import { BUILT_IN_TEMPLATES } from "./templates.js";
 import { getPrismaClient } from "../../../api/_utils.js";
+import { createPluginLogger } from "../common/pluginLogger.js";
+
+const logger = createPluginLogger("doc-nexus", "storage");
 
 const prisma = getPrismaClient();
 
@@ -46,11 +49,11 @@ export async function listDocuments(userEmail: string): Promise<DocNexusDocument
 
   // Attempt database retrieval if prisma document model contains records
   try {
+    const span = logger.startSpan("docNexus.listDocuments", { userEmail });
     const dbDocs = await prisma.document.findMany({
-      where: {
-        id: { startsWith: `doc_${userEmail.replace(/[^a-zA-Z0-9]/g, '_')}_` }
-      }
+      where: { userEmail }
     });
+    span.end({ count: dbDocs.length });
 
     if (dbDocs && dbDocs.length > 0) {
       dbDocs.forEach(dbDoc => {

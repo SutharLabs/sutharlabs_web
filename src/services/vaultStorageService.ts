@@ -36,7 +36,7 @@ export async function uploadVaultFile(
   token?: string,
   onProgress?: (percent: number) => void
 ): Promise<VaultFileItem> {
-  // Files over 2.5 MB are split into 2.5 MB sovereign chunks to safely bypass edge gateway limits (Vercel 4.5MB ceiling)
+  // Files over 2.5 MB are split into 2.5 MB parallel chunks to safely bypass edge gateway limits (Vercel 4.5MB ceiling)
   // Uploads are processed with 3x parallel streams for saturating mobile 5G bandwidth
   const CHUNK_SIZE = Math.floor(2.5 * 1024 * 1024); // 2.5 MB chunks
   if (file.size > CHUNK_SIZE) {
