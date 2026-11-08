@@ -162,6 +162,30 @@ def format_pitch(pitch: float) -> str:
 def sanitize_name(name: str) -> str:
     return re.sub(r'[^a-zA-Z0-9_-]', '_', name.strip().lower())
 
+def transcode_to_wav(audio_bytes: bytes) -> bytes:
+    """
+    Transcode any incoming reference audio (WebM Opus, OGG, MP3, non-standard WAV)
+    to standard 24kHz mono 16-bit PCM WAV using ffmpeg.
+    """
+    if not audio_bytes or len(audio_bytes) < 100:
+        return audio_bytes
+    try:
+        import subprocess
+        process = subprocess.Popen(
+            ["ffmpeg", "-y", "-i", "pipe:0", "-ar", "24000", "-ac", "1", "-c:a", "pcm_s16le", "-f", "wav", "pipe:1"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        out_wav, err = process.communicate(input=audio_bytes, timeout=15)
+        if process.returncode == 0 and len(out_wav) > 500:
+            return out_wav
+        else:
+            print(f"[Neural Gateway] ffmpeg transcode stderr: {err.decode('utf-8', errors='ignore')[-300:]}")
+    except Exception as e:
+        print(f"[Neural Gateway] ffmpeg transcode failed: {e}")
+    return audio_bytes
+
 def wav_to_bytes(audio_float32, sample_rate=24000) -> bytes:
     """Convert float32 numpy/torch audio to 16-bit PCM WAV bytes."""
     import numpy as np
@@ -299,7 +323,8 @@ def synthesize_with_xtts(text: str, audio_raw: bytes, speaker_name: str, rate: f
         except Exception as e:
             print(f"[Neural Gateway] Failed to read hash cache: {e}")
 
-    if gpt_cond_latent is None and not audio_raw and name_cache_file and os.path.exists(name_cache_file):
+    # Check cache by speaker name (allows fast re-use without re-extracting)
+    if gpt_cond_latent is None and name_cache_file and os.path.exists(name_cache_file):
         try:
             cached_data = torch.load(name_cache_file)
             gpt_cond_latent = cached_data["gpt_cond_latent"]
@@ -313,31 +338,50 @@ def synthesize_with_xtts(text: str, audio_raw: bytes, speaker_name: str, rate: f
     t0 = time.time()
     if gpt_cond_latent is None:
         if not audio_raw or len(audio_raw) < 500:
-            raise ValueError("Reference audio sample is missing or too short for neural cloning.")
+            # Fallback to any available cached voice latent profile
+            fallback_caches = [f for f in os.listdir(LATENTS_DIR) if f.endswith(".pt")]
+            if fallback_caches:
+                # Prefer name_ caches over hash_
+                name_caches = [f for f in fallback_caches if f.startswith("name_")]
+                chosen = name_caches[0] if name_caches else fallback_caches[0]
+                fb_path = os.path.join(LATENTS_DIR, chosen)
+                try:
+                    cached_data = torch.load(fb_path)
+                    gpt_cond_latent = cached_data["gpt_cond_latent"]
+                    speaker_embedding = cached_data["speaker_embedding"]
+                    latents_cached = True
+                    print(f"[Neural Gateway] Used ambient latent cache: {fb_path}")
+                except Exception as fb_err:
+                    print(f"[Neural Gateway] Ambient cache read error: {fb_err}")
+            if gpt_cond_latent is None:
+                raise ValueError("Reference audio sample is missing or too short for neural cloning.")
 
-        tmp_ref_path = f"/tmp/ref_speaker_{os.getpid()}_{int(time.time()*1000)}.wav"
-        with open(tmp_ref_path, "wb") as f:
-            f.write(audio_raw)
+        if gpt_cond_latent is None:
+            # Clean and transcode audio to 24kHz mono PCM WAV via ffmpeg
+            clean_wav_bytes = transcode_to_wav(audio_raw)
+            tmp_ref_path = f"/tmp/ref_speaker_{os.getpid()}_{int(time.time()*1000)}.wav"
+            with open(tmp_ref_path, "wb") as f:
+                f.write(clean_wav_bytes)
 
-        try:
-            with XTTS_LOCK:
-                gpt_cond_latent, speaker_embedding = XTTS_MODEL.get_conditioning_latents(audio_path=tmp_ref_path)
-            
-            # Save to cache
-            cache_payload = {
-                "gpt_cond_latent": gpt_cond_latent,
-                "speaker_embedding": speaker_embedding,
-                "speaker_name": speaker_name,
-                "cached_at": time.time()
-            }
-            if hash_cache_file:
-                torch.save(cache_payload, hash_cache_file)
-            if name_cache_file:
-                torch.save(cache_payload, name_cache_file)
-            print(f"[Neural Gateway] Computed & cached new latents for speaker '{speaker_name}' in {time.time() - t0:.2f}s")
-        finally:
-            if os.path.exists(tmp_ref_path):
-                os.remove(tmp_ref_path)
+            try:
+                with XTTS_LOCK:
+                    gpt_cond_latent, speaker_embedding = XTTS_MODEL.get_conditioning_latents(audio_path=tmp_ref_path)
+                
+                # Save to cache
+                cache_payload = {
+                    "gpt_cond_latent": gpt_cond_latent,
+                    "speaker_embedding": speaker_embedding,
+                    "speaker_name": speaker_name,
+                    "cached_at": time.time()
+                }
+                if hash_cache_file:
+                    torch.save(cache_payload, hash_cache_file)
+                if name_cache_file and safe_name not in ("user_voice", "voice"):
+                    torch.save(cache_payload, name_cache_file)
+                print(f"[Neural Gateway] Computed & cached new latents for speaker '{speaker_name}' in {time.time() - t0:.2f}s")
+            finally:
+                if os.path.exists(tmp_ref_path):
+                    os.remove(tmp_ref_path)
 
     # 4. Perform Neural Synthesis with XTTS-v2
     t1 = time.time()
@@ -392,13 +436,14 @@ async def clone(request: Request):
         except Exception as e:
             print(f"[Neural Gateway] Base64 decode warning: {e}")
 
-    # Attempt True Zero-Shot Neural Voice Cloning via XTTS-v2
+    # Attempt True Zero-Shot Neural Voice Cloning via XTTS-v2 in worker thread (never blocks event loop)
     try:
-        wav_bytes, meta = synthesize_with_xtts(
-            text=text,
-            audio_raw=audio_raw,
-            speaker_name=speaker_name,
-            rate=rate
+        wav_bytes, meta = await asyncio.to_thread(
+            synthesize_with_xtts,
+            text,
+            audio_raw,
+            speaker_name,
+            rate
         )
 
         headers = {

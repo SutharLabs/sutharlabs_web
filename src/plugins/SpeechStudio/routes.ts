@@ -515,11 +515,23 @@ const SOTA_ARCHITECTURES: TTSArchitectureOption[] = [
 ];
 
 function getOracleTtsUrls(): string[] {
+  const isServerless = Boolean(
+    process.env.VERCEL ||
+    process.env.AWS_LAMBDA_FUNCTION_NAME ||
+    process.env.LAMBDA_TASK_ROOT ||
+    (typeof process.cwd === "function" && process.cwd().startsWith("/var/task"))
+  );
   if (process.env.ORACLE_TTS_URL) {
     const custom = process.env.ORACLE_TTS_URL.replace(/\/$/, "");
-    return [custom, "http://10.0.0.188/tts", "http://132.226.190.125/tts"];
+    return isServerless
+      ? [custom, "http://132.226.190.125/tts", "http://10.0.0.188/tts"]
+      : [custom, "http://10.0.0.188/tts", "http://132.226.190.125/tts"];
   }
-  // Internal Oracle VCN line-rate (0.2ms latency) preferred first, with public IP as automatic failover
+  // On Vercel / serverless: MUST use public IP first (private IP 10.0.0.188 is unreachable outside Oracle VCN)
+  if (isServerless) {
+    return ["http://132.226.190.125/tts", "http://10.0.0.188/tts"];
+  }
+  // Internal Oracle VCN line-rate (0.2ms latency) preferred first on VMs, with public IP as automatic failover
   return ["http://10.0.0.188/tts", "http://132.226.190.125/tts"];
 }
 
@@ -676,7 +688,7 @@ export function registerRoutes(router: Router) {
         const isNeuralClone = Boolean(isClonedVoice && effectiveSampleAudio);
         const baseUrl = ttsUrls[0] || "http://10.0.0.188/tts";
 
-        // Step 1: For cloned voice with sample audio, attempt true neural zero-shot cloning with 7.0s window
+        // Step 1: For cloned voice with sample audio, attempt true neural zero-shot cloning with 35s window
         if (isNeuralClone) {
           try {
             const clonePayload = {
@@ -692,7 +704,7 @@ export function registerRoutes(router: Router) {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(clonePayload),
-              signal: AbortSignal.timeout(7000)
+              signal: AbortSignal.timeout(35000)
             });
 
             if (vmResponse.ok) {
@@ -706,7 +718,7 @@ export function registerRoutes(router: Router) {
               }
             }
           } catch (cloneErr: any) {
-            console.warn("[SpeechStudio] Neural clone exceeded 7s window or glitched, activating calibrated acoustic matcher:", cloneErr.message);
+            console.warn("[SpeechStudio] Neural clone exceeded 35s window or glitched, activating calibrated acoustic matcher:", cloneErr.message);
           }
         }
 
@@ -752,7 +764,7 @@ export function registerRoutes(router: Router) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(ttsPayload),
-                signal: AbortSignal.timeout(7500)
+                signal: AbortSignal.timeout(15000)
               });
               if (vmResponse.ok) break;
               const errorMsg = await vmResponse.text().catch(() => "");
