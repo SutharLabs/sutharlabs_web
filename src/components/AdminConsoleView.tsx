@@ -31,6 +31,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import CollapsibleLogDrawer from './CollapsibleLogDrawer';
+import ConfirmModal, { ModalVariant } from './ConfirmModal';
 
 export interface NodeServiceStatus {
   name: string;
@@ -143,8 +144,11 @@ interface AdminConsoleProps {
   theme?: 'light' | 'dark';
 }
 
-export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, userToken, theme = 'dark' }: AdminConsoleProps) {
-  const isLight = theme === 'light';
+export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, userToken, theme }: AdminConsoleProps) {
+  const effectiveTheme: 'light' | 'dark' = theme || (
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+  );
+  const isLight = effectiveTheme === 'light';
   const navigate = useNavigate();
   // Load or initialize registered users from localStorage
   const [users, setUsers] = useState<RegisteredUser[]>([]);
@@ -156,13 +160,15 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
     title: string;
     message: string;
     subtext?: string;
-    icon: 'delete' | 'warning';
+    variant: ModalVariant;
+    isAlert?: boolean;
+    confirmLabel?: string;
     onConfirm: () => void;
   }>({
     open: false,
     title: '',
     message: '',
-    icon: 'delete',
+    variant: 'danger',
     onConfirm: () => {}
   });
 
@@ -496,7 +502,8 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
         title: 'Action Blocked',
         message: 'Self-role modification is locked.',
         subtext: 'You cannot change your own administrator role while logged in.',
-        icon: 'warning',
+        variant: 'warning',
+        isAlert: true,
         onConfirm: closeConfirmModal
       });
       return;
@@ -518,7 +525,8 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
           open: true,
           title: 'Role Update Failed',
           message: errData.error || 'Failed to update role.',
-          icon: 'warning',
+          variant: 'warning',
+          isAlert: true,
           onConfirm: closeConfirmModal
         });
         return;
@@ -546,7 +554,8 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
         title: 'Action Blocked',
         message: 'Self-deletion is locked.',
         subtext: 'The active workspace administrator account cannot be deleted while logged in.',
-        icon: 'warning',
+        variant: 'warning',
+        isAlert: true,
         onConfirm: closeConfirmModal
       });
       return;
@@ -557,7 +566,8 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       title: 'Delete User Record',
       message: `Permanently delete "${targetUser.name}"?`,
       subtext: `This will purge ${targetUser.email} from the registry along with their portfolio and workspace data. This action cannot be undone.`,
-      icon: 'delete',
+      variant: 'danger',
+      confirmLabel: 'Delete User',
       onConfirm: async () => {
         closeConfirmModal();
         try {
@@ -635,55 +645,63 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
       {/* ===== CREDENTIAL REVEAL MODAL ===== */}
       {credentialModal.open && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          style={{ background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)' }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={(e) => { if (e.target === e.currentTarget) setCredentialModal(p => ({ ...p, open: false })); }}
         >
           <div
-            className="rounded-2xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden animate-[fadeInScale_0.2s_ease-out]"
-            style={{
-              background: 'var(--surface-color)',
-              border: '1px solid var(--secondary-color)',
-            }}
+            className={`relative rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden border transition-all animate-in fade-in zoom-in-95 duration-150 ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]'
+            }`}
           >
-            <div className="bg-gradient-to-r from-purple-500 to-fuchsia-400 h-1.5 w-full" />
+            {/* Top accent bar: Sovereign single tone purple */}
+            <div className="bg-[#ce5dff] h-1 w-full" />
             <div className="p-6">
               <div className="flex flex-col items-center text-center space-y-3 mb-6">
-                <div className="w-12 h-12 rounded-full flex items-center justify-center bg-purple-500/20 text-purple-400 mb-2 border border-purple-500/30">
-                  <UserPlus className="w-6 h-6" />
+                <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border shadow-xs ${
+                  isLight ? 'bg-purple-50 text-purple-600 border-purple-200' : 'bg-purple-500/15 text-purple-400 border-purple-500/30'
+                }`}>
+                  <UserPlus className="w-5 h-5 shrink-0" />
                 </div>
-                <h3 className="text-xl font-bold" style={{ color: 'var(--on-surface-color)' }}>Account Provisioned</h3>
-                <p className="text-sm font-medium" style={{ color: 'var(--on-surface-variant-color)' }}>
+                <h3 className="text-base font-bold tracking-tight">Account Provisioned</h3>
+                <p className={`text-xs font-mono ${isLight ? 'text-slate-600' : 'text-gray-400'}`}>
                   A temporary access key has been generated for {credentialModal.email}
                 </p>
-                <div className="text-xs px-3 py-1.5 rounded-full bg-amber-500/10 text-amber-500 border border-amber-500/20">
+                <div className={`text-[11px] font-mono px-3 py-1 rounded-full border ${
+                  isLight ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-amber-500/10 text-amber-400 border-amber-500/25'
+                }`}>
                   This credential will only be shown once.
                 </div>
               </div>
 
               <div 
-                className="bg-black/20 p-4 rounded-xl border border-dashed border-purple-500/40 relative group cursor-pointer hover:bg-black/30 transition-all flex items-center justify-between"
+                className={`p-3.5 rounded-xl border border-dashed transition-all cursor-pointer flex items-center justify-between select-all ${
+                  isLight 
+                    ? 'bg-slate-100 hover:bg-slate-200/70 border-purple-300 text-slate-900' 
+                    : 'bg-[#121215] hover:bg-white/5 border-purple-500/40 text-[#e5e1e4]'
+                }`}
                 onClick={() => {
                   navigator.clipboard.writeText(credentialModal.password);
                   setCredentialModal(p => ({ ...p, copied: true }));
                 }}
               >
-                <div className="font-mono text-lg tracking-wider text-[#ce5dff] font-bold select-all">
+                <div className="font-mono text-base tracking-wider text-[#ce5dff] font-bold select-all">
                   {credentialModal.password}
                 </div>
-                <div className="flex flex-col items-center text-[10px] text-on-surface-variant font-mono">
-                  {credentialModal.copied ? <CheckCircle className="w-4 h-4 text-green-400 mb-1" /> : <ShieldAlert className="w-4 h-4 mb-1" />}
+                <div className="flex flex-col items-center text-[10px] text-on-surface-variant font-mono shrink-0 ml-2">
+                  {credentialModal.copied ? <CheckCircle className="w-4 h-4 text-emerald-400 shrink-0 mb-0.5" /> : <ShieldAlert className="w-4 h-4 shrink-0 mb-0.5" />}
                   {credentialModal.copied ? 'COPIED' : 'COPY'}
                 </div>
               </div>
 
-              <div className="mt-6">
+              <div className="mt-5">
                 <button
+                  type="button"
                   onClick={() => setCredentialModal(p => ({ ...p, open: false }))}
-                  className="w-full py-2.5 rounded-lg font-bold text-sm transition-all"
-                  style={{
-                    background: 'var(--secondary-color)',
-                    color: 'var(--on-secondary-color)'
-                  }}
+                  className={`w-full h-9 rounded-lg font-mono font-bold text-xs uppercase tracking-wider transition-all cursor-pointer border shadow-sm ${
+                    isLight
+                      ? 'bg-purple-600 hover:bg-purple-700 text-white border-purple-700 shadow-purple-500/20'
+                      : 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-white border-purple-500/50 shadow-purple-500/10'
+                  }`}
                 >
                   ACKNOWLEDGE & CLOSE
                 </button>
@@ -693,102 +711,19 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
         </div>
       )}
 
-      {/* ===== CUSTOM CONFIRMATION MODAL ===== */}
-      {confirmModal.open && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center"
-          onClick={(e) => { if (e.target === e.currentTarget) closeConfirmModal(); }}
-          style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)' }}
-        >
-          <div
-            className="rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden animate-[fadeInScale_0.18s_ease-out]"
-            style={{
-              background: 'var(--surface-color)',
-              border: '1px solid var(--outline-variant-color)',
-            }}
-          >
-            {/* Coloured accent top bar */}
-            <div className={`h-1 w-full ${confirmModal.icon === 'delete' ? 'bg-gradient-to-r from-red-500 to-red-300' : 'bg-gradient-to-r from-amber-500 to-yellow-300'}`} />
-
-            <div className="p-6">
-              {/* Icon + title */}
-              <div className="flex items-start gap-4 mb-4">
-                <div
-                  className="w-11 h-11 rounded-xl flex items-center justify-center shrink-0"
-                  style={{
-                    background: confirmModal.icon === 'delete' ? 'var(--error-container-color)' : 'color-mix(in srgb, #f59e0b 15%, var(--surface-container-color))',
-                    border: `1px solid ${confirmModal.icon === 'delete' ? 'var(--error-color)' : '#f59e0b'}`,
-                    opacity: 0.9
-                  }}
-                >
-                  <span
-                    className="material-symbols-outlined text-xl"
-                    style={{ color: confirmModal.icon === 'delete' ? 'var(--error-color)' : '#d97706' }}
-                  >
-                    {confirmModal.icon === 'delete' ? 'delete_forever' : 'warning'}
-                  </span>
-                </div>
-                <div>
-                  <h3
-                    className="text-[15px] font-bold tracking-tight"
-                    style={{ color: 'var(--on-surface-color)' }}
-                  >
-                    {confirmModal.title}
-                  </h3>
-                  <p
-                    className="text-[13px] mt-0.5 font-medium"
-                    style={{ color: 'var(--on-surface-color)' }}
-                  >
-                    {confirmModal.message}
-                  </p>
-                </div>
-              </div>
-
-              {/* Subtext */}
-              {confirmModal.subtext && (
-                <p
-                  className="text-[12px] leading-relaxed mb-5 pl-[60px] -mt-1"
-                  style={{ color: 'var(--on-surface-variant-color)' }}
-                >
-                  {confirmModal.subtext}
-                </p>
-              )}
-
-              {/* Action buttons */}
-              <div className="flex gap-3 justify-end">
-                <button
-                  type="button"
-                  onClick={closeConfirmModal}
-                  className="px-4 py-2 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer hover:opacity-80"
-                  style={{
-                    color: 'var(--on-surface-variant-color)',
-                    background: 'var(--surface-container-color)',
-                    border: '1px solid var(--outline-variant-color)',
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmModal.onConfirm}
-                  className="px-5 py-2 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer hover:opacity-80"
-                  style={confirmModal.icon === 'delete' ? {
-                    color: 'var(--on-error-color)',
-                    background: 'var(--error-color)',
-                    border: '1px solid var(--error-color)',
-                  } : {
-                    color: '#ffffff',
-                    background: '#d97706',
-                    border: '1px solid #d97706',
-                  }}
-                >
-                  {confirmModal.icon === 'delete' ? 'Delete' : 'OK'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ===== ZERO NATIVE BROWSER CONFIRMATION MODAL ===== */}
+      <ConfirmModal
+        isOpen={confirmModal.open}
+        onClose={closeConfirmModal}
+        onConfirm={confirmModal.onConfirm}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        subtext={confirmModal.subtext}
+        variant={confirmModal.variant}
+        isAlert={confirmModal.isAlert}
+        confirmLabel={confirmModal.confirmLabel}
+        theme={effectiveTheme}
+      />
 
       {/* View Title */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-outline/20 pb-4 gap-4">

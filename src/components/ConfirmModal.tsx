@@ -38,11 +38,14 @@ export default function ConfirmModal({
   cancelLabel = 'Cancel',
   variant = 'primary',
   icon,
-  theme = 'dark',
+  theme,
   isLoading = false,
   isAlert = false
 }: ConfirmModalProps) {
-  const isLight = theme === 'light';
+  const effectiveTheme: 'light' | 'dark' = theme || (
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light'
+  );
+  const isLight = effectiveTheme === 'light';
 
   // Handle ESC key to dismiss modal
   useEffect(() => {
