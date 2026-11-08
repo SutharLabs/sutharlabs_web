@@ -22,7 +22,7 @@ import { resetSimulator } from "./src/plugins/StockTracker/simulator/index.js";
 
 import { isEncryptedPluginPackage, resolvePluginArchiveBuffer, encryptPluginPackage } from "./src/plugins/security/pluginCrypto.js";
 
-import { getSystemTelemetry } from "./src/services/telemetryService.js";
+import { getSystemTelemetry, getFleetTelemetry } from "./src/services/telemetryService.js";
 
 import { notifyAdminNewInquiry } from "./src/services/emailService.js";
 
@@ -1934,21 +1934,24 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
   // GET /api/admin/telemetry
 
   app.get("/api/admin/telemetry", async (req, res) => {
-
     try {
-
       const data = getSystemTelemetry();
-
       res.json(data);
-
     } catch (error) {
-
       console.error("Telemetry error:", error);
-
       res.status(500).json({ error: "Failed to gather host telemetry." });
-
     }
+  });
 
+  // GET /api/admin/fleet-telemetry - Multi-Node Realtime Telemetry (VM 1, VM 2, VM 3, Vercel)
+  app.get("/api/admin/fleet-telemetry", async (req, res) => {
+    try {
+      const data = await getFleetTelemetry(req.headers);
+      res.json(data);
+    } catch (error) {
+      console.error("Fleet telemetry error:", error);
+      res.status(500).json({ error: "Failed to gather fleet telemetry." });
+    }
   });
 
 
