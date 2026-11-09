@@ -15,14 +15,14 @@ import OpenLocalWorkspaceModal from './OpenLocalWorkspaceModal.js';
 import CollapsibleLogDrawer from '../../../components/CollapsibleLogDrawer.js';
 import { saveVault, loadVault, getVaultStorageKey } from '../utils/vaultStorage.js';
 import { telemetryLogger } from '../../../services/telemetryLogger.js';
-import { 
+import {
   Layers,
-  Save, 
-  Download, 
-  Sparkles, 
-  BookOpen, 
-  Layout, 
-  Check, 
+  Save,
+  Download,
+  Sparkles,
+  BookOpen,
+  Layout,
+  Check,
   Search,
   Command,
   Maximize2,
@@ -78,7 +78,7 @@ export default function DocNexusStudio({
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
-    } catch {}
+    } catch { }
     return INITIAL_DOCS;
   });
   const [activeDocId, setActiveDocId] = useState<string>(() => {
@@ -375,48 +375,43 @@ export default function DocNexusStudio({
         el.id === selectedCanvasElement.id ? { ...el, ...updatedFields } : el
       );
       handleContentChange(JSON.stringify({ ...scene, elements: updatedElements }));
-    } catch {}
+    } catch { }
   };
 
   return (
     <div className="flex flex-col h-full overflow-hidden select-none">
       {/* Top Studio Ribbon Bar (World-Class Creative Suite Header) */}
       {/* Top Studio Ribbon Bar (World-Class Creative Suite Header - Zero Rollover) */}
-      <header className={`px-3 sm:px-4 py-2 border-b flex items-center justify-between gap-2.5 z-20 backdrop-blur-md transition-colors ${
-        isLight 
-          ? 'bg-white/95 border-slate-200/90 text-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.03)]' 
+      <header className={`px-3 sm:px-4 py-2 border-b flex items-center justify-between gap-2.5 z-20 backdrop-blur-md transition-colors ${isLight
+          ? 'bg-white/95 border-slate-200/90 text-slate-800 shadow-[0_1px_3px_rgba(0,0,0,0.03)]'
           : 'bg-[#08080c]/95 border-white/[0.08] text-white shadow-[0_4px_20px_rgba(0,0,0,0.3)]'
-      }`}>
+        }`}>
         {/* Left: Breadcrumbs & Document Title (Constrained width to prevent collisions) */}
         <div className="flex items-center gap-2 shrink-0 min-w-0 max-w-[260px] sm:max-w-[320px]">
-          <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-violet-600 via-indigo-600 to-cyan-400 p-[1px] shadow-sm shrink-0">
-            <div className={`w-full h-full rounded-[7px] flex items-center justify-center ${
-              isLight ? 'bg-white text-indigo-600' : 'bg-[#0e0e14] text-cyan-300'
+          <div className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 shadow-sm ${isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-primary/10 border-primary/25 text-[#00dbe7]'
             }`}>
-              <BookOpen className="w-3.5 h-3.5" />
-            </div>
+            <BookOpen className="w-3.5 h-3.5 shrink-0" />
           </div>
-          
+
           <div className="min-w-0 flex items-center gap-1.5 text-xs font-sans">
             <span className={`hidden sm:inline font-medium text-[11px] shrink-0 ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
               {activeDocument?.metadata?.category || 'Vault'} /
             </span>
-            
+
             {/* Document Title Input */}
             <input
               type="text"
               value={activeDocument?.title || 'Untitled Document'}
               onChange={e => handleTitleChange(e.target.value)}
               placeholder="Document Title"
-              className={`bg-transparent border-b border-transparent text-xs sm:text-sm font-semibold tracking-tight focus:outline-none truncate font-sans w-28 sm:w-36 md:w-48 px-1 py-0.5 rounded transition-colors ${
-                isLight 
-                  ? 'text-slate-900 hover:bg-slate-100/60 hover:border-slate-300 focus:border-indigo-500' 
-                  : 'text-white hover:bg-white/[0.04] hover:border-white/20 focus:border-cyan-400'
-              }`}
+              className={`bg-transparent border-b border-transparent text-xs sm:text-sm font-semibold tracking-tight focus:outline-none truncate font-sans w-28 sm:w-36 md:w-48 px-1 py-0.5 rounded transition-colors ${isLight
+                  ? 'text-slate-900 hover:bg-slate-100/60 hover:border-slate-300 focus:border-sky-500'
+                  : 'text-white hover:bg-white/[0.04] hover:border-white/20 focus:border-[#00dbe7]'
+                }`}
             />
 
             {/* Compact Live Cloud Status Indicator */}
-            <span 
+            <span
               title="Saved to Sovereign Cloud Vault"
               className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0 cursor-help"
             />
@@ -424,11 +419,10 @@ export default function DocNexusStudio({
         </div>
 
         {/* Center: Apple / Figma / Canva-Style Segmented Paradigm Switcher Dock (Compact & Balanced) */}
-        <div className={`flex items-center p-0.5 sm:p-1 rounded-xl border text-xs font-sans shrink-0 transition-all ${
-          isLight 
-            ? 'bg-slate-100/90 border-slate-200/80 shadow-inner' 
+        <div className={`flex items-center p-0.5 sm:p-1 rounded-xl border text-xs font-sans shrink-0 transition-all ${isLight
+            ? 'bg-slate-100/90 border-slate-200/80 shadow-inner'
             : 'bg-[#121218]/90 border-white/[0.08] shadow-[inset_0_1px_2px_rgba(0,0,0,0.4)]'
-        }`}>
+          }`}>
           {FORMAT_TABS.map(tab => {
             const isSelected = activeDocument?.format === tab.format;
             const IconComp = tab.icon;
@@ -437,17 +431,16 @@ export default function DocNexusStudio({
                 key={tab.format}
                 onClick={() => handleSwitchFormat(tab.format)}
                 title={`Switch to ${tab.label} Mode`}
-                className={`px-2 sm:px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium transition-all cursor-pointer relative ${
-                  isSelected
+                className={`px-2 sm:px-2.5 py-1 rounded-lg flex items-center gap-1.5 font-medium transition-all cursor-pointer relative ${isSelected
                     ? isLight
-                      ? 'bg-white text-indigo-600 shadow-sm font-semibold border border-slate-200/60'
-                      : 'bg-[#1e1e28] text-cyan-300 shadow-[0_2px_8px_rgba(0,0,0,0.5)] font-semibold border border-cyan-400/30'
+                      ? 'bg-white text-sky-600 shadow-sm font-semibold border border-slate-200/60'
+                      : 'bg-[#1e1e28] text-[#00dbe7] shadow-[0_2px_8px_rgba(0,0,0,0.5)] font-semibold border border-[#00dbe7]/30'
                     : isLight
                       ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-200/50'
                       : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
-                }`}
+                  }`}
               >
-                <IconComp className={`w-3.5 h-3.5 shrink-0 ${isSelected ? (isLight ? 'text-indigo-600' : 'text-cyan-400') : 'opacity-70'}`} />
+                <IconComp className={`w-3.5 h-3.5 shrink-0 ${isSelected ? (isLight ? 'text-sky-600' : 'text-[#00dbe7]') : 'opacity-70'}`} />
                 <span className="hidden md:inline text-[11px] font-medium">{tab.label}</span>
               </button>
             );
@@ -459,17 +452,15 @@ export default function DocNexusStudio({
           {/* Quick Find (⌘K) */}
           <button
             onClick={() => setIsCommandPaletteOpen(true)}
-            className={`p-1.5 sm:px-2 sm:py-1.5 rounded-xl flex items-center gap-1 cursor-pointer border transition-all text-xs ${
-              isLight 
-                ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900 shadow-xs' 
+            className={`p-1.5 sm:px-2 sm:py-1.5 rounded-xl flex items-center gap-1 cursor-pointer border transition-all text-xs ${isLight
+                ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900 shadow-xs'
                 : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-300 hover:text-white'
-            }`}
+              }`}
             title="Quick Find & Command Palette (Ctrl+K)"
           >
-            <Search className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
-            <kbd className={`hidden xl:inline text-[9px] px-1 py-0.5 rounded font-mono font-medium ${
-              isLight ? 'bg-slate-100 text-slate-500 border border-slate-200' : 'bg-black/40 text-slate-400 border border-white/10'
-            }`}>
+            <Search className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`} />
+            <kbd className={`hidden xl:inline text-[9px] px-1 py-0.5 rounded font-mono font-medium ${isLight ? 'bg-slate-100 text-slate-500 border border-slate-200' : 'bg-black/40 text-slate-400 border border-white/10'
+              }`}>
               ⌘K
             </kbd>
           </button>
@@ -477,28 +468,26 @@ export default function DocNexusStudio({
           {/* Browse Document / Load Local Directory Button */}
           <button
             onClick={() => setIsOpenLocalModalOpen(true)}
-            className={`px-2.5 py-1.5 rounded-xl font-medium flex items-center gap-1.5 cursor-pointer border transition-all shadow-xs ${
-              isLight 
-                ? 'bg-indigo-50/80 hover:bg-indigo-100/80 border-indigo-200/80 text-indigo-700' 
-                : 'bg-cyan-500/10 hover:bg-cyan-500/20 border-cyan-400/30 text-cyan-300'
-            }`}
+            className={`px-2.5 py-1.5 rounded-xl font-medium flex items-center gap-1.5 cursor-pointer border transition-all shadow-xs ${isLight
+                ? 'bg-sky-50 hover:bg-sky-100/80 border-sky-200 text-sky-700'
+                : 'bg-[#00dbe7]/10 hover:bg-[#00dbe7]/20 border-[#00dbe7]/30 text-[#00dbe7]'
+              }`}
             title="Browse Local Document or Load Directory"
           >
-            <HardDrive className="w-3.5 h-3.5" />
+            <HardDrive className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden lg:inline text-xs">Open Local</span>
           </button>
 
           {/* Templates Trigger */}
           <button
             onClick={() => setIsTemplateModalOpen(true)}
-            className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-medium flex items-center gap-1.5 cursor-pointer border transition-all shadow-xs ${
-              isLight 
-                ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900' 
+            className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-medium flex items-center gap-1.5 cursor-pointer border transition-all shadow-xs ${isLight
+                ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900'
                 : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200 hover:text-white'
-            }`}
+              }`}
             title="Browse Document Blueprints & Templates"
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-500" />
+            <Sparkles className="w-3.5 h-3.5 text-amber-500 shrink-0" />
             <span className="hidden xl:inline text-xs">Templates</span>
           </button>
 
@@ -506,55 +495,56 @@ export default function DocNexusStudio({
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-medium flex items-center gap-1.5 cursor-pointer border transition-all shadow-xs ${
-              saveSuccess
-                ? isLight 
-                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300' 
+            className={`p-1.5 sm:px-2.5 sm:py-1.5 rounded-xl font-medium flex items-center gap-1.5 cursor-pointer border transition-all shadow-xs ${saveSuccess
+                ? isLight
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
                   : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
                 : isLight
                   ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700 hover:text-slate-900'
                   : 'bg-white/[0.05] hover:bg-white/[0.09] text-white border-white/10'
-            }`}
+              }`}
             title="Save to Sovereign Vault"
           >
             {saveSuccess ? (
               <>
-                <Check className="w-3.5 h-3.5 text-emerald-500" />
+                <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
                 <span className="hidden xl:inline text-xs">Synced</span>
               </>
             ) : (
               <>
-                <Save className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
+                <Save className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`} />
                 <span className="hidden xl:inline text-xs">{isSaving ? 'Saving...' : 'Save'}</span>
               </>
             )}
           </button>
 
-          {/* Canva-Grade Luxury Export Primary CTA Button */}
+          {/* Sovereign Luxury Export Primary CTA Button */}
           <button
             onClick={() => setIsExportModalOpen(true)}
-            className="px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1 cursor-pointer transition-all shadow-sm bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 hover:from-violet-500 hover:via-indigo-500 hover:to-cyan-400 text-white hover:shadow-[0_0_15px_rgba(99,102,241,0.4)] active:scale-95 text-xs"
+            className={`px-3 py-1.5 rounded-xl font-semibold flex items-center gap-1.5 cursor-pointer transition-all shadow-sm active:scale-95 text-xs ${isLight
+                ? 'bg-sky-500 hover:bg-sky-600 text-white border border-sky-600 shadow-sky-500/20'
+                : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border border-[#00dbe7]/50 shadow-[#00dbe7]/10'
+              }`}
             title="Export Document (PDF, Markdown, HTML, CSV, PNG)"
           >
-            <Download className="w-3.5 h-3.5" />
+            <Download className="w-3.5 h-3.5 shrink-0" />
             <span className="hidden sm:inline">Export</span>
           </button>
 
           {/* Zen Focus Mode Toggle */}
           <button
             onClick={toggleZenMode}
-            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${
-              isZenMode
-                ? isLight 
-                  ? 'bg-indigo-50 text-indigo-600 border-indigo-200 shadow-xs' 
-                  : 'bg-cyan-500/20 text-cyan-300 border-cyan-400/40 shadow-[0_0_10px_rgba(0,219,231,0.2)]'
+            className={`p-1.5 rounded-xl border transition-all cursor-pointer ${isZenMode
+                ? isLight
+                  ? 'bg-sky-50 text-sky-600 border-sky-200 shadow-xs'
+                  : 'bg-[#00dbe7]/20 text-[#00dbe7] border-[#00dbe7]/40 shadow-[0_0_10px_rgba(0,219,231,0.2)]'
                 : isLight
                   ? 'bg-white hover:bg-slate-50 border-slate-200 text-slate-600 hover:text-slate-900 shadow-xs'
                   : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-400 hover:text-white'
-            }`}
+              }`}
             title={isZenMode ? "Exit Zen Focus Mode" : "Enter Zen Focus Mode"}
           >
-            {isZenMode ? <Minimize2 className="w-3.5 h-3.5" /> : <Maximize2 className="w-3.5 h-3.5" />}
+            {isZenMode ? <Minimize2 className="w-3.5 h-3.5 shrink-0" /> : <Maximize2 className="w-3.5 h-3.5 shrink-0" />}
           </button>
         </div>
       </header>

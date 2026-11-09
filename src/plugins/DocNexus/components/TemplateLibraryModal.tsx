@@ -52,8 +52,8 @@ export default function TemplateLibraryModal({
           isLight ? 'border-slate-200' : 'border-outline/10'
         }`}>
           <div className="flex items-center gap-2.5">
-            <div className={`p-2 rounded-lg ${isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-[#00dbe7]/15 text-[#74f5ff]'}`}>
-              <Sparkles className="w-5 h-5" />
+            <div className={`p-2 rounded-lg border ${isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-[#00dbe7]/15 border-[#00dbe7]/25 text-[#74f5ff]'}`}>
+              <Sparkles className="w-5 h-5 shrink-0" />
             </div>
             <div>
               <h2 className={`text-lg font-bold font-sans ${isLight ? 'text-slate-900' : 'text-white'}`}>SutharLabs Template Library</h2>
@@ -85,8 +85,8 @@ export default function TemplateLibraryModal({
                 className={`px-3 py-1.5 rounded-lg text-xs font-mono font-semibold transition-all cursor-pointer ${
                   isSelected
                     ? isLight
-                      ? 'bg-indigo-600 text-white shadow-xs'
-                      : 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/40'
+                      ? 'bg-sky-500 text-white shadow-xs font-bold'
+                      : 'bg-[#00dbe7]/20 text-[#74f5ff] border border-[#00dbe7]/40 font-bold'
                     : isLight
                       ? 'bg-white border border-slate-200 text-slate-600 hover:text-slate-900'
                       : 'bg-surface-container-low text-on-surface-variant hover:text-white'
@@ -108,16 +108,16 @@ export default function TemplateLibraryModal({
                 key={tpl.id}
                 className={`p-4 rounded-xl border transition-all flex flex-col justify-between group ${
                   isLight 
-                    ? 'bg-slate-50 border-slate-200 hover:border-indigo-400' 
+                    ? 'bg-slate-50 border-slate-200 hover:border-sky-400' 
                     : 'bg-surface-container-low/40 border-outline/15 hover:border-[#00dbe7]/50 hover:bg-white/[0.02]'
                 }`}
               >
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
                     <span className={`p-2 rounded-lg ${
-                      isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-white/5 text-[#74f5ff]'
+                      isLight ? 'bg-sky-50 text-sky-600' : 'bg-white/5 text-[#74f5ff]'
                     }`}>
-                      <IconComp className="w-4 h-4" />
+                      <IconComp className="w-4 h-4 shrink-0" />
                     </span>
                     <span className={`font-mono text-[10px] px-2 py-0.5 rounded uppercase border ${
                       isLight ? 'bg-slate-200 text-slate-700 border-slate-300' : 'bg-black/40 text-on-surface-variant border-white/5'
@@ -128,7 +128,7 @@ export default function TemplateLibraryModal({
 
                   <div>
                     <h3 className={`font-bold text-sm transition-colors ${
-                      isLight ? 'text-slate-900 group-hover:text-indigo-600' : 'text-on-surface group-hover:text-[#00dbe7]'
+                      isLight ? 'text-slate-900 group-hover:text-sky-600' : 'text-on-surface group-hover:text-[#00dbe7]'
                     }`}>
                       {tpl.name}
                     </h3>
@@ -155,8 +155,8 @@ export default function TemplateLibraryModal({
                     }}
                     className={`px-3 py-1.5 rounded-lg font-mono text-xs font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all ${
                       isLight 
-                        ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs' 
-                        : 'bg-[#00dbe7]/20 text-[#74f5ff] hover:bg-[#00dbe7]/30 border border-[#00dbe7]/30'
+                        ? 'bg-sky-500 hover:bg-sky-600 text-white shadow-xs font-bold' 
+                        : 'bg-[#00dbe7]/20 text-[#74f5ff] hover:bg-[#00dbe7]/30 border border-[#00dbe7]/30 font-bold'
                     }`}
                   >
                     Use Blueprint

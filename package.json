@@ -20,6 +20,8 @@
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
+    "@huggingface/transformers": "^4.3.2",
+    "@imgly/background-removal": "^1.7.0",
     "@neondatabase/serverless": "^1.1.0",
     "@prisma/adapter-better-sqlite3": "^7.8.0",
     "@prisma/adapter-neon": "^7.9.1",

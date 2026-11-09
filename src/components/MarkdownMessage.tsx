@@ -398,31 +398,106 @@ export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({
       }
 
       // 7. Bullet or Numbered Lists
-      if (line.trim().match(/^([-*+]|\d+\.)\s+/)) {
-        const listItems: { text: string; isOrdered: boolean }[] = [];
-        while (i < lines.length && lines[i].trim().match(/^([-*+]|\d+\.)\s+/)) {
-          const match = lines[i].trim().match(/^([-*+]|\d+\.)\s+(.*)$/);
-          if (match) {
-            const isOrdered = /^\d+\./.test(match[1]);
-            listItems.push({ text: match[2], isOrdered });
+      const listMatch = line.trim().match(/^([-*+]|(\d+)\.)\s+(.*)$/);
+      if (listMatch) {
+        const isOrderedFirst = Boolean(listMatch[2]);
+        const listItems: { text: string; num?: number; isOrdered: boolean }[] = [];
+
+        while (i < lines.length) {
+          const curTrim = lines[i].trim();
+          const itemMatch = curTrim.match(/^([-*+]|(\d+)\.)\s+(.*)$/);
+          if (itemMatch) {
+            const isOrdered = Boolean(itemMatch[2]);
+            // If list type changed (e.g. from ordered to bullet) without separation, break
+            if (isOrdered !== isOrderedFirst && listItems.length > 0) {
+              break;
+            }
+            const explicitNum = isOrdered ? parseInt(itemMatch[2], 10) : undefined;
+            listItems.push({
+              text: itemMatch[3],
+              num: explicitNum,
+              isOrdered
+            });
+            i++;
+
+            // Handle multi-line continuation or loose lists separated by a blank line
+            while (i < lines.length) {
+              const nextTrim = lines[i].trim();
+              if (nextTrim === '') {
+                // If it's a blank line, check if the subsequent line continues the same list type
+                if (i + 1 < lines.length) {
+                  const afterBlank = lines[i + 1].trim();
+                  const afterMatch = afterBlank.match(/^([-*+]|(\d+)\.)\s+/);
+                  if (afterMatch && Boolean(afterMatch[2]) === isOrderedFirst) {
+                    // Skip this single blank line and continue list parsing
+                    i++;
+                    break;
+                  }
+                }
+                break;
+              }
+              // If it's another list item, stop continuation so outer loop processes it
+              if (nextTrim.match(/^([-*+]|\d+\.)\s+/)) {
+                break;
+              }
+              // If it's another markdown block boundary, break
+              if (
+                nextTrim.startsWith('```') ||
+                nextTrim.startsWith('#') ||
+                nextTrim.startsWith('>') ||
+                nextTrim.match(/^(---|---|\*\*\*)$/) ||
+                (nextTrim.startsWith('|') && nextTrim.endsWith('|'))
+              ) {
+                break;
+              }
+              // Continuation line of the current list item
+              listItems[listItems.length - 1].text += '\n' + lines[i];
+              i++;
+            }
+          } else {
+            break;
           }
-          i++;
         }
-        const isOrderedList = listItems[0]?.isOrdered;
+
         elements.push(
-          isOrderedList ? (
-            <ol key={blockKey++} className="my-2 ml-4 list-decimal space-y-1 text-xs text-on-surface">
-              {listItems.map((item, idx) => (
-                <li key={idx} className="pl-1 leading-relaxed">
-                  {renderInlineSpans(item.text)}
-                </li>
-              ))}
-            </ol>
+          isOrderedFirst ? (
+            <div key={blockKey++} className="my-2.5 space-y-2 text-xs text-on-surface">
+              {listItems.map((item, idx) => {
+                const displayNum = item.num !== undefined && !isNaN(item.num) ? item.num : idx + 1;
+                return (
+                  <div key={idx} className="flex items-start gap-2 leading-relaxed">
+                    <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded text-[10px] font-mono font-bold shrink-0 select-none mt-0.5 ${
+                      isLight
+                        ? 'bg-sky-50 text-sky-700 border border-sky-200'
+                        : 'bg-[#00dbe7]/10 text-[#00dbe7] border border-[#00dbe7]/30'
+                    }`}>
+                      {displayNum}.
+                    </span>
+                    <div className="flex-1 min-w-0 pt-0.5">
+                      {item.text.split('\n').map((subLine, sIdx) => (
+                        <div key={sIdx} className={sIdx > 0 ? 'mt-1 text-on-surface-variant' : ''}>
+                          {renderInlineSpans(subLine)}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           ) : (
-            <ul key={blockKey++} className="my-2 ml-4 list-disc space-y-1 text-xs text-on-surface">
+            <ul key={blockKey++} className="my-2 space-y-1.5 text-xs text-on-surface">
               {listItems.map((item, idx) => (
-                <li key={idx} className="pl-1 leading-relaxed">
-                  {renderInlineSpans(item.text)}
+                <li key={idx} className="flex items-start gap-2 leading-relaxed">
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full mt-2 shrink-0 ${
+                    isLight ? 'bg-sky-600' : 'bg-[#00dbe7]'
+                  }`} />
+                  <div className="flex-1 min-w-0 pt-0.5">
+                    {item.text.split('\n').map((subLine, sIdx) => (
+                      <div key={sIdx} className={sIdx > 0 ? 'mt-1 text-on-surface-variant' : ''}>
+                        {renderInlineSpans(subLine)}
+                      </div>
+                    ))}
+                  </div>
                 </li>
               ))}
             </ul>

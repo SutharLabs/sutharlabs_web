@@ -42,7 +42,8 @@ const INSTALLED_PLUGINS: { name: WorkspaceTab; icon: string; size: string }[] = 
   { name: 'Doc Nexus', icon: 'menu_book', size: '15.6 KB' },
   { name: 'Speech Studio', icon: 'record_voice_over', size: '14.8 KB' },
   { name: 'Image Studio', icon: 'photo_filter', size: '16.5 KB' },
-  { name: 'StudioCast', icon: 'podcasts', size: '32.1 KB' }
+  { name: 'StudioCast', icon: 'podcasts', size: '32.1 KB' },
+  { name: 'Motion Studio', icon: 'movie_creation', size: '28.6 KB' }
 ];
 
 const ADMIN_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
@@ -83,6 +84,7 @@ const ROUTE_MAP: Record<string, string> = {
   'Image Studio': '/workspace/image-studio',
   'Image Studio & 4K Upscaler': '/workspace/image-studio',
   'StudioCast': '/workspace/podcast',
+  'Motion Studio': '/workspace/motion-studio',
   'Manage Plugins': '/admin/manage-plugins',
   'Manage Apps': '/admin/manage-apps',
   'Manage Portfolios': '/admin/manage-portfolios',
@@ -1125,6 +1127,8 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 'Speech Studio',
                 'Image Studio',
                 'Image Studio & 4K Upscaler',
+                'StudioCast',
+                'Motion Studio',
                 'Plugin Store',
                 'Profile & Settings',
                 'Admin Console',
@@ -1138,13 +1142,24 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 'Manage Portfolios',
                 'README'
               ].includes(activeTab) && !getClientPluginByName(activeTab) && !getClientPluginByRoute(location.pathname) && (
-                <StockTrackerView 
-                  logs={logs} 
-                  onAddLog={addLog} 
-                  userEmail={user.email} 
-                  userToken={user.token || ''} 
-                  userRole={user.role} 
-                />
+                <div className="flex-1 flex flex-col items-center justify-center p-8 text-center min-h-[400px]">
+                  <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-center justify-center mb-4 shadow-sm">
+                    <AlertTriangle className="w-6 h-6 text-amber-400 shrink-0" />
+                  </div>
+                  <h3 className="text-lg font-bold font-sans text-on-surface mb-1">
+                    Workspace View Not Found
+                  </h3>
+                  <p className="text-xs text-on-surface-variant font-mono max-w-md mb-4 leading-relaxed">
+                    The requested workspace tab &ldquo;{activeTab}&rdquo; or route is currently unavailable or unmapped.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('Stock Tracker')}
+                    className="h-8 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/50 transition-all cursor-pointer shadow-sm"
+                  >
+                    Return to Workspace
+                  </button>
+                </div>
               )}
             </ErrorBoundary>
           </div>

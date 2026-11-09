@@ -896,7 +896,7 @@ export default function SpeechStudioView({
     try {
       await fetch(`/api/plugins/speech-studio/jobs/${queueInfo.jobId}/cancel`, {
         method: 'POST',
-        headers
+        headers: { 'Content-Type': 'application/json' }
       });
       setQueueInfo(null);
       setIsSynthesizing(false);
@@ -904,7 +904,7 @@ export default function SpeechStudioView({
       setSynthesisOverallStatus('idle');
       onAddLog({
         timestamp: new Date().toLocaleTimeString(),
-        type: 'WARN',
+        type: 'ALERT',
         message: 'Queued synthesis was cancelled by user.'
       });
     } catch (e: any) {
@@ -916,11 +916,10 @@ export default function SpeechStudioView({
     if (queueInfo?.jobId) {
       fetch(`/api/plugins/speech-studio/jobs/${queueInfo.jobId}/cancel`, {
         method: 'POST',
-        headers
+        headers: { 'Content-Type': 'application/json' }
       }).catch(() => {});
     }
     setQueueInfo(null);
-    setArchitecture('edge-tts');
     setSelectedVoiceId('aarav-neural');
     onAddLog({
       timestamp: new Date().toLocaleTimeString(),

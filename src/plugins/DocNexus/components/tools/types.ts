@@ -17,7 +17,12 @@ export type ToolType =
   | 'hash-generator'
   | 'uuid-password'
   | 'text-diff'
-  | 'base64-tool';
+  | 'base64-tool'
+  | 'app-icon-generator'
+  | 'background-remover'
+  | 'audio-transcriber'
+  | 'mockup-studio'
+  | 'motion-video';
 
 export interface ToolMeta {
   id: ToolType;

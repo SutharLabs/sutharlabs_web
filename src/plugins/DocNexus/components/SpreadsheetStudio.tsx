@@ -168,18 +168,18 @@ export default function SpreadsheetStudio({
                 : 'bg-[#00e476]/15 text-[#00e476] hover:bg-[#00e476]/25 border-[#00e476]/30'
             }`}
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-3.5 h-3.5 shrink-0" />
             Add Row
           </button>
           <button
             onClick={handleAddColumn}
             className={`px-2.5 py-1.5 rounded-lg font-bold flex items-center gap-1 border cursor-pointer transition-colors ${
               isLight 
-                ? 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border-indigo-300' 
+                ? 'bg-sky-50 text-sky-700 hover:bg-sky-100 border-sky-300' 
                 : 'bg-[#00dbe7]/15 text-[#74f5ff] hover:bg-[#00dbe7]/25 border-[#00dbe7]/30'
             }`}
           >
-            <Plus className="w-3.5 h-3.5" />
+            <Plus className="w-3.5 h-3.5 shrink-0" />
             Add Column
           </button>
           <div className={`h-4 w-px mx-1 ${isLight ? 'bg-slate-300' : 'bg-outline/20'}`}></div>

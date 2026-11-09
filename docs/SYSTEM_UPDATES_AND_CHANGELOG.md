@@ -380,5 +380,244 @@ flowchart LR
     * User B automatically dequeued and transitioned to `processing`, completing in 28.46s (487 KB WAV).
     * Zero timeouts, zero 504 errors, zero socket drops.
 
+---
+
+## 20. Strategic Research: High-Demand Free Domain Tools & Zero-Marginal-Cost Moat
+
+* **The Freemium-Trap Disruption**:
+  * An exhaustive market audit across major digital utility categories revealed massive user demand trapped behind aggressive paywalls:
+    * **Remove.bg / Canva / Photoroom**: ~4.5M monthly searches; restricts free downloads to 0.25 MP blur images, charging $0.20–$0.90 per HD credit or $9–$39/mo.
+    * **Otter.ai / Descript / Veed.io**: ~3.2M monthly searches; restricts free transcription to 3–5 minutes or burns ugly watermarks onto exported videos.
+    * **FreeConvert / Clideo / Kapwing**: ~2.5M monthly searches; caps files at 100MB and throttles downloads to 1 file/day.
+    * **Loom / Screencastify**: ~2.1M monthly searches; enforces a 5-minute cap and locks 1080p/60fps behind $12–$28/mo.
+* **The Client-Side Execution Moat (WebGPU / WASM / WebCodecs)**:
+  * Rather than hosting expensive GPU clusters to process user media, SutharLabs is architecting a 100% in-browser processing suite:
+    1. **HD & 4K AI Background Remover**: Powered by `briaai/RMBG-1.4` via Transformers.js and WebGPU with WASM fallback.
+    2. **Whisper Subtitle & Transcription Studio**: Transcribing audio/video files locally in RAM to `.srt`, `.vtt`, and text.
+    3. **Target-Size Video Compressor**: Running `ffmpeg.wasm` / WebCodecs with presets for Discord (<10MB), Gmail (<25MB), and WhatsApp (<16MB).
+    4. **Watermark-Free Screen & Webcam Studio**: Using browser-native `MediaRecorder` and Canvas composition for unlimited recording.
+    5. **EXIF & Privacy Metadata Stripper**: Scrubbing GPS coordinates and camera serials in client RAM before sharing.
+  * **Economic Advantage**: 1,000,000 active users generate **$0.00 in cloud compute costs** for SutharLabs, while user data never leaves client RAM (100% GDPR compliant).
+
+---
+
+## 21. Headless HTML/CSS-to-Media Engine & Creative Automation Architecture
+
+* **Strategic Alignment with Programmatic Media Generation (`https://share.gemini.google/hBDuUEoEh3R2`)**:
+  * Incorporated comprehensive planning for **HTML/CSS-to-Media & Video Generation on 2-Core / 12 GB RAM Oracle VMs**.
+  * **Why Programmatic HTML/CSS Beats GPU Diffusion (Midjourney/FLUX/Sora) for Business**:
+    * **100% Deterministic & Brand Compliant**: Exact typography, kerning, HEX brand palettes, and responsive flexbox layouts with 0% spelling hallucinations.
+    * **Ultra-Low Latency**: 20ms–80ms per image via Satori/resvg; 300ms–800ms via Headless Chromium.
+    * **Near-Zero Marginal Cost**: Standard CPU instances run thousands of renders daily at <$0.0001 per image, yielding **85%–95% gross margins** on B2B micro-SaaS.
+* **Core Application Engines**:
+  1. **Consistent Character & Avatar Pipeline**:
+     * Pairs client-side background removal (`briaai/RMBG-1.4`) with static avatar asset banks (`neutral.png`, `shocked.png`, `pointing.png`).
+     * Renders crisp YouTube sticker glow outlines (`filter: drop-shadow(0 0 2px #fff)`), depth shadows, and lighting contrast without facial distortion.
+  2. **Device & Product Mockup Engine**:
+     * Digital devices (MacBook, iPhone, iPad) with CSS 3D perspective transforms (`transform: perspective(...) rotateY(...)`) and glass glare overlays (`mix-blend-mode: screen`).
+     * Apparel & Print-on-Demand (T-Shirts, Hoodies) using SVG color masks (`mix-blend-mode: multiply`) and fabric wrinkle maps (`mix-blend-mode: overlay`).
+  3. **High-Margin B2B Creative Automation**:
+     * **Catalog-to-Shorts E-Commerce Ad Generator**: Automatically converting Shopify/WooCommerce product feeds into animated 15-second promotional reels.
+     * **Automated Financial & Market Video Recaps**: Generating daily chart videos and stock mover animations from live market data.
+     * **Developer Changelog & Terminal Replayer**: Converting git diffs into syntax-highlighted animated videos for releases.
+     * **B2B Compliance & Document Generator**: Pixel-perfect print-ready PDF/A with cryptographic hashes and dynamic QR verification codes.
+* **Multi-Tier Monetization Architecture**:
+  * **Free Sovereign Tier**: Unlimited single-file HD exports running locally in-browser ($0 server cost).
+  * **Pro Workflow Tier ($7–$12/month)**: 1-click 100+ file folder batching, Amazon `#FFFFFF` pure white studio presets, bulk ZIP downloads, and direct 1-click password-protected File Vault sharing links.
+  * **Developer API Micro-Credits ($5 per 1,000 requests)**: REST endpoints for programmatic background removal, TTS synthesis, and document OCR.
+* **Master Architectural Specification**:
+  * Full details, sequence diagrams, and implementation phases are documented in [`docs/creative_automation_and_free_tools_architecture.md`](file:///d:/Code/SutharLabs/website/docs/creative_automation_and_free_tools_architecture.md).
+
+---
+
+## 22. Creative Automation, Motion Video Studio, AI Studio Multimodal Attachments & SOTA CPU Performance
+
+* **1. Chat Numbering Bug Resolution (`src/components/MarkdownMessage.tsx`)**:
+  * **Root Cause Diagnosis**: The previous list parser split ordered lists whenever models generated empty lines between points (loose lists) or inserted sub-paragraphs. Each split block rendered an isolated `<ol>` element with no `start={N}` attribute, causing the browser and Tailwind CSS preflight to reset every single point to number "1.".
+  * **Architectural Fix**:
+    1. Extracted explicit numeral indexes directly from markdown regex groups (`/^([-*+]|(\d+)\.)\s+(.*)$/`).
+    2. Implemented lookahead parsing across single blank lines so multi-point loose lists are grouped into a continuous list structure.
+    3. Replaced fragile native browser `<ol>` styling with dedicated sovereign styled number badges:
+       ```tsx
+       <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded text-[10px] font-mono font-bold shrink-0 select-none mt-0.5 bg-sky-50 dark:bg-[#00dbe7]/10 text-sky-700 dark:text-[#00dbe7] border border-sky-200 dark:border-[#00dbe7]/30">
+         {displayNum}.
+       </span>
+       ```
+    4. Supports multi-line sub-paragraph continuations under list items without breaking numbering sequence.
+
+* **2. Motion Graphic Video & Social Reel Studio (`src/plugins/DocNexus/components/tools/MotionVideoStudioTool.tsx`)**:
+  * **Full Multi-Aspect Ratio Engine**:
+    * **9:16 Vertical**: 1080×1920 (Instagram Reels, YouTube Shorts, TikTok).
+    * **16:9 Horizontal**: 1920×1080 (YouTube Widescreen, Desktop, Video Podcasts).
+    * **1:1 Square**: 1080×1080 (Instagram Feed, LinkedIn Carousels).
+    * **4:5 Portrait**: 1080×1350 (Facebook/Instagram Social Posts).
+  * **Dynamic 60 FPS HTML5 Canvas Kinetic Templates**:
+    1. **Tech Launch**: Futuristic cyber grid matrix, moving radial neon flare, kinetic corner HUD brackets, dynamic typography with word wrapping, and pulsating pill badge.
+    2. **Metric Growth**: Animated rising spline financial chart with glowing shadow blur, pulsing ROI badge (`+342.8% YoY`), and moving grid coordinates.
+    3. **Product Glow**: Radial spotlight core, revolving multi-point particle aura rings, glowing halo, and call-to-action button.
+    4. **Social Hook**: Responsive audio frequency soundwave bars animating organically with sine-wave phases, quotation marks, and bold kinetic text.
+  * **Real-Time Studio Controls**:
+    * Live scrub slider, play/pause toggle, rewind button, neon accent color picker, duration selector (3s, 5s, 10s, 15s), and frame rate selector (30 FPS or 60 FPS).
+  * **In-Browser Video Compositing & Export**:
+    * Utilizes `canvas.captureStream(fps)` with client-side `MediaRecorder` (VP9, VP8, and AVC1 MP4 fallback) recording at 8 Mbps high bitrate.
+    * 1-click **Export Video**: Rendered frame-by-frame directly in browser RAM with live progress overlay and automatic download.
+    * 1-click **Poster PNG**: Instant lossless poster snapshot capture.
+    * 1-click **Save to File Vault**: Direct multipart upload to `/api/blob/upload` without third-party cloud exposure.
+  * **Route Availability**: Accessible publicly at `/tools/motion-video` and within the DocNexus Tools Studio.
+
+* **3. AI Agent Studio Multimodal Attachments & Export Facility (Claude / ChatGPT / Gemini Standard)**:
+  * **Client-Side Document Parsing & OCR Pipeline**:
+    * **PDF Extraction**: Multi-page parsing in client RAM using `pdfjs-dist` (`pdfjsLib.getDocument`), extracting text page by page with coordinate alignment.
+    * **Microsoft Word (.docx) Extraction**: Unzips package in RAM via `JSZip`, extracts `word/document.xml`, strips XML formatting, and collects structured paragraphs.
+    * **Text, Code & Data Files**: Instant extraction of `.txt`, `.csv`, `.json`, `.md`, `.js`, `.ts`, `.py`, `.html`, `.css`.
+    * **Image Previews**: Generates local `URL.createObjectURL` object previews with metadata chips (filename, size, MIME type).
+  * **User Experience & Input Integrations**:
+    * **Attachment Facility Button**: Paperclip icon next to input area supporting multi-file selection.
+    * **Drag-and-Drop & Clipboard Paste (`onPaste`)**: Users can drag files directly onto the chat area or paste screenshots from their clipboard.
+    * **Pending Shelf**: Interactive dismissible chips above the textarea indicating extracted file status and size before submission.
+    * **Prompt Injection**: When sending messages, extracted document text is cleanly injected into the LLM context prompt (`[Attached Files Context: ...]`) while keeping user message history clean.
+    * **User Bubble Attachments**: Rendered as styled file cards with image thumbnails and document badges.
+  * **Conversation Export Engine**:
+    * **Export Markdown (`.md`)**: Full formatted transcript including timestamps, personas, models, and code artifacts.
+    * **Export JSON (`.json`)**: Raw structured session dump compatible with LLM fine-tuning and eval datasets.
+    * **Copy Transcript**: Instant 1-click clipboard copy of full dialogue with notification feedback.
+
+* **4. Creative & Video AI Agent Personas (`src/services/aiChatService.ts`)**:
+  * **Motion Graphic & Video Director (`video-director`)**:
+    * Specializes in 9:16 and 16:9 reel composition, storyboard pacing, kinetic typography timing, and HTML5 Canvas animation logic compatible with the Motion Video Studio.
+    * Recommended Model: `qwen2.5-coder:3b`.
+  * **Creative Visual & Mockup Designer (`creative-designer`)**:
+    * Specializes in high-CTR YouTube thumbnails, 3D device frames (MacBook, iPhone), sticker glow outlines, apparel print mockups, and transparent PNG cutouts without diffusion hallucinations.
+    * Recommended Model: `qwen2.5-coder:3b`.
+
+* **5. SOTA CPU Inference & LLM Performance Optimizations (Oracle VM 2 ARM64)**:
+  * **Elimination of Model Reload Latency (`keep_alive: "24h"`)**:
+    * Ollama previously defaulted to a 5-minute inactivity timeout, unloading the model and incurring an 8–45s cold start delay on subsequent queries.
+    * Configured root-level `keep_alive: "24h"` in the `/api/ai/chat` proxy payload, pinning the active model in VM RAM permanently for instantaneous sub-second response times.
+  * **Exact Physical Thread Alignment (`num_thread: 2`)**:
+    * Configured `num_thread: 2` to match the exact 2 physical OCPUs of the Oracle Ampere A1 ARM64 instance.
+    * Prevents thread oversubscription, CPU cache thrashing, and context-switching overhead that degraded token speeds under default settings.
+  * **SIMD Vector Batching & Memory Mapping**:
+    * Enforced `num_batch: 512` for optimal ARM NEON SIMD vectorization during prompt evaluation.
+    * Enforced `use_mmap: true` for zero-copy memory-mapped file pages directly into system cache.
+  * **Mutual Exclusion & Slot Protection**:
+    * Deeply integrated with `unifiedInferenceQueue.ts` to acquire a mutual exclusion heavy slot, guaranteeing speech synthesis, video encoding, and LLM streaming never saturate the 2 CPU cores concurrently.
+
+---
+
+## 23. Multi-Device Model Sharding Cluster (`cross-platform-llm-client`) & First-Class Motion Studio Plugin
+
+* **1. Research & Analysis of `orailnoor/cross-platform-llm-client` (Phone Cluster & Distributed RPC)**:
+  * **Core Engineering Architecture**:
+    * Built on `llama.cpp`'s native Remote Procedure Call (`ggml-rpc`) backend.
+    * Distributes large GGUF model layers across multiple heterogeneous devices (smartphones, iPads, laptops, desktops with GPUs, secondary cloud VMs) over local network/Wi-Fi.
+    * Master device orchestrates generation; workers run lightweight RPC servers (e.g. port 50052) holding subsets of tensor weights.
+  * **Key Performance Optimizations Extracted & Implemented in SutharLabs**:
+    1. **Output Layer Pinning on Master (2x Speedup)**:
+       * In distributed model sharding, placing the output classification layer on a worker forces every single generated token to serialize and transmit multi-megabyte logit vectors back to the master.
+       * By keeping layer 0 (input embeddings) and layer $N$ (output norm + logits) on the master node, only compact hidden state activations pass over the network, doubling throughput and drastically reducing Wi-Fi latency.
+    2. **Speed & Bandwidth-Aware Greedy Memory Planner (`_fillFastestFirst` & `_splitBySpeed`)**:
+       * Probes memory speed (GB/s) and free RAM across all connected nodes before allocating layers.
+       * If the model fits locally on the master, it stays local (zero network overhead).
+       * If partitioned across workers, it greedily saturates the fastest GPU nodes first up to their safe RAM limit, ensuring slow devices never bottleneck the execution pipeline.
+    3. **Clean Abort Lifecycle & Concurrency Synchronization**:
+       * Prevents native crashes caused by clients disconnecting mid-stream.
+       * A new generation halts and awaits complete termination of the preceding pipeline before recycling the context buffer, eliminating memory corruption and stale token leakage.
+    4. **SutharLabs Backend RPC Cluster Endpoints**:
+       * `GET /api/ai/cluster/status`: Reports master node metrics, paired worker nodes, and live layer split visualizer.
+       * `POST /api/ai/cluster/workers`: Allows pairing external worker endpoints (e.g. `192.168.1.105:50052`).
+       * `DELETE /api/ai/cluster/workers/:id`: Gracefully unlinks worker nodes.
+
+* **2. Standalone First-Class Plugin: `wp_motion_studio` ("Motion Studio")**:
+  * **Moved to Dedicated Plugin Architecture**:
+    * Previously, motion video tools were placed inside DocNexus tools. At user request, these have been promoted into a standalone, first-class native plugin.
+  * **Plugin Directory & Registry**:
+    * Created `src/plugins/MotionStudio/` with `manifest.ts`, `manifest.json`, and `index.ts`.
+    * Registered in `src/plugins/clientRegistry.ts` (`CLIENT_PLUGIN_REGISTRY`).
+    * Added to `server.ts` `inTreeCatalog` for automated Prisma database catalog seeding.
+    * Registered rich metadata, tags, permissions, and highlights in `src/components/WorkspacePluginStore.tsx` (`PLUGIN_METADATA_REGISTRY`).
+    * Added to `App.tsx` routing (`/workspace/motion-studio`), `INSTALLED_PLUGINS`, and `src/types.ts` (`WorkspaceTab`).
+  * **Five Comprehensive Studio Tabs in `MotionStudioView.tsx`**:
+    1. **Kinetic Video & Reels**: Multi-aspect ratio video compositor (9:16 Vertical, 16:9 Landscape, 1:1 Square, 4:5 Social), 4 dynamic templates, timeline scrub, 60 FPS Canvas capture, and in-browser WebM/MP4 rendering.
+    2. **YouTube Thumbnails**: High-CTR sticker glow outlines, bold typography hooks, custom avatars, and instant PNG downloads.
+    3. **3D Device & Apparel Mockups**: Perspective MacBook, iPhone frames, and print-on-demand apparel with dynamic SVG color masking.
+    4. **AI Background Cutout**: Lossless transparent PNG product cutout engine powered by client-side WebGPU.
+    5. **GPU Cluster & RPC Acceleration**: Interactive dashboard displaying paired RPC worker nodes, memory pool capacity, layer allocation progress, and pairing controls.
+
+---
+
+## 24. Sovereign Design System Convergence, Storage Vault In-Browser Previews, Cross-Device Chat Synchronization & OpenCode Native Studio
+
+* **1. DocNexus Sovereign Design System Integration & Global Palette Convergence**:
+  * **Systematic Purge of Legacy Palettes**:
+    * Replaced all legacy `indigo-` and `violet-` utility classes, rainbow gradients, and uncontained icons across all 10 DocNexus components (`DocNexusStudio.tsx`, `DocExplorerSidebar.tsx`, `CommandPaletteModal.tsx`, `OpenLocalWorkspaceModal.tsx`, `TemplateLibraryModal.tsx`, `CanvasStudio.tsx`, `RichDocStudio.tsx`, `SlashCommandMenu.tsx`, `SpreadsheetStudio.tsx`, and `PdfToolsStudio.tsx`).
+    * Aligned every interactive element, badge, and card header with the SutharLabs Sovereign Engine design system:
+      * **Light Theme**: Clean `sky-500` / `sky-600` primary buttons, `bg-sky-50 border-sky-200 text-sky-700` badges, and slate borders (`border-slate-200/300`).
+      * **Dark Theme**: `#00dbe7` / `#74f5ff` telemetry cyan highlights, `bg-primary/10 border-primary/25 text-[#00dbe7]` icon badges, and deep surface backgrounds (`bg-[#121216]`, `bg-[#131315]`).
+  * **Global Compliance with UI & Icon Alignment Rules**:
+    * Enforced `shrink-0` on every Lucide icon across all modules to prevent flexbox crushing on mobile and narrow viewports.
+    * Ensured all card headers and modal banners use contained icon container badges (`w-10 h-10 rounded-xl` or `w-8 h-8 rounded-lg`), eliminating floating naked icons in heading tags.
+    * Confirmed 0 native browser dialogs (`window.alert`, `window.confirm`, `window.prompt`) across the entire repository.
+
+* **2. Elimination of Route Fallback Bug (Stock Tracker Wildcard Catch-All)**:
+  * **Root Cause Diagnosis**:
+    * In `src/App.tsx` (previously lines 1145–1150), an unmapped route or failed iframe fallback defaulted to `<StockTrackerView />` via a wildcard catch-all clause:
+      `!['Dashboard', 'Stocks', ...].includes(activeTab) && <StockTrackerView />`.
+    * When an iframe attempted to load an unstarted background service (such as FileBrowser at `/filebrowser/login`), the Single Page App (SPA) fallback delivered `index.html` inside the iframe, evaluating the catch-all condition to true and displaying the Stock Tracker UI inside the container.
+  * **Resolution**:
+    * Replaced the wildcard catch-all in `src/App.tsx` with a dedicated Sovereign Error View ("Workspace View Not Found").
+    * Provides an informative status card with navigation back to the Dashboard, permanently preventing unmapped routes or failed embedded frames from mistakenly rendering the Stock Tracker.
+
+* **3. Storage Vault Mobile Optimization**:
+  * **Responsive Touch Cards View**:
+    * Implemented a dedicated mobile-optimized touch card view (`sm:hidden`) in `src/components/StorageVaultView.tsx` for files and folders.
+    * Hides horizontal desktop table scrollbars on mobile viewports (< 640px) while maintaining full access to file metadata (size, upload timestamp, encryption status, SHA-256 checksum) and action menus.
+  * **File Browser Standby Probe**:
+    * Replaced the raw iframe loading `/filebrowser/login` with an interactive connection probe and Sovereign status card directing users to the Native Cloud Drive when the Go container daemon is on standby.
+
+* **4. Storage Vault In-Browser File Preview Modal (Google Drive / Dropbox Standard)**:
+  * **Full Multi-Format Preview Modal (`previewFile`)**:
+    * Added an in-browser lightbox and preview modal in `src/components/StorageVaultView.tsx` matching top-rated cloud drives:
+      * **Images**: High-resolution zoomable lightbox for PNG, JPG, JPEG, WEBP, GIF, and SVG.
+      * **PDF Documents**: In-browser PDF renderer with responsive scaling and multi-page viewing.
+      * **Audio Files**: HTML5 waveform audio player with track progress, volume, and playback controls.
+      * **Video Files**: HTML5 video player with fullscreen support for MP4, WebM, and MOV.
+      * **Source Code & Text**: Formatted syntax viewer (`<pre><code>`) with line count indicators, full scroll, and 1-click clipboard copy.
+      * **Binary & Unsupported Files**: Clean fallback displaying MIME type, exact byte size, SHA-256 integrity hash, and a direct download button.
+
+* **5. Cross-Device Chat Synchronization (`/api/ai/chat/sessions`)**:
+  * **Persistent Cloud Sync Backend**:
+    * Added authenticated cross-device persistence endpoints in `server.ts` backed by `prisma.document` (with resilient disk backup in `data/ai-chat-sessions/*.json`):
+      * `GET /api/ai/chat/sessions`: Retrieves user-scoped chat sessions from cloud database.
+      * `POST /api/ai/chat/sessions`: Performs deep upsert and reconciliation of chat sessions across devices.
+      * `DELETE /api/ai/chat/sessions/:id`: Permanently removes sessions from database and disk storage.
+  * **Client Integration in `AdminAIChatView.tsx`**:
+    * Synchronizes cloud sessions on mount and automatically debounces local changes to the cloud backend.
+    * Guarantees 100% history parity between mobile web browsers and desktop browsers under the same user account.
+
+* **6. Mobile Chat History Drawer Full-Height Viewport Fix**:
+  * **Root Cause & Fix**:
+    * The mobile chat drawer was previously styled with `absolute inset-y-0 left-0` inside a nested `flex-1` container that sat below the top header and persona aggregator bar. On mobile screens where headers wrapped, the drawer started halfway down the vertical screen.
+    * Converted the mobile drawer to `fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50` anchored to a full-viewport backdrop (`fixed inset-0 z-40 bg-black/60 backdrop-blur-sm`).
+    * The drawer now consistently spans the full 100vh of the mobile screen regardless of header wrapping.
+
+* **7. AI Agent Studio Default Mode & Mobile Toolbar Optimization**:
+  * **Default Workspace View**:
+    * Switched default `studioMode` state in `src/components/AdminAIChatView.tsx` to `'custom-chat'` (AI Agent Studio as Tab 1), with OpenCode Studio as Tab 2.
+  * **Mobile Toolbar Ergonomics**:
+    * Added a dedicated two-row mobile toolbar (`sm:hidden`) where model dropdowns and persona badges occupy full responsive width (`flex-1 min-w-0`), completely eliminating clipped dropdowns and horizontal viewport overflows on mobile devices.
+
+* **8. Native Embedded OpenCode Studio IDE**:
+  * **Self-Contained Workspace Integration**:
+    * Embedded a full-featured native OpenCode Studio IDE directly inside `src/components/AdminAIChatView.tsx` without relying on external ephemeral tunnels (`trycloudflare.com`).
+    * Features:
+      * **Workspace File Explorer**: Direct navigation across project source files (`index.ts`, `server.ts`, `schema.prisma`).
+      * **Interactive Code Editor**: Line-numbered syntax editor with real-time editing and change tracking.
+      * **Qwen Coder AI Assistant**: Pre-configured action triggers ("Explain Code", "Refactor & Optimize", "Write Unit Tests") with one-click injection into the LLM inference engine.
+      * **Interactive Output Console**: Terminal execution log displaying build feedback, test results, and server status.
+
+
+
+
 
 

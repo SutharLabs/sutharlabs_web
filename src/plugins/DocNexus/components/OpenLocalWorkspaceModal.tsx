@@ -201,10 +201,10 @@ export default function OpenLocalWorkspaceModal({
           isLight ? 'border-slate-200/80 bg-slate-50/70' : 'border-white/[0.08] bg-white/[0.02]'
         }`}>
           <div className="flex items-center gap-3">
-            <div className={`p-2.5 rounded-xl ${
-              isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-cyan-500/10 text-cyan-400'
+            <div className={`p-2.5 rounded-xl border ${
+              isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-primary/10 border-primary/25 text-[#00dbe7]'
             }`}>
-              <HardDrive className="w-5 h-5" />
+              <HardDrive className="w-5 h-5 shrink-0" />
             </div>
             <div>
               <h2 className={`text-base font-bold leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
@@ -235,14 +235,14 @@ export default function OpenLocalWorkspaceModal({
               disabled={isProcessing}
               className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between group ${
                 isLight 
-                  ? 'border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 hover:border-indigo-300 shadow-xs' 
-                  : 'border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/10 hover:border-cyan-400/50'
+                  ? 'border-sky-200 bg-sky-50/50 hover:bg-sky-50 hover:border-sky-300 shadow-xs' 
+                  : 'border-[#00dbe7]/30 bg-[#00dbe7]/5 hover:bg-[#00dbe7]/10 hover:border-[#00dbe7]/50'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div className={`p-2.5 rounded-xl transition-colors ${
-                    isLight ? 'bg-indigo-50 text-indigo-600 border border-indigo-200/80 shadow-xs' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-400/30'
+                    isLight ? 'bg-sky-50 text-sky-600 border border-sky-200 shadow-xs' : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
                   }`}>
                     <FolderInput className="w-4 h-4" />
                   </div>
@@ -260,7 +260,7 @@ export default function OpenLocalWorkspaceModal({
                 </p>
               </div>
               <div className={`mt-4 flex items-center gap-1.5 text-xs font-semibold group-hover:translate-x-1 transition-transform ${
-                isLight ? 'text-indigo-600' : 'text-cyan-400'
+                isLight ? 'text-sky-600' : 'text-[#00dbe7]'
               }`}>
                 <span>Select Folder</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -273,14 +273,14 @@ export default function OpenLocalWorkspaceModal({
               disabled={isProcessing}
               className={`p-4 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between group ${
                 isLight 
-                  ? 'border-slate-200 bg-white hover:bg-indigo-50/40 hover:border-indigo-300 shadow-xs' 
+                  ? 'border-slate-200 bg-white hover:bg-sky-50/40 hover:border-sky-300 shadow-xs' 
                   : 'border-white/10 bg-white/[0.03] hover:bg-white/[0.06] hover:border-white/20'
               }`}
             >
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <div className={`p-2.5 rounded-xl transition-colors ${
-                    isLight ? 'bg-indigo-50 text-indigo-600 border border-indigo-200/80 shadow-xs' : 'bg-cyan-500/15 text-cyan-300 border border-cyan-400/30'
+                    isLight ? 'bg-sky-50 text-sky-600 border border-sky-200 shadow-xs' : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
                   }`}>
                     <FileUp className="w-4 h-4" />
                   </div>
@@ -296,7 +296,7 @@ export default function OpenLocalWorkspaceModal({
                 </p>
               </div>
               <div className={`mt-4 flex items-center gap-1.5 text-xs font-semibold group-hover:translate-x-1 transition-transform ${
-                isLight ? 'text-indigo-600' : 'text-cyan-400'
+                isLight ? 'text-sky-600' : 'text-[#00dbe7]'
               }`}>
                 <span>Choose Files</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -311,13 +311,13 @@ export default function OpenLocalWorkspaceModal({
             onDrop={handleDrop}
             className={`p-6 rounded-xl border-2 border-dashed text-center transition-all cursor-pointer ${
               dragOver 
-                ? isLight ? 'border-indigo-500 bg-indigo-50/70' : 'border-cyan-400 bg-cyan-500/10'
+                ? isLight ? 'border-sky-500 bg-sky-50/70' : 'border-[#00dbe7] bg-[#00dbe7]/10'
                 : isLight ? 'border-slate-200/90 hover:bg-slate-50/60' : 'border-white/10 hover:bg-white/[0.02]'
             }`}
             onClick={handleBrowseFilesClick}
           >
             <UploadCloud className={`w-8 h-8 mx-auto mb-2 ${
-              dragOver ? (isLight ? 'text-indigo-600' : 'text-cyan-400') : 'text-slate-400'
+              dragOver ? (isLight ? 'text-sky-600' : 'text-[#00dbe7]') : 'text-slate-400'
             }`} />
             <p className={`text-xs font-semibold ${isLight ? 'text-slate-700' : 'text-slate-200'}`}>
               Drag & Drop files or directories here to import
@@ -330,9 +330,9 @@ export default function OpenLocalWorkspaceModal({
           {/* Status / Processing feedback */}
           {isProcessing && (
             <div className={`flex items-center gap-2 p-3 rounded-xl border text-xs animate-pulse ${
-              isLight ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-cyan-500/10 border-cyan-400/20 text-cyan-300'
+              isLight ? 'bg-sky-50 border-sky-200 text-sky-700' : 'bg-[#00dbe7]/10 border-[#00dbe7]/20 text-[#00dbe7]'
             }`}>
-              <Sparkles className={`w-4 h-4 shrink-0 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
+              <Sparkles className={`w-4 h-4 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`} />
               <span>{statusMessage || 'Loading and parsing documents...'}</span>
             </div>
           )}
@@ -353,7 +353,7 @@ export default function OpenLocalWorkspaceModal({
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
               <div className={`flex items-center gap-1.5 p-1.5 rounded-lg ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-white/[0.03] text-slate-300'}`}>
-                <Presentation className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
+                <Presentation className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`} />
                 <span className="font-mono text-[10px]">.pptx, .ppt</span>
               </div>
               <div className={`flex items-center gap-1.5 p-1.5 rounded-lg ${isLight ? 'bg-slate-100 text-slate-700' : 'bg-white/[0.03] text-slate-300'}`}>

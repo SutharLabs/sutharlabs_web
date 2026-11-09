@@ -7,6 +7,7 @@ import { ImageStudioPlugin } from "./ImageStudio/index.js";
 import { ToolsStudioPlugin } from "./SovereignTools/index.js";
 import { ResumeStudioPlugin } from "./ResumeStudio/index.js";
 import { StudioCastPlugin } from "./StudioCast/index.js";
+import { MotionStudioPlugin } from "./MotionStudio/index.js";
 import { WorkspacePluginManifest, WorkspacePluginViewProps } from "./types.js";
 import React from "react";
 
@@ -25,6 +26,7 @@ export const CLIENT_PLUGIN_REGISTRY: Record<string, ClientPluginEntry> = {
   [ToolsStudioPlugin.manifest.id]: ToolsStudioPlugin as any,
   [ResumeStudioPlugin.manifest.id]: ResumeStudioPlugin as any,
   [StudioCastPlugin.manifest.id]: StudioCastPlugin as any,
+  [MotionStudioPlugin.manifest.id]: MotionStudioPlugin as any,
 };
 
 export function getAllClientPlugins(): ClientPluginEntry[] {

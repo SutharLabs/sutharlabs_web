@@ -36,7 +36,8 @@ import {
   Binary,
   FileSpreadsheet,
   Languages,
-  Contact
+  Contact,
+  Film
 } from 'lucide-react';
 import { PDFDocument, rgb, degrees, StandardFonts } from 'pdf-lib';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -51,6 +52,10 @@ import ReceiptToCsvTool from './tools/ReceiptToCsvTool.js';
 import MultilingualOcrTool from './tools/MultilingualOcrTool.js';
 import BusinessCardScannerTool from './tools/BusinessCardScannerTool.js';
 import AppIconGeneratorTool from './tools/AppIconGeneratorTool.js';
+import BackgroundRemoverTool from './tools/BackgroundRemoverTool.js';
+import AudioTranscriberTool from './tools/AudioTranscriberTool.js';
+import MockupStudioTool from './tools/MockupStudioTool.js';
+import MotionVideoStudioTool from './tools/MotionVideoStudioTool.js';
 import ConfirmModal from '../../../components/ConfirmModal.js';
 
 
@@ -79,7 +84,11 @@ export type ToolType =
   | 'uuid-password'
   | 'text-diff'
   | 'base64-tool'
-  | 'app-icon-generator';
+  | 'app-icon-generator'
+  | 'background-remover'
+  | 'audio-transcriber'
+  | 'mockup-studio'
+  | 'motion-video';
 
 export interface ToolMeta {
   id: ToolType;
@@ -245,6 +254,42 @@ export const TOOLS_LIST: ToolMeta[] = [
     badge: 'PWA & STORES',
     category: 'dev',
     icon: Sparkles,
+    accentColor: '#00dbe7'
+  },
+  {
+    id: 'background-remover',
+    title: 'AI Background Remover',
+    tagline: 'Extract lossless transparent PNGs & product cutouts in client RAM using in-browser WebGPU AI.',
+    badge: '100% WEBGPU',
+    category: 'doc',
+    icon: Sparkles,
+    accentColor: '#00dbe7'
+  },
+  {
+    id: 'audio-transcriber',
+    title: 'Audio Transcriber & Subtitles',
+    tagline: 'Transcribe audio & videos into timestamped .SRT, .VTT, and text using in-browser Whisper WebGPU.',
+    badge: 'WHISPER AI',
+    category: 'doc',
+    icon: Sparkles,
+    accentColor: '#34d399'
+  },
+  {
+    id: 'mockup-studio',
+    title: 'Thumbnail & Mockup Studio',
+    tagline: 'Generate high-CTR YouTube thumbnails, 3D device mockups, and apparel without diffusion hallucinations.',
+    badge: 'DETERMINISTIC',
+    category: 'dev',
+    icon: Sparkles,
+    accentColor: '#f59e0b'
+  },
+  {
+    id: 'motion-video',
+    title: 'Motion Video & Reels Studio',
+    tagline: 'Generate 9:16 vertical shorts, 16:9 widescreen, and 1:1 kinetic motion graphics directly in-browser.',
+    badge: '60 FPS WEBM/MP4',
+    category: 'dev',
+    icon: Film,
     accentColor: '#00dbe7'
   }
 ];
@@ -680,6 +725,54 @@ export default function PdfToolsStudio({
 
           {activeTool === 'app-icon-generator' && (
             <AppIconGeneratorTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+              checkDownloadAccess={checkDownloadAccess}
+            />
+          )}
+
+          {activeTool === 'background-remover' && (
+            <BackgroundRemoverTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+              checkDownloadAccess={checkDownloadAccess}
+            />
+          )}
+
+          {activeTool === 'audio-transcriber' && (
+            <AudioTranscriberTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+              checkDownloadAccess={checkDownloadAccess}
+            />
+          )}
+
+          {activeTool === 'mockup-studio' && (
+            <MockupStudioTool 
+              isLight={isLight} 
+              isProcessing={isProcessing} 
+              setIsProcessing={setIsProcessing} 
+              setStatus={setStatusMessage} 
+              setError={setErrorMessage} 
+              addLog={addLogSafe} 
+              checkDownloadAccess={checkDownloadAccess}
+            />
+          )}
+
+          {activeTool === 'motion-video' && (
+            <MotionVideoStudioTool 
               isLight={isLight} 
               isProcessing={isProcessing} 
               setIsProcessing={setIsProcessing} 
@@ -1364,12 +1457,12 @@ function MergePdfTool({ isLight, isProcessing, setIsProcessing, setStatus, setEr
         onClick={() => fileInputRef.current?.click()}
         className={`border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all flex flex-col items-center justify-center gap-2 ${
           isLight 
-            ? 'border-slate-300 hover:border-indigo-500 bg-slate-50/50 hover:bg-indigo-50/30' 
-            : 'border-[#3a494b]/60 hover:border-indigo-400/60 bg-white/2 hover:bg-indigo-500/5'
+            ? 'border-slate-300 hover:border-sky-500 bg-slate-50/50 hover:bg-sky-50/30' 
+            : 'border-[#3a494b]/60 hover:border-[#00dbe7]/60 bg-white/2 hover:bg-[#00dbe7]/5'
         }`}
       >
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border ${
-          isLight ? 'bg-white border-slate-200 text-indigo-600' : 'bg-[#1a191d] border-[#3a494b]/50 text-indigo-400'
+          isLight ? 'bg-white border-slate-200 text-sky-600' : 'bg-[#1a191d] border-[#3a494b]/50 text-[#00dbe7]'
         }`}>
           <Layers className="w-5 h-5 shrink-0" />
         </div>
@@ -1398,8 +1491,8 @@ function MergePdfTool({ isLight, isProcessing, setIsProcessing, setStatus, setEr
               disabled={isProcessing || pdfFiles.length < 2}
               className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-sm disabled:opacity-50 select-none ${
                 isLight
-                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white border-indigo-700'
-                  : 'bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 hover:text-white border-indigo-500/50 shadow-indigo-500/10'
+                  ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-sm hover:shadow font-bold'
+                  : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border-[#00dbe7]/50 hover:border-[#00dbe7] shadow-[#00dbe7]/10 font-bold'
               }`}
             >
               <Download className="w-3.5 h-3.5 shrink-0" />

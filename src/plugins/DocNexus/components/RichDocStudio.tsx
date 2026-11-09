@@ -161,24 +161,24 @@ export default function RichDocStudio({
                 onClick={() => setViewMode('visual')}
                 className={`px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5 cursor-pointer transition-all ${
                   viewMode === 'visual'
-                    ? isLight ? 'bg-white text-indigo-600 shadow-xs' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
+                    ? isLight ? 'bg-white text-sky-600 shadow-xs' : 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40'
                     : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'
                 }`}
                 title="View original high-resolution PDF rendering"
               >
-                <Eye className="w-3.5 h-3.5" />
+                <Eye className="w-3.5 h-3.5 shrink-0" />
                 <span>PDF View</span>
               </button>
               <button
                 onClick={() => setViewMode('edit')}
                 className={`px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5 cursor-pointer transition-all ${
                   viewMode === 'edit'
-                    ? isLight ? 'bg-white text-indigo-600 shadow-xs' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40'
+                    ? isLight ? 'bg-white text-sky-600 shadow-xs' : 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40'
                     : isLight ? 'text-slate-600 hover:text-slate-900' : 'text-slate-400 hover:text-white'
                 }`}
                 title="View and edit uncorrupted extracted text"
               >
-                <Edit3 className="w-3.5 h-3.5" />
+                <Edit3 className="w-3.5 h-3.5 shrink-0" />
                 <span>Text Editor</span>
               </button>
             </div>
@@ -233,7 +233,7 @@ export default function RichDocStudio({
               : 'bg-white/[0.05] hover:bg-white/[0.1] border-white/10 text-slate-200'
           }`}
         >
-          <Printer className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
+          <Printer className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`} />
           <span>Print / PDF</span>
         </button>
       </div>

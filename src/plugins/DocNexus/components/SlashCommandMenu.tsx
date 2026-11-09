@@ -76,7 +76,7 @@ export default function SlashCommandMenu({
         {/* Header search */}
         <div className="flex items-center justify-between px-2 pb-2 border-b border-outline/10">
           <span className={`font-bold text-[11px] uppercase tracking-wider flex items-center gap-1.5 ${isLight ? 'text-slate-800' : 'text-on-surface'}`}>
-            <span className={`${isLight ? 'text-indigo-600' : 'text-[#00dbe7]'} font-black text-sm`}>/</span> Slash Insert Menu
+            <span className={`${isLight ? 'text-sky-600' : 'text-[#00dbe7]'} font-black text-sm`}>/</span> Slash Insert Menu
           </span>
           <button 
             onClick={onClose} 
@@ -95,7 +95,7 @@ export default function SlashCommandMenu({
             autoFocus
             className={`w-full px-3 py-1.5 rounded-lg border text-xs focus:outline-none ${
               isLight 
-                ? 'border-slate-300 bg-white text-slate-800 focus:border-indigo-500' 
+                ? 'border-slate-300 bg-white text-slate-800 focus:border-sky-500' 
                 : 'border-outline/15 bg-surface-container-low text-white focus:border-[#00dbe7]'
             }`}
           />
@@ -113,14 +113,14 @@ export default function SlashCommandMenu({
                   onClose();
                 }}
                 className={`p-2 rounded-xl cursor-pointer flex items-center justify-between gap-2.5 transition-colors ${
-                  isLight ? 'hover:bg-indigo-50 text-slate-800' : 'hover:bg-white/5 text-[#b9cacb] hover:text-white'
+                  isLight ? 'hover:bg-sky-50 text-slate-800' : 'hover:bg-white/5 text-[#b9cacb] hover:text-white'
                 }`}
               >
                 <div className="flex items-center gap-2.5 min-w-0">
                   <span className={`p-2 rounded-lg ${
-                    isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-surface-container-high text-[#00dbe7]'
+                    isLight ? 'bg-sky-50 text-sky-600' : 'bg-surface-container-high text-[#00dbe7]'
                   }`}>
-                    <IconComp className="w-4 h-4" />
+                    <IconComp className="w-4 h-4 shrink-0" />
                   </span>
                   <div className="truncate">
                     <span className={`font-sans text-xs font-bold block truncate ${

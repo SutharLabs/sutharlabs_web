@@ -31,6 +31,7 @@ export type WorkspaceTab =
   | 'Speech Studio' 
   | 'Image Studio'
   | 'StudioCast'
+  | 'Motion Studio'
   | 'README' 
   | 'Plugin Store' 
   | 'Profile & Settings';
@@ -61,6 +62,14 @@ export interface VaultStatsResponse {
   memory?: Record<string, number>;
 }
 
+export interface AIChatAttachment {
+  name: string;
+  type: string;
+  size: number;
+  previewUrl?: string;
+  extractedText?: string;
+}
+
 export interface AIChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
@@ -72,6 +81,7 @@ export interface AIChatMessage {
   timestamp: string;
   agentId?: string;
   researchSources?: Array<{ title: string; url: string; snippet: string; source: string; date?: string }>;
+  attachments?: AIChatAttachment[];
 }
 
 export interface AIAgentPersona {

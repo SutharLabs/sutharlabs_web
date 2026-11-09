@@ -379,12 +379,12 @@ export default function CanvasStudio({
           onClick={() => onSelectElement(null)}
           className={`p-2 rounded-xl transition-all cursor-pointer ${
             !selectedElement 
-              ? isLight ? 'bg-indigo-50 text-indigo-600 shadow-xs' : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/30'
+              ? isLight ? 'bg-sky-50 text-sky-600 shadow-xs border border-sky-200' : 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/30'
               : isLight ? 'hover:bg-slate-100 text-slate-600' : 'hover:bg-white/[0.08] text-slate-400 hover:text-white'
           }`}
           title="Select Tool (V)"
         >
-          <MousePointer className="w-4 h-4" />
+          <MousePointer className="w-4 h-4 shrink-0" />
         </button>
 
         <div className={`w-px h-5 mx-0.5 ${isLight ? 'bg-slate-200' : 'bg-white/10'}`} />
@@ -397,7 +397,7 @@ export default function CanvasStudio({
           }`}
           title="Add Rectangle / Card (R)"
         >
-          <Square className="w-4 h-4 text-cyan-400" />
+          <Square className="w-4 h-4 text-cyan-400 shrink-0" />
         </button>
         <button
           onClick={() => handleAddElement('circle')}
@@ -406,7 +406,7 @@ export default function CanvasStudio({
           }`}
           title="Add Circle Node (O)"
         >
-          <CircleIcon className="w-4 h-4 text-purple-400" />
+          <CircleIcon className="w-4 h-4 text-purple-400 shrink-0" />
         </button>
         <button
           onClick={() => handleAddElement('diamond')}
@@ -415,7 +415,7 @@ export default function CanvasStudio({
           }`}
           title="Add Decision Diamond (D)"
         >
-          <Diamond className="w-4 h-4 text-emerald-400" />
+          <Diamond className="w-4 h-4 text-emerald-400 shrink-0" />
         </button>
         <button
           onClick={() => handleAddElement('text')}
@@ -424,7 +424,7 @@ export default function CanvasStudio({
           }`}
           title="Add Text Block (T)"
         >
-          <Type className={`w-4 h-4 ${isLight ? 'text-indigo-600' : 'text-cyan-300'}`} />
+          <Type className={`w-4 h-4 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`} />
         </button>
         <button
           onClick={() => handleAddElement('sticky')}

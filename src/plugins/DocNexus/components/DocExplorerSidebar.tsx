@@ -142,8 +142,8 @@ export default function DocExplorerSidebar({
       }`}>
         {!isCollapsed && (
           <div className="flex items-center gap-2.5">
-            <div className={`p-1.5 rounded-lg ${isLight ? 'bg-indigo-50 text-indigo-600' : 'bg-cyan-500/10 text-cyan-400'}`}>
-              <FolderOpen className="w-4 h-4" />
+            <div className={`p-1.5 rounded-lg border ${isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-primary/10 border-primary/25 text-[#00dbe7]'}`}>
+              <FolderOpen className="w-4 h-4 shrink-0" />
             </div>
             <div>
               <span className={`font-sans text-xs font-bold block leading-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
@@ -175,7 +175,11 @@ export default function DocExplorerSidebar({
             <div className="relative">
               <button
                 onClick={() => setIsCreateMenuOpen(prev => !prev)}
-                className="w-full py-2 px-3.5 rounded-xl font-sans text-xs font-semibold flex items-center justify-between cursor-pointer transition-all shadow-sm bg-gradient-to-r from-violet-600 via-indigo-600 to-cyan-500 hover:from-violet-500 hover:via-indigo-500 hover:to-cyan-400 text-white active:scale-[0.98]"
+                className={`w-full py-2 px-3.5 rounded-xl font-sans text-xs font-semibold flex items-center justify-between cursor-pointer transition-all shadow-sm active:scale-[0.98] ${
+                  isLight
+                    ? 'bg-sky-500 hover:bg-sky-600 text-white border border-sky-600 shadow-sky-500/20'
+                    : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border border-[#00dbe7]/50 shadow-[#00dbe7]/10'
+                }`}
               >
                 <span className="flex items-center gap-2">
                   <Plus className="w-4 h-4 stroke-[2.5]" />
@@ -236,7 +240,7 @@ export default function DocExplorerSidebar({
                           onOpenLocalWorkspace();
                         }}
                         className={`w-full flex items-center gap-2.5 p-2 rounded-xl text-left transition-all cursor-pointer ${
-                          isLight ? 'hover:bg-indigo-50 text-indigo-700' : 'hover:bg-cyan-500/10 text-cyan-300'
+                          isLight ? 'hover:bg-sky-50 text-sky-700' : 'hover:bg-[#00dbe7]/10 text-[#00dbe7]'
                         }`}
                       >
                         <HardDrive className="w-4 h-4 shrink-0" />
@@ -254,12 +258,12 @@ export default function DocExplorerSidebar({
                 onClick={onOpenLocalWorkspace}
                 className={`py-1.5 px-2 rounded-xl font-sans text-[11px] font-medium flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
                   isLight 
-                    ? 'bg-white hover:bg-indigo-50/70 border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 shadow-xs' 
+                    ? 'bg-white hover:bg-sky-50/70 border-slate-200 hover:border-sky-300 text-slate-700 hover:text-sky-700 shadow-xs' 
                     : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
                 }`}
                 title="Browse Local Document File (.md, .csv, .json, .txt, .pdf, .docx, .pptx)"
               >
-                <FileUp className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
+                <FileUp className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`} />
                 <span>Browse File</span>
               </button>
 
@@ -267,12 +271,12 @@ export default function DocExplorerSidebar({
                 onClick={onOpenLocalWorkspace}
                 className={`py-1.5 px-2 rounded-xl font-sans text-[11px] font-medium flex items-center justify-center gap-1.5 cursor-pointer border transition-all ${
                   isLight 
-                    ? 'bg-white hover:bg-indigo-50/70 border-slate-200 hover:border-indigo-200 text-slate-700 hover:text-indigo-700 shadow-xs' 
+                    ? 'bg-white hover:bg-sky-50/70 border-slate-200 hover:border-sky-300 text-slate-700 hover:text-sky-700 shadow-xs' 
                     : 'bg-white/[0.04] hover:bg-white/[0.08] border-white/10 text-slate-200'
                 }`}
                 title="Load Local Project Directory"
               >
-                <FolderInput className={`w-3.5 h-3.5 ${isLight ? 'text-indigo-600' : 'text-cyan-400'}`} />
+                <FolderInput className={`w-3.5 h-3.5 shrink-0 ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`} />
                 <span>Load Folder</span>
               </button>
             </div>
@@ -293,7 +297,7 @@ export default function DocExplorerSidebar({
           {/* Active Local Folder Banner */}
           {activeLocalFolder && (
             <div className={`mx-3 mt-2 p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs font-sans animate-in fade-in ${
-              isLight ? 'bg-indigo-50/80 border-indigo-200 text-indigo-900' : 'bg-cyan-500/10 border-cyan-400/30 text-cyan-300'
+              isLight ? 'bg-sky-50/80 border-sky-200 text-sky-900' : 'bg-[#00dbe7]/10 border-[#00dbe7]/30 text-[#00dbe7]'
             }`}>
               <div className="flex items-center gap-2 min-w-0">
                 <HardDrive className="w-3.5 h-3.5 shrink-0" />
@@ -322,8 +326,8 @@ export default function DocExplorerSidebar({
           <div className="px-3 pt-2 pb-1.5">
             <div className={`flex items-center px-3 py-1.5 rounded-xl border text-xs font-sans transition-colors ${
               isLight 
-                ? 'bg-white border-slate-200 text-slate-800 focus-within:border-indigo-500' 
-                : 'bg-white/[0.04] border-white/10 text-white focus-within:border-cyan-400'
+                ? 'bg-white border-slate-200 text-slate-800 focus-within:border-sky-500' 
+                : 'bg-white/[0.04] border-white/10 text-white focus-within:border-[#00dbe7]'
             }`}>
               <Search className={`w-3.5 h-3.5 mr-2 shrink-0 ${isLight ? 'text-slate-400' : 'text-slate-500'}`} />
               <input
@@ -360,8 +364,8 @@ export default function DocExplorerSidebar({
                   className={`px-2 py-1 rounded-lg text-[10px] font-sans font-medium shrink-0 cursor-pointer transition-all ${
                     isSelected
                       ? isLight 
-                        ? 'bg-indigo-600 text-white shadow-xs' 
-                        : 'bg-cyan-500/20 text-cyan-300 border border-cyan-400/40 shadow-xs'
+                        ? 'bg-sky-500 text-white shadow-xs font-bold' 
+                        : 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/40 shadow-xs font-bold'
                       : isLight 
                         ? 'bg-slate-200/60 text-slate-600 hover:bg-slate-200' 
                         : 'bg-white/[0.04] text-slate-400 hover:text-white hover:bg-white/[0.08]'
@@ -392,8 +396,8 @@ export default function DocExplorerSidebar({
                     className={`group relative p-2.5 rounded-xl cursor-pointer transition-all border flex items-center justify-between gap-2.5 ${
                       isActive
                         ? isLight
-                          ? 'bg-white border-indigo-200 text-slate-900 shadow-sm ring-1 ring-indigo-500/20'
-                          : 'bg-[#15161f] border-cyan-400/40 text-white shadow-[0_2px_12px_rgba(0,0,0,0.4)] ring-1 ring-cyan-400/20'
+                          ? 'bg-white border-sky-300 text-slate-900 shadow-sm ring-1 ring-sky-500/20'
+                          : 'bg-[#15161f] border-[#00dbe7]/40 text-white shadow-[0_2px_12px_rgba(0,0,0,0.4)] ring-1 ring-[#00dbe7]/20'
                         : isLight
                           ? 'bg-transparent border-transparent hover:bg-white hover:border-slate-200/60 text-slate-700 hover:shadow-xs'
                           : 'bg-transparent border-transparent hover:bg-white/[0.04] hover:border-white/5 text-slate-300'
@@ -422,8 +426,8 @@ export default function DocExplorerSidebar({
                           {doc.metadata?.tags?.find(t => ['PDF', 'PPTX', 'DOCX', 'XLSX', 'IPYNB', 'RTF', 'CSV', 'EXCALIDRAW', 'PNG', 'JPG', 'JPEG', 'WEBP', 'SVG', 'GIF', 'BMP', 'ICO'].includes(t)) ? (
                             <span className={`font-mono text-[9px] font-bold px-1.5 py-0.2 rounded border ${
                               isLight 
-                                ? 'bg-indigo-50 text-indigo-700 border-indigo-200' 
-                                : 'bg-cyan-500/15 text-cyan-400 border-cyan-500/20'
+                                ? 'bg-sky-50 text-sky-700 border-sky-200' 
+                                : 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/20'
                             }`}>
                               {doc.metadata?.tags?.find(t => ['PDF', 'PPTX', 'DOCX', 'XLSX', 'IPYNB', 'RTF', 'CSV', 'EXCALIDRAW', 'PNG', 'JPG', 'JPEG', 'WEBP', 'SVG', 'GIF', 'BMP', 'ICO'].includes(t))}
                             </span>

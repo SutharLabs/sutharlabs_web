@@ -73,10 +73,10 @@ export default function PublicToolsHubView({ theme = 'dark', user, toggleTheme }
     if (['pdf-to-image', 'image-to-pdf', 'merge-pdf', 'split-pdf', 'pdf-editor', 'pdf-to-word', 'ocr-pdf'].includes(id)) {
       return 'PDF';
     }
-    if (['compress-image', 'qr-generator', 'base64-tool', 'app-icon-generator'].includes(id)) {
+    if (['compress-image', 'qr-generator', 'base64-tool', 'app-icon-generator', 'background-remover', 'mockup-studio', 'motion-video'].includes(id)) {
       return 'IMAGE';
     }
-    if (['multilingual-ocr', 'receipt-to-csv', 'business-card-scanner'].includes(id)) {
+    if (['multilingual-ocr', 'receipt-to-csv', 'business-card-scanner', 'audio-transcriber'].includes(id)) {
       return 'OCR';
     }
     return 'DEV';

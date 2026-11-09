@@ -25,6 +25,7 @@ export class StudioCastCompositor {
   private isRunning: boolean = false;
   private isRecording: boolean = false;
   private recordingStartTime: number = 0;
+  private timecodeStart: number = 0;
   private theme: 'light' | 'dark' = 'dark';
 
   constructor(width: number = 1280, height: number = 720) {

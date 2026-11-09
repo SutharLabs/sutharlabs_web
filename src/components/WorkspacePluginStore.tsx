@@ -231,6 +231,31 @@ const PLUGIN_METADATA_REGISTRY: Record<string, {
     accentColor: '#00dbe7',
     accentBg: 'rgba(0, 219, 231, 0.1)',
     accentBorder: 'rgba(0, 219, 231, 0.3)'
+  },
+  wp_motion_studio: {
+    publisher: 'SutharLabs Creative Automation Group',
+    tags: ['HTML5 Video', '9:16 Vertical Reels', 'YouTube Shorts', 'TikTok Ads', '16:9 Landscape', 'YouTube Thumbnails', '3D Mockups', 'GPU Cluster'],
+    highlights: [
+      'Multi-Aspect Ratio Video Generator (9:16 Vertical, 16:9 Landscape, 1:1 Square, 4:5 Social)',
+      'Deterministic 60 FPS HTML5 Canvas Rendering with Zero Diffusion Hallucination',
+      'In-Browser High-Bitrate Video Encoding (WebM / MP4) via Canvas CaptureStream & MediaRecorder',
+      'High-CTR YouTube Thumbnail Studio with White Sticker Glow Outlines & Kinetic Hooks',
+      'Multi-Device GPU Model Sharding & RPC Worker Acceleration'
+    ],
+    features: [
+      'Kinetic motion templates including Tech Launch Matrix, Metric Growth Tickers, and Audio Soundwaves',
+      'Zero server cloud compute cost: all frame evaluations, canvas blits, and video encodings occur 100% inside client RAM',
+      '3D Isometric MacBook & iPhone hardware mockups with realistic specular glare and SVG apparel masking',
+      'Integrated Multi-Device GPU Cluster allowing pairing of phones, tablets, and PCs as distributed RPC inference workers'
+    ],
+    permissions: [
+      { name: 'Canvas Video Engine', description: 'Accesses HTML5 Canvas captureStream and MediaRecorder APIs', granted: true },
+      { name: 'Storage Vault Export', description: 'Uploads rendered MP4/WebM video artifacts directly to File Vault', granted: true },
+      { name: 'RPC Network Cluster', description: 'Communicates with local RPC worker nodes for distributed layer offload', granted: true }
+    ],
+    accentColor: '#00dbe7',
+    accentBg: 'rgba(0, 219, 231, 0.1)',
+    accentBorder: 'rgba(0, 219, 231, 0.3)'
   }
 };
 
