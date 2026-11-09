@@ -8,7 +8,12 @@
 
 ## 1. Executive Summary of Updates
 
-This milestone establishes the official **SutharLabs visual identity**, extracts **Resume Studio** into an enterprise standalone workspace plugin with a **universal multi-input ingestion engine**, introduces the **App Icon & Favicon Studio**, cleans navigation menus across all public and workspace surfaces, and provides an **automated 8-stage zero-downtime deployment pipeline**.
+This milestone completes critical production enhancements across the platform:
+1. **Universal Zero-Shot Voice Replication & Tenant Isolation**: Eliminates ambient default voice fallback on VM 2, implementing user-scoped (`user_{userEmail}_{voiceName}.pt`) and voice-scoped (`voice_{voiceId}.pt`) latent keying. Fixes the issue where synthetic voices hijacked previous recordings.
+2. **Dual-Layer Emotion & Paralinguistic Simulation**: Transpiles emotion tags (`[laugh]`, `[chuckle]`, `[sigh]`, `[whisper]`, `[pause]`, `[gasp]`, `[yawn]`, `[excited]`) into acoustic cadence and expressive sound markers, preventing them from being read aloud as literal text.
+3. **SOTA Free & Commercial Voice Research Guide**: Comprehensive audit of top-rated permissive (Apache 2.0 / MIT) models: Kokoro-82M, Chatterbox, Zonos v0.1, CosyVoice 2, and Edge Neural Expressive Fleet.
+4. **Mobile UI & Responsive Card Alignment**: Fixes fixed `min-w` bottlenecks in Plugin Store cards and Speech Studio toolbar that caused buttons and cards to overflow or wrap awkwardly on mobile screens.
+5. **PostgreSQL Multi-Tenant Scoped Database Voice Hydration**: Guarantees raw PCM/WAV reference audio samples are reliably fetched from isolated PostgreSQL tenant stores during synthesis requests.
 
 ---
 

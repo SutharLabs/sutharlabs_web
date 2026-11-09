@@ -6,6 +6,32 @@ import { createPluginLogger } from "../common/pluginLogger.js";
 
 const logger = createPluginLogger("speech-studio", "routes");
 
+export function preprocessEmotionTags(text: string, isHindi = false): string {
+  if (!text) return text;
+  let processed = text;
+  const replacements: [RegExp, string][] = [
+    [/\[(laugh|laughter|giggle|haha)\]/gi, isHindi ? ' हाहा, ' : ' haha, '],
+    [/\[(chuckle|snicker)\]/gi, isHindi ? ' हेह, ' : ' heh, '],
+    [/\[(sigh|phew)\]/gi, isHindi ? ' ... आह, ... ' : ' ... ahhh, ... '],
+    [/\[(whisper|whispering)\]/gi, isHindi ? ' ... सुनो, ' : ' ... psst, '],
+    [/\[(gasp|shocked)\]/gi, isHindi ? ' ... अरे! ' : ' ... oh! '],
+    [/\[(yawn|sleepy)\]/gi, isHindi ? ' ... जम्हाई, ... ' : ' ... yaawn, ... '],
+    [/\[(pause|break|silence)(?:_\d+m?s)?\]/gi, ' ... — ... '],
+    [/\[(excited|energetic)\]/gi, ' ! '],
+    [/\[(happy|cheerful)\]/gi, ' '],
+    [/\[(sad|crying|somber)\]/gi, ' ... '],
+    [/\[(dramatic|serious)\]/gi, ' ... ']
+  ];
+  for (const [re, repl] of replacements) {
+    processed = processed.replace(re, repl);
+  }
+  // Strip any residual bracketed tokens so no TTS engine pronounces bracket words
+  processed = processed.replace(/\[[a-zA-Z0-9_\-\s]+\]/g, ' ');
+  processed = processed.replace(/\s{2,}/g, ' ');
+  processed = processed.replace(/(\s*\.\.\.\s*)+/g, ' ... ');
+  return processed.trim();
+}
+
 // In-memory rate limiting store (Window: 1 hour)
 interface UserQuotaEntry {
   count: number;
@@ -710,6 +736,9 @@ export function registerRoutes(router: Router) {
           const clonePayload: Record<string, any> = {
             text,
             speakerName: effectiveSpeakerName,
+            voiceId: storedProfile?.id || voiceId,
+            userId: userEmail,
+            userEmail,
             rate,
             pitch,
             timbrePreference: effectiveGender,
@@ -966,6 +995,8 @@ export function registerRoutes(router: Router) {
           for (const baseUrl of cloneUrls) {
             try {
               const t0 = Date.now();
+              const { email } = getUserIdentifierAndRole(req);
+              const callerEmail = email || identifier;
               vmResponse = await fetch(`${baseUrl}/api/clone`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -974,6 +1005,9 @@ export function registerRoutes(router: Router) {
                   sampleAudio,
                   referenceText,
                   speakerName,
+                  voiceId: voiceId || req.body.id,
+                  userId: callerEmail,
+                  userEmail: callerEmail,
                   timbrePreference: effectiveGender,
                   gender: effectiveGender,
                   rate,

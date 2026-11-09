@@ -2186,6 +2186,47 @@ export default function SpeechStudioView({
                 </div>
               </div>
 
+              {/* Emotion & Paralinguistic Expression Tags Toolbar */}
+              <div className={`p-2 sm:p-2.5 rounded-xl border flex flex-col gap-1.5 transition-colors ${
+                isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#121215] border-[#3a494b]/30'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-mono uppercase font-bold text-on-surface-variant flex items-center gap-1.5">
+                    <Sparkles className="w-3 h-3 text-[#00dbe7] shrink-0" />
+                    <span>Expressive Emotion Tags (Auto-Simulated)</span>
+                  </span>
+                  <span className="text-[9px] font-mono text-emerald-500 font-semibold hidden sm:inline-block">
+                    ✓ Tags simulated naturally • Never read aloud
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none flex-nowrap">
+                  {[
+                    { tag: '[laugh]', label: '+ Laugh 😄' },
+                    { tag: '[chuckle]', label: '+ Chuckle 😊' },
+                    { tag: '[sigh]', label: '+ Sigh 😌' },
+                    { tag: '[whisper]', label: '+ Whisper 🤫' },
+                    { tag: '[pause]', label: '+ Pause ⏸' },
+                    { tag: '[gasp]', label: '+ Gasp 😲' },
+                    { tag: '[excited]', label: '+ Excited ⚡' },
+                    { tag: '[yawn]', label: '+ Yawn 🥱' }
+                  ].map(({ tag, label }) => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => setText(prev => (prev ? `${prev.trim()} ${tag} ` : `${tag} `))}
+                      className={`h-6 px-2 rounded text-[10px] font-mono font-bold shrink-0 transition-all cursor-pointer border ${
+                        isLight
+                          ? 'bg-white hover:bg-sky-50 text-slate-700 hover:text-sky-600 border-slate-300 hover:border-sky-400'
+                          : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] hover:text-[#00dbe7] border-[#3a494b]/40 hover:border-[#00dbe7]/50'
+                      }`}
+                      title={`Insert ${tag} paralinguistic emotion marker`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Textarea */}
               <div className="relative">
                 <textarea
@@ -3087,9 +3128,33 @@ export default function SpeechStudioView({
 
                 {/* Test Textarea */}
                 <div>
-                  <label className="block text-[10px] font-mono uppercase font-bold text-on-surface-variant mb-1">
-                    Test Script to Speak
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-mono uppercase font-bold text-on-surface-variant">
+                      Test Script to Speak
+                    </label>
+                    <div className="flex items-center gap-1 overflow-x-auto pb-0.5 scrollbar-none flex-nowrap">
+                      {[
+                        { tag: '[laugh]', label: '+ Laugh' },
+                        { tag: '[chuckle]', label: '+ Chuckle' },
+                        { tag: '[sigh]', label: '+ Sigh' },
+                        { tag: '[whisper]', label: '+ Whisper' },
+                        { tag: '[pause]', label: '+ Pause' }
+                      ].map(({ tag, label }) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => setReplicateTestScript(prev => (prev ? `${prev.trim()} ${tag} ` : `${tag} `))}
+                          className={`h-5 px-1.5 rounded text-[9px] font-mono font-bold shrink-0 transition-all cursor-pointer border ${
+                            isLight
+                              ? 'bg-white hover:bg-purple-50 text-slate-700 border-slate-300 hover:border-purple-400'
+                              : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:border-purple-400'
+                          }`}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                   <textarea
                     value={replicateTestScript}
                     onChange={(e) => setReplicateTestScript(e.target.value)}

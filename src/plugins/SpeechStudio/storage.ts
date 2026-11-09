@@ -358,12 +358,10 @@ export function getClonedAudioSample(profileId: string): { buffer: Buffer; mimeT
 }
 
 /**
- * Retrieve a specific cloned voice profile by ID or name (checks memory and PostgreSQL).
+ * Retrieve a specific cloned voice profile by ID or name (checks PostgreSQL tenant-scope, then disk/memory).
  */
 export async function getClonedVoiceProfileAsync(profileIdOrName: string, userEmail?: string): Promise<StoredClonedVoiceProfile | null> {
-  const local = getClonedVoiceProfile(profileIdOrName);
-  if (local && local.sampleAudioDataUrl) return local;
-
+  // If user is authenticated, query their isolated PostgreSQL tenant records first
   if (userEmail && !userEmail.startsWith('ip:')) {
     try {
       const scopedDb = getScopedDb(userEmail);
@@ -394,12 +392,20 @@ export async function getClonedVoiceProfileAsync(profileIdOrName: string, userEm
     }
   }
 
-  return local;
+  // Fallback to memory / local disk cache scoped by user
+  return getClonedVoiceProfile(profileIdOrName, userEmail);
 }
 
-export function getClonedVoiceProfile(profileId: string): StoredClonedVoiceProfile | null {
+export function getClonedVoiceProfile(profileId: string, userId?: string): StoredClonedVoiceProfile | null {
   if (cachedProfiles === null) {
     cachedProfiles = loadProfilesFromDisk();
   }
-  return cachedProfiles.find(p => p.id === profileId || p.name.toLowerCase() === profileId.toLowerCase()) || null;
+  return cachedProfiles.find(p => {
+    const matchesId = p.id === profileId || p.name.toLowerCase() === profileId.toLowerCase();
+    if (!matchesId) return false;
+    if (userId && !userId.startsWith('ip:') && p.userId && p.userId !== userId && p.userId !== 'workspace') {
+      return false;
+    }
+    return true;
+  }) || null;
 }

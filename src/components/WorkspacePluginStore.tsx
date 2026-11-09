@@ -1041,7 +1041,7 @@ export default function WorkspacePluginStore({
                       setActiveModalPlugin(p);
                       setModalTab('overview');
                     }}
-                    className="flex-1 sm:flex-initial h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] bg-surface-container-low/50 hover:bg-surface-container transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm"
+                    className="flex-1 sm:flex-initial h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] bg-surface-container-low/50 hover:bg-surface-container transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm whitespace-nowrap"
                     title={`View full details for ${p.name}`}
                   >
                     <span className="material-symbols-outlined text-[15px] leading-none text-on-surface-variant">info</span>
@@ -1055,7 +1055,7 @@ export default function WorkspacePluginStore({
                           type="button"
                           disabled={isActing}
                           onClick={() => handleInstall(p.id, p.name)}
-                          className="flex-1 min-w-[120px] h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-sm shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                          className="flex-1 min-w-0 h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-sm shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50 whitespace-nowrap"
                           title={`Upgrade from v${userInstalled?.installedVersion} to v${p.version}`}
                         >
                           {isActing ? (
@@ -1068,7 +1068,7 @@ export default function WorkspacePluginStore({
                           )}
                         </button>
                       ) : (
-                        <div className="flex-1 min-w-[100px] h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
+                        <div className="flex-1 min-w-0 h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm whitespace-nowrap">
                           <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#00a854] dark:text-[#00fb83]" />
                           <span>Installed</span>
                         </div>
@@ -1079,7 +1079,7 @@ export default function WorkspacePluginStore({
                         disabled={isActing}
                         onClick={() => handleUninstall(p.id, p.name)}
                         title={`Uninstall ${p.name} from workspace`}
-                        className="h-9 px-2.5 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-1 shrink-0 cursor-pointer disabled:opacity-50"
+                        className="h-9 px-2.5 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-1 shrink-0 cursor-pointer disabled:opacity-50 whitespace-nowrap"
                       >
                         {isActing ? (
                           <span className="material-symbols-outlined text-[15px] leading-none animate-spin">progress_activity</span>
@@ -1096,7 +1096,7 @@ export default function WorkspacePluginStore({
                       type="button"
                       disabled={isActing}
                       onClick={() => handleInstall(p.id, p.name)}
-                      className="flex-1 min-w-[120px] h-9 px-4 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-md hover:shadow-[#00dbe7]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="flex-1 min-w-0 h-9 px-4 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-md hover:shadow-[#00dbe7]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50 whitespace-nowrap"
                     >
                       {isActing ? (
                         <>

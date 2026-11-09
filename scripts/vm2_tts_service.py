@@ -160,7 +160,48 @@ def format_pitch(pitch: float) -> str:
     return f"{hz:+d}Hz"
 
 def sanitize_name(name: str) -> str:
-    return re.sub(r'[^a-zA-Z0-9_-]', '_', name.strip().lower())
+    return re.sub(r'[^a-zA-Z0-9_-]', '_', (name or '').strip().lower())
+
+def preprocess_emotion_tags(text: str, is_hindi: bool = False) -> str:
+    """
+    Simulates paralinguistic emotions ([laugh], [sigh], [whisper], etc.)
+    and strips bracketed tags so they are never read aloud verbatim.
+    """
+    if not text:
+        return text
+
+    # Conversational replacements with natural human acoustic cadence
+    replacements = [
+        # Laughter & Chuckles
+        (r'\[(laugh|laughter|giggle|haha)\]', ' haha, ' if not is_hindi else ' हाहा, '),
+        (r'\[(chuckle|snicker)\]', ' heh, ' if not is_hindi else ' हेह, '),
+        # Sigh & Relief
+        (r'\[(sigh|phew)\]', ' ... ahhh, ... ' if not is_hindi else ' ... आह, ... '),
+        # Whispering
+        (r'\[(whisper|whispering)\]', ' ... psst, ' if not is_hindi else ' ... सुनो, '),
+        # Surprise / Gasp
+        (r'\[(gasp|shocked)\]', ' ... oh! ' if not is_hindi else ' ... अरे! '),
+        # Yawn / Tired
+        (r'\[(yawn|sleepy)\]', ' ... yaawn, ... ' if not is_hindi else ' ... जम्हाई, ... '),
+        # Pauses / Dramatic timing
+        (r'\[(pause|break|silence)(?:_\d+m?s)?\]', ' ... — ... '),
+        # Emotion styles
+        (r'\[(excited|energetic)\]', ' ! '),
+        (r'\[(happy|cheerful)\]', ' '),
+        (r'\[(sad|crying|somber)\]', ' ... '),
+        (r'\[(dramatic|serious)\]', ' ... '),
+    ]
+
+    processed = text
+    for pattern, repl in replacements:
+        processed = re.sub(pattern, repl, processed, flags=re.IGNORECASE)
+
+    # Clean up any leftover bracketed tags so synthesizers never speak "bracket ... bracket"
+    processed = re.sub(r'\[[a-zA-Z0-9_\-\s]+\]', ' ', processed)
+    # Normalize excessive spaces and clean punctuation
+    processed = re.sub(r'\s{2,}', ' ', processed)
+    processed = re.sub(r'(\s*\.\.\.\s*)+', ' ... ', processed)
+    return processed.strip()
 
 def transcode_to_wav(audio_bytes: bytes) -> bytes:
     """
@@ -380,18 +421,31 @@ async def synthesize(request: Request):
 
     rate_str = format_rate(rate)
     pitch_str = format_pitch(pitch)
-    fallback = "hi-IN-MadhurNeural" if "hi-IN" in voice or any('\u0900' <= char <= '\u097F' for char in text) else "en-US-GuyNeural"
+    is_hindi = "hi-IN" in voice or any('\u0900' <= char <= '\u097F' for char in text)
+    fallback = "hi-IN-MadhurNeural" if is_hindi else "en-US-GuyNeural"
+
+    # Preprocess emotion tags so paralinguistics are simulated naturally and never read aloud as brackets
+    processed_text = preprocess_emotion_tags(text, is_hindi=is_hindi)
+    if not processed_text:
+        processed_text = text
 
     try:
-        audio_bytes = await generate_speech_with_retry(text, voice, rate_str, pitch_str, fallback_voice=fallback)
+        audio_bytes = await generate_speech_with_retry(processed_text, voice, rate_str, pitch_str, fallback_voice=fallback)
         return Response(content=audio_bytes, media_type="audio/mpeg")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-def synthesize_with_xtts(text: str, audio_raw: bytes, speaker_name: str, rate: float = 1.0) -> tuple[bytes, dict]:
+def synthesize_with_xtts(
+    text: str, 
+    audio_raw: bytes, 
+    speaker_name: str, 
+    rate: float = 1.0,
+    voice_id: str = None,
+    user_id: str = None
+) -> tuple[bytes, dict]:
     """
-    Genuine Zero-Shot Neural Voice Cloning using XTTS-v2 with Latent Caching.
-    Extracts gpt_cond_latent and speaker_embedding, caches them permanently,
+    Genuine Zero-Shot Neural Voice Cloning using XTTS-v2 with Scoped Latent Caching.
+    Extracts gpt_cond_latent and speaker_embedding, caches them permanently scoped by voice ID and user,
     and performs neural autoregressive flow matching synthesis.
     """
     global XTTS_MODEL, XTTS_READY
@@ -406,12 +460,22 @@ def synthesize_with_xtts(text: str, audio_raw: bytes, speaker_name: str, rate: f
     is_hindi = any('\u0900' <= char <= '\u097F' for char in text)
     target_language = "hi" if is_hindi else "en"
 
-    # 2. Check for cached conditioning latents
+    # Preprocess emotion tags so paralinguistics ([laugh], [sigh], etc.) are simulated naturally and never read aloud as brackets
+    processed_text = preprocess_emotion_tags(text, is_hindi=is_hindi)
+    if not processed_text:
+        processed_text = text
+
+    # 2. Scoped Latent Caching Keys
     safe_name = sanitize_name(speaker_name)
+    safe_voice_id = sanitize_name(voice_id) if voice_id else None
+    safe_user_id = sanitize_name(user_id) if user_id else None
+
+    voice_cache_file = os.path.join(LATENTS_DIR, f"voice_{safe_voice_id}.pt") if safe_voice_id else None
+    user_cache_file = os.path.join(LATENTS_DIR, f"user_{safe_user_id}_{safe_name}.pt") if (safe_user_id and safe_name) else None
     name_cache_file = os.path.join(LATENTS_DIR, f"name_{safe_name}.pt") if safe_name else None
     
     hash_cache_file = None
-    if audio_raw:
+    if audio_raw and len(audio_raw) >= 500:
         audio_hash = hashlib.sha256(audio_raw).hexdigest()[:16]
         hash_cache_file = os.path.join(LATENTS_DIR, f"hash_{audio_hash}.pt")
 
@@ -419,7 +483,7 @@ def synthesize_with_xtts(text: str, audio_raw: bytes, speaker_name: str, rate: f
     speaker_embedding = None
     latents_cached = False
 
-    # Check cache by hash first, then by name
+    # Priority 1: Check hash cache (deterministic audio matching)
     if hash_cache_file and os.path.exists(hash_cache_file):
         try:
             cached_data = torch.load(hash_cache_file)
@@ -430,8 +494,30 @@ def synthesize_with_xtts(text: str, audio_raw: bytes, speaker_name: str, rate: f
         except Exception as e:
             print(f"[Neural Gateway] Failed to read hash cache: {e}")
 
-    # Check cache by speaker name (allows fast re-use without re-extracting)
-    if gpt_cond_latent is None and name_cache_file and os.path.exists(name_cache_file):
+    # Priority 2: Check voice-specific cache
+    if gpt_cond_latent is None and voice_cache_file and os.path.exists(voice_cache_file):
+        try:
+            cached_data = torch.load(voice_cache_file)
+            gpt_cond_latent = cached_data["gpt_cond_latent"]
+            speaker_embedding = cached_data["speaker_embedding"]
+            latents_cached = True
+            print(f"[Neural Gateway] Loaded latents from voice cache: {voice_cache_file}")
+        except Exception as e:
+            print(f"[Neural Gateway] Failed to read voice cache: {e}")
+
+    # Priority 3: Check user-specific voice cache
+    if gpt_cond_latent is None and user_cache_file and os.path.exists(user_cache_file):
+        try:
+            cached_data = torch.load(user_cache_file)
+            gpt_cond_latent = cached_data["gpt_cond_latent"]
+            speaker_embedding = cached_data["speaker_embedding"]
+            latents_cached = True
+            print(f"[Neural Gateway] Loaded latents from user cache: {user_cache_file}")
+        except Exception as e:
+            print(f"[Neural Gateway] Failed to read user cache: {e}")
+
+    # Priority 4: Check speaker name cache (only when safe_name is specific)
+    if gpt_cond_latent is None and name_cache_file and os.path.exists(name_cache_file) and safe_name not in ("user_voice", "voice"):
         try:
             cached_data = torch.load(name_cache_file)
             gpt_cond_latent = cached_data["gpt_cond_latent"]
@@ -445,57 +531,46 @@ def synthesize_with_xtts(text: str, audio_raw: bytes, speaker_name: str, rate: f
     t0 = time.time()
     if gpt_cond_latent is None:
         if not audio_raw or len(audio_raw) < 500:
-            # Fallback to any available cached voice latent profile
-            fallback_caches = [f for f in os.listdir(LATENTS_DIR) if f.endswith(".pt")]
-            if fallback_caches:
-                # Prefer name_ caches over hash_
-                name_caches = [f for f in fallback_caches if f.startswith("name_")]
-                chosen = name_caches[0] if name_caches else fallback_caches[0]
-                fb_path = os.path.join(LATENTS_DIR, chosen)
-                try:
-                    cached_data = torch.load(fb_path)
-                    gpt_cond_latent = cached_data["gpt_cond_latent"]
-                    speaker_embedding = cached_data["speaker_embedding"]
-                    latents_cached = True
-                    print(f"[Neural Gateway] Used ambient latent cache: {fb_path}")
-                except Exception as fb_err:
-                    print(f"[Neural Gateway] Ambient cache read error: {fb_err}")
-            if gpt_cond_latent is None:
-                raise ValueError("Reference audio sample is missing or too short for neural cloning.")
+            raise ValueError(f"No cached latents found for voice '{speaker_name}' (ID: {voice_id}). Reference audio sample is required.")
 
-        if gpt_cond_latent is None:
-            # Clean and transcode audio to 24kHz mono PCM WAV via ffmpeg
-            clean_wav_bytes = transcode_to_wav(audio_raw)
-            tmp_ref_path = f"/tmp/ref_speaker_{os.getpid()}_{int(time.time()*1000)}.wav"
-            with open(tmp_ref_path, "wb") as f:
-                f.write(clean_wav_bytes)
+        # Clean and transcode audio to 24kHz mono PCM WAV via ffmpeg
+        clean_wav_bytes = transcode_to_wav(audio_raw)
+        tmp_ref_path = f"/tmp/ref_speaker_{os.getpid()}_{int(time.time()*1000)}.wav"
+        with open(tmp_ref_path, "wb") as f:
+            f.write(clean_wav_bytes)
 
-            try:
-                with XTTS_LOCK:
-                    gpt_cond_latent, speaker_embedding = XTTS_MODEL.get_conditioning_latents(audio_path=tmp_ref_path)
-                
-                # Save to cache
-                cache_payload = {
-                    "gpt_cond_latent": gpt_cond_latent,
-                    "speaker_embedding": speaker_embedding,
-                    "speaker_name": speaker_name,
-                    "cached_at": time.time()
-                }
-                if hash_cache_file:
-                    torch.save(cache_payload, hash_cache_file)
-                if name_cache_file and safe_name not in ("user_voice", "voice"):
-                    torch.save(cache_payload, name_cache_file)
-                print(f"[Neural Gateway] Computed & cached new latents for speaker '{speaker_name}' in {time.time() - t0:.2f}s")
-            finally:
-                if os.path.exists(tmp_ref_path):
-                    os.remove(tmp_ref_path)
+        try:
+            with XTTS_LOCK:
+                gpt_cond_latent, speaker_embedding = XTTS_MODEL.get_conditioning_latents(audio_path=tmp_ref_path)
+            
+            # Save to scoped caches
+            cache_payload = {
+                "gpt_cond_latent": gpt_cond_latent,
+                "speaker_embedding": speaker_embedding,
+                "speaker_name": speaker_name,
+                "voice_id": voice_id,
+                "user_id": user_id,
+                "cached_at": time.time()
+            }
+            if hash_cache_file:
+                torch.save(cache_payload, hash_cache_file)
+            if voice_cache_file:
+                torch.save(cache_payload, voice_cache_file)
+            if user_cache_file:
+                torch.save(cache_payload, user_cache_file)
+            if name_cache_file and safe_name not in ("user_voice", "voice"):
+                torch.save(cache_payload, name_cache_file)
+            print(f"[Neural Gateway] Computed & cached new latents for speaker '{speaker_name}' (voiceId: {voice_id}) in {time.time() - t0:.2f}s")
+        finally:
+            if os.path.exists(tmp_ref_path):
+                os.remove(tmp_ref_path)
 
     # 4. Perform Neural Synthesis with XTTS-v2
     t1 = time.time()
     speed_factor = max(0.7, min(1.4, float(rate)))
     with XTTS_LOCK:
         out = XTTS_MODEL.inference(
-            text=text,
+            text=processed_text,
             language=target_language,
             gpt_cond_latent=gpt_cond_latent,
             speaker_embedding=speaker_embedding,
@@ -530,7 +605,9 @@ async def clone(request: Request):
         raise HTTPException(status_code=400, detail="Text cannot be empty.")
 
     sample_audio = data.get("sampleAudio", "")
-    speaker_name = data.get("speakerName", "User Voice")
+    speaker_name = data.get("speakerName") or data.get("voiceName") or "User Voice"
+    voice_id = data.get("voiceId") or data.get("id")
+    user_id = data.get("userId") or data.get("userEmail")
     rate = float(data.get("rate", 1.0))
     pitch = float(data.get("pitch", 1.0))
 
@@ -550,7 +627,9 @@ async def clone(request: Request):
             text,
             audio_raw,
             speaker_name,
-            rate
+            rate,
+            voice_id,
+            user_id
         )
 
         headers = {
@@ -579,7 +658,8 @@ async def clone(request: Request):
                 fallback_voice = "en-US-AvaMultilingualNeural" if is_female else "en-US-GuyNeural"
             rate_str = format_rate(rate)
             pitch_str = format_pitch(pitch)
-            audio_bytes = await generate_speech_with_retry(text, fallback_voice, rate_str, pitch_str)
+            processed_text = preprocess_emotion_tags(text, is_hindi=is_hindi)
+            audio_bytes = await generate_speech_with_retry(processed_text, fallback_voice, rate_str, pitch_str)
             headers = {
                 "X-Replication-Engine": "ACOUSTIC_FALLBACK",
                 "X-Fallback-Reason": str(xtts_err)[:100],
