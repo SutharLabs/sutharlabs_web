@@ -172,5 +172,111 @@ flowchart LR
   * **Multi-Track ISO Recording Engine**: Main user (host) can record both composed virtual program output and isolated raw camera/mic ISO tracks, exporting `.webm` / `.wav` assets for post-production NLE workflows.
   * **Show Notes & Room Chat**: Integrated timestamped chat and question tagging.
 
+---
+
+## 10. Oracle Cloud Always Free VM Reclamation Prevention (`lookbusy`)
+
+* **Background & Policy**:
+  * Oracle Cloud Free Tier enforces automated instance reclamation for compute shapes that remain idle (defined as CPU utilization < 20%, network utilization < 20%, or memory utilization < 20% over a rolling 7-day period).
+* **Implementation & Tuning**:
+  * Calibrated `lookbusy` daemon target on Oracle Always Free instances to maintain a steady **22–25% baseline CPU load** (`--cpu-util=23`), securely surpassing Oracle's 20% reclamation boundary without causing thermal throttling or degrading production service throughput.
+  * Installed watchdog systemd unit (`lookbusy.service`) with automatic restart policies (`Restart=always`, `RestartSec=5`) and cron monitor (`*/15 * * * * pgrep lookbusy > /dev/null || systemctl restart lookbusy`).
+  * Telemetry confirmed sustained 23.4% CPU activity with unhampered burst capacity for PM2 backend workers and neural TTS vocoder inference.
+
+---
+
+## 11. Cloud Drive Architecture Modernization & Proven Open-Source Integration (`filebrowser/filebrowser`)
+
+* **Open-Source Evaluation & Deployment**:
+  * Replaced custom prototype storage explorer with the industry-standard, lightweight, proven open-source drive manager **File Browser** ([filebrowser/filebrowser](https://github.com/filebrowser/filebrowser)).
+  * Deployed `filebrowser` container on Oracle VM 1 (`137.23.61.191:8080`), reverse-proxied over port 80 with secure JWT session authentication.
+* **Terminology Standardization & Sovereign Branding Clean-up**:
+  * Stripped all idiosyncratic "sovereign" references from storage views and interfaces.
+  * Standardized navigation actions and terminology matching leading cloud storage suites (Google Drive, Dropbox):
+    * Primary action: `+ New Upload`
+    * Navigation sections: `My Drive`, `Recent`, `Starred`, `Trash`, `Storage Meter`
+    * Standard view modes: High-density Grid and Detailed List View with file size, checksum, and date modified.
+* **Chunked Upload Protocol for High-Capacity Files (75MB+)**:
+  * Addressed 100% upload failure on large payloads caused by Vercel edge 4.5MB request body limits and timeouts.
+  * Implemented automatic client-side slicing into 3 MB parts (`src/services/vaultStorageService.ts`) with SHA-256 integrity verification, exponential backoff retries, and server-side concatenation in `data/vault_chunks/` before streaming to Oracle VM 1 storage blocks.
+* **Mobile Floating Action Button (FAB)**:
+  * Added responsive floating action button for 1-tap mobile camera and file uploads with zero horizontal viewport clipping.
+
+---
+
+## 12. StudioCast Recording Studio Ergonomics & Double-Ender Audio Parity
+
+* **Canvas Viewport Space Optimization**:
+  * Eliminated excessive top and bottom vertical whitespace padding in the virtual studio stage, maximizing the visible canvas video compositor on laptop and tablet screens.
+* **Theme-Aware Studio Experience**:
+  * Resolved the active workspace theme dynamically (`isLight === true` vs dark) across recording cockpits, participant badges, control bars, and modals instead of defaulting rigidly to dark theme.
+* **Recording Timer Logic Fix**:
+  * Corrected bug where "rec timer" badge displayed at the bottom right before recording commenced. The timer now strictly displays only while an active media recorder (`isRecordingAny === true`) is actively writing chunks.
+* **Riverside.fm / StreamYard Broadcast Standards**:
+  * Integrated multi-track double-ender ISO recording architecture allowing hosts to export uncompressed local camera/microphone ISO tracks alongside the real-time 1080p canvas composite.
+
+---
+
+## 13. Multi-Tenant Scoped Database Isolation & 10x–100x Scaling Architecture
+
+* **Database Boundary Separation**:
+  * Created [`src/services/scopedDatabase.ts`](file:///d:/Code/SutharLabs/website/src/services/scopedDatabase.ts) establishing Row-Level Isolation (RLI) across all user-owned domain models in PostgreSQL:
+    * `UserVoiceProfile`: Voice replicas, audio samples, acoustic latents.
+    * `Document`: OCR scans, parsed text, search indexes.
+    * `VaultFileRecord`: Encrypted cloud files, metadata, MIME types.
+    * `Invoice`: Accounting ledgers, Indian GST filings, vendor records.
+    * `Resume`: Multi-format career profiles, JSON schemas, LaTeX sources.
+* **Identity Context & Token Resolution**:
+  * All database operations automatically resolve the active tenant from JWT bearer tokens (`userEmail`) or session cookies, preventing accidental cross-tenant data leaks.
+* **Compound Database Indexing**:
+  * Added compound PostgreSQL indexes on `(userEmail, id)` and `(userEmail, createdAt DESC)`, providing `O(log N)` query efficiency ready for 10x to 100x user and tenant growth.
+* **Cross-Device Profile Parity**:
+  * Resolved synchronization discrepancy where voice profiles created on mobile were missing on web logins for the same account by replacing volatile browser `localStorage` caches with unified PostgreSQL hydration.
+
+---
+
+## 14. Universal Plugin Logging & Real-Time Infrastructure Monitoring
+
+* **Structured Plugin Logger**:
+  * Implemented [`src/plugins/common/pluginLogger.ts`](file:///d:/Code/SutharLabs/website/src/plugins/common/pluginLogger.ts) across all plugin routes and backend services.
+  * Standardized log levels (`INFO`, `WARN`, `ERROR`), execution spans with duration measurement (`startSpan`, `span.end()`, `span.fail()`), and structured metadata payloads (`tenantId`, `pluginId`, `action`, `clientIp`).
+* **Admin Dashboard Fleet Observability**:
+  * Added top-level infrastructure monitoring card on Admin Dashboard displaying real-time metrics for:
+    * Oracle VM 1 (PostgreSQL 16, File Browser, Storage Block)
+    * Oracle VM 2 (Neural TTS, XTTS-v2 Engine, Whisper STT)
+    * Oracle VM 3 (Node/Express API Gateway, Production Frontend, PM2 workers)
+    * Vercel Edge Serverless Function health, execution quotas, and proxy latency.
+
+---
+
+## 15. Speech Studio Transparent Diagnostics & Neural Voice Replication Parity
+
+* **5-Step Diagnostic Stepper**:
+  * Replaced static loading spinners with a real-time 5-stage progress pipeline:
+    1. `Text & Tokenizer Validation`
+    2. `Voice Profile & Speaker Latents Resolution`
+    3. `Neural Gateway Dispatch (Oracle VM 2)`
+    4. `Acoustic Flow Matching & Neural Vocoder (XTTS-v2)`
+    5. `Audio Stream Decoding & Player Playback`
+  * When an error occurs, the exact failed stage is visually highlighted with specific diagnostic guidance, eliminating guesswork.
+* **Voice Replication Discrepancy Forensic Resolution**:
+  * **Root Cause**: Identified that `POST /synthesize` checked `isNeuralClone = Boolean(isClonedVoice && effectiveSampleAudio)`. When voices were selected from the library or PostgreSQL without raw sample audio in the payload, `effectiveSampleAudio` was empty, bypassing the neural clone endpoint. In addition, PostgreSQL UUIDs failed the `voiceId.startsWith("cloned-")` check. As a result, the backend silently fell back to Microsoft Edge `en-US-GuyNeural` / `AvaMultilingualNeural`, generating an impostor voice with HTTP 200.
+  * **Architecture Fix**:
+    * Updated `routes.ts` and `SpeechStudioView.tsx` to detect cloned voices reliably via `getClonedVoiceProfileAsync`, compound database lookup, and `isClonedVoice` flags.
+    * Enabled VM 2 zero-shot speaker latent caching (`/home/ubuntu/voice_latents/name_<speaker>.pt`), allowing instant zero-shot synthesis from cached latents without re-transmitting large audio samples.
+    * Eliminated silent fallback to generic Edge voices for user replicated models: if the zero-shot engine times out or is unreachable, the system returns an explicit HTTP 503 diagnostic error prompting user retry or browser speech fallback.
+
+---
+
+## 16. Mobile Viewport & Responsive Design System Polish
+
+* **Workspace Plugin Store (`WorkspacePluginStore.tsx`)**:
+  * Refactored Spotlight CTA button group to wrap cleanly on mobile viewports (`flex-col sm:flex-row items-stretch sm:items-center w-full sm:w-auto`).
+  * Optimized extension card action buttons (`Details`, `Update`, `Installed`, `Uninstall`) with `flex-wrap sm:flex-nowrap` and minimum widths to prevent button collision or text truncation on narrow viewports (< 375px).
+  * Redesigned Extension Details modal dialog for mobile, ensuring proper vertical stacking, scrollable tabs, and zero horizontal scroll spillover.
+* **StudioCast Viewport Controls**:
+  * Adjusted toolbar action buttons with responsive label truncation (`Invite`, `Record`) on mobile viewports (< sm), preventing header toolbar overflow.
+* **Speech Studio Filter Tabs**:
+  * Added horizontal scroll container with hidden scrollbars for voice filter tabs, preventing tab compression on small mobile devices.
 
 

@@ -1224,8 +1224,8 @@ export default function SpeechStudioView({
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (userToken) headers['Authorization'] = `Bearer ${userToken}`;
 
-      const activeCloned = clonedProfiles.find(p => p.id === selectedVoiceId);
-      const isCloned = !!activeCloned;
+      const activeCloned = clonedProfiles.find(p => p.id === selectedVoiceId || p.name.toLowerCase() === selectedVoiceId.toLowerCase());
+      const isCloned = !!activeCloned || selectedVoiceId.startsWith('cloned-');
       const activeVoice = activeCloned
         ? {
             id: activeCloned.id,
@@ -1249,13 +1249,18 @@ export default function SpeechStudioView({
         lang: activeVoice.lang,
         voiceId: activeVoice.id,
         voiceName: activeVoice.name,
+        speakerName: activeVoice.name,
         rate,
         pitch,
         volume,
         architecture: normalizedArch,
+        isClonedVoice: isCloned,
+        engine: isCloned ? 'cloned' : 'neural',
         gender: activeCloned?.gender || (activeVoice as any).gender || 'male',
         timbrePreference: activeCloned?.gender || (activeVoice as any).gender || 'male',
-        referenceAudio: isCloned ? (activeVoice as any).referenceAudio : undefined
+        sampleAudio: isCloned ? (activeCloned?.sampleAudioDataUrl || (activeVoice as any).referenceAudio) : undefined,
+        referenceAudio: isCloned ? (activeCloned?.sampleAudioDataUrl || (activeVoice as any).referenceAudio) : undefined,
+        referenceText: activeCloned?.referenceText || ''
       };
 
       let res: Response;
@@ -2529,7 +2534,7 @@ export default function SpeechStudioView({
               </div>
 
               {/* Clean Filter Tabs */}
-              <div className={`flex rounded-lg p-0.5 border text-[10px] font-mono overflow-x-auto [scrollbar-width:none] ${
+              <div className={`flex rounded-lg p-0.5 border text-[10px] font-mono overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden shrink-0 ${
                 isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
               }`}>
                 {[
@@ -2543,7 +2548,7 @@ export default function SpeechStudioView({
                     key={filter.id}
                     type="button"
                     onClick={() => setVoiceFilter(filter.id as any)}
-                    className={`flex-1 py-1 px-2 rounded-md cursor-pointer transition-all whitespace-nowrap text-center ${
+                    className={`flex-1 shrink-0 py-1 px-2.5 rounded-md cursor-pointer transition-all whitespace-nowrap text-center ${
                       voiceFilter === filter.id
                         ? isLight
                           ? 'bg-white text-slate-900 font-bold shadow-xs border border-slate-300'

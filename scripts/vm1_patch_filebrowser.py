@@ -32,3 +32,4 @@ app.use("/filebrowser", (req, res) => {
     print("Updated server.js with filebrowser proxy")
 else:
     print("Already updated")
+

@@ -683,8 +683,8 @@ export default function WorkspacePluginStore({
             </div>
 
             {/* Spotlight CTA */}
-            <div className="flex sm:flex-col items-center sm:items-end justify-between sm:justify-center gap-2.5 pt-3 sm:pt-0 border-t sm:border-t-0 border-outline/10 shrink-0">
-              <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-mono">
+            <div className="flex flex-col sm:items-end justify-between sm:justify-center gap-2.5 pt-3 sm:pt-0 border-t sm:border-t-0 border-outline/10 shrink-0 w-full sm:w-auto">
+              <div className="flex items-center justify-between sm:justify-end gap-1.5 text-xs text-on-surface-variant font-mono w-full sm:w-auto">
                 {spotlightPlugin.rating && spotlightPlugin.rating > 0 ? (
                   <>
                     <span className="text-amber-400 font-bold">★ {spotlightPlugin.rating}</span>
@@ -699,14 +699,14 @@ export default function WorkspacePluginStore({
                 </span>
               </div>
 
-              <div className="flex items-center gap-2 w-full sm:w-auto">
+              <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
                 <button
                   type="button"
                   onClick={() => {
                     setActiveModalPlugin(spotlightPlugin);
                     setModalTab('overview');
                   }}
-                  className="h-9 px-3.5 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] transition-all bg-surface-container-low/60 hover:bg-surface-container flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                  className="flex-1 sm:flex-initial h-9 px-3.5 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] transition-all bg-surface-container-low/60 hover:bg-surface-container flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
                 >
                   <span className="material-symbols-outlined text-[16px] leading-none text-on-surface-variant">info</span>
                   <span>Details</span>
@@ -717,13 +717,13 @@ export default function WorkspacePluginStore({
                   const hasSpotlightUpdate = inst?.installedVersion && inst.installedVersion !== spotlightPlugin.version;
 
                   return (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 flex-1 sm:flex-initial">
                       {hasSpotlightUpdate ? (
                         <button
                           type="button"
                           disabled={loadingPluginId === spotlightPlugin.id}
                           onClick={() => handleInstall(spotlightPlugin.id, spotlightPlugin.name)}
-                          className="h-9 px-3.5 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-md shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                          className="flex-1 sm:flex-initial h-9 px-3.5 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-md shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                           title={`Upgrade from v${inst?.installedVersion} to v${spotlightPlugin.version}`}
                         >
                           {loadingPluginId === spotlightPlugin.id ? (
@@ -736,7 +736,7 @@ export default function WorkspacePluginStore({
                           )}
                         </button>
                       ) : (
-                        <span className="h-9 px-3.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
+                        <span className="flex-1 sm:flex-initial h-9 px-3.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
                           <CheckCircle2 className="w-4 h-4 shrink-0 text-[#00a854] dark:text-[#00fb83]" />
                           <span>Installed</span>
                         </span>
@@ -745,7 +745,7 @@ export default function WorkspacePluginStore({
                         type="button"
                         disabled={loadingPluginId === spotlightPlugin.id}
                         onClick={() => handleUninstall(spotlightPlugin.id, spotlightPlugin.name)}
-                        className="h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        className="flex-1 sm:flex-initial h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
                         {loadingPluginId === spotlightPlugin.id ? (
                           <span className="material-symbols-outlined text-[16px] leading-none animate-spin">progress_activity</span>
@@ -763,7 +763,7 @@ export default function WorkspacePluginStore({
                     type="button"
                     disabled={loadingPluginId === spotlightPlugin.id}
                     onClick={() => handleInstall(spotlightPlugin.id, spotlightPlugin.name)}
-                    className="h-9 px-4 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-lg hover:shadow-[#00dbe7]/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                    className="flex-1 sm:flex-initial h-9 px-4 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-lg hover:shadow-[#00dbe7]/25 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                   >
                     {loadingPluginId === spotlightPlugin.id ? (
                       <span className="material-symbols-outlined text-[16px] leading-none animate-spin">progress_activity</span>
@@ -1034,14 +1034,14 @@ export default function WorkspacePluginStore({
                 </div>
 
                 {/* Card Actions: Uniformly sized buttons across all states */}
-                <div className="mt-auto pt-5 flex items-center gap-2 w-full">
+                <div className="mt-auto pt-4 sm:pt-5 flex flex-wrap sm:flex-nowrap items-center gap-2 w-full">
                   <button
                     type="button"
                     onClick={() => {
                       setActiveModalPlugin(p);
                       setModalTab('overview');
                     }}
-                    className="h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] bg-surface-container-low/50 hover:bg-surface-container transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm"
+                    className="flex-1 sm:flex-initial h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-outline/30 hover:border-[#00dbe7] text-on-surface hover:text-[#00dbe7] bg-surface-container-low/50 hover:bg-surface-container transition-all flex items-center justify-center gap-1.5 shrink-0 cursor-pointer shadow-sm"
                     title={`View full details for ${p.name}`}
                   >
                     <span className="material-symbols-outlined text-[15px] leading-none text-on-surface-variant">info</span>
@@ -1055,7 +1055,7 @@ export default function WorkspacePluginStore({
                           type="button"
                           disabled={isActing}
                           onClick={() => handleInstall(p.id, p.name)}
-                          className="flex-1 min-w-0 h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-sm shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                          className="flex-1 min-w-[120px] h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-sm shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                           title={`Upgrade from v${userInstalled?.installedVersion} to v${p.version}`}
                         >
                           {isActing ? (
@@ -1068,7 +1068,7 @@ export default function WorkspacePluginStore({
                           )}
                         </button>
                       ) : (
-                        <div className="flex-1 min-w-0 h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
+                        <div className="flex-1 min-w-[100px] h-9 px-2.5 rounded-xl text-xs font-mono font-semibold bg-[#00e476]/10 border border-[#00e476]/30 text-[#008744] dark:text-[#00fb83] flex items-center justify-center gap-1.5 select-none shadow-sm">
                           <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#00a854] dark:text-[#00fb83]" />
                           <span>Installed</span>
                         </div>
@@ -1096,7 +1096,7 @@ export default function WorkspacePluginStore({
                       type="button"
                       disabled={isActing}
                       onClick={() => handleInstall(p.id, p.name)}
-                      className="flex-1 min-w-0 h-9 px-4 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-md hover:shadow-[#00dbe7]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="flex-1 min-w-[120px] h-9 px-4 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-md hover:shadow-[#00dbe7]/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {isActing ? (
                         <>
@@ -1199,38 +1199,38 @@ export default function WorkspacePluginStore({
                 </div>
 
                 {/* Quick Action Button in Modal Header: Installed / Uninstall */}
-                <div className="mt-5 flex items-center justify-between gap-3 pt-4 border-t border-outline/10">
+                <div className="mt-4 sm:mt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 sm:pt-4 border-t border-outline/10">
                   <div className="flex items-center gap-2 text-xs font-mono text-on-surface-variant">
                     <span className="material-symbols-outlined text-sm text-[#00e476]">lock</span>
                     <span>Sovereign Sandboxed Engine</span>
                   </div>
 
                   {isInstalled ? (
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
                       {hasUpdate && (
                         <button
                           type="button"
                           disabled={isActing}
                           onClick={() => handleInstall(activeModalPlugin.id, activeModalPlugin.name)}
-                          className="h-9 px-3.5 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-sm shadow-[#00dbe7]/20 flex items-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
+                          className="flex-1 sm:flex-initial h-9 px-3.5 rounded-xl text-xs font-mono font-semibold bg-gradient-to-r from-[#00dbe7] to-[#00f2fe] text-[#002022] hover:brightness-105 shadow-sm shadow-[#00dbe7]/20 flex items-center justify-center gap-1.5 transition-all cursor-pointer disabled:opacity-50"
                           title={`Upgrade from v${userInstalled?.installedVersion} to v${activeModalPlugin.version}`}
                         >
                           <span className="material-symbols-outlined text-[15px] leading-none">upgrade</span>
-                          {isActing ? 'Updating...' : `Update to v${activeModalPlugin.version}`}
+                          <span>{isActing ? 'Updating...' : `Update to v${activeModalPlugin.version}`}</span>
                         </button>
                       )}
-                      <span className="h-9 px-3 rounded-xl bg-[#00e476]/10 text-[#008744] dark:text-[#00fb83] border border-[#00e476]/30 text-xs font-mono font-semibold flex items-center gap-1.5 select-none shadow-sm">
+                      <span className="flex-1 sm:flex-initial h-9 px-3 rounded-xl bg-[#00e476]/10 text-[#008744] dark:text-[#00fb83] border border-[#00e476]/30 text-xs font-mono font-semibold flex items-center justify-center gap-1.5 select-none shadow-sm">
                         <CheckCircle2 className="w-3.5 h-3.5 shrink-0 text-[#00a854] dark:text-[#00fb83]" />
-                        Installed {userInstalled?.installedVersion ? `(v${userInstalled.installedVersion})` : ''}
+                        <span>Installed {userInstalled?.installedVersion ? `(v${userInstalled.installedVersion})` : ''}</span>
                       </span>
                       <button
                         type="button"
                         disabled={isActing}
                         onClick={() => handleUninstall(activeModalPlugin.id, activeModalPlugin.name)}
-                        className="h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        className="flex-1 sm:flex-initial h-9 px-3 rounded-xl text-xs font-mono font-semibold border border-red-500/25 dark:border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                       >
                         <span className="material-symbols-outlined text-[15px] leading-none">delete_outline</span>
-                        {isActing ? 'Uninstalling...' : 'Uninstall'}
+                        <span>{isActing ? 'Uninstalling...' : 'Uninstall'}</span>
                       </button>
                     </div>
                   ) : (
@@ -1238,17 +1238,17 @@ export default function WorkspacePluginStore({
                       type="button"
                       disabled={isActing}
                       onClick={() => handleInstall(activeModalPlugin.id, activeModalPlugin.name)}
-                      className="h-9 px-5 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                      className="w-full sm:w-auto h-9 px-5 rounded-xl text-xs font-mono font-semibold bg-[#00dbe7] text-[#002022] hover:bg-[#74f5ff] hover:shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       {isActing ? (
                         <>
                           <span className="material-symbols-outlined text-[15px] leading-none animate-spin">progress_activity</span>
-                          Installing...
+                          <span>Installing...</span>
                         </>
                       ) : (
                         <>
                           <span className="material-symbols-outlined text-[15px] leading-none">download</span>
-                          Install to Workspace
+                          <span>Install to Workspace</span>
                         </>
                       )}
                     </button>

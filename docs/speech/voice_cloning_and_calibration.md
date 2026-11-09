@@ -185,4 +185,32 @@ Every zero-shot cloned audio response includes cryptographic and execution telem
 * `X-Total-Time-Sec`: `29.97`
 * `X-Audio-Status`: `ACTIVE_SPEECH`
 
+---
+
+## 7. Multi-Stage Synthesis Diagnostics & Replicated Voice Parity (v0.3.5)
+
+### A. Root Cause of Synthesis Discrepancy (Initial Test vs. Voice Library Selection)
+In earlier iterations, users observed that voice replication test synthesis (`/clone-voice`) sounded authentic, but subsequent generation from the main Speech Studio selection resulted in a generic voice. Forensic investigation revealed:
+1. `POST /synthesize` checked `isNeuralClone = Boolean(isClonedVoice && effectiveSampleAudio)`.
+2. When voices were selected from the database or UI library, the audio sample was not bundled in the initial synthesis payload.
+3. Because `effectiveSampleAudio` was missing, `isNeuralClone` evaluated to `false`, bypassing VM 2 `/api/clone`.
+4. The handler silently fell back to Microsoft Edge `en-US-GuyNeural` / `AvaMultilingualNeural`, returning generic speech disguised with an HTTP 200 response.
+
+### B. Architectural Fix & Latent Cache Utilization
+1. **Name & UUID Voice Resolution**:
+   * The backend resolves voices via `getClonedVoiceProfileAsync(voiceId, userEmail)` or `voiceName`.
+   * Cloned profiles are strictly routed to `/api/clone` on VM 2, passing `speakerName` and any available audio sample.
+2. **Latent Cache Zero-Payload Synthesis**:
+   * Because VM 2 permanently caches speaker latents under `/home/ubuntu/voice_latents/name_<speaker>.pt`, subsequent synthesis requires zero audio re-transmission and synthesizes directly from the cached latents (< 0.01s latent retrieval).
+3. **Zero Silent Fallback Policy**:
+   * If the VM 2 neural replication engine is offline or times out, the backend returns an explicit HTTP 503 error with complete stage telemetry rather than substituting an unauthorized stock voice.
+
+### C. 5-Step Real-Time Diagnostics Pipeline
+Speech Studio features an interactive 5-stage progress pipeline providing end-to-end visibility into audio generation:
+1. `validate`: **Text & Tokenizer Validation** (character limit, language detection, token count).
+2. `profile`: **Voice Profile & Speaker Latents** (database lookup, latent cache check).
+3. `gateway`: **Neural Gateway Dispatch** (HTTP communication with Oracle VM 2 daemon).
+4. `inference`: **Acoustic Flow Matching & Neural Vocoder** (zero-shot XTTS-v2 execution or high-speed Edge neural synthesis).
+5. `decode`: **Audio Stream Decoding** (PCM/MP3 stream decoding and buffer readiness).
+
 

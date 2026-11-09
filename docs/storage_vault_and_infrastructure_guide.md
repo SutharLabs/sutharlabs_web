@@ -71,7 +71,23 @@ Accessible in the website sidebar under **ADMINISTRATION $\rightarrow$ Storage V
 
 ---
 
-## 5. Related Setup Documentation
+## 5. File Browser Open-Source Integration & Standardized Cloud Drive UI
+
+To provide enterprise-grade file management without custom protocol bloat:
+* **Engine**: Integrated **File Browser** ([filebrowser/filebrowser](https://github.com/filebrowser/filebrowser)), running in a lightweight Docker container on Oracle VM 1 (`137.23.61.191:8080`) reverse-proxied over port 80.
+* **Standardized Terminology**:
+  * Stripped all custom "sovereign" labels from drive explorer components.
+  * Standardized navigation: `+ New Upload`, `My Drive`, `Recent`, `Starred`, `Trash`, `Storage Meter`.
+  * Multi-format viewing: High-density Grid and Detailed List View with file size, checksum, and date modified.
+* **Chunked Streaming Upload Protocol**:
+  * Large files (up to 5GB) are sliced client-side into 3MB chunks (`src/services/vaultStorageService.ts`), bypassing Vercel edge 4.5MB request limits and timeouts.
+  * Streaming chunk assembly in `data/vault_chunks/` verifies SHA-256 integrity before writing to VM 1 storage blocks.
+* **Mobile Floating Action Button (FAB)**:
+  * Floating action button enables 1-tap uploads from mobile cameras and photo galleries with zero screen clipping.
+
+---
+
+## 6. Related Setup Documentation
 
 For the complete infrastructure setup guide, SSH keys, crontab backup scripts, and dual-database replication documentation, refer to:
 * [`D:\Code\SutharLabs\OracleFreeTier\ORACLE_CLOUD_SETUP_GUIDE.md`](file:///D:/Code/SutharLabs/OracleFreeTier/ORACLE_CLOUD_SETUP_GUIDE.md)

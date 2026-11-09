@@ -760,12 +760,12 @@ export default function StudioCastView({
         </div>
 
         {/* Global Toolbar Actions */}
-        <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+        <div className="flex items-center gap-2 shrink-0 flex-wrap sm:flex-nowrap">
           {/* Share Podcast Invite Link Button */}
           <button
             type="button"
             onClick={shareInviteLink}
-            className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
+            className={`h-8 px-2.5 sm:px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
               isLight
                 ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300'
                 : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border border-[#3a494b]/40 hover:text-[#00dbe7]'
@@ -775,12 +775,12 @@ export default function StudioCastView({
             {copiedKey === 'invite-link' ? (
               <>
                 <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="text-emerald-500">Link Copied!</span>
+                <span className="text-emerald-500">Copied!</span>
               </>
             ) : (
               <>
                 <Share2 className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
-                <span>Invite Guests</span>
+                <span>Invite<span className="hidden sm:inline"> Guests</span></span>
               </>
             )}
           </button>
@@ -790,20 +790,20 @@ export default function StudioCastView({
             <button
               type="button"
               onClick={startFullSessionRecording}
-              className="h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors"
+              className="h-8 px-3 sm:px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-500 hover:bg-rose-600 text-white shadow-sm flex items-center gap-1.5 cursor-pointer transition-colors"
               title="Record Master Composed Broadcast + Raw Host ISO Tracks simultaneously (Riverside.fm double-ender style)"
             >
               <Circle className="w-3 h-3 fill-white shrink-0" />
-              <span>Record Full Podcast</span>
+              <span>Record<span className="hidden sm:inline"> Full Podcast</span></span>
             </button>
           ) : (
             <button
               type="button"
               onClick={stopFullSessionRecording}
-              className="h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-600 hover:bg-rose-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer animate-pulse"
+              className="h-8 px-3 sm:px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-600 hover:bg-rose-700 text-white shadow-sm flex items-center gap-1.5 cursor-pointer animate-pulse"
             >
               <Square className="w-3 h-3 fill-white shrink-0" />
-              <span>Stop Session ({formatTime(recordingSeconds)})</span>
+              <span>Stop ({formatTime(recordingSeconds)})</span>
             </button>
           )}
 
@@ -812,7 +812,7 @@ export default function StudioCastView({
             <button
               type="button"
               onClick={startComposedRecording}
-              className={`h-8 px-2.5 rounded-lg text-[11px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow-sm ${
+              className={`hidden sm:flex h-8 px-2.5 rounded-lg text-[11px] font-mono font-bold uppercase tracking-wider items-center gap-1 transition-all cursor-pointer shadow-sm ${
                 isLight
                   ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
                   : 'bg-white/5 hover:bg-white/10 text-[#e5e1e4] border border-[#3a494b]/40'
@@ -829,7 +829,7 @@ export default function StudioCastView({
             <button
               type="button"
               onClick={startRawHostRecording}
-              className={`h-8 px-2.5 rounded-lg text-[11px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 transition-all cursor-pointer shadow-sm ${
+              className={`hidden sm:flex h-8 px-2.5 rounded-lg text-[11px] font-mono font-bold uppercase tracking-wider items-center gap-1 transition-all cursor-pointer shadow-sm ${
                 isLight
                   ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border border-purple-300'
                   : 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30'

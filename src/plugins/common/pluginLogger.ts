@@ -222,3 +222,4 @@ export function createPluginLogger(pluginId: string, component?: string): Plugin
 }
 
 export default createPluginLogger;
+

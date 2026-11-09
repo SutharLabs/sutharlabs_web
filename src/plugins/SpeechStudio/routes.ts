@@ -650,43 +650,52 @@ export function registerRoutes(router: Router) {
         ? "styletts2"
         : architecture;
 
-      const { referenceAudio, gender, timbrePreference } = req.body;
-      const isClonedVoice = Boolean(
-        referenceAudio ||
-        voiceId.startsWith("cloned-") ||
-        engine === "cloned"
-      );
+      const { 
+        referenceAudio, 
+        sampleAudio, 
+        gender, 
+        timbrePreference, 
+        isClonedVoice: reqIsCloned,
+        speakerName: reqSpeakerName
+      } = req.body;
 
-      // If reference audio or voice metadata is missing from payload, retrieve from persistent server storage
-      let effectiveSampleAudio = referenceAudio;
-      let effectiveGender: string = timbrePreference || gender || "";
+      const { email } = getUserIdentifierAndRole(req);
+      const userEmail = email || identifier;
 
       const step1Duration = 14;
       const step2Start = Date.now();
 
-      if (voiceId.startsWith("cloned-") || isClonedVoice) {
-        const { email } = getUserIdentifierAndRole(req);
-        const storedProfile = await getClonedVoiceProfileAsync(voiceId, email || identifier);
-        if (storedProfile) {
-          if (!effectiveGender || effectiveGender === "neutral" || effectiveGender === "auto") {
-            effectiveGender = storedProfile.gender || "male";
-          }
-          if (!effectiveSampleAudio && storedProfile.sampleAudioDataUrl) {
-            effectiveSampleAudio = storedProfile.sampleAudioDataUrl;
-          }
-        }
-        if (!effectiveSampleAudio) {
-          const storedSample = getClonedAudioSample(voiceId);
-          if (storedSample) {
-            effectiveSampleAudio = `data:${storedSample.mimeType};base64,${storedSample.buffer.toString("base64")}`;
-          }
+      // Check if voiceId or voiceName corresponds to a stored cloned voice profile (PostgreSQL or local cache)
+      const storedProfile = await getClonedVoiceProfileAsync(voiceId, userEmail)
+        || (voiceName ? await getClonedVoiceProfileAsync(voiceName, userEmail) : null);
+
+      const isClonedVoice = Boolean(
+        reqIsCloned ||
+        engine === "cloned" ||
+        voiceId.startsWith("cloned-") ||
+        (storedProfile !== null) ||
+        Boolean(referenceAudio || sampleAudio)
+      );
+
+      // Resolve audio sample and voice metadata
+      let effectiveSampleAudio = sampleAudio || referenceAudio || "";
+      if (!effectiveSampleAudio && storedProfile?.sampleAudioDataUrl) {
+        effectiveSampleAudio = storedProfile.sampleAudioDataUrl;
+      }
+      if (!effectiveSampleAudio && (voiceId || storedProfile?.id)) {
+        const storedSample = getClonedAudioSample(voiceId) || (storedProfile ? getClonedAudioSample(storedProfile.id) : null);
+        if (storedSample) {
+          effectiveSampleAudio = `data:${storedSample.mimeType};base64,${storedSample.buffer.toString("base64")}`;
         }
       }
-      const step2Duration = Math.max(10, Date.now() - step2Start);
 
+      let effectiveGender: string = timbrePreference || gender || storedProfile?.gender || "";
       if (!effectiveGender || effectiveGender === "neutral" || effectiveGender === "auto") {
         effectiveGender = "male";
       }
+
+      const effectiveSpeakerName = voiceName || storedProfile?.name || reqSpeakerName || "User Voice";
+      const step2Duration = Math.max(10, Date.now() - step2Start);
 
       // Synthesize audio using VM 2 Neural Studio daemon
       const ttsUrls = getOracleTtsUrls();
@@ -696,44 +705,61 @@ export function registerRoutes(router: Router) {
       let inferenceTimeSec = 0;
 
       try {
-        const isNeuralClone = Boolean(isClonedVoice && effectiveSampleAudio);
-        const baseUrl = ttsUrls[0] || "http://10.0.0.188/tts";
+        // Step 1: For replicated/cloned voice, invoke VM 2 Zero-Shot Neural Cloning (/api/clone)
+        if (isClonedVoice) {
+          const clonePayload: Record<string, any> = {
+            text,
+            speakerName: effectiveSpeakerName,
+            rate,
+            pitch,
+            timbrePreference: effectiveGender,
+            gender: effectiveGender
+          };
+          if (effectiveSampleAudio) {
+            clonePayload.sampleAudio = effectiveSampleAudio;
+          }
+          if (storedProfile?.referenceText) {
+            clonePayload.referenceText = storedProfile.referenceText;
+          }
 
-        // Step 1: For cloned voice with sample audio, attempt true neural zero-shot cloning with 35s window
-        if (isNeuralClone) {
-          try {
-            const clonePayload = {
-              text,
-              sampleAudio: effectiveSampleAudio,
-              speakerName: voiceName || "User Voice",
-              rate,
-              pitch,
-              timbrePreference: effectiveGender,
-              gender: effectiveGender
-            };
-            const vmResponse = await fetch(`${baseUrl}/api/clone`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(clonePayload),
-              signal: AbortSignal.timeout(35000)
-            });
+          let lastCloneError: any = null;
+          for (const baseUrl of ttsUrls) {
+            try {
+              const t0 = Date.now();
+              const vmResponse = await fetch(`${baseUrl}/api/clone`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(clonePayload),
+                signal: AbortSignal.timeout(45000)
+              });
 
-            if (vmResponse.ok) {
-              const arrayBuf = await vmResponse.arrayBuffer();
-              const candidate = Buffer.from(arrayBuf);
-              if (candidate.length > 500 && !candidate.subarray(0, 10).toString().includes("Error")) {
-                audioBuffer = candidate;
-                replicationEngine = vmResponse.headers.get("x-replication-engine") || "XTTS_V2_NEURAL_ZERO_SHOT";
-                latentsCached = vmResponse.headers.get("x-speaker-latents-cached") === "True";
-                inferenceTimeSec = Number(vmResponse.headers.get("x-inference-time-sec") || 0);
+              if (vmResponse.ok) {
+                const arrayBuf = await vmResponse.arrayBuffer();
+                const candidate = Buffer.from(arrayBuf);
+                if (candidate.length > 500 && !candidate.subarray(0, 10).toString().includes("Error")) {
+                  audioBuffer = candidate;
+                  replicationEngine = vmResponse.headers.get("x-replication-engine") || "XTTS_V2_NEURAL_ZERO_SHOT";
+                  latentsCached = vmResponse.headers.get("x-speaker-latents-cached") === "True";
+                  inferenceTimeSec = Number(vmResponse.headers.get("x-inference-time-sec") || 0) || Number(((Date.now() - t0) / 1000).toFixed(2));
+                  break;
+                }
+              } else {
+                const errText = await vmResponse.text().catch(() => "");
+                lastCloneError = new Error(`VM 2 clone endpoint at ${baseUrl} returned HTTP ${vmResponse.status}: ${errText.slice(0, 120)}`);
               }
+            } catch (cloneErr: any) {
+              lastCloneError = cloneErr;
+              console.warn(`[SpeechStudio] Neural clone attempt at ${baseUrl} failed:`, cloneErr.message);
             }
-          } catch (cloneErr: any) {
-            console.warn("[SpeechStudio] Neural clone exceeded 35s window or glitched, activating calibrated acoustic matcher:", cloneErr.message);
+          }
+
+          if (!audioBuffer) {
+            // Strictly fail with diagnostic error - do NOT substitute a generic Guy/Ava voice for a cloned voice
+            throw lastCloneError || new Error(`Neural voice replication engine unavailable on VM 2 for voice "${effectiveSpeakerName}".`);
           }
         }
 
-        // Step 2: High-speed synthesis (standard library voices or resilient calibrated fallback for cloned voice)
+        // Step 2: High-speed synthesis for standard library voices (Edge Neural on VM 2)
         if (!audioBuffer) {
           const isHindi = /[\u0900-\u097F]/.test(text);
           let targetVoiceId = voiceId;
@@ -745,13 +771,6 @@ export function registerRoutes(router: Router) {
           else if (targetVoiceId === "vox-priya") targetVoiceId = "hi-IN-SwaraNeural";
           else if (targetVoiceId === "vox-jenny") targetVoiceId = "en-US-JennyNeural";
           else if (targetVoiceId === "vox-aria") targetVoiceId = "en-US-AriaNeural";
-
-          if (isClonedVoice) {
-            targetVoiceId = isHindi
-              ? (effectiveGender === "female" ? "hi-IN-SwaraNeural" : "hi-IN-MadhurNeural")
-              : (effectiveGender === "female" ? "en-US-AvaMultilingualNeural" : "en-US-GuyNeural");
-            replicationEngine = "EDGE_NEURAL_ACOUSTIC_CALIBRATED";
-          }
 
           const ttsPayload = {
             text,
@@ -771,13 +790,20 @@ export function registerRoutes(router: Router) {
 
           for (const url of ttsUrls) {
             try {
+              const t0 = Date.now();
               vmResponse = await fetch(`${url}/api/tts`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(ttsPayload),
-                signal: AbortSignal.timeout(15000)
+                signal: AbortSignal.timeout(20000)
               });
-              if (vmResponse.ok) break;
+              if (vmResponse.ok) {
+                latentsCached = false;
+                const arrayBuf = await vmResponse.arrayBuffer();
+                audioBuffer = Buffer.from(arrayBuf);
+                inferenceTimeSec = Number(((Date.now() - t0) / 1000).toFixed(2));
+                break;
+              }
               const errorMsg = await vmResponse.text().catch(() => "");
               lastError = new Error(`VM2 Neural TTS (${url}) returned HTTP ${vmResponse.status}: ${errorMsg || vmResponse.statusText}`);
             } catch (netErr: any) {
@@ -785,13 +811,9 @@ export function registerRoutes(router: Router) {
             }
           }
 
-          if (!vmResponse || !vmResponse.ok) {
+          if (!audioBuffer) {
             throw lastError || new Error("Failed to communicate with Neural TTS service on VM 2.");
           }
-
-          latentsCached = false;
-          const arrayBuf = await vmResponse.arrayBuffer();
-          audioBuffer = Buffer.from(arrayBuf);
         }
       } catch (ttsErr: any) {
         logger.error("Remote Neural TTS failed on VM 2", ttsErr, { voiceId, architecture });

@@ -186,3 +186,22 @@ Before any new plugin or automated job is approved for release or deployment to 
 - [ ] **Automated Cron Protection:** Any automated batch endpoints must verify `process.env.CRON_SECRET` and execute in isolated institutional partitions.
 - [ ] **Encryption of Plugin Packages:** Release zips must be encrypted using `scripts/package-plugins.ts` (`SLPK` AES-256-GCM) to safeguard plugin proprietary code.
 - [ ] **Zero Shared Default Accounts:** Never use fallbacks like `|| 'default@sutharlabs.com'`. Return `401 Unauthorized` if identity is missing.
+
+---
+
+## 6. Unified Scoped Database Service (`src/services/scopedDatabase.ts`) for 10x–100x Scaling
+
+Introduced in November 2026, `scopedDatabase.ts` provides a hardened repository pattern enforcing strict Row-Level Isolation (RLI) across all user data collections in PostgreSQL:
+* **Tenant Instantiation**:
+  ```typescript
+  import { getScopedDb } from './services/scopedDatabase.js';
+  const userDb = getScopedDb(userEmail);
+  ```
+* **Enforced Collections**:
+  * `userDb.voices`: Automatic bounding to `where: { userEmail }`, compound retrieval by ID or name, and non-blocking sync.
+  * `userDb.documents`: Compound filtering by `(userEmail, id)`, automated OCR text indexing, and sanitized file extraction.
+  * `userDb.files`: Private vault storage catalog records with SHA-256 validation.
+  * `userDb.invoices`: Indian GST ledgers and accounting records.
+* **Database Indexes**:
+  * Compound indices on `(userEmail, id)` and `(userEmail, createdAt DESC)` ensure logarithmic $O(\log N)$ query execution times even as tenant records grow by 10x to 100x.
+
