@@ -91,6 +91,8 @@ import {
 
 } from "./src/middleware/index.js";
 
+import { sovereignRag } from "./src/services/contextualRagService.js";
+
 
 
 const PORT = 3000;
@@ -769,6 +771,15 @@ async function seedDatabase() {
 
       }
 
+    }
+
+    // 7. Seed Sovereign Contextual RAG Platform Knowledge Base (Anthropic Contextual Retrieval + nomic-embed-text)
+    try {
+      console.log("[Seeding] Verifying Sovereign Contextual RAG platform corpus...");
+      await sovereignRag.seedPlatformCorpus();
+      console.log("[Seeding] Contextual RAG platform corpus verified with Anthropic headers.");
+    } catch (ragSeedErr: any) {
+      console.warn("[Seeding] Contextual RAG seed notice:", ragSeedErr.message);
     }
 
   } catch (error) {
@@ -5189,6 +5200,7 @@ interface BackgroundAITaskInternal {
   mcpEnabled?: boolean;
   isDeepResearch?: boolean;
   researchSources?: any[];
+  ragResults?: any[];
   prompt: string;
   attachments?: any[];
   status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -5556,6 +5568,38 @@ async function performServerWebResearch(query: string) {
       }
     }
 
+    case 'contextual_rag_query': {
+      try {
+        const queryText = (params.query || '').slice(0, 300);
+        const topK = params.topK || 4;
+        const ragRes = await sovereignRag.query({
+          queryText,
+          topK,
+          filterSource: params.source,
+          docIds: params.docIds
+        });
+        return {
+          status: 'success',
+          server: 'contextual-rag-mcp',
+          data: {
+            query: queryText,
+            totalChunksSearched: ragRes.totalChunksSearched,
+            results: ragRes.results.map(r => ({
+              document: r.chunk.docTitle,
+              section: r.chunk.sectionHeader,
+              source: r.chunk.source,
+              relevance: `${(r.finalScore * 100).toFixed(1)}%`,
+              excerpt: r.chunk.content
+            })),
+            augmentedContextPrompt: ragRes.augmentedContextPrompt,
+            latencyMs: Date.now() - startTime
+          }
+        };
+      } catch (err: any) {
+        return { status: 'error', error: err.message };
+      }
+    }
+
     default:
       return { status: 'unknown_tool', tool: toolName };
   }
@@ -5587,6 +5631,27 @@ async function runBackgroundAITask(task: BackgroundAITaskInternal) {
     });
     task.logs.push(`[${new Date().toLocaleTimeString()}] Phase 1 initiated: ${task.progress.phase}`);
 
+    // Index attached documents into Sovereign Contextual RAG Engine (Anthropic Contextual Retrieval + nomic-embed-text)
+    if (Array.isArray(task.attachments) && task.attachments.length > 0) {
+      for (const att of task.attachments) {
+        if (att.extractedText && att.extractedText.length > 30) {
+          try {
+            await sovereignRag.indexDocument({
+              id: `att_${task.id}_${att.name.replace(/[^a-zA-Z0-9_-]/g, '_')}`,
+              title: att.name,
+              content: att.extractedText,
+              source: 'attachment',
+              authorEmail: task.userEmail,
+              metadata: { size: att.size, type: att.type, taskId: task.id }
+            });
+            task.logs.push(`[${new Date().toLocaleTimeString()}] Contextual RAG: Indexed "${att.name}" with Anthropic contextual headers into hybrid BM25/Vector RRF index.`);
+          } catch (ragIdxErr: any) {
+            console.warn('[Background Worker] RAG indexing notice:', ragIdxErr.message);
+          }
+        }
+      }
+    }
+
     // Step 2: Tool Execution via MCP
     let mcpContextText = '';
     task.progress.currentStep = 2;
@@ -5596,6 +5661,13 @@ async function runBackgroundAITask(task: BackgroundAITaskInternal) {
 
     const pLower = (task.prompt || '').toLowerCase();
     const toolPromises: Promise<any>[] = [];
+
+    // Trigger Contextual RAG search for documents, files, research or codebase queries
+    const isRagIntent = (Array.isArray(task.attachments) && task.attachments.length > 0) ||
+      pLower.includes('doc') || pLower.includes('pdf') || pLower.includes('report') || pLower.includes('rag') || pLower.includes('context') || pLower.includes('knowledge') || pLower.includes('contract') || pLower.includes('financial') || isAuto;
+    if (isRagIntent) {
+      toolPromises.push(executeMcpTool('contextual_rag_query', { query: task.prompt }));
+    }
 
     // Trigger MCP tools based on query intent
     if (pLower.includes('db') || pLower.includes('database') || pLower.includes('postgres') || pLower.includes('table') || isAuto) {
@@ -5616,6 +5688,7 @@ async function runBackgroundAITask(task: BackgroundAITaskInternal) {
     }
 
     if (toolPromises.length === 0 && (isAgent || isAuto)) {
+      toolPromises.push(executeMcpTool('contextual_rag_query', { query: task.prompt }));
       toolPromises.push(executeMcpTool('database_schema_and_stats'));
       toolPromises.push(executeMcpTool('fleet_health_check'));
     }
@@ -5626,6 +5699,11 @@ async function runBackgroundAITask(task: BackgroundAITaskInternal) {
       const webSearchMcp = validMcp.find(r => r.server === 'web-search-mcp');
       if (webSearchMcp && webSearchMcp.data?.sources) {
         task.researchSources = webSearchMcp.data.sources;
+      }
+      const ragMcp = validMcp.find(r => r.server === 'contextual-rag-mcp');
+      if (ragMcp && ragMcp.data?.results && ragMcp.data.results.length > 0) {
+        task.ragResults = ragMcp.data.results;
+        task.logs.push(`[${new Date().toLocaleTimeString()}] Contextual RAG: Retrieved ${ragMcp.data.results.length} grounded passage(s) via Hybrid BM25/Vector RRF.`);
       }
       mcpContextText = '\n\n[Active MCP Tools Live Context]\n' + validMcp.map(r => `### MCP Server: ${r.server}\n\`\`\`json\n${JSON.stringify(r.data, null, 2)}\n\`\`\``).join('\n\n');
       task.steps.push({
@@ -5798,7 +5876,8 @@ When answering factual, news, or research queries using live web intelligence:
       agentId: task.agentId,
       planData: task.planData,
       executionSteps: task.steps,
-      researchSources: task.researchSources
+      researchSources: task.researchSources,
+      ragResults: task.ragResults
     };
 
     await appendMessageToSession(task.userEmail, task.sessionId, assistantMsg);
@@ -5875,6 +5954,16 @@ app.get("/api/ai/chat/mcp/tools", authenticateToken, async (_req: any, res: any)
         tools: [
           { name: 'web_search', description: 'Performs DuckDuckGo instant query research.' }
         ]
+      },
+      {
+        id: 'contextual-rag-mcp',
+        name: 'Contextual RAG MCP (SOTA 2026)',
+        description: 'Anthropic Contextual Retrieval + Dense nomic-embed-text (768-dim) & BM25 Hybrid Reciprocal Rank Fusion (RRF)',
+        category: 'RAG & Knowledge',
+        status: 'connected',
+        tools: [
+          { name: 'contextual_rag_query', description: 'Executes hybrid dense vector and BM25 search over sovereign indexed documents.' }
+        ]
       }
     ]
   });
@@ -5886,6 +5975,51 @@ app.post("/api/ai/chat/mcp/execute", authenticateToken, async (req: any, res: an
   if (!tool) return res.status(400).json({ error: 'tool name is required' });
   const result = await executeMcpTool(tool, params);
   res.json(result);
+});
+
+// POST /api/ai/rag/query: Query the Contextual RAG engine
+app.post("/api/ai/rag/query", authenticateToken, async (req: any, res: any) => {
+  const { query, topK = 5, filterSource, docIds } = req.body;
+  if (!query) return res.status(400).json({ error: "query text is required" });
+
+  try {
+    const result = await sovereignRag.query({ queryText: query, topK, filterSource, docIds });
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ error: "RAG query failed", details: err.message });
+  }
+});
+
+// POST /api/ai/rag/index: Index a document into Contextual RAG
+app.post("/api/ai/rag/index", authenticateToken, async (req: any, res: any) => {
+  const { id, title, content, source = 'custom', metadata = {} } = req.body;
+  if (!title || !content) return res.status(400).json({ error: "title and content are required" });
+
+  const docId = id || `doc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const userEmail = (req.user?.email || "developer@sutharlabs.com").toLowerCase();
+
+  try {
+    const result = await sovereignRag.indexDocument({
+      id: docId,
+      title,
+      content,
+      source,
+      authorEmail: userEmail,
+      metadata
+    });
+    return res.json({ success: true, ...result });
+  } catch (err: any) {
+    return res.status(500).json({ error: "Failed to index document into RAG", details: err.message });
+  }
+});
+
+// GET /api/ai/rag/stats: Diagnostic stats for Contextual RAG
+app.get("/api/ai/rag/stats", authenticateToken, async (_req: any, res: any) => {
+  res.json({
+    status: 'operational',
+    engine: 'Anthropic Contextual Retrieval + Dense nomic-embed-text (768-dim) + BM25 RRF',
+    stats: sovereignRag.getStats()
+  });
 });
 
 // GET /api/ai/chat/skills: Enumerate specialized AI engineering skills

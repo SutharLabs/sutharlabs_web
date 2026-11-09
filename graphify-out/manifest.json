@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794262164.7722886,
-    "seen": 1794262411.2517335,
-    "ast_hash": "45795ed29c0a55f27506001a51fdb8d3",
+    "mtime": 1794264527.1276586,
+    "seen": 1794265356.598464,
+    "ast_hash": "5f3a0fd1d86722fc08f1d99aeb6394c8",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -812,9 +812,9 @@
     "semantic_hash": ""
   },
   "src/types.ts": {
-    "mtime": 1794259876.4525027,
-    "seen": 1794260747.4527001,
-    "ast_hash": "a6eee675494fc1ebeb22ff9e8d361228",
+    "mtime": 1794265124.6505766,
+    "seen": 1794265356.6022348,
+    "ast_hash": "8f0deced5446c0607a204c856d29e411",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -824,8 +824,8 @@
     "semantic_hash": "3fb5d98480b7ea548bcaa3616c444da1"
   },
   "vercel.json": {
-    "mtime": 1794262109.9975398,
-    "seen": 1794262411.252623,
+    "mtime": 1794263483.4573102,
+    "seen": 1794265356.6022427,
     "ast_hash": "7c7195ea35fd058471d0f6ebd4435053",
     "semantic_hash": ""
   },
@@ -1100,15 +1100,15 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1794262042.1290097,
-    "seen": 1794262411.2517478,
-    "ast_hash": "1717d994c4e86cc5cae9deb09c92cc96",
+    "mtime": 1794265011.385402,
+    "seen": 1794265356.5984776,
+    "ast_hash": "69a993a7a429763de0645f0b6ba57a97",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
-    "mtime": 1794259895.0779514,
-    "seen": 1794260747.4526591,
-    "ast_hash": "86dc7baa1d51f6bd1dcd40e6aa2cf5c5",
+    "mtime": 1794264494.9400973,
+    "seen": 1794265356.6021852,
+    "ast_hash": "450da2790cf87ec070605d68f25b16ce",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
@@ -1949,6 +1949,12 @@
     "mtime": 1794234051.1833656,
     "seen": 1794234963.3386087,
     "ast_hash": "9c8e700fdf2c61f973d54439a618db61",
+    "semantic_hash": ""
+  },
+  "src/services/contextualRagService.ts": {
+    "mtime": 1794264515.936103,
+    "seen": 1794265356.6022,
+    "ast_hash": "8d3a8280cffdba1eef14dd07f40739b9",
     "semantic_hash": ""
   },
   "package-lock.json": {

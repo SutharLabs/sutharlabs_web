@@ -370,3 +370,93 @@ export async function cancelBackgroundTask(taskId: string, token?: string): Prom
   });
 }
 
+export interface RagChunkResult {
+  chunkId: string;
+  docId: string;
+  title: string;
+  section: string;
+  text: string;
+  contextHeader?: string;
+  sourceType?: string;
+  score: number;
+  metadata?: Record<string, any>;
+}
+
+export interface RagQueryResult {
+  query: string;
+  totalChunksSearched: number;
+  results: Array<{
+    document: string;
+    section: string;
+    source: string;
+    relevance: string;
+    excerpt: string;
+    contextHeader?: string;
+  }>;
+  augmentedContextPrompt: string;
+  latencyMs: number;
+}
+
+export interface RagStatsResult {
+  totalDocuments: number;
+  totalChunks: number;
+  embeddingModel: string;
+  lexicalEngine: string;
+  fusionAlgorithm: string;
+  avgChunkLengthWords: number;
+  sources: string[];
+}
+
+export async function queryContextualRag(
+  query: string,
+  options: { topK?: number; source?: string; docIds?: string[] } = {},
+  token?: string
+): Promise<RagQueryResult> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/rag/query', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ query, ...options })
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `RAG query failed (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchRagStats(token?: string): Promise<{ stats: RagStatsResult }> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/rag/stats', { headers });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch RAG stats (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function indexDocumentInRag(
+  doc: { id: string; title: string; content: string; source?: string; authorEmail?: string; metadata?: Record<string, any> },
+  token?: string
+): Promise<{ success: boolean; docId: string; chunkCount: number }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/rag/index', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(doc)
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to index document in RAG (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+

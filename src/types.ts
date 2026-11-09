@@ -117,6 +117,7 @@ export interface AIChatMessage {
   planData?: PlanCardData;
   executionSteps?: TaskExecutionStep[];
   mcpCalls?: Array<{ server: string; tool: string; params: any; resultSummary: string }>;
+  ragResults?: Array<{ chunkId?: string; docId?: string; title?: string; document?: string; section?: string; text?: string; excerpt?: string; score?: number; relevance?: string; source?: string }>;
 }
 
 export interface AIAgentPersona {
@@ -160,6 +161,7 @@ export interface AIChatBackgroundTask {
   mcpEnabled?: boolean;
   isDeepResearch?: boolean;
   researchSources?: Array<{ title: string; url: string; snippet: string; source: string; date?: string }>;
+  ragResults?: any[];
   prompt: string;
   status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
   progress: {
