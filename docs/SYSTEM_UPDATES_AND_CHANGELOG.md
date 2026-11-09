@@ -705,3 +705,68 @@ flowchart LR
   * **Keyboard Accessibility**:
     * Added global key listeners: `Escape` closes the drawer; `Ctrl+H` / `Cmd+H` toggles the drawer.
     * Selecting any conversation or clicking "+ New Chat" seamlessly activates the session and closes the drawer for instant focus.
+
+---
+
+## 27. Copilot-Style Plan, Agent & Autonomous Modes, MCP & Skills Engine, Persistent Background Tasks, Database Sync Parity & File Browser Standby Fix
+
+* **1. GitHub Copilot Feature Adoption: Plan, Agent, and Autonomous Modes (`AdminAIChatView.tsx`)**:
+  * **Unified Mode Switcher**: Added a sleek, sovereign Mode Switcher in both desktop and mobile toolbars adhering strictly to `.agents/rules/ui-styling-and-icons.md`:
+    * **Chat Mode** (Cyan `#00dbe7`, `MessageSquare`): Ultra-fast conversational assistant, document attachment synthesis, and interactive Claude-style artifact panel extraction.
+    * **Plan Mode** (Amber `#fbbf24`, `FileCode`): Read-only architectural exploration and dependency mapping that outputs structured roadmaps with milestones, affected files, and potential risks.
+    * **Agent Mode** (Purple `#c084fc`, `Bot`): Multi-step autonomous execution with tool calls via Model Context Protocol (MCP) and progressive step status chips.
+    * **Autonomous Mode** (Emerald `#34d399`, `Sparkles`): Closed-loop goal execution (Think -> Probe Tools -> Implement Code -> Parity Self-Evaluation -> Delivery) with live progress telemetry.
+  * **Executable Plan Cards (Copilot Standard)**:
+    * When Plan Mode completes, it renders a styled Executable Plan Card with an Amber accent bar, milestone checklist with interactive toggles `[x]` / `[ ]`, target files tags, risk mitigations, and an interactive **"Start Implementation in Agent Mode"** action button.
+    * Clicking "Start Implementation" automatically transitions to Agent Mode and immediately dispatches an execution task to implement the plan starting with Milestone 1.
+  * **Multi-Step Execution Chips**:
+    * In Agent and Autonomous modes, intermediate stages are surfaced as progressive status chips (`Step 1: Planning`, `Step 2: MCP Tool Execution`, `Step 3: Solution Synthesis`, `Step 4: Output Verification`) with live status indicators.
+  * **Interactive Slash Commands (`/plan`, `/agent`, `/auto`, `/mcp`, `/skills`, `/clear`)**:
+    * Integrated a floating autocomplete popup when typing `/` in the prompt textarea. Users can select commands or type `/plan <task>`, `/agent <task>`, or `/auto <task>` to dynamically switch execution modes.
+
+* **2. Model Context Protocol (MCP) & Specialized Skills Engine (`server.ts`, `aiChatService.ts`)**:
+  * **Native MCP Server Infrastructure (`/api/ai/chat/mcp/tools` & `/api/ai/chat/mcp/execute`)**:
+    * Exposed 5 high-speed MCP servers connecting AI Agent Studio directly to SutharLabs infrastructure:
+      * `database-mcp`: Real-time PostgreSQL 16 Primary (Oracle Cloud port 5432) + Neon Standby failover parity inspector (`database_schema_and_stats`).
+      * `graphify-mcp`: Codebase AST Knowledge Graph inspector (`codebase_graph_query`) querying `graphify-out/graph.json` with God-node analysis.
+      * `storage-vault-mcp`: Oracle Cloud object & file vault record inspector (`storage_vault_list`).
+      * `fleet-telemetry-mcp`: Multi-node Always Free VM cluster telemetry (`fleet_health_check` for VM1 and VM2 CPU/RAM/Swap/Load).
+      * `web-search-mcp`: Real-time DuckDuckGo intelligence search (`web_search`).
+  * **Live MCP Diagnostic Modal**:
+    * Added dedicated MCP toolbar badge with live server count and pulse indicator.
+    * Clicking opens the MCP Infrastructure Modal where administrators can probe individual tools live and inspect real-time latency and JSON payloads.
+  * **Specialized AI Skills Engine (`/api/ai/chat/skills`)**:
+    * Added skills selector dropdown featuring presets: Full-Stack TS & React 19, PostgreSQL Dual-Replication DBA, Oracle Always Free Cloud Architect, Quantitative Finance & Symbolic Math, and Kinetic Motion & Reel Directing.
+
+* **3. Server-Side Background Task Queue & Seamless Cross-Device Sync (`server.ts`, `AdminAIChatView.tsx`)**:
+  * **Server-Side Background Task Worker (`/api/ai/chat/tasks`)**:
+    * Long-running Plan, Agent, and Autonomous tasks are enqueued on the Express backend (`aiChatBackgroundTasks`) and execute asynchronously on VM 2.
+    * **Zero Interruption / Reset on Plugin Switch**: If the user switches to Storage Vault, Stock Tracker, DocNexus, or Invoicing, the task continues executing on the server without being canceled or reset.
+    * On completion, intermediate steps, artifacts, and final assistant turns are saved directly to PostgreSQL (`prisma.document`) and disk backup (`data/ai-chat-sessions`).
+  * **Live Background Task Banner & Resumption**:
+    * Added an active task banner in `AdminAIChatView` that polls `/api/ai/chat/tasks/active`.
+    * Features live progress percentage, animated multi-step progress bar, current phase label, expandable live server logs drawer, and a Cancel button.
+    * When a task completes in the background, the UI automatically refreshes session messages, renders the new turn, and dismisses the banner.
+  * **Mobile-to-Desktop Sync & Race Condition Elimination**:
+    * **Wipeout Prevention**: Added `initialSyncDoneRef` to prevent mobile browsers with empty `localStorage` from pushing empty session arrays to the server before initial cloud fetch completes.
+    * **Unified Deep Merge**: Updated `GET /api/ai/chat/sessions` and `POST /api/ai/chat/sessions` in `server.ts` to merge PostgreSQL records and disk backups based on `updatedAt`, ensuring no conversation history from mobile or desktop is dropped.
+    * **Mobile Drawer Viewport Anchor**: Updated the Chat History Drawer to `fixed top-0 bottom-0 left-0 h-screen z-50` anchored to the screen root, completely resolving the bug where the history drawer started from the middle of the vertical screen on mobile viewports.
+
+* **4. Database Sync Failure Analysis & Standby Parity Self-Healing (`databaseSyncService.ts`)**:
+  * **Root Cause Diagnosis**:
+    * The dual-database replication from Primary (Oracle VM 1 PostgreSQL 16) to Backup (Neon PostgreSQL) failed at ~101–103 records due to schema drift: `Invoice` was missing `user_email` and `created_at`; `Document` was missing `user_email`, `created_at`, `is_archived`; and tables `user_voice_profiles`, `vault_file_records`, and `_database_sync_history` were completely absent on Neon.
+  * **Resolution & Self-Healing**:
+    * Migrated Neon standby database schema to 100% parity with Primary.
+    * Added automated self-healing DDL checks (`ensureStandbySchemaParity`) before every sync cycle to prevent future schema drift.
+    * Replaced WebSocket-based `PrismaNeon` adapter with reliable TCP `PrismaPg` and connection timeout of 15s to prevent WebSocket handshake hangs in Node runtimes.
+    * Added synchronization routines for `user_voice_profiles` and `vault_file_records`. Live test verified: **135 records synchronized across all 18 tables with 100% SUCCESS** in 21.8s.
+
+* **5. Storage Vault File Browser Container Standby Fix (`StorageVaultView.tsx`, `server.ts`, `vite.config.ts`)**:
+  * **Root Cause Diagnosis**:
+    * The Storage Vault reachability probe was using HTTP `HEAD` against `/filebrowser/login`. Go's `filebrowser/filebrowser` container returns `404 Not Found` for `HEAD` requests while returning `200 OK` for `GET`.
+    * Additionally, Port 8080 is blocked by Oracle Cloud VCN firewall rules, while Nginx reverse-proxies `/filebrowser` on standard Port 80.
+  * **Resolution**:
+    * Updated `StorageVaultView.tsx` reachability probe to `GET` checking `res.ok`.
+    * Configured `server.ts` proxy route to automatically rewrite `HEAD` probes to `GET`.
+    * Added `/filebrowser` proxy target in `vite.config.ts` pointing to `ORACLE_VAULT_URL` (`http://137.23.61.191`) for seamless local development.
+

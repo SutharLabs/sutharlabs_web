@@ -226,21 +226,12 @@ export function getBackupPrismaClient(): PrismaClient | null {
   if (!dbUrl) return null;
 
   try {
-    if (dbUrl.includes("neon.tech")) {
-      neonConfig.webSocketConstructor = ws;
-      const adapter = new PrismaNeon({ connectionString: dbUrl });
-      cachedBackupClient = new PrismaClient({ adapter });
-      return cachedBackupClient;
-    }
-
-    if (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://")) {
-      const pool = new pg.Pool({ connectionString: dbUrl });
-      const adapter = new PrismaPg(pool);
-      cachedBackupClient = new PrismaClient({ adapter });
-      return cachedBackupClient;
-    }
-
-    const pool = new pg.Pool({ connectionString: dbUrl });
+    const pool = new pg.Pool({
+      connectionString: dbUrl,
+      connectionTimeoutMillis: 15000,
+      idleTimeoutMillis: 30000,
+      max: 10
+    });
     const adapter = new PrismaPg(pool);
     cachedBackupClient = new PrismaClient({ adapter });
     return cachedBackupClient;
@@ -471,6 +462,19 @@ export async function executeDatabaseSync(options?: { trigger?: 'CRON_JOB' | 'MA
   }
 
   try {
+    // 0. Ensure schema parity on standby database before syncing tables
+    try {
+      await backup.$executeRawUnsafe(`
+        ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "user_email" TEXT;
+        ALTER TABLE "Invoice" ADD COLUMN IF NOT EXISTS "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
+        ALTER TABLE "Document" ADD COLUMN IF NOT EXISTS "user_email" TEXT;
+        ALTER TABLE "Document" ADD COLUMN IF NOT EXISTS "is_archived" BOOLEAN DEFAULT false;
+        ALTER TABLE "Document" ADD COLUMN IF NOT EXISTS "created_at" TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP;
+      `);
+    } catch (schemaErr: any) {
+      console.warn('[DatabaseSyncService] Standby schema parity check note:', schemaErr?.message);
+    }
+
     // 1. Sync WorkspacePlugin definitions first (dependency for UserWorkspacePlugin)
     const plugins = await primary.workspacePlugin.findMany();
     for (const item of plugins) {
@@ -646,6 +650,36 @@ export async function executeDatabaseSync(options?: { trigger?: 'CRON_JOB' | 'MA
       });
     }
     syncedCounts['bugReports'] = bugReports.length;
+
+    // 16. Sync UserVoiceProfiles
+    try {
+      const voiceProfiles = await primary.userVoiceProfile.findMany();
+      for (const vp of voiceProfiles) {
+        await backup.userVoiceProfile.upsert({
+          where: { userEmail_name: { userEmail: vp.userEmail, name: vp.name } },
+          create: vp,
+          update: vp
+        });
+      }
+      syncedCounts['userVoiceProfiles'] = voiceProfiles.length;
+    } catch (vpErr: any) {
+      console.warn('[DatabaseSyncService] Voice profile sync warning:', vpErr?.message);
+    }
+
+    // 17. Sync VaultFileRecords
+    try {
+      const vaultFiles = await primary.vaultFileRecord.findMany();
+      for (const vf of vaultFiles) {
+        await backup.vaultFileRecord.upsert({
+          where: { id: vf.id },
+          create: vf,
+          update: vf
+        });
+      }
+      syncedCounts['vaultFileRecords'] = vaultFiles.length;
+    } catch (vfErr: any) {
+      console.warn('[DatabaseSyncService] Vault file sync warning:', vfErr?.message);
+    }
 
     const durationMs = Date.now() - startTime;
     lastSyncTimestamp = new Date().toISOString();

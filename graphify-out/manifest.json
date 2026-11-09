@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794233972.4418013,
-    "seen": 1794234963.3379085,
-    "ast_hash": "80afc7fc052b497959f898c29e3f63d0",
+    "mtime": 1794239799.2600255,
+    "seen": 1794241009.4697092,
+    "ast_hash": "704d642c8961b91608370b012809f391",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -812,9 +812,9 @@
     "semantic_hash": ""
   },
   "src/types.ts": {
-    "mtime": 1794233896.9701676,
-    "seen": 1794234963.3386724,
-    "ast_hash": "8b19dfe8f4172aa3c6edad3e0d14d1a4",
+    "mtime": 1794239661.8176308,
+    "seen": 1794241009.4706354,
+    "ast_hash": "9f27aeaf7614ab45170e59f13773b056",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -830,10 +830,10 @@
     "semantic_hash": ""
   },
   "vite.config.ts": {
-    "mtime": 1791471871.575062,
-    "seen": 1793772051.9762092,
-    "ast_hash": "837e1e7997943c3eaa0e5ca9e39ad3a5",
-    "semantic_hash": "837e1e7997943c3eaa0e5ca9e39ad3a5"
+    "mtime": 1794239290.9463751,
+    "seen": 1794241009.4706454,
+    "ast_hash": "3b4bd77609f02ba736bd1d73bbc4d432",
+    "semantic_hash": ""
   },
   "CONTRIBUTING.md": {
     "mtime": 1793784170.7734513,
@@ -1046,9 +1046,9 @@
     "semantic_hash": ""
   },
   "src/services/databaseSyncService.ts": {
-    "mtime": 1793785988.21246,
-    "seen": 1793788012.1982799,
-    "ast_hash": "3ba237d9a1103862d55135a5fce1676c",
+    "mtime": 1794239180.9628322,
+    "seen": 1794241009.470611,
+    "ast_hash": "585d27dd499687c93ac7964ef68af83a",
     "semantic_hash": ""
   },
   "scripts/cron-sync-database.ts": {
@@ -1076,9 +1076,9 @@
     "semantic_hash": ""
   },
   "src/components/StorageVaultView.tsx": {
-    "mtime": 1794222935.252311,
-    "seen": 1794223054.4386299,
-    "ast_hash": "c1971b9ea5342db268f8d23aeab95c25",
+    "mtime": 1794239256.8797953,
+    "seen": 1794241009.4698722,
+    "ast_hash": "aabc54a5267653214ef125d2e06fa772",
     "semantic_hash": ""
   },
   "src/services/vaultStorageService.ts": {
@@ -1100,20 +1100,20 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1794236607.2532268,
-    "seen": 1794236881.291592,
-    "ast_hash": "43bfa06d1ffd4e128b71c6fcaa2c13df",
+    "mtime": 1794240781.003789,
+    "seen": 1794241009.4697223,
+    "ast_hash": "f7cb95034cde060c233219e5a2c15b2f",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
-    "mtime": 1794218873.4415505,
-    "seen": 1794219434.2621934,
-    "ast_hash": "5fd61bc1d09e5d1e8c6cdecdf4034020",
+    "mtime": 1794239912.5347648,
+    "seen": 1794241009.4706001,
+    "ast_hash": "b94d36895d7c0b363bdd4bdadf22b43a",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
-    "mtime": 1794235955.8782237,
-    "seen": 1794236881.292119,
+    "mtime": 1794236917.5362847,
+    "seen": 1794241009.4703443,
     "ast_hash": "a7509a46b389ad1c6b40cd160180cb0f",
     "semantic_hash": ""
   },
@@ -1412,8 +1412,8 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/storage.ts": {
-    "mtime": 1794235888.8173716,
-    "seen": 1794236881.292139,
+    "mtime": 1794236921.2455277,
+    "seen": 1794241009.4703662,
     "ast_hash": "8cc8883c7f9dc354245c565c2ca4c7f4",
     "semantic_hash": ""
   },
@@ -1682,9 +1682,9 @@
     "semantic_hash": ""
   },
   "docs/SYSTEM_UPDATES_AND_CHANGELOG.md": {
-    "mtime": 1794234999.5837357,
-    "seen": 1794236881.292451,
-    "ast_hash": "6625f0cadf754d89ddf7c70f866ad93a",
+    "mtime": 1794236926.97949,
+    "seen": 1794241009.4706807,
+    "ast_hash": "d494eb7da8c47bc355f27f473b9c80ac",
     "semantic_hash": ""
   },
   "public/voices/catalog.json": {
@@ -1808,8 +1808,8 @@
     "semantic_hash": ""
   },
   "src/services/scopedDatabase.ts": {
-    "mtime": 1794235899.659188,
-    "seen": 1794236881.2923813,
+    "mtime": 1794236921.8733,
+    "seen": 1794241009.470618,
     "ast_hash": "e53fe02a6b7151171120f869f7a2574b",
     "semantic_hash": ""
   },

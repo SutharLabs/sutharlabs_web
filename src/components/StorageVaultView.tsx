@@ -345,12 +345,11 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   useEffect(() => {
     if (viewMode === 'filebrowser') {
       setFileBrowserStatus('checking');
-      fetch('/filebrowser/login', { method: 'HEAD' })
+      fetch('/filebrowser/login', { method: 'GET' })
         .then(res => {
-          if (res.ok && !res.headers.get('content-type')?.includes('text/html; charset=utf-8')) {
+          if (res.ok) {
             setFileBrowserStatus('online');
           } else {
-            // In Vite dev or without proxy, fallback HTML is returned
             setFileBrowserStatus('offline');
           }
         })
@@ -570,7 +569,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                   type="button"
                   onClick={() => {
                     setFileBrowserStatus('checking');
-                    fetch('/filebrowser/login', { method: 'HEAD' })
+                    fetch('/filebrowser/login', { method: 'GET' })
                       .then(res => setFileBrowserStatus(res.ok ? 'online' : 'offline'))
                       .catch(() => setFileBrowserStatus('offline'));
                   }}

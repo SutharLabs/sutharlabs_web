@@ -73,11 +73,39 @@ export interface AIChatAttachment {
   extractedText?: string;
 }
 
+export type AIChatMode = 'chat' | 'plan' | 'agent' | 'autonomous';
+
+export interface PlanMilestone {
+  id: string;
+  title: string;
+  status: 'pending' | 'in_progress' | 'completed';
+}
+
+export interface PlanCardData {
+  title: string;
+  objective: string;
+  milestones: PlanMilestone[];
+  files: string[];
+  risks: string[];
+  isExecutable?: boolean;
+}
+
+export interface TaskExecutionStep {
+  stepNumber: number;
+  title: string;
+  tool?: string;
+  status: 'running' | 'completed' | 'failed';
+  detail?: string;
+  output?: string;
+  timestamp?: number;
+}
+
 export interface AIChatMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   model?: string;
+  mode?: AIChatMode;
   tokensGenerated?: number;
   tokensPerSec?: number;
   durationMs?: number;
@@ -85,6 +113,10 @@ export interface AIChatMessage {
   agentId?: string;
   researchSources?: Array<{ title: string; url: string; snippet: string; source: string; date?: string }>;
   attachments?: AIChatAttachment[];
+  thought?: string;
+  planData?: PlanCardData;
+  executionSteps?: TaskExecutionStep[];
+  mcpCalls?: Array<{ server: string; tool: string; params: any; resultSummary: string }>;
 }
 
 export interface AIAgentPersona {
@@ -115,6 +147,64 @@ export interface AIArtifactItem {
   code: string;
   sourceMessageId: string;
   timestamp: string;
+}
+
+export interface AIChatBackgroundTask {
+  id: string;
+  sessionId: string;
+  userEmail: string;
+  mode: AIChatMode;
+  model: string;
+  agentId: string;
+  skillId?: string;
+  mcpEnabled?: boolean;
+  prompt: string;
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
+  progress: {
+    currentStep: number;
+    totalSteps: number;
+    phase: string;
+    percent: number;
+  };
+  steps: TaskExecutionStep[];
+  logs: string[];
+  partialText: string;
+  fullResult?: string;
+  thought?: string;
+  planData?: PlanCardData;
+  metrics?: {
+    totalTokens: number;
+    speedTokensPerSec: number;
+    durationMs: number;
+  };
+  createdAt: number;
+  updatedAt: number;
+  completedAt?: number;
+  error?: string;
+}
+
+export interface MCPServerInfo {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  status: 'connected' | 'idle' | 'error';
+  latencyMs?: number;
+  tools: Array<{
+    name: string;
+    description: string;
+    parameters?: any;
+  }>;
+}
+
+export interface AISkillInfo {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  icon: string;
+  systemInstruction: string;
+  suggestedPrompts: string[];
 }
 
 export interface ContactInquiryItem {

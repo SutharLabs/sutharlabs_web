@@ -1,4 +1,4 @@
-import { AIAgentPersona, AIChatMessage } from '../types';
+import { AIAgentPersona, AIChatMessage, AIChatMode, AIChatBackgroundTask, MCPServerInfo, AISkillInfo } from '../types';
 
 export interface OllamaModelTag {
   name: string;
@@ -267,5 +267,105 @@ export async function performWebResearch(query: string, token?: string): Promise
     throw new Error(errorData.error || `Research request failed (HTTP ${res.status})`);
   }
   return res.json();
+}
+
+export async function fetchMcpTools(token?: string): Promise<{ servers: MCPServerInfo[] }> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/chat/mcp/tools', { headers });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch MCP tools (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function executeMcpToolCall(tool: string, params: any = {}, token?: string): Promise<any> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/chat/mcp/execute', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ tool, params })
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to execute MCP tool (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchAISkills(token?: string): Promise<{ skills: AISkillInfo[] }> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/chat/skills', { headers });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch AI skills (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export interface CreateBackgroundTaskParams {
+  sessionId: string;
+  prompt: string;
+  mode: AIChatMode;
+  model: string;
+  agentId: string;
+  skillId?: string;
+  mcpEnabled?: boolean;
+  attachments?: any[];
+}
+
+export async function createBackgroundAITask(
+  params: CreateBackgroundTaskParams,
+  token?: string
+): Promise<{ success: boolean; taskId: string; sessionId: string; mode: AIChatMode; task: AIChatBackgroundTask }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/chat/tasks', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(params)
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to create background AI task (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchActiveBackgroundTasks(token?: string): Promise<{ tasks: AIChatBackgroundTask[] }> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/chat/tasks/active', { headers });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch active background tasks (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchBackgroundTaskStatus(taskId: string, token?: string): Promise<{ task: AIChatBackgroundTask }> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`/api/ai/chat/tasks/${encodeURIComponent(taskId)}`, { headers });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch task status (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function cancelBackgroundTask(taskId: string, token?: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  await fetch(`/api/ai/chat/tasks/${encodeURIComponent(taskId)}/cancel`, {
+    method: 'POST',
+    headers
+  });
 }
 
