@@ -213,4 +213,20 @@ Speech Studio features an interactive 5-stage progress pipeline providing end-to
 4. `inference`: **Acoustic Flow Matching & Neural Vocoder** (zero-shot XTTS-v2 execution or high-speed Edge neural synthesis).
 5. `decode`: **Audio Stream Decoding** (PCM/MP3 stream decoding and buffer readiness).
 
+---
+
+## 8. Asynchronous 202 Accepted Architecture & 180s Timeout Hardening (v0.3.6)
+
+### A. Vercel 504 Timeout Elimination
+* **The Problem**: Vercel Serverless Functions enforce a strict 10–15 second hard ceiling on execution duration. Autoregressive neural synthesis on 2 ARM vCPUs takes 25–40 seconds. Synchronous requests through Vercel timed out at 15s with `FUNCTION_INVOCATION_TIMEOUT` (HTTP 504).
+* **The Solution**:
+  * `POST /synthesize` dispatches the generation task to an asynchronous background worker and immediately returns `HTTP 202 Accepted` in `< 50ms` with a unique `jobId`.
+  * The frontend polls `GET /jobs/:jobId` every 1.5s to display live elapsed seconds and real-time step status (`Text & Tokenizer`, `Voice Profile`, `Neural Gateway`, `Acoustic Flow`, `Audio Stream Decoding`).
+
+### B. Daemon Latency Tuning & Thread Optimization
+* **PyTorch Threading on Ampere ARM**: Configured `torch.set_num_threads(2)` and `torch.set_num_interop_threads(1)` inside `/home/ubuntu/tts_service.py` to match the physical core topology and eliminate thread thrashing.
+* **10-Second Reference Audio Clipping**: `transcode_to_wav` applies `ffmpeg -t 10` on uploaded reference audio, ensuring conditioning calculation stays under 2.5 seconds regardless of source file length.
+* **180s Background Ceiling & Circuit Breaker**: Background fetch timeouts on VM 3 are set to 180,000ms (3 minutes) with client polling extending to 120 cycles (180s). Internal IP timeout aborts fail fast without redundant queuing against secondary addresses.
+
+
 

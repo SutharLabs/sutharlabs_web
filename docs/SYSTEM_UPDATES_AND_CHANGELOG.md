@@ -306,5 +306,34 @@ flowchart LR
 * **Live Verification**:
   * Tested live on `https://www.sutharlabs.com` with Suresh cloned voice profile. Vercel responded with HTTP 202 in 1.3s, client polled 12 times over 37.7s, and studio audio (468 KB, 24kHz WAV) was delivered and verified successfully with zero timeouts.
 
+---
+
+## 18. Neural Daemon Latency Tuning & 180s Timeout Expansion
+
+* **Root Cause Forensic Diagnosis**:
+  * **Issue**: During replicated voice synthesis, the polling job encountered:
+    `Root Cause: 3. Neural Gateway (The operation was aborted due to timeout)`
+    `The neural daemon on Oracle VM 2 did not complete this stage in the execution window.`
+  * **Forensics**:
+    1. Inspection of `/var/log/nginx/access.log` on Oracle VM 2 revealed:
+       `10.0.0.228 - - [09/Nov/2026:04:36:48 +0000] "POST /tts/api/clone HTTP/1.1" 499 0 "-" "node"`
+       HTTP 499 is NGINX's "Client Closed Request" code, proving VM 2 did not crash or reject the request; rather, Node.js on VM 3 severed the connection at exactly 60.000 seconds due to `AbortSignal.timeout(60000)` in `executeBackgroundSynthesis`.
+    2. When audio was unclipped or longer than 15 seconds, VM 2's XTTS-v2 zero-shot encoder spent 15–20s calculating 30-second conditioning latents on 2 ARM cores, pushing total synthesis duration past the 60s threshold.
+    3. On abort, the failover loop in `routes.ts` attempted to call the public IP (`132.226.190.125`) for the *same* physical VM 2 while the XTTS-v2 Python mutex was already locked, creating duplicate queue contention.
+* **Production-Grade Optimizations & Architectural Fixes**:
+  1. **VM 2 Vocoder & Conditioning Acceleration (`tts_service.py`)**:
+     * Implemented audio clipping in `transcode_to_wav`: `ffmpeg -y -i <in> -t 10 -ar 22050 -ac 1 <out>`. Capping reference audio to the ideal 10-second window reduced speaker latent extraction time from 18s down to < 2.5s.
+     * Configured PyTorch threading for Ampere ARM Neoverse-N1: `torch.set_num_threads(2)` and `torch.set_num_interop_threads(1)` to eliminate core contention.
+     * Enabled `enable_text_splitting=True` in `XTTS_MODEL.inference` for fluid multi-clause phrase handling.
+  2. **180s Timeout Expansion on VM 3 Backend (`routes.ts`)**:
+     * Expanded `AbortSignal.timeout(60000)` to `AbortSignal.timeout(180000)` (3 minutes) in both `executeBackgroundSynthesis` and `executeBackgroundCloning`. Background jobs are not bound by edge proxy limits, providing generous headroom for longer paragraphs.
+     * Added failover circuit-breaker: if a request times out or is aborted on the primary internal IP (`10.0.0.188`), it immediately halts rather than retrying the secondary public IP (`132.226.190.125`) of the same host.
+  3. **Client Polling Expansion (`SpeechStudioView.tsx`)**:
+     * Increased maximum client polling attempts from `maxPolls = 60` (90s) to `maxPolls = 120` (180s) with live second counters and status descriptions.
+* **Live Production Validation**:
+  * Executed live synthesis test against `https://www.sutharlabs.com` with Suresh replicated voice.
+  * Server immediately accepted job (`tts_1794200333996_svkuiy`) with HTTP 202.
+  * Inference completed on VM 2 in 31.76s; audio (514,130 base64 chars, 385 KB WAV, 24kHz) was successfully delivered and verified with 0 errors.
+
 
 
