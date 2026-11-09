@@ -335,5 +335,50 @@ flowchart LR
   * Server immediately accepted job (`tts_1794200333996_svkuiy`) with HTTP 202.
   * Inference completed on VM 2 in 31.76s; audio (514,130 base64 chars, 385 KB WAV, 24kHz) was successfully delivered and verified with 0 errors.
 
+---
+
+## 19. Multi-Tenant Fair-Share Inference Queue & Multi-Model Concurrency Coordinator
+
+* **Architectural Rationale & Industry Benchmarking**:
+  * **The Challenge**: When multiple users trigger neural voice synthesis simultaneously, or when background financial quant models (`finllm`) and chat LLM inference (`ollama`) run on the shared compute node (Oracle VM 2 with 2 Ampere ARM vCPUs), naive FIFO scheduling or uncoordinated concurrent execution leads to CPU thrashing, runaway latencies, and thread deadlocks.
+  * **Industry Best Practice Analysis**: Systems like ElevenLabs, Replicate, Ray Serve, and BullMQ solve shared-node saturation via two core patterns:
+    1. **Weighted Fair Queuing / Interleaved Round-Robin**: Rather than letting a single noisy-neighbor user's batch monopolize the queue, jobs are interleaved across distinct active user identifiers (`userId` / `userEmail` / `ip`).
+    2. **Resource-Aware Slot Accounting (Mutual Exclusion)**: High-compute models (XTTS-v2 autoregressive synthesis, Ollama LLM token generation, FinLLM sentiment analysis) each consume 1 heavy compute slot (`weight: 1`). VM 2 enforces a strict `maxConcurrentHeavy = 1` slot ceiling, ensuring full CPU core dedication without context-switching penalties. Lightweight tasks (Edge neural streaming with `weight: 0`) bypass the heavy slot for instant execution.
+* **Implementation (`src/services/unifiedInferenceQueue.ts`)**:
+  * **Unified Queue Manager**:
+    * Global singleton orchestrating tasks across SpeechStudio, Ollama LLM (`server.ts`), and StockTracker Quant (`sentimentEngine.ts`).
+    * **States**: `queued` ➔ `processing` ➔ `completed` | `failed` | `cancelled`.
+    * Computes live 1-based `queuePosition`, `totalInQueue`, and dynamic `estimatedWaitSec` based on rolling inference history.
+    * Tracks `activeHeavyTask` details (job type, description, user, started timestamp, elapsed seconds, estimated remaining seconds).
+  * **Cross-Model Concurrency Coordination**:
+    * `server.ts` (`POST /api/ai/chat`): Acquires `LLM_CHAT_INFERENCE` heavy slot before dispatching to Ollama, safely streaming keep-alive heartbeats if a speech job is active.
+    * `sentimentEngine.ts`: Acquires `QUANT_SENTIMENT_ANALYSIS` slot before calling `finllm`.
+    * `routes.ts` (SpeechStudio): Enqueues cloned/autoregressive voice jobs under `SPEECH_SYNTHESIS_REPLICATED` with fair-share scheduling.
+    * Provides REST endpoints: `GET /api/cluster/queue-status`, `GET /api/queue/status`, `DELETE /api/plugins/speech-studio/jobs/:jobId`, and `POST /jobs/:jobId/cancel`.
+* **Frontend Diagnostic Experience (`SpeechStudioView.tsx`)**:
+  * Upgraded diagnostic pipeline from 5 to 6 transparent stages:
+    1. `Text Tokenizer`
+    2. `Voice Resolution`
+    3. `Multi-Tenant Queue` (displays exact position, wait time, and active node task)
+    4. `Neural Gateway`
+    5. `Neural Vocoder`
+    6. `Audio Stream`
+  * Added animated Queue Banner when `status === 'queued'` with live countdown and one-click actions:
+    * **Cancel**: Frees the queue slot.
+    * **Instant Voice**: Cancels queued model and switches immediately to sub-second Edge neural streaming.
+* **Admin Fleet Telemetry Integration (`AdminConsoleView.tsx`)**:
+  * Added "Inference Node Concurrency & Queue" card under VM 2 displaying:
+    * Heavy Slot Usage (`1 / 1 HEAVY SLOT BUSY` vs `1 SLOT IDLE & READY`).
+    * Active workload description and elapsed runtime.
+    * Total waiting tasks, distinct waiting users, and scheduler mode (`Interleaved Fair-Share`).
+* **Live Production Concurrency Verification**:
+  * Simultaneously dispatched requests from User A (`suresh@sutharlabs.com`) and User B (`guest_b@sutharlabs.com`) to `https://www.sutharlabs.com`:
+    * User A immediately acquired the slot (`status: processing`).
+    * User B was enqueued (`status: queued`, `queuePosition: 1`, `estimatedWaitSec: 29s`, `activeTask: Speech Synthesis (Suresh)`).
+    * Polling User B updated the live countdown: 25s ➔ 21s ➔ 17s ➔ 13s ➔ 8s.
+    * User A completed in 25.28s (395 KB WAV).
+    * User B automatically dequeued and transitioned to `processing`, completing in 28.46s (487 KB WAV).
+    * Zero timeouts, zero 504 errors, zero socket drops.
+
 
 
