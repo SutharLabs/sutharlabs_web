@@ -76,3 +76,4 @@ Tested across Oracle Cloud VM 2 (`10.0.0.188`, Ampere A1 4 OCPU, 24GB RAM):
 - **First-Time Voice Extraction**: ~30.6s (transcoding 24s audio, 24kHz PCM, computing GPT conditioning latents + d-vector embeddings).
 - **Cached Voice Synthesis**: ~23.8s (zero re-extraction load, 100% authentic speaker timbre).
 - **Edge Neural Fleet**: ~0.35s (instant line-rate speech synthesis).
+

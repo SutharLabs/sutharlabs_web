@@ -1260,7 +1260,8 @@ export default function SpeechStudioView({
         timbrePreference: activeCloned?.gender || (activeVoice as any).gender || 'male',
         sampleAudio: isCloned ? (activeCloned?.sampleAudioDataUrl || (activeVoice as any).referenceAudio) : undefined,
         referenceAudio: isCloned ? (activeCloned?.sampleAudioDataUrl || (activeVoice as any).referenceAudio) : undefined,
-        referenceText: activeCloned?.referenceText || ''
+        referenceText: activeCloned?.referenceText || '',
+        async: Boolean(isCloned || normalizedArch === 'voxcpm' || normalizedArch === 'styletts2' || normalizedArch === 'f5-tts')
       };
 
       let res: Response;
@@ -1292,7 +1293,7 @@ export default function SpeechStudioView({
         throw new Error(`Server returned unexpected response (${res.status}): ${resText.slice(0, 140)}`);
       }
 
-      if (!res.ok) {
+      if (!res.ok && res.status !== 202) {
         if (res.status === 429) {
           setErrorMessage(data.error || 'Rate limit reached.');
           if (data.quota) setQuota(data.quota);
@@ -1315,6 +1316,86 @@ export default function SpeechStudioView({
         setSynthesisFailedStep(failedStepInfo);
         setSynthesisOverallStatus('failed');
         throw new Error(data.message || data.error || data.details || `Speech synthesis failed (HTTP ${res.status}).`);
+      }
+
+      // Handle Asynchronous Job Polling (Immune to Vercel Serverless 10-15s timeouts)
+      if (res.status === 202 || (data.async && data.jobId)) {
+        const jobId = data.jobId;
+        setSynthesisSteps(prev => prev.map(s => {
+          if (s.id === 'validate' || s.id === 'profile' || s.id === 'gateway') {
+            return { ...s, status: 'completed', durationMs: s.durationMs || 100 };
+          }
+          if (s.id === 'inference') {
+            return {
+              ...s,
+              status: 'running',
+              detail: 'Neural vocoder synthesizing audio latents on VM 2... (0s elapsed, ~25s total)'
+            };
+          }
+          return { ...s, status: 'idle' };
+        }));
+
+        let pollCount = 0;
+        const maxPolls = 60; // 60 * 1500ms = 90s max
+        let completedJob: any = null;
+
+        while (pollCount < maxPolls) {
+          await new Promise(r => setTimeout(r, 1500));
+          pollCount++;
+          const elapsedSec = (pollCount * 1.5).toFixed(0);
+
+          setSynthesisSteps(prev => prev.map(s => {
+            if (s.id === 'inference') {
+              return {
+                ...s,
+                status: 'running',
+                detail: `Neural vocoder synthesizing audio latents on VM 2... (${elapsedSec}s elapsed, ~25s total)`
+              };
+            }
+            return s;
+          }));
+
+          try {
+            const pollRes = await fetch(`/api/plugins/speech-studio/jobs/${jobId}`, { headers });
+            if (!pollRes.ok) {
+              if (pollRes.status >= 500 && pollCount < maxPolls) continue;
+              throw new Error(`Job status polling failed (HTTP ${pollRes.status})`);
+            }
+            const pollData = await pollRes.json();
+            if (pollData.status === 'completed') {
+              completedJob = pollData;
+              break;
+            } else if (pollData.status === 'failed') {
+              const failedId = pollData.failedStep || 'inference';
+              const failedStepInfo: SynthesisStepInfo = {
+                id: failedId,
+                label: failedId === 'gateway' ? '3. Neural Gateway' : '4. Neural Vocoder',
+                detail: pollData.message || pollData.error || 'Synthesis error on VM 2',
+                status: 'failed',
+                error: pollData.details || pollData.error || 'Job failed'
+              };
+              setSynthesisSteps(prev => prev.map(s => {
+                if (s.id === failedId) return failedStepInfo;
+                if (s.id === 'validate' || s.id === 'profile' || s.id === 'gateway') return { ...s, status: 'completed' };
+                return { ...s, status: 'idle' };
+              }));
+              setSynthesisFailedStep(failedStepInfo);
+              setSynthesisOverallStatus('failed');
+              throw new Error(pollData.error || pollData.details || 'Neural synthesis failed.');
+            }
+          } catch (pollErr: any) {
+            if (pollErr.message?.includes('Job status polling failed') || pollErr.message?.includes('Neural synthesis failed')) {
+              throw pollErr;
+            }
+            console.warn('[SpeechStudio] Transient poll network hiccup, retrying...', pollErr);
+          }
+        }
+
+        if (!completedJob) {
+          throw new Error('Neural voice synthesis exceeded the 90s execution window. Please check VM 2 neural-tts service.');
+        }
+
+        data = completedJob;
       }
 
       if (data.quota) setQuota(data.quota);
@@ -1743,7 +1824,8 @@ export default function SpeechStudioView({
         architecture: replicateArchitecture,
         rate,
         pitch,
-        volume
+        volume,
+        async: true
       };
 
       let res: Response;
@@ -1769,7 +1851,47 @@ export default function SpeechStudioView({
         throw new Error(`Server returned unexpected response (${res.status}): ${resText.slice(0, 140)}`);
       }
 
-      if (!res.ok) throw new Error(data.message || data.error || data.details || `Voice cloning synthesis failed (HTTP ${res.status}).`);
+      if (!res.ok && res.status !== 202) {
+        throw new Error(data.message || data.error || data.details || `Voice cloning synthesis failed (HTTP ${res.status}).`);
+      }
+
+      // Handle Asynchronous Job Polling for Voice Replication
+      if (res.status === 202 || (data.async && data.jobId)) {
+        const jobId = data.jobId;
+        let pollCount = 0;
+        const maxPolls = 60; // 60 * 1500ms = 90s max
+        let completedJob: any = null;
+
+        while (pollCount < maxPolls) {
+          await new Promise(r => setTimeout(r, 1500));
+          pollCount++;
+          try {
+            const pollRes = await fetch(`/api/plugins/speech-studio/jobs/${jobId}`, { headers });
+            if (!pollRes.ok) {
+              if (pollRes.status >= 500 && pollCount < maxPolls) continue;
+              throw new Error(`Voice replication status poll failed (HTTP ${pollRes.status})`);
+            }
+            const pollData = await pollRes.json();
+            if (pollData.status === 'completed') {
+              completedJob = pollData;
+              break;
+            } else if (pollData.status === 'failed') {
+              throw new Error(pollData.error || pollData.details || 'Voice cloning failed on VM 2.');
+            }
+          } catch (pollErr: any) {
+            if (pollErr.message?.includes('Voice cloning failed') || pollErr.message?.includes('Voice replication status poll failed')) {
+              throw pollErr;
+            }
+            console.warn('[SpeechStudio] Transient poll error in clone-voice, retrying...', pollErr);
+          }
+        }
+
+        if (!completedJob) {
+          throw new Error('Voice cloning synthesis exceeded the 90s cloud execution window. Please check VM 2 neural-tts service.');
+        }
+
+        data = completedJob;
+      }
 
       if (data.quota) setQuota(data.quota);
       if (data.telemetry) setVerificationTelemetry(data.telemetry);
