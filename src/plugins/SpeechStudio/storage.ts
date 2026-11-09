@@ -84,7 +84,21 @@ function loadProfilesFromDisk(): StoredClonedVoiceProfile[] {
       const raw = fs.readFileSync(filePath, 'utf8');
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) {
-        return parsed;
+        // Deduplicate loaded profiles by normalized voice name
+        const deduped: StoredClonedVoiceProfile[] = [];
+        const seenNames = new Set<string>();
+        for (const p of parsed) {
+          const norm = (p.name || '').trim().toLowerCase();
+          if (norm && !seenNames.has(norm)) {
+            seenNames.add(norm);
+            deduped.push(p);
+          }
+        }
+        if (deduped.length !== parsed.length) {
+          // Persist the cleansed list back to disk immediately
+          writeProfilesToDisk(deduped);
+        }
+        return deduped;
       }
     }
   } catch (err: any) {
@@ -116,7 +130,18 @@ export function getClonedVoiceProfiles(userId?: string): ClonedVoiceProfile[] {
     ? cachedProfiles
     : cachedProfiles.filter(p => !p.userId || p.userId === userId || p.userId === 'workspace');
 
-  return matched.map(p => {
+  // Deduplicate matched profiles by normalized voice name
+  const deduped: StoredClonedVoiceProfile[] = [];
+  const seenNames = new Set<string>();
+  for (const p of matched) {
+    const norm = (p.name || '').trim().toLowerCase();
+    if (norm && !seenNames.has(norm)) {
+      seenNames.add(norm);
+      deduped.push(p);
+    }
+  }
+
+  return deduped.map(p => {
     let audioUrl = p.sampleAudioDataUrl;
     if (!audioUrl && p.audioSampleFile) {
       const fullSamplePath = path.join(samplesDir, p.audioSampleFile);
@@ -149,7 +174,10 @@ export async function getClonedVoiceProfilesAsync(userEmail?: string): Promise<C
         const dbVoices = await scopedDb.voices.list();
 
         for (const v of dbVoices) {
-          const existing = memoryProfiles.find(p => p.name.toLowerCase() === v.name.toLowerCase() || p.id === v.id);
+          const vNorm = (v.name || '').trim().toLowerCase();
+          const existing = memoryProfiles.find(
+            p => (p.name || '').trim().toLowerCase() === vNorm || p.id === v.id
+          );
           if (!existing) {
             const hydrated: ClonedVoiceProfile = {
               id: v.id,
@@ -170,11 +198,24 @@ export async function getClonedVoiceProfilesAsync(userEmail?: string): Promise<C
               commercialLabel: 'Commercial Safe (Self-Owned)'
             };
             memoryProfiles.push(hydrated);
-            if (cachedProfiles && !cachedProfiles.some(cp => cp.id === v.id)) {
+            if (cachedProfiles && !cachedProfiles.some(cp => cp.id === v.id || (cp.name || '').trim().toLowerCase() === vNorm)) {
               cachedProfiles.push({ ...hydrated, userId: userEmail });
             }
-          } else if (!existing.sampleAudioDataUrl && v.sampleAudioBase64) {
-            existing.sampleAudioDataUrl = v.sampleAudioBase64;
+          } else {
+            // Reconcile id to database UUID and ensure sample audio is preserved
+            existing.id = v.id;
+            if (!existing.sampleAudioDataUrl && v.sampleAudioBase64) {
+              existing.sampleAudioDataUrl = v.sampleAudioBase64;
+            }
+            if (cachedProfiles) {
+              const cp = cachedProfiles.find(p => p.id === existing.id || (p.name || '').trim().toLowerCase() === vNorm);
+              if (cp) {
+                cp.id = v.id;
+                if (!cp.sampleAudioDataUrl && v.sampleAudioBase64) {
+                  cp.sampleAudioDataUrl = v.sampleAudioBase64;
+                }
+              }
+            }
           }
         }
       } catch (dbErr: any) {
@@ -220,8 +261,16 @@ export function saveClonedVoiceProfile(profile: ClonedVoiceProfile, userId?: str
     }
   }
 
-  const existingIdx = cachedProfiles.findIndex(p => p.id === profile.id);
+  const normName = (profile.name || '').trim().toLowerCase();
+  const existingIdx = cachedProfiles.findIndex(
+    p => p.id === profile.id || (p.name || '').trim().toLowerCase() === normName
+  );
   if (existingIdx >= 0) {
+    const existing = cachedProfiles[existingIdx];
+    // Preserve existing permanent server id if incoming had a temporary client id like cloned-173...
+    if (existing.id && !existing.id.startsWith('cloned-') && profile.id.startsWith('cloned-')) {
+      stored.id = existing.id;
+    }
     cachedProfiles[existingIdx] = stored;
   } else {
     cachedProfiles.unshift(stored);
@@ -305,7 +354,8 @@ export function deleteClonedVoiceProfile(profileId: string, userId?: string): bo
     } catch {}
   }
 
-  cachedProfiles = cachedProfiles.filter(p => p.id !== profileId);
+  const normName = (profile.name || '').trim().toLowerCase();
+  cachedProfiles = cachedProfiles.filter(p => p.id !== profileId && (p.name || '').trim().toLowerCase() !== normName);
   writeProfilesToDisk(cachedProfiles);
 
   if (userId && !userId.startsWith('ip:')) {
@@ -313,6 +363,9 @@ export function deleteClonedVoiceProfile(profileId: string, userId?: string): bo
     scopedDb.voices.delete(profileId).catch(err => {
       logger.warn('Asynchronous DB voice deletion error', { error: err?.message });
     });
+    if (profile.name && profile.name !== profileId) {
+      scopedDb.voices.delete(profile.name).catch(() => {});
+    }
   }
 
   return true;

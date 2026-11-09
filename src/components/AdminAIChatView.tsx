@@ -46,7 +46,8 @@ import {
   XCircle,
   FileUp,
   Folder,
-  Play
+  Play,
+  Search
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import JSZip from 'jszip';
@@ -148,8 +149,23 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
     return 'default-session';
   });
 
-  const [isSessionsSidebarOpen, setIsSessionsSidebarOpen] = useState<boolean>(true);
+  const [isSessionsSidebarOpen, setIsSessionsSidebarOpen] = useState<boolean>(false);
+  const [sessionSearchQuery, setSessionSearchQuery] = useState<string>('');
   const [isAgentModalOpen, setIsAgentModalOpen] = useState<boolean>(false);
+
+  // Keyboard shortcut listener for Chat History Drawer (Ctrl+H / Cmd+H or Esc)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isSessionsSidebarOpen) {
+        setIsSessionsSidebarOpen(false);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'h') {
+        e.preventDefault();
+        setIsSessionsSidebarOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isSessionsSidebarOpen]);
 
   // Ensure activeSessionId points to a valid session
   useEffect(() => {
@@ -292,6 +308,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
     setArtifacts([]);
     setActiveArtifact(null);
     setIsArtifactPanelOpen(false);
+    setIsSessionsSidebarOpen(false);
     addLog('AGENT', 'Started new conversation session.', 'INFO');
   };
 
@@ -305,7 +322,17 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         if (ag) setSelectedAgent(ag);
       }
     }
+    setIsSessionsSidebarOpen(false);
   };
+
+  const filteredSessions = useMemo(() => {
+    if (!sessionSearchQuery.trim()) return sessions;
+    const q = sessionSearchQuery.toLowerCase().trim();
+    return sessions.filter(s =>
+      (s.title || '').toLowerCase().includes(q) ||
+      s.messages.some(m => (m.content || '').toLowerCase().includes(q))
+    );
+  }, [sessions, sessionSearchQuery]);
 
   const promptDeleteSession = (sessionId: string, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -1054,24 +1081,30 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
             <>
               {/* DESKTOP TOOLBAR (hidden sm:flex) */}
               <div className="hidden sm:flex items-center gap-2 sm:gap-2.5 flex-nowrap">
-                {/* Sessions Sidebar Toggle Button */}
+                {/* Chat History Drawer Toggle Button */}
                 <button
                   type="button"
                   onClick={() => setIsSessionsSidebarOpen(!isSessionsSidebarOpen)}
-                  className={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm select-none ${
+                  className={`h-8 px-3 rounded-lg border flex items-center gap-2 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm select-none ${
                     isSessionsSidebarOpen
                       ? isLight
-                        ? 'bg-sky-50 text-sky-700 border-sky-300'
-                        : 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/40'
+                        ? 'bg-sky-50 text-sky-700 border-sky-300 ring-2 ring-sky-300/40'
+                        : 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/40 ring-2 ring-[#00dbe7]/20 shadow-[0_0_12px_rgba(0,219,231,0.2)]'
                       : isLight
-                        ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-                        : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                        ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 hover:text-sky-600 hover:border-sky-400'
+                        : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7] hover:border-[#00dbe7]/50'
                   }`}
-                  title={isSessionsSidebarOpen ? "Hide Sessions Sidebar" : "Show Sessions Sidebar"}
+                  title="Toggle Chat History Drawer (Ctrl+H)"
                 >
-                  <History className="w-3.5 h-3.5 shrink-0" />
-                  <span>Sessions</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/10 dark:bg-white/10">{sessions.length}</span>
+                  <div className="w-4 h-4 rounded bg-primary/10 flex items-center justify-center shrink-0">
+                    <History className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+                  </div>
+                  <span>Chat History</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono font-semibold ${
+                    isLight ? 'bg-slate-200/80 text-slate-700' : 'bg-white/10 text-gray-300'
+                  }`}>
+                    {sessions.length}
+                  </span>
                 </button>
 
                 {/* Agent Persona Menu Button */}
@@ -1239,14 +1272,16 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                     <button
                       type="button"
                       onClick={() => setIsSessionsSidebarOpen(!isSessionsSidebarOpen)}
-                      className={`h-7 px-2 rounded-lg border flex items-center gap-1 text-[11px] font-mono font-bold ${
+                      className={`h-7 px-2.5 rounded-lg border flex items-center gap-1.5 text-[11px] font-mono font-bold transition-all select-none ${
                         isSessionsSidebarOpen
                           ? isLight ? 'bg-sky-50 text-sky-700 border-sky-300' : 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/40'
                           : isLight ? 'bg-white text-slate-700 border-slate-300' : 'bg-[#201f21] text-[#e5e1e4] border-[#3a494b]/40'
                       }`}
+                      title="Toggle Chat History Drawer"
                     >
-                      <History className="w-3 h-3 shrink-0" />
+                      <History className="w-3 h-3 text-[#00dbe7] shrink-0" />
                       <span>History</span>
+                      <span className="text-[9px] px-1 rounded-full bg-black/10 dark:bg-white/10">{sessions.length}</span>
                     </button>
 
                     <button
@@ -1399,75 +1434,140 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
       {/* 3. Split-Pane Main Body (Sessions Sidebar + Chat + Claude Artifacts) */}
       <div className="flex-1 flex overflow-hidden relative">
 
-        {/* Mobile Backdrop for Sessions Sidebar */}
-        {isSessionsSidebarOpen && (
-          <div
-            onClick={() => setIsSessionsSidebarOpen(false)}
-            className="sm:hidden fixed inset-0 bg-black/60 z-40 backdrop-blur-sm animate-in fade-in duration-150"
-          />
-        )}
+        {/* Backdrop for Slide-Out Chat History Drawer */}
+        <div
+          onClick={() => setIsSessionsSidebarOpen(false)}
+          className={`fixed inset-0 z-40 bg-black/60 backdrop-blur-xs transition-opacity duration-300 ease-in-out ${
+            isSessionsSidebarOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+          }`}
+          aria-hidden={!isSessionsSidebarOpen}
+        />
 
-        {/* Sessions History Sidebar (Fixed Full-Height on Mobile, Relative on Desktop) */}
-        {isSessionsSidebarOpen && (
-          <div className={`fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50 sm:relative sm:w-72 sm:z-auto sm:inset-auto shrink-0 border-r flex flex-col h-full transition-all duration-200 shadow-2xl sm:shadow-none ${
-            isLight ? 'bg-slate-50/95 border-slate-200 backdrop-blur-md' : 'bg-[#121215]/95 border-outline/10 backdrop-blur-md'
+        {/* Chat History Slide-Over Drawer */}
+        <aside
+          className={`fixed inset-y-0 left-0 z-50 w-84 max-w-[88vw] sm:w-88 flex flex-col h-full border-r shadow-2xl transition-transform duration-300 ease-in-out transform ${
+            isSessionsSidebarOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'
+          } ${
+            isLight
+              ? 'bg-white border-slate-200 text-slate-800'
+              : 'bg-[#121215] border-[#3a494b]/40 text-[#e5e1e4]'
+          }`}
+          aria-label="Chat History Drawer"
+        >
+          {/* Top Accent Line */}
+          <div className="h-1 w-full bg-[#00dbe7] shrink-0" />
+
+          {/* Drawer Header */}
+          <div className={`p-3.5 border-b flex items-center justify-between gap-3 shrink-0 ${
+            isLight ? 'border-slate-200 bg-slate-50/80' : 'border-[#3a494b]/30 bg-[#16161a]'
           }`}>
-            {/* Sidebar Header */}
-            <div className="p-3 border-b flex items-center justify-between gap-2 border-inherit">
-              <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-on-surface">
-                <MessageSquare className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
-                <span>Chat History</span>
-                {isCloudSynced && (
-                  <span className="text-[10px] text-emerald-400 font-normal flex items-center gap-0.5" title="Synchronized across web & mobile">
-                    <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
-                    <span className="hidden sm:inline">Synced</span>
-                  </span>
-                )}
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 shadow-xs">
+                <History className="w-4 h-4 text-[#00dbe7] shrink-0" />
               </div>
-              <div className="flex items-center gap-1">
-                <button
-                  type="button"
-                  onClick={handleCreateNewSession}
-                  className={`h-7 px-2.5 rounded-lg text-[11px] font-mono font-bold uppercase transition-all flex items-center gap-1 cursor-pointer shadow-xs leading-none ${
-                    isLight
-                      ? 'bg-sky-500 hover:bg-sky-600 text-white'
-                      : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40'
-                  }`}
-                  title="Start a new chat session"
-                >
-                  <Plus className="w-3 h-3 shrink-0" />
-                  <span>New</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setIsSessionsSidebarOpen(false)}
-                  className="sm:hidden h-7 w-7 rounded-lg flex items-center justify-center text-on-surface-variant hover:text-on-surface cursor-pointer"
-                  title="Close Sidebar"
-                >
-                  <X className="w-4 h-4 shrink-0" />
-                </button>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-xs sm:text-sm font-bold tracking-tight font-sans truncate">Chat History</h3>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-mono shrink-0 ${
+                    isLight ? 'bg-slate-200 text-slate-700 font-semibold' : 'bg-white/10 text-gray-300'
+                  }`}>
+                    {sessions.length}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1 text-[10px] text-on-surface-variant font-mono mt-0.5">
+                  {isCloudSynced ? (
+                    <span className="text-emerald-500 font-semibold flex items-center gap-1">
+                      <CheckCircle2 className="w-2.5 h-2.5 shrink-0" />
+                      <span>Cloud Synced</span>
+                    </span>
+                  ) : (
+                    <span>Local Storage</span>
+                  )}
+                </div>
               </div>
             </div>
 
-            {/* Sessions Scroll List */}
-            <div className="flex-1 overflow-y-auto p-2 space-y-1.5 scrollbar-thin">
-              {sessions.map((sess) => {
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={handleCreateNewSession}
+                className={`h-7 px-2.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer shadow-xs leading-none ${
+                  isLight
+                    ? 'bg-sky-500 hover:bg-sky-600 text-white border border-sky-600 shadow-sm'
+                    : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40 hover:border-[#00dbe7]'
+                }`}
+                title="Start a new chat session"
+              >
+                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <span>New</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsSessionsSidebarOpen(false)}
+                className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-all cursor-pointer ${
+                  isLight
+                    ? 'border-slate-200 hover:bg-slate-100 text-slate-500 hover:text-slate-800'
+                    : 'border-[#3a494b]/40 hover:bg-white/5 text-gray-400 hover:text-white'
+                }`}
+                title="Close Drawer (Esc)"
+              >
+                <X className="w-4 h-4 shrink-0" />
+              </button>
+            </div>
+          </div>
+
+          {/* Search Filter Input */}
+          <div className={`p-2.5 border-b shrink-0 ${
+            isLight ? 'border-slate-200 bg-white' : 'border-[#3a494b]/20 bg-[#121215]'
+          }`}>
+            <div className="relative">
+              <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 shrink-0 pointer-events-none" />
+              <input
+                type="text"
+                value={sessionSearchQuery}
+                onChange={(e) => setSessionSearchQuery(e.target.value)}
+                placeholder="Search conversations..."
+                className={`w-full h-7 pl-8 pr-7 text-xs font-mono rounded-lg border transition-all outline-none ${
+                  isLight
+                    ? 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:bg-white focus:border-sky-500'
+                    : 'bg-[#18181c] border-[#3a494b]/40 text-[#e5e1e4] placeholder-gray-500 focus:border-[#00dbe7]'
+                }`}
+              />
+              {sessionSearchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSessionSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 p-0.5"
+                >
+                  <X className="w-3 h-3 shrink-0" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Sessions Scroll List */}
+          <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 scrollbar-thin">
+            {filteredSessions.length === 0 ? (
+              <div className="p-6 text-center text-xs font-mono text-on-surface-variant/70 space-y-1">
+                <MessageSquare className="w-6 h-6 mx-auto opacity-30 shrink-0" />
+                <p>No conversations match your search.</p>
+              </div>
+            ) : (
+              filteredSessions.map((sess) => {
                 const isActive = sess.id === activeSessionId;
                 const msgCount = sess.messages.length;
                 return (
                   <div
                     key={sess.id}
-                    onClick={() => {
-                      handleSelectSession(sess.id);
-                      if (window.innerWidth < 640) setIsSessionsSidebarOpen(false);
-                    }}
+                    onClick={() => handleSelectSession(sess.id)}
                     className={`group relative p-2.5 rounded-xl border text-xs font-mono transition-all cursor-pointer flex items-start justify-between gap-2 select-none ${
                       isActive
                         ? isLight
-                          ? 'bg-white border-sky-400 text-slate-900 shadow-xs'
+                          ? 'bg-sky-50 border-sky-400 text-slate-900 shadow-xs'
                           : 'bg-[#00dbe7]/15 border-[#00dbe7]/50 text-[#00dbe7] shadow-xs'
                         : isLight
-                          ? 'bg-white/60 hover:bg-white border-slate-200/60 hover:border-slate-300 text-slate-700'
+                          ? 'bg-white hover:bg-slate-50 border-slate-200/80 hover:border-slate-300 text-slate-700'
                           : 'bg-white/3 hover:bg-white/7 border-white/5 hover:border-white/10 text-on-surface-variant hover:text-on-surface'
                     }`}
                   >
@@ -1491,16 +1591,44 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
                     </button>
                   </div>
                 );
-              })}
-            </div>
+              })
+            )}
           </div>
-        )}
-        
+
+          {/* Drawer Footer with Shortcut Tips */}
+          <div className={`p-2.5 px-3 border-t flex items-center justify-between text-[10px] font-mono shrink-0 ${
+            isLight ? 'border-slate-200 bg-slate-50 text-slate-500' : 'border-[#3a494b]/30 bg-[#16161a] text-gray-400'
+          }`}>
+            <span><kbd className="px-1 py-0.5 rounded bg-black/10 dark:bg-white/10 font-semibold">Ctrl+H</kbd> to toggle • <kbd className="px-1 py-0.5 rounded bg-black/10 dark:bg-white/10 font-semibold">Esc</kbd> to close</span>
+            <span>{filteredSessions.length} of {sessions.length}</span>
+          </div>
+        </aside>
+
         {/* Left Column: Chat Conversation */}
-        <div className={`flex-1 min-w-0 flex flex-col h-full overflow-hidden transition-all duration-200 ${
+        <div className={`flex-1 min-w-0 flex flex-col h-full overflow-hidden transition-all duration-200 relative ${
           isArtifactPanelOpen && !isArtifactFullscreen ? 'hidden lg:flex' : 'w-full'
         }`}>
-          
+
+          {/* Quick Floating Chat History Button (visible when drawer is closed) */}
+          {!isSessionsSidebarOpen && (
+            <button
+              type="button"
+              onClick={() => setIsSessionsSidebarOpen(true)}
+              className={`absolute left-3 top-3 z-10 h-7 px-2.5 rounded-lg border shadow-sm flex items-center gap-1.5 text-[11px] font-mono font-bold transition-all cursor-pointer select-none opacity-85 hover:opacity-100 ${
+                isLight
+                  ? 'bg-white/95 hover:bg-white text-slate-700 border-slate-300 hover:text-sky-600 hover:border-sky-400'
+                  : 'bg-[#18181c]/90 hover:bg-[#202025] text-[#e5e1e4] border-[#3a494b]/50 hover:text-[#00dbe7] hover:border-[#00dbe7]/50'
+              }`}
+              title="Open Chat History (Ctrl+H)"
+            >
+              <History className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+              <span className="hidden sm:inline">History</span>
+              <span className={`text-[9px] px-1 py-0.2 rounded-full ${isLight ? 'bg-slate-200 text-slate-700' : 'bg-white/10 text-gray-300'}`}>
+                {sessions.length}
+              </span>
+            </button>
+          )}
+
           {/* Messages Scroll Area */}
           <div className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 space-y-4 sm:space-y-5 min-w-0">
             

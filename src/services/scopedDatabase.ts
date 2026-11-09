@@ -153,7 +153,13 @@ export function getScopedDb(userEmailRaw: string) {
         const span = logger.startSpan('scopedDb.voices.delete', { userEmail, id });
         try {
           const res = await prisma.userVoiceProfile.deleteMany({
-            where: { id, userEmail }
+            where: {
+              userEmail,
+              OR: [
+                { id },
+                { name: id }
+              ]
+            }
           });
           span.end({ deletedCount: res.count });
           return res.count > 0;

@@ -666,3 +666,42 @@ flowchart LR
 
 
 
+
+---
+
+## 26. Replicated Voice Profile Deduplication & AI Studio Chat History Slider Drawer Redesign
+
+* **1. Replicated Voice Profile Duplication & Synchronization Fix (`SpeechStudio`)**:
+  * **Root Cause Diagnosis**:
+    * When a user replicated and saved a voice, the browser client assigned a temporary timestamp ID (`cloned-${Date.now()}`), which was persisted to `localStorage` and sent to the backend.
+    * When persisted to PostgreSQL (`scopedDb.voices.save`), Prisma upserted the record by unique composite key `[userEmail, name]` and returned a database UUID/CUID.
+    * In subsequent API calls (`fetchClonedProfiles`) or on voice synthesis reload, the server returned the record with its database UUID.
+    * The frontend previously checked if local profiles existed on the server purely by ID matching (`serverIds.has(v.id)`). Because `cloned-...` did not match the server UUID, the client incorrectly classified the existing voice as "missing on server", appended it to the profiles map as a duplicate, and triggered an automatic background POST back to `/api/plugins/speech-studio/cloned-voices`.
+    * This initiated an exponential doubling loop on repeated syntheses and page refreshes.
+  * **Architectural Fix in `storage.ts` & `SpeechStudioView.tsx`**:
+    * **Canonical Name-Based Reconciliation**: Deduplication is now keyed by normalized voice profile name (`profile.name.trim().toLowerCase()`) in addition to ID across all layers.
+    * **Disk & In-Memory Cleansing**: `loadProfilesFromDisk()` automatically deduplicates existing records and re-saves the cleansed array. `getClonedVoiceProfiles()` ensures only unique voice names are returned.
+    * **Server ID Propagation**: In `getClonedVoiceProfilesAsync()`, when a profile exists in memory and is matched from the database by name, its ID is updated in-place to the PostgreSQL UUID without creating duplicates.
+    * **Client-Side Deduplication & Clean Sync**:
+      * In `SpeechStudioView.tsx`, `localStorage` initialization cleanses existing duplicates on load.
+      * In `fetchClonedProfiles()`, `serverNames` prevents re-uploading voices that already exist on the server under a different ID.
+      * In `handleApproveAndSaveVoice()`, existing profiles with the same normalized name are replaced in-place.
+      * In `deleteClonedProfile()`, all local and server entries matching the normalized name or ID are cleanly removed.
+    * **Database Scoped Delete**: Updated `scopedDb.voices.delete` to match either `id` OR `name: id` for bulletproof tenant voice deletion.
+
+* **2. AI Agent Studio Chat History Slider Drawer UX Redesign (`AdminAIChatView.tsx`)**:
+  * **Zero Screen Clutter by Default**:
+    * Changed `isSessionsSidebarOpen` initial state from `true` to `false`. The chat conversation and interactive artifacts canvas now occupy 100% of the screen width on entry without intrusive sidebars.
+  * **Smooth Slide-Over Drawer Animation**:
+    * Replaced the inline push layout with a fixed, full-height slide-over drawer (`fixed inset-y-0 left-0 z-50 w-84 max-w-[88vw] sm:w-88`).
+    * Implemented hardware-accelerated CSS sliding transition: `${isSessionsSidebarOpen ? 'translate-x-0' : '-translate-x-full pointer-events-none'}` with `transition-transform duration-300 ease-in-out shadow-2xl`.
+    * Added dark frosted backdrop (`fixed inset-0 z-40 bg-black/60 backdrop-blur-xs transition-opacity duration-300`) allowing users to dismiss the drawer by clicking anywhere outside.
+  * **Enhanced Toolbar & Pull Affordances**:
+    * **Desktop Toolbar**: Replaced the plain "Sessions" button with a dedicated "Chat History" trigger featuring a contained icon badge, live conversation counter, and keyboard shortcut hint (`Ctrl+H`).
+    * **Mobile Toolbar**: Added a compact, touch-friendly "History" trigger with badge count.
+    * **Quick Floating Pull Tab**: Added an unobtrusive edge button on the top-left of the chat canvas (`History [N]`) when the drawer is closed for effortless one-click access.
+  * **Live Search & Conversation Filtering**:
+    * Integrated a real-time search input with clear button inside the drawer header to instantly filter past sessions by conversation title or message content.
+  * **Keyboard Accessibility**:
+    * Added global key listeners: `Escape` closes the drawer; `Ctrl+H` / `Cmd+H` toggles the drawer.
+    * Selecting any conversation or clicking "+ New Chat" seamlessly activates the session and closes the drawer for instant focus.

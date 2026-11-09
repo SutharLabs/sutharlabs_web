@@ -788,7 +788,21 @@ export default function SpeechStudioView({
   const [clonedProfiles, setClonedProfiles] = useState<ClonedVoiceProfile[]>(() => {
     try {
       const saved = localStorage.getItem('sutharlabs_cloned_voice_profiles');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const deduped: ClonedVoiceProfile[] = [];
+          const seen = new Set<string>();
+          for (const item of parsed) {
+            const norm = (item.name || '').trim().toLowerCase();
+            if (norm && !seen.has(norm)) {
+              seen.add(norm);
+              deduped.push(item);
+            }
+          }
+          return deduped;
+        }
+      }
     } catch { }
     return [];
   });
@@ -1034,25 +1048,34 @@ export default function SpeechStudioView({
           const data = await res.json();
           if (data.voices && Array.isArray(data.voices)) {
             setClonedProfiles(prev => {
-              const map = new Map<string, ClonedVoiceProfile>();
+              const nameMap = new Map<string, ClonedVoiceProfile>();
+              const serverNames = new Set<string>();
               const serverIds = new Set<string>();
 
               data.voices.forEach((v: ClonedVoiceProfile) => {
-                map.set(v.id, v);
+                const norm = (v.name || '').trim().toLowerCase();
+                if (norm) {
+                  nameMap.set(norm, v);
+                  serverNames.add(norm);
+                }
                 serverIds.add(v.id);
               });
 
-              // Detect locally cached profiles (e.g. from mobile or another tab) not yet on server
+              // Detect locally cached profiles not yet on server
               const missingOnServer: ClonedVoiceProfile[] = [];
               prev.forEach(v => {
-                if (!serverIds.has(v.id)) {
-                  map.set(v.id, v);
+                const norm = (v.name || '').trim().toLowerCase();
+                if (!norm) return;
+
+                if (!serverNames.has(norm) && !serverIds.has(v.id)) {
+                  nameMap.set(norm, v);
+                  serverNames.add(norm);
                   missingOnServer.push(v);
                 } else {
                   // Keep local sampleAudioDataUrl if server record only has disk reference
-                  const existing = map.get(v.id);
+                  const existing = nameMap.get(norm);
                   if (existing && !existing.sampleAudioDataUrl && v.sampleAudioDataUrl) {
-                    map.set(v.id, { ...existing, sampleAudioDataUrl: v.sampleAudioDataUrl });
+                    nameMap.set(norm, { ...existing, sampleAudioDataUrl: v.sampleAudioDataUrl });
                   }
                 }
               });
@@ -1074,7 +1097,7 @@ export default function SpeechStudioView({
                 });
               }
 
-              const combined = Array.from(map.values());
+              const combined = Array.from(nameMap.values());
               try {
                 localStorage.setItem('sutharlabs_cloned_voice_profiles', JSON.stringify(combined));
               } catch {}
@@ -2090,7 +2113,11 @@ export default function SpeechStudioView({
       commercialLabel: 'Commercial Safe (Self-Owned)'
     };
 
-    const updated = [newProfile, ...clonedProfiles.filter(p => p.id !== newProfile.id)];
+    const normNewName = newProfile.name.trim().toLowerCase();
+    const updated = [
+      newProfile,
+      ...clonedProfiles.filter(p => p.id !== newProfile.id && (p.name || '').trim().toLowerCase() !== normNewName)
+    ];
     setClonedProfiles(updated);
 
     try {
@@ -2120,7 +2147,9 @@ export default function SpeechStudioView({
   };
 
   const deleteClonedProfile = async (id: string) => {
-    const updated = clonedProfiles.filter(p => p.id !== id);
+    const toDelete = clonedProfiles.find(p => p.id === id);
+    const normToDelete = toDelete ? (toDelete.name || '').trim().toLowerCase() : '';
+    const updated = clonedProfiles.filter(p => p.id !== id && (!normToDelete || (p.name || '').trim().toLowerCase() !== normToDelete));
     setClonedProfiles(updated);
     try {
       localStorage.setItem('sutharlabs_cloned_voice_profiles', JSON.stringify(updated));

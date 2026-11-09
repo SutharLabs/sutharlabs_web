@@ -1100,9 +1100,9 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1794222884.65721,
-    "seen": 1794223054.4385011,
-    "ast_hash": "902cb5ef7c851b2d3ab843e9dd9e36bd",
+    "mtime": 1794236607.2532268,
+    "seen": 1794236881.291592,
+    "ast_hash": "43bfa06d1ffd4e128b71c6fcaa2c13df",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
@@ -1112,9 +1112,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
-    "mtime": 1794217591.1268578,
-    "seen": 1794219434.2619624,
-    "ast_hash": "8d03f3c65dc88e62aea9a6ca8863d08e",
+    "mtime": 1794235955.8782237,
+    "seen": 1794236881.292119,
+    "ast_hash": "a7509a46b389ad1c6b40cd160180cb0f",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/index.ts": {
@@ -1412,9 +1412,9 @@
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/storage.ts": {
-    "mtime": 1794195423.3168857,
-    "seen": 1794196778.5845952,
-    "ast_hash": "16261215910b029a8bf97e0a70310908",
+    "mtime": 1794235888.8173716,
+    "seen": 1794236881.292139,
+    "ast_hash": "8cc8883c7f9dc354245c565c2ca4c7f4",
     "semantic_hash": ""
   },
   "src/plugins/StockTracker/simulator/backgroundWorker.ts": {
@@ -1682,9 +1682,9 @@
     "semantic_hash": ""
   },
   "docs/SYSTEM_UPDATES_AND_CHANGELOG.md": {
-    "mtime": 1794223090.578808,
-    "seen": 1794234963.3387196,
-    "ast_hash": "2ca8531c1577e2da85baace6f242110a",
+    "mtime": 1794234999.5837357,
+    "seen": 1794236881.292451,
+    "ast_hash": "6625f0cadf754d89ddf7c70f866ad93a",
     "semantic_hash": ""
   },
   "public/voices/catalog.json": {
@@ -1808,9 +1808,9 @@
     "semantic_hash": ""
   },
   "src/services/scopedDatabase.ts": {
-    "mtime": 1794188261.5563538,
-    "seen": 1794191330.3775227,
-    "ast_hash": "5c024b9673e3355461f71994370c954b",
+    "mtime": 1794235899.659188,
+    "seen": 1794236881.2923813,
+    "ast_hash": "e53fe02a6b7151171120f869f7a2574b",
     "semantic_hash": ""
   },
   "docs/speech/SOTA_COMMERCIAL_VOICE_MODELS.md": {

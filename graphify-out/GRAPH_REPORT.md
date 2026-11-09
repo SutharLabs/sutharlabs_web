@@ -1,17 +1,17 @@
 # Graph Report - website  (2026-11-09)
 
 ## Corpus Check
-- 230 files · ~472,387 words
+- 230 files · ~473,647 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
 ## Summary
-- 1817 nodes · 4307 edges · 111 communities (95 shown, 16 thin omitted)
+- 1817 nodes · 4308 edges · 111 communities (95 shown, 16 thin omitted)
 - Extraction: 99% EXTRACTED · 1% INFERRED · 0% AMBIGUOUS · INFERRED: 49 edges (avg confidence: 0.85)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `50e31c20`
+- Built from commit: `5fabb747`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -147,8 +147,8 @@
   server.ts → src/middleware/errorHandler.ts
 - `startServer()` --indirect_call--> `notFoundHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
-- `startServer()` --calls--> `verifyToken()`  [EXTRACTED]
-  server.ts → api/_utils.ts
+- `getScopedDb()` --calls--> `getPrismaClient()`  [EXTRACTED]
+  src/services/scopedDatabase.ts → api/_utils.ts
 
 ## Import Cycles
 - 2-file cycle: `src/components/LandingPage.tsx -> src/components/ProjectBrowserMockup.tsx -> src/components/LandingPage.tsx`
@@ -292,7 +292,7 @@ Cohesion: 0.13
 Nodes (34): addStrategyReview(), calculateRegionalFriction(), calculateSentimentConfluence(), calculateSupertrend(), createStrategy(), deleteStrategy(), deleteStrategyReview(), dispatchWebhookAlert() (+26 more)
 
 ### Community 36 - "SpeechStudio/storage.ts"
-Cohesion: 0.32
+Cohesion: 0.33
 Nodes (15): deleteClonedVoiceProfile(), getClonedAudioSample(), getClonedVoiceProfile(), getClonedVoiceProfileAsync(), getClonedVoiceProfiles(), getClonedVoiceProfilesAsync(), getProfilesFilePath(), getSamplesDirectory() (+7 more)
 
 ### Community 37 - "PdfToolsStudio.tsx"
@@ -542,16 +542,16 @@ Nodes (4): dotenv@^16.4.5, prisma@^7.8.0, dotenv, prisma
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `react` to `plugins/types.ts`, `src/types.ts`, `indicatorEngine.ts`, `package.json`, `App.tsx`, `patterns/types.ts`, `StudioCastCompositor`, `dependencies`, `AdminAIChatView.tsx`, `StorageVaultView.tsx`, `StockTrackerView.tsx`, `server.js`, `ManageDatabaseView.tsx`, `LandingPage.tsx`, `Accounting/storage.ts`, `backtest/engine.ts`, `DocNexusStudio`, `PdfToolsStudio.tsx`, `scannerEngine.ts`, `SpeechStudioView.tsx`, `DocNexus/types.ts`, `Accounting/types.ts`, `PartyCustomer`, `DocNexusStudio`, `lucide-react`, `WorkspacePluginStore.tsx`, `ResumeEngine.tsx`, `ImageStudioView.tsx`, `StockSimulatorPanel.tsx`, `lucide-react`, `BackgroundRemoverTool.tsx`, `DocNexusStudio.tsx`, `DocNexusDocument`, `BugReportModal.tsx`, `SlideDeckStudio.tsx`, `clientRegistry.ts`, `MotionStudioView.tsx`, `AudioTranscriberTool.tsx`, `MockupStudioView.tsx`, `ToolsStudioView.tsx`?**
-  _High betweenness centrality (0.237) - this node is a cross-community bridge._
+  _High betweenness centrality (0.243) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `registerRoutes()` (e.g. with `server.js` and `authenticateToken()`) actually correct?**
   _`registerRoutes()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Should `src/types.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.0962566844919786 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `lucide-react` to `plugins/types.ts`, `src/types.ts`, `indicatorEngine.ts`, `package.json`, `App.tsx`, `patterns/types.ts`, `StudioCastCompositor`, `dependencies`, `AdminAIChatView.tsx`, `StorageVaultView.tsx`, `StockTrackerView.tsx`, `server.js`, `ManageDatabaseView.tsx`, `LandingPage.tsx`, `Accounting/storage.ts`, `backtest/engine.ts`, `DocNexusStudio`, `PdfToolsStudio.tsx`, `scannerEngine.ts`, `SpeechStudioView.tsx`, `DocNexus/types.ts`, `lucide-react`, `WorkspacePluginStore.tsx`, `ResumeEngine.tsx`, `ImageStudioView.tsx`, `StockSimulatorPanel.tsx`, `BackgroundRemoverTool.tsx`, `DocNexusStudio.tsx`, `DocNexusDocument`, `BugReportModal.tsx`, `SlideDeckStudio.tsx`, `MotionStudioView.tsx`, `AudioTranscriberTool.tsx`, `MockupStudioView.tsx`, `ToolsStudioView.tsx`?**
-  _High betweenness centrality (0.146) - this node is a cross-community bridge._
+  _High betweenness centrality (0.140) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `startServer()` (e.g. with `authenticateToken()` and `requireAdmin()`) actually correct?**
   _`startServer()` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **Should `indicatorEngine.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.1310483870967742 - nodes in this community are weakly interconnected._
 - **Why does `express` connect `serverRegistry.ts` to `startServer`, `package.json`, `StockTracker/routes.ts`, `auth.ts`, `rateLimiter.ts`, `server.ts`, `SpeechStudio/routes.ts`, `DocNexus/storage.ts`, `ref_path`, `dependencies`, `StudioCastCompositor`, `server.js`, `telemetryService.ts`?**
-  _High betweenness centrality (0.071) - this node is a cross-community bridge._
+  _High betweenness centrality (0.059) - this node is a cross-community bridge._
