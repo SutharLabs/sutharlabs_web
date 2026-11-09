@@ -8,6 +8,9 @@ import { ToolsStudioPlugin } from "./SovereignTools/index.js";
 import { ResumeStudioPlugin } from "./ResumeStudio/index.js";
 import { StudioCastPlugin } from "./StudioCast/index.js";
 import { MotionStudioPlugin } from "./MotionStudio/index.js";
+import { TranscribeStudioPlugin } from "./TranscribeStudio/index.js";
+import { CutoutStudioPlugin } from "./CutoutStudio/index.js";
+import { MockupStudioPlugin } from "./MockupStudio/index.js";
 import { WorkspacePluginManifest, WorkspacePluginViewProps } from "./types.js";
 import React from "react";
 
@@ -27,6 +30,9 @@ export const CLIENT_PLUGIN_REGISTRY: Record<string, ClientPluginEntry> = {
   [ResumeStudioPlugin.manifest.id]: ResumeStudioPlugin as any,
   [StudioCastPlugin.manifest.id]: StudioCastPlugin as any,
   [MotionStudioPlugin.manifest.id]: MotionStudioPlugin as any,
+  [TranscribeStudioPlugin.manifest.id]: TranscribeStudioPlugin as any,
+  [CutoutStudioPlugin.manifest.id]: CutoutStudioPlugin as any,
+  [MockupStudioPlugin.manifest.id]: MockupStudioPlugin as any,
 };
 
 export function getAllClientPlugins(): ClientPluginEntry[] {

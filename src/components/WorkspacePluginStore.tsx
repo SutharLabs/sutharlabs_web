@@ -256,6 +256,78 @@ const PLUGIN_METADATA_REGISTRY: Record<string, {
     accentColor: '#00dbe7',
     accentBg: 'rgba(0, 219, 231, 0.1)',
     accentBorder: 'rgba(0, 219, 231, 0.3)'
+  },
+  wp_transcribe_studio: {
+    publisher: 'SutharLabs Neural Intelligence Core',
+    tags: ['Audio Transcriber', 'Speech-to-Text', 'Subtitles SRT', 'WebVTT', 'Whisper AI', 'Timeline Sync'],
+    highlights: [
+      'Accurate Client-Side Audio & Video Transcription (MP3, WAV, M4A, WebM, MP4)',
+      'Millisecond-Accurate Subtitle Generator with Instant SRT, VTT, and TXT Export',
+      'Synced Audio Player with Real-Time Syllable & Text Highlighting',
+      '100% Private Client-Side Processing with Optional Neural Acceleration'
+    ],
+    features: [
+      'Multi-format speech decoder supporting MP3, WAV, M4A, OGG, FLAC, and WebM video',
+      'One-click subtitle track generation (.srt and .vtt) ready for YouTube, Premiere, and Final Cut',
+      'Synced audio playback scrubber with word-by-word active tracking',
+      'Instant ZIP batch download for audio transcripts and subtitle assets'
+    ],
+    permissions: [
+      { name: 'Audio Decoding', description: 'Accesses Web Audio API for waveform decoding and playback', granted: true },
+      { name: 'Subtitle Exporter', description: 'Generates and downloads standard SRT, WebVTT, and TXT files', granted: true },
+      { name: 'Workspace Telemetry', description: 'Dispatches transcription event telemetry to the audit console', granted: true }
+    ],
+    accentColor: '#00dbe7',
+    accentBg: 'rgba(0, 219, 231, 0.1)',
+    accentBorder: 'rgba(0, 219, 231, 0.3)'
+  },
+  wp_cutout_studio: {
+    publisher: 'SutharLabs Creative Automation Group',
+    tags: ['AI Cutout', 'Background Remover', 'Transparent PNG', 'E-Commerce Photoshoot', 'WebGPU', 'Product Photography'],
+    highlights: [
+      'Lossless AI Subject Cutout with Fine Hair & Transparency Alpha Masking',
+      'E-Commerce Product Photography Studio with Studio White & Vibrant Gradient Backdrops',
+      'Interactive Before/After Split Comparison Slider',
+      'Multi-Image Batch Processing with 1-Click ZIP Download'
+    ],
+    features: [
+      'Zero cloud compute cost: segmentation model runs directly in browser via WebGPU & Canvas',
+      'Custom studio color picker, preset palettes, and soft drop shadow simulation',
+      'Batch processing queue for multi-product catalogs',
+      'Direct integration with Sovereign Storage Vault'
+    ],
+    permissions: [
+      { name: 'Canvas Processing', description: 'Executes high-resolution pixel and alpha channel operations in client memory', granted: true },
+      { name: 'Storage Vault Export', description: 'Directly saves cutout transparent PNGs to your secure vault', granted: true },
+      { name: 'Workspace Telemetry', description: 'Reports processing duration and batch progress to audit drawer', granted: true }
+    ],
+    accentColor: '#00e476',
+    accentBg: 'rgba(0, 228, 118, 0.1)',
+    accentBorder: 'rgba(0, 228, 118, 0.3)'
+  },
+  wp_mockup_studio: {
+    publisher: 'SutharLabs Creative Automation Group',
+    tags: ['3D Mockups', 'MacBook Pro', 'iPhone 16 Pro', 'Apparel Merch', 'T-Shirts', 'Vector PNG', 'Product Showcase'],
+    highlights: [
+      'High-Fidelity 3D Isometric Device Frames (MacBook Pro, iPhone 16 Pro, iPad, Watch)',
+      'Print-on-Demand Apparel Mockup Engine (T-Shirts & Hoodies with Dynamic Color Masking)',
+      'Realistic Specular Glare, Glass Reflection, and Ambient Floor Shadows',
+      'Ultra-High 4K Resolution Vector & PNG Export'
+    ],
+    features: [
+      'Interactive perspective distortion mapping artwork seamlessly onto 3D hardware surfaces',
+      'Dynamic fabric shader with realistic wrinkles and lighting for t-shirts and hoodies',
+      'Instant clipboard copy and high-DPI image download',
+      'Pre-configured YouTube thumbnail and Product Hunt launch presets'
+    ],
+    permissions: [
+      { name: '2D/3D Canvas Engine', description: 'Renders high-resolution perspective transforms and specular lighting', granted: true },
+      { name: 'Asset Exporter', description: 'Downloads 4K transparent PNG mockups directly to local device', granted: true },
+      { name: 'Workspace Telemetry', description: 'Emits design render metrics to developer console', granted: true }
+    ],
+    accentColor: '#ce5dff',
+    accentBg: 'rgba(206, 93, 255, 0.1)',
+    accentBorder: 'rgba(206, 93, 255, 0.3)'
   }
 };
 

@@ -1,0 +1,12 @@
+{
+  "id": "wp_cutout_studio",
+  "name": "Cutout Studio",
+  "version": "1.0.0",
+  "category": "AI & Multimedia",
+  "type": "Native",
+  "description": "AI Background Remover & Product Photography Studio. Lossless client-side background removal, transparent PNG export, custom backdrops, soft drop shadows, and batch processing.",
+  "iconSymbol": "content_cut",
+  "main": "index.ts",
+  "minEngineVersion": "0.1.0",
+  "packagedAt": "2026-11-09T14:21:07.212Z"
+}

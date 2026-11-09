@@ -32,6 +32,9 @@ export type WorkspaceTab =
   | 'Image Studio'
   | 'StudioCast'
   | 'Motion Studio'
+  | 'Transcribe Studio'
+  | 'Cutout Studio'
+  | 'Mockup Studio'
   | 'README' 
   | 'Plugin Store' 
   | 'Profile & Settings';

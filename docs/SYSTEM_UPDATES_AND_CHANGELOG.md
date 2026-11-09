@@ -616,6 +616,51 @@ flowchart LR
       * **Qwen Coder AI Assistant**: Pre-configured action triggers ("Explain Code", "Refactor & Optimize", "Write Unit Tests") with one-click injection into the LLM inference engine.
       * **Interactive Output Console**: Terminal execution log displaying build feedback, test results, and server status.
 
+---
+
+## 25. Plugin Creation & Publishing Architecture & Standalone AI & Multimedia Plugins (Transcribe Studio, Cutout Studio, Mockup Studio)
+
+* **1. Comprehensive Plugin Creation & Publishing Lifecycle Architecture**:
+  * **Phase 1: Module Directory & Manifest Specification**:
+    * Created under `src/plugins/<PluginName>/` with strict separation of concerns:
+      * `manifest.json` & `manifest.ts`: Exports `WorkspacePluginManifest` (`id`, `name`, `version`, `category`, `type: 'Native'`, `iconSymbol`, `route`, `description`).
+      * `index.ts`: Standard module entry exporting `{ manifest, View }`.
+      * `components/<PluginName>View.tsx`: Main React component implementing `WorkspacePluginViewProps` (`logs`, `onAddLog`, `userEmail`, `userToken`, `theme`, `userRole`). Adheres to SutharLabs UI Styling & Icon Alignment standards (contained header badges, `shrink-0` on icons, `isLight` theme matrix, and zero native browser dialogs).
+  * **Phase 2: Client Registry & Routing Integration**:
+    * `src/plugins/clientRegistry.ts`: Registered in `CLIENT_PLUGIN_REGISTRY` for dynamic lookup (`getClientPluginByName`, `getClientPluginByRoute`).
+    * `src/types.ts`: Tab name added to `WorkspaceTab` union.
+    * `src/App.tsx`: Added to `INSTALLED_PLUGINS`, `ROUTE_MAP` (`/workspace/<slug>`), and main active tab whitelist.
+  * **Phase 3: Automated Packaging & Integrity Verification (`scripts/package-plugins.ts`)**:
+    * Packages all plugin assets into compressed release archives in `storage/plugins/`.
+    * Computes cryptographic SHA-256 integrity checksums (`checksumSha256`).
+    * Encrypts release archives using AES-256-GCM authenticated cipher (`.sutharplugin`).
+  * **Phase 4: Store Publishing & Database Synchronization**:
+    * Upserts the root plugin definition into `prisma.workspacePlugin` (name, version, description, category, iconSymbol, type).
+    * Upserts the release into `prisma.workspacePluginVersion` with `packageUrl`, `checksumSha256`, and release changelog.
+    * Adds rich technical metadata to `PLUGIN_METADATA_REGISTRY` in `src/components/WorkspacePluginStore.tsx` (publisher, tags, highlights, features, permissions, and sovereign accent tokens).
+
+* **2. Newly Created & Published Plugins (Category: `AI & Multimedia`)**:
+  * **Transcribe Studio (`wp_transcribe_studio`)**:
+    * **Category**: `AI & Multimedia`
+    * **Route**: `/workspace/transcribe`
+    * **Core Capabilities**: Studio-grade AI speech-to-text and subtitle generator. Ingests audio and video files (MP3, WAV, M4A, OGG, FLAC, WebM, MP4), calculates millisecond-accurate timestamps, exports industry-standard `.srt`, `.vtt`, `.txt`, and `.json` subtitle tracks, and provides synced audio playback with real-time text tracking.
+    * **Release Version**: `1.0.0` (SHA-256: `1c82b2525fd5aa95eec6666a6e0568fa38f8794c3ea78b3fe973d1c9b1647a1a`).
+  * **Cutout Studio (`wp_cutout_studio`)**:
+    * **Category**: `AI & Multimedia`
+    * **Route**: `/workspace/cutout`
+    * **Core Capabilities**: Client-side AI background remover and product photography studio. Lossless edge alpha masking, e-commerce studio backdrops (pure white, gradient, custom RGB), soft drop shadow simulation, before/after split comparison slider, and multi-file batch ZIP export.
+    * **Release Version**: `1.0.0` (SHA-256: `6bbbe4f4ee92174512b1d9677b7d5fab5db7042f16e57d1ba285245b9bddc80c`).
+  * **Mockup Studio (`wp_mockup_studio`)**:
+    * **Category**: `AI & Multimedia`
+    * **Route**: `/workspace/mockup`
+    * **Core Capabilities**: 3D Isometric Device & Hardware Mockup Studio. High-fidelity hardware frames for MacBook Pro M-Series, iPhone 16 Pro Titanium, iPad Pro, and Apple Watch Ultra, alongside Print-on-Demand Apparel customizers (T-Shirts & Hoodies with dynamic fabric masking, specular glare, and 4K vector PNG export).
+    * **Release Version**: `1.0.0` (SHA-256: `7c4b68c0e44bf55b1e35fe3cd0c80a2ed26fc3a67dfbb365d5b8fc95666d3821`).
+  * **Motion Studio (`wp_motion_studio`)**:
+    * **Category**: `AI & Multimedia`
+    * **Route**: `/workspace/motion-studio`
+    * **Release Version**: `1.0.0` (SHA-256: `096088b2f705f42ce32849b43b7ca6f4c54b62912a8c97ca6155bccf020e3c9a`).
+
+
 
 
 

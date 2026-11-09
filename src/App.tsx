@@ -43,7 +43,10 @@ const INSTALLED_PLUGINS: { name: WorkspaceTab; icon: string; size: string }[] = 
   { name: 'Speech Studio', icon: 'record_voice_over', size: '14.8 KB' },
   { name: 'Image Studio', icon: 'photo_filter', size: '16.5 KB' },
   { name: 'StudioCast', icon: 'podcasts', size: '32.1 KB' },
-  { name: 'Motion Studio', icon: 'movie_creation', size: '28.6 KB' }
+  { name: 'Motion Studio', icon: 'movie_creation', size: '28.6 KB' },
+  { name: 'Transcribe Studio', icon: 'subtitles', size: '21.4 KB' },
+  { name: 'Cutout Studio', icon: 'content_cut', size: '19.8 KB' },
+  { name: 'Mockup Studio', icon: 'devices', size: '25.3 KB' }
 ];
 
 const ADMIN_TOOLS: { name: WorkspaceTab; icon: string; size: string }[] = [
@@ -85,6 +88,9 @@ const ROUTE_MAP: Record<string, string> = {
   'Image Studio & 4K Upscaler': '/workspace/image-studio',
   'StudioCast': '/workspace/podcast',
   'Motion Studio': '/workspace/motion-studio',
+  'Transcribe Studio': '/workspace/transcribe',
+  'Cutout Studio': '/workspace/cutout',
+  'Mockup Studio': '/workspace/mockup',
   'Manage Plugins': '/admin/manage-plugins',
   'Manage Apps': '/admin/manage-apps',
   'Manage Portfolios': '/admin/manage-portfolios',
@@ -1129,6 +1135,9 @@ function WorkspaceLayout({ user, setUser, logs, addLog, activeTab, setActiveTab,
                 'Image Studio & 4K Upscaler',
                 'StudioCast',
                 'Motion Studio',
+                'Transcribe Studio',
+                'Cutout Studio',
+                'Mockup Studio',
                 'Plugin Store',
                 'Profile & Settings',
                 'Admin Console',

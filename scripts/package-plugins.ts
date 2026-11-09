@@ -128,6 +128,50 @@ const IN_TREE_PLUGINS: PluginConfig[] = [
     description: 'Enterprise Sovereign Broadcast & Podcast Recording Studio. Peer-to-peer WebRTC video/audio calling, instant room link sharing, isolated raw ISO track recording & download, and real-time virtual format presets (Split, Grid, PIP, Newsroom, Cyberpunk).',
     iconSymbol: 'podcasts',
     minEngineVersion: '0.1.0'
+  },
+  {
+    dirName: 'MotionStudio',
+    id: 'wp_motion_studio',
+    name: 'Motion Studio',
+    version: '1.0.0',
+    category: 'AI & Multimedia',
+    type: 'Native',
+    description: 'Enterprise Sovereign Motion Graphic Video & Social Reel Studio. Multi-aspect ratio video engine (9:16 Vertical Reels/TikTok, 16:9 YouTube, 1:1 Square, 4:5 Portrait), kinetic text animations, thumbnail mockups, and client-side 60 FPS WebM/MP4 rendering.',
+    iconSymbol: 'movie_creation',
+    minEngineVersion: '0.1.0'
+  },
+  {
+    dirName: 'TranscribeStudio',
+    id: 'wp_transcribe_studio',
+    name: 'Transcribe Studio',
+    version: '1.0.0',
+    category: 'AI & Multimedia',
+    type: 'Native',
+    description: 'Studio-grade AI Audio Transcriber & Subtitle Generator. Converts audio & video recordings into timestamped text, generates SRT & WebVTT subtitle tracks, and supports synced playback.',
+    iconSymbol: 'subtitles',
+    minEngineVersion: '0.1.0'
+  },
+  {
+    dirName: 'CutoutStudio',
+    id: 'wp_cutout_studio',
+    name: 'Cutout Studio',
+    version: '1.0.0',
+    category: 'AI & Multimedia',
+    type: 'Native',
+    description: 'AI Background Remover & Product Photography Studio. Lossless client-side background removal, transparent PNG export, custom backdrops, soft drop shadows, and batch processing.',
+    iconSymbol: 'content_cut',
+    minEngineVersion: '0.1.0'
+  },
+  {
+    dirName: 'MockupStudio',
+    id: 'wp_mockup_studio',
+    name: 'Mockup Studio',
+    version: '1.0.0',
+    category: 'AI & Multimedia',
+    type: 'Native',
+    description: 'High-Fidelity 3D Device & Apparel Mockup Studio. Isometric MacBook Pro, iPhone 16 Pro, iPad, Watch, and Apparel mockups with realistic specular glare, perspective warp, and high-res vector PNG export.',
+    iconSymbol: 'devices',
+    minEngineVersion: '0.1.0'
   }
 ];
 

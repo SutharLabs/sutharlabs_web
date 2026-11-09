@@ -1,0 +1,12 @@
+{
+  "id": "wp_mockup_studio",
+  "name": "Mockup Studio",
+  "version": "1.0.0",
+  "category": "AI & Multimedia",
+  "type": "Native",
+  "description": "High-Fidelity 3D Device & Apparel Mockup Studio. Isometric MacBook Pro, iPhone 16 Pro, iPad, Watch, and Apparel mockups with realistic specular glare, perspective warp, and high-res vector PNG export.",
+  "iconSymbol": "devices",
+  "main": "index.ts",
+  "minEngineVersion": "0.1.0",
+  "packagedAt": "2026-11-09T14:21:08.952Z"
+}
