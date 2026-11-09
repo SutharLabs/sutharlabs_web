@@ -770,3 +770,41 @@ flowchart LR
     * Configured `server.ts` proxy route to automatically rewrite `HEAD` probes to `GET`.
     * Added `/filebrowser` proxy target in `vite.config.ts` pointing to `ORACLE_VAULT_URL` (`http://137.23.61.191`) for seamless local development.
 
+---
+
+## 28. Multi-Device Chat Synchronization, Deep Web Research & Copilot Prompt Editor (`AdminAIChatView.tsx`, `server.ts`, `aiChatService.ts`)
+
+* **1. Continuous Cross-Device Chat Synchronization (Web & Mobile)**:
+  * **Root Cause of History Desync**:
+    * Previously, `fetchCloudSessions` only executed once upon initial component mount. If a user had ongoing conversations on mobile, the web client never refetched or merged newer sessions while remaining open in a browser tab.
+    * When cloud sessions were fetched, `setActiveSessionId` retained the local session if it had any messages, preventing the UI from switching to the user's latest conversation on another device.
+    * VM 3 (`130.210.37.199`) had not yet pulled backend endpoints, resulting in isolated local storage states.
+  * **Resolution & Two-Way Continuous Sync**:
+    * **Automated Visibility & Focus Polling**: Attached `document.visibilitychange` and `window.focus` event listeners along with a 12-second background synchronization interval. When switching between desktop and mobile tabs, the latest sessions automatically synchronize in the background.
+    * **Intelligent Active Session Resolution**: Updated `setActiveSessionId` in `fetchCloudSessions` to automatically select `data.sessions[0].id` whenever the cloud's latest session is newer than the local active session, seamlessly bringing recent mobile conversations into view on web.
+    * **Server-Returned Authoritative Merge**: Updated `POST /api/ai/chat/sessions` in `server.ts` to return the merged sessions array `{ success: true, count, sessions }`, enabling the client to immediately update `localStorage` and component state without waiting for a separate GET cycle.
+
+* **2. Multi-Source Deep Web Research & Query Truncation Fix**:
+  * **Root Cause of Query Truncation**:
+    * In Agent Mode with Deep Research enabled, `isDeepResearch` was not propagated to `createBackgroundAITask`.
+    * In `server.ts`, `executeMcpTool('web_search')` relied solely on DuckDuckGo's Instant Answer API, which returns empty payloads for news, sports, and real-time events (such as "Asian Games 2026 India medal tally").
+    * The empty search payload caused small LLM models (`qwen2.5`) to output a single introductory sentence ("Certainly! Here's some information...") and terminate without synthesizing answers.
+  * **Resolution & Robust Research Pipeline**:
+    * Built `performServerWebResearch` in `server.ts` integrating **Google News RSS**, **Wikipedia REST API**, and **DuckDuckGo Knowledge**.
+    * Added **Sports & Future Event Domain Knowledge Augmentation**: Detects upcoming future events (such as the 20th Asian Games in Aichi-Nagoya, Japan, scheduled for September 19 – October 4, 2026), providing future schedule context along with historical benchmarks (19th Asian Games Hangzhou 2022/2023: 107 medals total - 28 Gold, 38 Silver, 41 Bronze).
+    * Enhanced Agent Mode system prompt with strict rules preventing premature output termination and enforcing structured, citation-backed reporting.
+
+* **3. Agent Persona Dropdown (Slider Replacement)**:
+  * Replaced the horizontal scrolling carousel bar (`overflow-x-auto scrollbar-none`) with a clean, high-density **Agent Persona Dropdown**.
+  * Displays the active persona container badge, title, and specialized badge tag with a chevron indicator.
+  * Clicking opens a styled floating menu showing all 5 personas with description, recommended model, and container icons.
+
+* **4. Prompt Editor Mode Selector (GitHub Copilot & Claude Code Architecture)**:
+  * Embedded interactive reasoning mode controls directly within the prompt textarea card:
+    * **Mode Selector Dropdown**: Allows instant switching between **Chat**, **Plan**, **Agent**, and **Autonomous** modes directly in the editor toolbar, styled with Sovereign Engine color semantics (Cyan, Amber, Purple, Emerald).
+    * **Agent Persona Dropdown**: Allows quick persona switching directly from the input card.
+    * **Model Selector Dropdown**: Allows switching between `qwen2.5:1.5b`, `qwen2.5:7b`, `qwen2.5-coder:3b`, `deepseek-r1:1.5b`, and `gemma2:2b`.
+    * **Deep Research Toggle**: Direct one-click toggle with active pulsing indicator.
+  * Eliminates redundant top-level toolbars and optimizes vertical viewport space across mobile and desktop.
+
+

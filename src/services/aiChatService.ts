@@ -314,6 +314,7 @@ export interface CreateBackgroundTaskParams {
   agentId: string;
   skillId?: string;
   mcpEnabled?: boolean;
+  isDeepResearch?: boolean;
   attachments?: any[];
 }
 

@@ -158,6 +158,8 @@ export interface AIChatBackgroundTask {
   agentId: string;
   skillId?: string;
   mcpEnabled?: boolean;
+  isDeepResearch?: boolean;
+  researchSources?: Array<{ title: string; url: string; snippet: string; source: string; date?: string }>;
   prompt: string;
   status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
   progress: {

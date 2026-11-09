@@ -229,6 +229,32 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const [skills, setSkills] = useState<AISkillInfo[]>([]);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
   const [isSkillsMenuOpen, setIsSkillsMenuOpen] = useState<boolean>(false);
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+
+  // GitHub Copilot / Claude Code Dropdown States for Text Editor
+  const [isAgentMenuOpen, setIsAgentMenuOpen] = useState<boolean>(false);
+  const [isModeMenuOpen, setIsModeMenuOpen] = useState<boolean>(false);
+  const [isModelMenuOpen, setIsModelMenuOpen] = useState<boolean>(false);
+  const agentMenuRef = useRef<HTMLDivElement>(null);
+  const modeMenuRef = useRef<HTMLDivElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close menus on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (agentMenuRef.current && !agentMenuRef.current.contains(e.target as Node)) {
+        setIsAgentMenuOpen(false);
+      }
+      if (modeMenuRef.current && !modeMenuRef.current.contains(e.target as Node)) {
+        setIsModeMenuOpen(false);
+      }
+      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
+        setIsModelMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutsideClick);
+    return () => document.removeEventListener('mousedown', handleOutsideClick);
+  }, []);
 
   // Slash Commands Auto-suggest Popup State
   const [isSlashMenuOpen, setIsSlashMenuOpen] = useState<boolean>(false);
@@ -252,11 +278,19 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         if (Array.isArray(data.sessions) && data.sessions.length > 0) {
           setSessions(prev => {
             const map = new Map<string, ChatSession>();
-            prev.forEach(s => map.set(s.id, s));
+            // Seed from server
             data.sessions.forEach((serverSess: ChatSession) => {
-              const existing = map.get(serverSess.id);
-              if (!existing || (serverSess.updatedAt || 0) >= (existing.updatedAt || 0) || (serverSess.messages?.length || 0) >= (existing.messages?.length || 0)) {
-                map.set(serverSess.id, serverSess);
+              if (serverSess && serverSess.id) map.set(serverSess.id, serverSess);
+            });
+            // Merge local sessions
+            prev.forEach(localSess => {
+              const serverSess = map.get(localSess.id);
+              if (!serverSess) {
+                map.set(localSess.id, localSess);
+              } else {
+                if ((localSess.updatedAt || 0) > (serverSess.updatedAt || 0) || (localSess.messages?.length || 0) > (serverSess.messages?.length || 0)) {
+                  map.set(localSess.id, localSess);
+                }
               }
             });
             const merged = Array.from(map.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
@@ -267,13 +301,13 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
           });
           setIsCloudSynced(true);
 
-          // If activeSessionId is empty/fallback or new, switch to newest cloud session
+          // Auto-switch to newest cloud session if it has newer messages than active session
           setActiveSessionId(prevId => {
-            if (prevId === 'default-session' || prevId.startsWith('session-')) {
-              const current = sessions.find(s => s.id === prevId);
-              if (!current || current.messages.length === 0) {
-                return data.sessions[0].id;
-              }
+            const newestCloud = data.sessions[0];
+            if (!newestCloud) return prevId;
+            const current = sessions.find(s => s.id === prevId);
+            if (!current || current.messages.length === 0 || (newestCloud.updatedAt || 0) > (current.updatedAt || 0)) {
+              return newestCloud.id;
             }
             return prevId;
           });
@@ -289,6 +323,28 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   useEffect(() => {
     fetchCloudSessions();
   }, [userToken]);
+
+  // Keep Web and Mobile sessions continuously synchronized on tab focus, visibility change, and interval
+  useEffect(() => {
+    if (!userToken) return;
+    const handleSync = () => {
+      if (document.visibilityState === 'visible') {
+        fetchCloudSessions();
+      }
+    };
+    window.addEventListener('focus', handleSync);
+    document.addEventListener('visibilitychange', handleSync);
+    const interval = setInterval(() => {
+      if (document.visibilityState === 'visible' && !isGenerating) {
+        fetchCloudSessions();
+      }
+    }, 12000);
+    return () => {
+      window.removeEventListener('focus', handleSync);
+      document.removeEventListener('visibilitychange', handleSync);
+      clearInterval(interval);
+    };
+  }, [userToken, isGenerating]);
 
   // Fetch MCP tools & Skills on mount
   useEffect(() => {
@@ -349,7 +405,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
     if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
     syncTimeoutRef.current = setTimeout(async () => {
       try {
-        await fetch('/api/ai/chat/sessions', {
+        const res = await fetch('/api/ai/chat/sessions', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -357,7 +413,16 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
           },
           body: JSON.stringify({ sessions })
         });
-        setIsCloudSynced(true);
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.sessions) && data.sessions.length > sessions.length) {
+            setSessions(data.sessions);
+            try {
+              localStorage.setItem('sutharlabs_ai_chat_sessions', JSON.stringify(data.sessions));
+            } catch {}
+          }
+          setIsCloudSynced(true);
+        }
       } catch (err) {
         console.warn('Failed to sync chat sessions to server:', err);
       }
@@ -479,7 +544,6 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   };
 
   const [inputPrompt, setInputPrompt] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [streamBuffer, setStreamBuffer] = useState<string>('');
   const [isDeepResearch, setIsDeepResearch] = useState<boolean>(false);
   const [isSearchingWeb, setIsSearchingWeb] = useState<boolean>(false);
@@ -920,6 +984,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
           agentId: selectedAgent.id,
           skillId: selectedSkillId || undefined,
           mcpEnabled: true,
+          isDeepResearch,
           attachments: currentAttachments
         }, userToken);
 
@@ -1743,45 +1808,6 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
 
       {studioMode === 'custom-chat' ? (
         <>
-          {/* 2. Agent Personas Aggregator Bar */}
-      <div className={`px-4 sm:px-6 py-2.5 border-b shrink-0 flex items-center gap-2 overflow-x-auto scrollbar-none transition-colors ${
-        isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#121215] border-outline/10'
-      }`}>
-        <span className="text-[11px] font-mono uppercase tracking-wider text-on-surface-variant font-bold shrink-0 mr-1 flex items-center gap-1">
-          <Bot className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-          Agents:
-        </span>
-        {AGENT_PERSONAS.map((agent) => {
-          const isSelected = selectedAgent.id === agent.id;
-          return (
-            <button
-              key={agent.id}
-              type="button"
-              onClick={() => handleAgentSelect(agent)}
-              className={`h-7 px-2.5 rounded-full text-xs font-mono flex items-center gap-1.5 transition-all cursor-pointer shrink-0 select-none ${
-                isSelected
-                  ? isLight
-                    ? 'bg-sky-500 text-white font-bold shadow-xs'
-                    : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/40 font-bold shadow-sm'
-                  : isLight
-                    ? 'bg-white hover:bg-slate-100 text-slate-700 border border-slate-300'
-                    : 'bg-surface-container-high/40 hover:bg-surface-container-high text-on-surface-variant hover:text-on-surface border border-outline/10'
-              }`}
-              title={agent.description}
-            >
-              {getAgentIcon(agent.icon)}
-              <span>{agent.name}</span>
-              <span className={`text-[9px] px-1 py-0.2 rounded uppercase ${
-                isSelected 
-                  ? 'bg-black/20 text-white' 
-                  : isLight ? 'bg-slate-100 text-slate-500' : 'bg-white/10 text-white/50'
-              }`}>
-                {agent.badge}
-              </span>
-            </button>
-          );
-        })}
-      </div>
 
       {selectedModel.includes(':7b') && (
         <div className={`px-4 sm:px-6 py-1.5 border-b text-[11px] font-mono flex items-center justify-between gap-2 shrink-0 ${
@@ -2604,27 +2630,175 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       <span className="font-extrabold">{isDeepResearch ? 'ON' : 'OFF'}</span>
                     </button>
 
-                    {/* Active Mode Pill Indicator */}
-                    <div className={`hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[10px] font-mono font-bold uppercase select-none ${
-                      currentMode === 'plan'
-                        ? isLight ? 'bg-amber-50 text-amber-800 border-amber-300' : 'bg-amber-400/10 text-amber-300 border-amber-400/30'
-                        : currentMode === 'agent'
-                        ? isLight ? 'bg-purple-50 text-purple-800 border-purple-300' : 'bg-purple-500/10 text-purple-300 border-purple-500/30'
-                        : currentMode === 'autonomous'
-                        ? isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                        : isLight ? 'bg-slate-100 text-slate-700 border-slate-200' : 'bg-white/5 text-[#00dbe7] border-white/10'
-                    }`}>
-                      {currentMode === 'plan' && <FileCode className="w-3 h-3 text-amber-400 shrink-0" />}
-                      {currentMode === 'agent' && <Bot className="w-3 h-3 text-purple-400 shrink-0" />}
-                      {currentMode === 'autonomous' && <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />}
-                      {currentMode === 'chat' && <MessageSquare className="w-3 h-3 text-[#00dbe7] shrink-0" />}
-                      <span>{currentMode}</span>
+                    {/* 1. Mode Selector Dropdown in Text Editor (GitHub Copilot / Claude Code Standard) */}
+                    <div className="relative" ref={modeMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => { setIsModeMenuOpen(!isModeMenuOpen); setIsAgentMenuOpen(false); setIsModelMenuOpen(false); }}
+                        className={`h-7 px-2 sm:px-2.5 rounded-lg border text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all select-none shadow-xs ${
+                          currentMode === 'plan'
+                            ? isLight ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100' : 'bg-amber-400/15 text-amber-300 border-amber-400/40 hover:bg-amber-400/25'
+                            : currentMode === 'agent'
+                            ? isLight ? 'bg-purple-50 text-purple-800 border-purple-300 hover:bg-purple-100' : 'bg-purple-500/15 text-purple-300 border-purple-500/40 hover:bg-purple-500/25'
+                            : currentMode === 'autonomous'
+                            ? isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100' : 'bg-emerald-500/15 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/25'
+                            : isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-800 border-slate-300' : 'bg-surface-container-high text-[#00dbe7] border-[#00dbe7]/30 hover:border-[#00dbe7]'
+                        }`}
+                        title="Switch Reasoning Mode (Chat, Plan, Agent, Autonomous)"
+                      >
+                        {currentMode === 'plan' && <FileCode className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+                        {currentMode === 'agent' && <Bot className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
+                        {currentMode === 'autonomous' && <Sparkles className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+                        {currentMode === 'chat' && <MessageSquare className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />}
+                        <span className="font-extrabold">{currentMode.toUpperCase()}</span>
+                        <ChevronDown className="w-3 h-3 opacity-70 shrink-0 ml-0.5" />
+                      </button>
+
+                      {/* Mode Menu Dropdown */}
+                      {isModeMenuOpen && (
+                        <div className={`absolute bottom-full left-0 mb-1.5 w-64 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
+                          isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
+                        }`}>
+                          <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10 flex items-center justify-between">
+                            <span>Reasoning Mode</span>
+                            <span className="text-[9px] opacity-60">Copilot Standard</span>
+                          </div>
+                          {[
+                            { id: 'chat' as const, name: 'Chat Mode', desc: 'Conversational streaming & artifacts', icon: MessageSquare, color: 'text-[#00dbe7]' },
+                            { id: 'plan' as const, name: 'Plan Mode', desc: 'Executable plan cards & milestones', icon: FileCode, color: 'text-amber-400' },
+                            { id: 'agent' as const, name: 'Agent Mode', desc: 'Multi-step execution via MCP tools', icon: Bot, color: 'text-purple-400' },
+                            { id: 'autonomous' as const, name: 'Autonomous Mode', desc: 'Closed-loop goals & self-validation', icon: Sparkles, color: 'text-emerald-400' }
+                          ].map(m => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => { setCurrentMode(m.id); setIsModeMenuOpen(false); }}
+                              className={`p-2 rounded-lg text-left transition-colors flex items-start gap-2.5 cursor-pointer ${
+                                currentMode === m.id
+                                  ? isLight ? 'bg-sky-50 text-sky-900 font-bold' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
+                                  : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant hover:text-on-surface'
+                              }`}
+                            >
+                              <m.icon className={`w-4 h-4 shrink-0 mt-0.5 ${m.color}`} />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between text-xs">
+                                  <span>{m.name}</span>
+                                  {currentMode === m.id && <span className="text-[9px] text-[#00dbe7] font-mono">ACTIVE</span>}
+                                </div>
+                                <p className="text-[10px] text-on-surface-variant line-clamp-1 mt-0.5 font-sans font-normal">{m.desc}</p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
-                    <div className="hidden sm:flex items-center gap-2 text-[11px] font-mono text-on-surface-variant">
-                      <span className="text-[#00dbe7] font-semibold">{selectedModel}</span>
-                      <span>•</span>
-                      <span className="text-emerald-400">12GB RAM Node</span>
+                    {/* 2. Agent Persona Dropdown in Text Editor (Replaces Horizontal Slider) */}
+                    <div className="relative" ref={agentMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => { setIsAgentMenuOpen(!isAgentMenuOpen); setIsModeMenuOpen(false); setIsModelMenuOpen(false); }}
+                        className={`h-7 px-2 sm:px-2.5 rounded-lg border text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all select-none shadow-xs ${
+                          isLight
+                            ? 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
+                            : 'bg-surface-container-high/60 hover:bg-surface-container-high text-on-surface border-outline/20'
+                        }`}
+                        title="Switch Autonomous Agent Persona"
+                      >
+                        {getAgentIcon(selectedAgent.icon)}
+                        <span className="truncate max-w-[85px] sm:max-w-[120px]">{selectedAgent.name}</span>
+                        <span className="text-[9px] px-1 py-0.2 rounded uppercase bg-purple-500/15 text-purple-400 hidden sm:inline">{selectedAgent.badge}</span>
+                        <ChevronDown className="w-3 h-3 opacity-70 shrink-0 ml-0.5" />
+                      </button>
+
+                      {/* Agent Dropdown Menu */}
+                      {isAgentMenuOpen && (
+                        <div className={`absolute bottom-full left-0 mb-1.5 w-72 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
+                          isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
+                        }`}>
+                          <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10 flex items-center justify-between">
+                            <span>Agent Personas</span>
+                            <span className="text-[9px] opacity-60">{AGENT_PERSONAS.length} Specialized</span>
+                          </div>
+                          <div className="max-h-60 overflow-y-auto space-y-1">
+                            {AGENT_PERSONAS.map(agent => {
+                              const isSel = selectedAgent.id === agent.id;
+                              return (
+                                <button
+                                  key={agent.id}
+                                  type="button"
+                                  onClick={() => { handleAgentSelect(agent); setIsAgentMenuOpen(false); }}
+                                  className={`w-full p-2 rounded-lg text-left transition-colors flex items-start gap-2.5 cursor-pointer ${
+                                    isSel
+                                      ? isLight ? 'bg-sky-50 text-sky-900 font-bold border border-sky-300/50' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                                      : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant hover:text-on-surface'
+                                  }`}
+                                >
+                                  <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 mt-0.5">
+                                    {getAgentIcon(agent.icon)}
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between text-xs">
+                                      <span className="truncate">{agent.name}</span>
+                                      <span className="text-[9px] px-1 rounded uppercase bg-purple-500/15 text-purple-400 font-mono shrink-0 ml-1">
+                                        {agent.badge}
+                                      </span>
+                                    </div>
+                                    <p className="text-[10px] text-on-surface-variant line-clamp-1 mt-0.5 font-sans font-normal">{agent.description}</p>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 3. Model Selector Dropdown in Text Editor */}
+                    <div className="relative hidden sm:block" ref={modelMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => { setIsModelMenuOpen(!isModelMenuOpen); setIsAgentMenuOpen(false); setIsModeMenuOpen(false); }}
+                        className={`h-7 px-2 rounded-lg border text-[10px] sm:text-[11px] font-mono flex items-center gap-1 cursor-pointer transition-all select-none shadow-xs ${
+                          isLight ? 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300' : 'bg-surface-container-high/60 hover:bg-surface-container-high text-[#00dbe7] border-outline/20'
+                        }`}
+                        title="Select Model Running on Oracle ARM64 Compute Node"
+                      >
+                        <Cpu className="w-3 h-3 text-[#00dbe7] shrink-0" />
+                        <span className="font-bold">{selectedModel}</span>
+                        <ChevronDown className="w-3 h-3 opacity-70 shrink-0" />
+                      </button>
+
+                      {isModelMenuOpen && (
+                        <div className={`absolute bottom-full left-0 mb-1.5 w-56 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
+                          isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
+                        }`}>
+                          <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10">
+                            Select Local Model
+                          </div>
+                          {[
+                            { id: 'qwen2.5:1.5b', name: 'Qwen 2.5 1.5B', note: 'Fast CPU (Default)' },
+                            { id: 'qwen2.5:7b', name: 'Qwen 2.5 7B', note: 'High Intelligence' },
+                            { id: 'qwen2.5-coder:3b', name: 'Qwen 2.5 Coder 3B', note: 'Code Specialist' },
+                            { id: 'deepseek-r1:1.5b', name: 'DeepSeek R1 1.5B', note: 'Reasoning CoT' },
+                            { id: 'gemma2:2b', name: 'Gemma 2 2B', note: 'Google Architecture' }
+                          ].map(m => (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => { setSelectedModel(m.id); setIsModelMenuOpen(false); }}
+                              className={`px-2 py-1.5 rounded-lg text-left text-xs font-mono transition-colors flex items-center justify-between cursor-pointer ${
+                                selectedModel === m.id
+                                  ? isLight ? 'bg-sky-50 text-sky-900 font-bold' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
+                                  : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant hover:text-on-surface'
+                              }`}
+                            >
+                              <span>{m.name}</span>
+                              <span className="text-[9px] opacity-60">{m.note}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 

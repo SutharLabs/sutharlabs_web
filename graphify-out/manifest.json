@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794239799.2600255,
-    "seen": 1794241009.4697092,
-    "ast_hash": "704d642c8961b91608370b012809f391",
+    "mtime": 1794260112.8811338,
+    "seen": 1794260747.4518278,
+    "ast_hash": "a284c47ca81ba9de7a7d98c094fad750",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -812,9 +812,9 @@
     "semantic_hash": ""
   },
   "src/types.ts": {
-    "mtime": 1794239661.8176308,
-    "seen": 1794241009.4706354,
-    "ast_hash": "9f27aeaf7614ab45170e59f13773b056",
+    "mtime": 1794259876.4525027,
+    "seen": 1794260747.4527001,
+    "ast_hash": "a6eee675494fc1ebeb22ff9e8d361228",
     "semantic_hash": ""
   },
   "tsconfig.json": {
@@ -830,8 +830,8 @@
     "semantic_hash": ""
   },
   "vite.config.ts": {
-    "mtime": 1794239290.9463751,
-    "seen": 1794241009.4706454,
+    "mtime": 1794241207.545023,
+    "seen": 1794260747.4527123,
     "ast_hash": "3b4bd77609f02ba736bd1d73bbc4d432",
     "semantic_hash": ""
   },
@@ -1076,8 +1076,8 @@
     "semantic_hash": ""
   },
   "src/components/StorageVaultView.tsx": {
-    "mtime": 1794239256.8797953,
-    "seen": 1794241009.4698722,
+    "mtime": 1794241205.999134,
+    "seen": 1794260747.451969,
     "ast_hash": "aabc54a5267653214ef125d2e06fa772",
     "semantic_hash": ""
   },
@@ -1100,15 +1100,15 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1794240781.003789,
-    "seen": 1794241009.4697223,
-    "ast_hash": "f7cb95034cde060c233219e5a2c15b2f",
+    "mtime": 1794260550.5900078,
+    "seen": 1794260747.4518404,
+    "ast_hash": "fed3d38ba3e4d472ac48a56bf6a36024",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
-    "mtime": 1794239912.5347648,
-    "seen": 1794241009.4706001,
-    "ast_hash": "b94d36895d7c0b363bdd4bdadf22b43a",
+    "mtime": 1794259895.0779514,
+    "seen": 1794260747.4526591,
+    "ast_hash": "86dc7baa1d51f6bd1dcd40e6aa2cf5c5",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
@@ -1682,9 +1682,9 @@
     "semantic_hash": ""
   },
   "docs/SYSTEM_UPDATES_AND_CHANGELOG.md": {
-    "mtime": 1794236926.97949,
-    "seen": 1794241009.4706807,
-    "ast_hash": "d494eb7da8c47bc355f27f473b9c80ac",
+    "mtime": 1794241066.7739155,
+    "seen": 1794260747.4527771,
+    "ast_hash": "ac816294d8824087efd72fd33b711fae",
     "semantic_hash": ""
   },
   "public/voices/catalog.json": {
