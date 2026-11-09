@@ -23,6 +23,7 @@ import { resetSimulator } from "./src/plugins/StockTracker/simulator/index.js";
 import { isEncryptedPluginPackage, resolvePluginArchiveBuffer, encryptPluginPackage } from "./src/plugins/security/pluginCrypto.js";
 
 import { getSystemTelemetry, getFleetTelemetry } from "./src/services/telemetryService.js";
+import { unifiedInferenceQueue } from "./src/services/unifiedInferenceQueue.js";
 
 import { notifyAdminNewInquiry } from "./src/services/emailService.js";
 
@@ -1946,7 +1947,8 @@ app.put('/api/portfolios', authenticateToken, async (req: any, res: any) => {
   // GET /api/admin/fleet-telemetry - Multi-Node Realtime Telemetry (VM 1, VM 2, VM 3, Vercel)
   app.get("/api/admin/fleet-telemetry", async (req, res) => {
     try {
-      const data = await getFleetTelemetry(req.headers);
+      const data: any = await getFleetTelemetry(req.headers);
+      data.inferenceQueue = unifiedInferenceQueue.getTelemetry();
       res.json(data);
     } catch (error) {
       console.error("Fleet telemetry error:", error);
@@ -4425,6 +4427,15 @@ app.get("/api/ai/opencode-info", async (_req: any, res: any) => {
 
 
 
+// GET /api/cluster/queue-status - Real-time cluster inference queue & concurrency telemetry
+app.get("/api/cluster/queue-status", authenticateToken, (_req: any, res: any) => {
+  res.json(unifiedInferenceQueue.getTelemetry());
+});
+
+app.get("/api/queue/status", (_req: any, res: any) => {
+  res.json(unifiedInferenceQueue.getTelemetry());
+});
+
 // GET /api/ai/models - List local LLM models
 
 app.get("/api/ai/models", authenticateToken, requireAdmin, async (_req: any, res: any) => {
@@ -4629,6 +4640,7 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
   // If streaming, send SSE headers immediately so Cloudflare/Nginx proxy does not timeout!
 
   let keepAliveInterval: any = null;
+  let heavySlot: { release: () => void; waitedMs: number } | null = null;
 
   if (stream) {
 
@@ -4662,6 +4674,17 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
 
 
   try {
+    // Acquire VM 2 heavy compute slot so speech synthesis & LLM do not thrash CPU
+    try {
+      heavySlot = await unifiedInferenceQueue.acquireHeavySlot({
+        type: 'LLM_CHAT_INFERENCE',
+        userId: (req as any).user?.email || req.ip || 'admin',
+        description: `Local LLM inference (${model}) on VM 2`,
+        maxWaitMs: 30000
+      });
+    } catch (slotErr: any) {
+      console.warn("[AI Chat] Heavy slot acquisition notice:", slotErr.message);
+    }
 
     const targetUrl = `${ORACLE_AI_URL}/api/chat`;
 
@@ -4785,6 +4808,13 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
 
       res.status(500).json({ error: "Inference request failed", details: err.message });
 
+    }
+
+  } finally {
+
+    if (heavySlot) {
+      heavySlot.release();
+      heavySlot = null;
     }
 
   }

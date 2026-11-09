@@ -3,6 +3,7 @@ import { verifyToken } from "../../../api/_utils.js";
 import { TTSQuotaStatus, TTSVoiceOption, TTSArchitectureOption, ClonedVoiceProfile } from "./types.js";
 import { getClonedVoiceProfiles, getClonedVoiceProfilesAsync, saveClonedVoiceProfile, saveClonedVoiceProfileAsync, deleteClonedVoiceProfile, getClonedAudioSample, getClonedVoiceProfile, getClonedVoiceProfileAsync } from "./storage.js";
 import { createPluginLogger } from "../common/pluginLogger.js";
+import { unifiedInferenceQueue, StepDiagnostic } from "../../services/unifiedInferenceQueue.js";
 
 const logger = createPluginLogger("speech-studio", "routes");
 
@@ -671,9 +672,8 @@ async function executeBackgroundSynthesis(jobId: string, params: {
   step1Duration: number;
   step2Duration: number;
   isHindi: boolean;
-}) {
+}, updateStep?: (stepId: string, status: StepDiagnostic['status'], detail?: string, durationMs?: number) => void) {
   const job = ttsJobStore.get(jobId);
-  if (!job) return;
 
   const ttsUrls = getOracleTtsUrls();
   let audioBuffer: Buffer | null = null;
@@ -682,6 +682,8 @@ async function executeBackgroundSynthesis(jobId: string, params: {
   let inferenceTimeSec = 0;
 
   try {
+    updateStep?.("gateway", "running", "Dispatching to Oracle VM 2 Neural Gateway (132.226.190.125)...");
+
     if (params.isClonedVoice) {
       const clonePayload: Record<string, any> = {
         text: params.text,
@@ -705,6 +707,9 @@ async function executeBackgroundSynthesis(jobId: string, params: {
       for (const baseUrl of ttsUrls) {
         try {
           const t0 = Date.now();
+          updateStep?.("gateway", "completed", "Connected to Oracle VM 2 Gateway", 120);
+          updateStep?.("inference", "running", "Acoustic flow matching & zero-shot neural vocoder in progress on VM 2...");
+
           const vmResponse = await fetch(`${baseUrl}/api/clone`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -765,6 +770,9 @@ async function executeBackgroundSynthesis(jobId: string, params: {
       for (const url of ttsUrls) {
         try {
           const t0 = Date.now();
+          updateStep?.("gateway", "completed", "Connected to Oracle VM 2 Gateway", 120);
+          updateStep?.("inference", "running", "Neural streaming vocoder synthesizing audio latents...");
+
           const vmResponse = await fetch(`${url}/api/tts`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -821,64 +829,80 @@ async function executeBackgroundSynthesis(jobId: string, params: {
 
     const srvInferenceMs = Math.round((inferenceTimeSec || 0.65) * 1000);
 
-    ttsJobStore.set(jobId, {
-      ...job,
-      status: 'completed',
-      completedAt: Date.now(),
-      progressStep: 'completed',
-      progressPercent: 100,
-      result: {
-        success: true,
-        text: params.rawText,
-        lang: params.lang,
-        voiceId: params.voiceId,
-        voiceName: params.effectiveSpeakerName,
-        audioUrl: audioBase64,
-        engine: engineTitle,
-        architecture: params.architecture,
-        emotion: params.emotion,
-        telemetry: {
-          characterCount: params.rawText.length,
-          wordCount: words,
-          estimatedDurationSec,
-          fileSizeBytes: audioBuffer.length,
-          sampleRate: 24000,
-          replicationEngine,
-          latentsCached,
-          inferenceTimeSec
-        },
-        quota: updatedQuota,
-        synthesizedAt: new Date().toISOString(),
-        steps: [
-          { id: "validate", label: "Text & Tokenizer Validation", status: "completed", durationMs: params.step1Duration },
-          { id: "profile", label: "Voice Profile & Speaker Latents", status: "completed", durationMs: params.step2Duration },
-          { id: "gateway", label: "Neural Gateway Dispatch (VM 2)", status: "completed", durationMs: 120 },
-          { id: "inference", label: "Acoustic Flow & Neural Vocoder", status: "completed", durationMs: srvInferenceMs },
-          { id: "decode", label: "Audio Stream Decoding", status: "completed", durationMs: 18 }
-        ]
-      }
-    });
-  } catch (ttsErr: any) {
-    logger.error("Background Neural TTS failed on VM 2", ttsErr, { jobId, voiceId: params.voiceId });
-    const failedStep = (ttsErr.message || "").includes("HTTP") ? "inference" : "gateway";
-    ttsJobStore.set(jobId, {
-      ...job,
-      status: 'failed',
-      completedAt: Date.now(),
-      progressStep: failedStep,
-      progressPercent: 60,
-      error: "Neural Voice Engine Unavailable",
-      details: ttsErr.message,
-      failedStep,
-      diagnosticTips: "VM 2 is online, but neural-tts daemon experienced a synthesis timeout or model mismatch. You can click 'Retry Step' or switch to Browser Speech Fallback.",
+    updateStep?.("inference", "completed", engineTitle, srvInferenceMs);
+    updateStep?.("decode", "completed", "Audio stream decoded & buffer ready", 18);
+
+    const completedResult = {
+      success: true,
+      text: params.rawText,
+      lang: params.lang,
+      voiceId: params.voiceId,
+      voiceName: params.effectiveSpeakerName,
+      audioUrl: audioBase64,
+      engine: engineTitle,
+      architecture: params.architecture,
+      emotion: params.emotion,
+      telemetry: {
+        characterCount: params.rawText.length,
+        wordCount: words,
+        estimatedDurationSec,
+        fileSizeBytes: audioBuffer.length,
+        sampleRate: 24000,
+        replicationEngine,
+        latentsCached,
+        inferenceTimeSec
+      },
+      quota: updatedQuota,
+      synthesizedAt: new Date().toISOString(),
       steps: [
         { id: "validate", label: "Text & Tokenizer Validation", status: "completed", durationMs: params.step1Duration },
         { id: "profile", label: "Voice Profile & Speaker Latents", status: "completed", durationMs: params.step2Duration },
-        { id: "gateway", label: "Neural Gateway Dispatch (VM 2)", status: failedStep === "gateway" ? "failed" : "completed", durationMs: 250, error: failedStep === "gateway" ? ttsErr.message : undefined },
-        { id: "inference", label: "Acoustic Flow & Neural Vocoder", status: failedStep === "inference" ? "failed" : "idle", error: failedStep === "inference" ? ttsErr.message : undefined },
-        { id: "decode", label: "Audio Stream Decoding", status: "idle" }
+        { id: "queue", label: "Multi-Tenant Queue Allocation", status: "completed", durationMs: 0 },
+        { id: "gateway", label: "Neural Gateway Dispatch (VM 2)", status: "completed", durationMs: 120 },
+        { id: "inference", label: "Acoustic Flow & Neural Vocoder", status: "completed", durationMs: srvInferenceMs },
+        { id: "decode", label: "Audio Stream Decoding", status: "completed", durationMs: 18 }
       ]
-    });
+    };
+
+    if (job) {
+      ttsJobStore.set(jobId, {
+        ...job,
+        status: 'completed',
+        completedAt: Date.now(),
+        progressStep: 'completed',
+        progressPercent: 100,
+        result: completedResult
+      });
+    }
+
+    return completedResult;
+  } catch (ttsErr: any) {
+    logger.error("Background Neural TTS failed on VM 2", ttsErr, { jobId, voiceId: params.voiceId });
+    const failedStep = (ttsErr.message || "").includes("HTTP") ? "inference" : "gateway";
+    updateStep?.(failedStep, "failed", ttsErr.message);
+
+    if (job) {
+      ttsJobStore.set(jobId, {
+        ...job,
+        status: 'failed',
+        completedAt: Date.now(),
+        progressStep: failedStep,
+        progressPercent: 60,
+        error: "Neural Voice Engine Unavailable",
+        details: ttsErr.message,
+        failedStep,
+        diagnosticTips: "VM 2 is online, but neural-tts daemon experienced a synthesis timeout or model mismatch. You can click 'Retry Step' or switch to Browser Speech Fallback.",
+        steps: [
+          { id: "validate", label: "Text & Tokenizer Validation", status: "completed", durationMs: params.step1Duration },
+          { id: "profile", label: "Voice Profile & Speaker Latents", status: "completed", durationMs: params.step2Duration },
+          { id: "queue", label: "Multi-Tenant Queue Allocation", status: "completed", durationMs: 0 },
+          { id: "gateway", label: "Neural Gateway Dispatch (VM 2)", status: failedStep === "gateway" ? "failed" : "completed", durationMs: 250, error: failedStep === "gateway" ? ttsErr.message : undefined },
+          { id: "inference", label: "Acoustic Flow & Neural Vocoder", status: failedStep === "inference" ? "failed" : "idle", error: failedStep === "inference" ? ttsErr.message : undefined },
+          { id: "decode", label: "Audio Stream Decoding", status: "idle" }
+        ]
+      });
+    }
+    throw ttsErr;
   }
 }
 
@@ -897,9 +921,8 @@ async function executeBackgroundCloning(jobId: string, params: {
   selectedArch: string;
   identifier: string;
   role: string;
-}) {
+}, updateStep?: (stepId: string, status: StepDiagnostic['status'], detail?: string, durationMs?: number) => void) {
   const job = ttsJobStore.get(jobId);
-  if (!job) return;
 
   const cloneUrls = getOracleTtsUrls();
   let audioBuffer: Buffer | null = null;
@@ -910,10 +933,15 @@ async function executeBackgroundCloning(jobId: string, params: {
   let totalTimeSec = 0;
 
   try {
+    updateStep?.("gateway", "running", "Connecting to Oracle VM 2 (132.226.190.125)...");
+
     if (params.selectedArch !== "edge") {
       for (const baseUrl of cloneUrls) {
         try {
           const t0 = Date.now();
+          updateStep?.("gateway", "completed", "Connected to Oracle VM 2 Gateway", 120);
+          updateStep?.("inference", "running", "Extracting vocal latents & neural replication synthesis...");
+
           const vmResponse = await fetch(`${baseUrl}/api/clone`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -1012,72 +1040,97 @@ async function executeBackgroundCloning(jobId: string, params: {
       ? `Oracle VM2 XTTS-v2 Zero-Shot Neural Engine (${latentsCached ? "Cached Speaker Latents" : "Acoustic Flow Matching"})`
       : "Oracle VM2 Neural Studio (Natural Voice Replicator)";
 
-    ttsJobStore.set(jobId, {
-      ...job,
-      status: 'completed',
-      completedAt: Date.now(),
-      progressStep: 'completed',
-      progressPercent: 100,
-      result: {
-        success: true,
-        speakerName: params.speakerName,
-        text: params.rawText,
-        audioUrl: audioBase64,
-        engine: engineName,
-        isCloned: true,
-        telemetry: {
-          characterCount: params.rawText.length,
-          wordCount: words,
-          estimatedDurationSec,
-          fileSizeBytes: audioBuffer.length,
-          sampleRate: 24000,
-          replicationEngine,
-          latentsCached,
-          detectedLanguage: detectedLang,
-          inferenceTimeSec,
-          totalTimeSec
-        },
-        quota: updatedQuota,
-        synthesizedAt: new Date().toISOString()
-      }
-    });
+    const completedResult = {
+      success: true,
+      speakerName: params.speakerName,
+      text: params.rawText,
+      audioUrl: audioBase64,
+      engine: engineName,
+      isCloned: true,
+      telemetry: {
+        characterCount: params.rawText.length,
+        wordCount: words,
+        estimatedDurationSec,
+        fileSizeBytes: audioBuffer.length,
+        sampleRate: 24000,
+        replicationEngine,
+        latentsCached,
+        detectedLanguage: detectedLang,
+        inferenceTimeSec,
+        totalTimeSec
+      },
+      quota: updatedQuota,
+      synthesizedAt: new Date().toISOString()
+    };
 
+    if (job) {
+      ttsJobStore.set(jobId, {
+        ...job,
+        status: 'completed',
+        completedAt: Date.now(),
+        progressStep: 'completed',
+        progressPercent: 100,
+        result: completedResult
+      });
+    }
+
+    return completedResult;
   } catch (err: any) {
     logger.error("Background Voice Cloning failed on VM 2", err, { jobId });
-    ttsJobStore.set(jobId, {
-      ...job,
-      status: 'failed',
-      completedAt: Date.now(),
-      progressStep: 'inference',
-      progressPercent: 50,
-      error: "Voice Cloning Temporarily Unavailable",
-      details: err.message
-    });
+    if (job) {
+      ttsJobStore.set(jobId, {
+        ...job,
+        status: 'failed',
+        completedAt: Date.now(),
+        progressStep: 'inference',
+        progressPercent: 50,
+        error: "Voice Cloning Temporarily Unavailable",
+        details: err.message
+      });
+    }
+    throw err;
   }
 }
 
 export function registerRoutes(router: Router) {
-  // GET /jobs/:jobId - Query background neural synthesis job status (Immune to Vercel Serverless timeout)
+  // GET /jobs/:jobId - Query background neural synthesis job status & queue position
   router.get("/jobs/:jobId", (req: Request, res: Response) => {
     const { jobId } = req.params;
-    const job = ttsJobStore.get(jobId);
+    const queueJob = unifiedInferenceQueue.getJob(jobId);
+    const legacyJob = ttsJobStore.get(jobId);
+    const job: any = queueJob || legacyJob;
+
     if (!job) {
       return res.status(404).json({
         success: false,
-        error: "Job not found or expired. Jobs are retained in memory for 15 minutes."
+        error: "Job not found or expired. Jobs are retained in memory for 20 minutes."
+      });
+    }
+
+    if (job.status === "queued") {
+      return res.json({
+        success: true,
+        status: "queued",
+        jobId: job.id,
+        queuePosition: job.queueInfo?.position ?? 1,
+        totalInQueue: job.queueInfo?.totalInQueue ?? 1,
+        estimatedWaitSec: job.queueInfo?.estimatedWaitSec ?? 28,
+        activeTask: job.activeTask,
+        steps: job.steps
       });
     }
 
     if (job.status === "processing") {
-      const elapsedSec = Math.round((Date.now() - job.createdAt) / 1000);
+      const elapsedSec = Math.round((Date.now() - (job.startedAt || job.createdAt)) / 1000);
       return res.json({
         success: true,
         status: "processing",
         jobId: job.id,
         elapsedSec,
-        estimatedSec: 25,
-        progressStep: job.progressStep,
-        progressPercent: job.progressPercent,
+        estimatedSec: job.estimatedDurationSec || 25,
+        progressStep: job.progressStep || 'inference',
+        progressPercent: job.progressPercent || 50,
+        activeTask: job.activeTask,
         steps: job.steps
       });
     }
@@ -1087,7 +1140,21 @@ export function registerRoutes(router: Router) {
         success: true,
         status: "completed",
         jobId: job.id,
-        ...job.result
+        audioUrl: job.audioUrl,
+        engine: job.engine,
+        quota: job.quota,
+        telemetry: job.telemetry,
+        steps: job.steps,
+        ...(job.result || {})
+      });
+    }
+
+    if (job.status === "cancelled") {
+      return res.json({
+        success: false,
+        status: "cancelled",
+        jobId: job.id,
+        message: "Job was cancelled by the user."
       });
     }
 
@@ -1096,12 +1163,31 @@ export function registerRoutes(router: Router) {
       success: false,
       status: "failed",
       jobId: job.id,
-      error: job.error,
+      error: job.error || "Neural synthesis failed.",
       details: job.details,
       failedStep: job.failedStep,
       diagnosticTips: job.diagnosticTips,
       steps: job.steps
     });
+  });
+
+  // DELETE /jobs/:jobId - Cancel a queued or running synthesis task
+  router.delete("/jobs/:jobId", (req: Request, res: Response) => {
+    const { jobId } = req.params;
+    const cancelled = unifiedInferenceQueue.cancelJob(jobId);
+    return res.json({ success: cancelled, jobId, status: cancelled ? "cancelled" : "not_found" });
+  });
+
+  // POST /jobs/:jobId/cancel - Explicit cancel action for REST clients
+  router.post("/jobs/:jobId/cancel", (req: Request, res: Response) => {
+    const { jobId } = req.params;
+    const cancelled = unifiedInferenceQueue.cancelJob(jobId);
+    return res.json({ success: cancelled, jobId, status: cancelled ? "cancelled" : "not_found" });
+  });
+
+  // GET /queue-status - Real-time cluster inference queue telemetry
+  router.get("/queue-status", (_req: Request, res: Response) => {
+    return res.json(unifiedInferenceQueue.getTelemetry());
   });
 
   // GET /quota - Returns user quota status
@@ -1226,64 +1312,74 @@ export function registerRoutes(router: Router) {
 
       if (shouldRunAsync) {
         const jobId = `tts_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        ttsJobStore.set(jobId, {
+        const userIdentifier = userEmail || identifier;
+
+        const queuedJob = unifiedInferenceQueue.enqueueJob({
           id: jobId,
-          userId: userEmail,
-          status: 'processing',
-          createdAt: Date.now(),
-          progressStep: 'inference',
-          progressPercent: 30,
+          type: isClonedVoice
+            ? 'SPEECH_SYNTHESIS_REPLICATED'
+            : (normalizedArch === 'edge-tts' ? 'SPEECH_SYNTHESIS_STANDARD' : 'SPEECH_SYNTHESIS_REPLICATED'),
+          userId: userIdentifier,
+          userEmail,
+          userRole: role,
+          description: `Speech Synthesis (${effectiveSpeakerName})`,
+          params: { voiceId, voiceName, effectiveSpeakerName },
           steps: [
             { id: "validate", label: "Text & Tokenizer Validation", status: "completed", durationMs: step1Duration },
             { id: "profile", label: "Voice Profile & Speaker Latents", status: "completed", durationMs: step2Duration },
-            { id: "gateway", label: "Neural Gateway Dispatch (VM 2)", status: "completed", durationMs: 120 },
-            { id: "inference", label: "Acoustic Flow & Neural Vocoder", status: "running" },
+            { id: "queue", label: "Multi-Tenant Queue Allocation", status: "idle" },
+            { id: "gateway", label: "Neural Gateway Dispatch (VM 2)", status: "idle" },
+            { id: "inference", label: "Acoustic Flow & Neural Vocoder", status: "idle" },
             { id: "decode", label: "Audio Stream Decoding", status: "idle" }
-          ]
+          ],
+          handler: async (qJob, updateStep) => {
+            return await executeBackgroundSynthesis(qJob.id, {
+              text: processedText,
+              rawText,
+              lang,
+              voiceId,
+              voiceName,
+              speakerName: reqSpeakerName,
+              rate: Number(rate) || 1.0,
+              pitch: Number(pitch) || 1.0,
+              volume: Number(volume) || 1.0,
+              architecture: normalizedArch,
+              emotion,
+              cfgStrength: Number(cfgStrength) || 1.0,
+              isClonedVoice,
+              effectiveSpeakerName,
+              storedProfile,
+              userEmail,
+              identifier,
+              role,
+              effectiveGender,
+              effectiveSampleAudio,
+              step1Duration,
+              step2Duration,
+              isHindi
+            }, updateStep);
+          }
         });
 
-        executeBackgroundSynthesis(jobId, {
-          text: processedText,
-          rawText,
-          lang,
-          voiceId,
-          voiceName,
-          speakerName: reqSpeakerName,
-          rate: Number(rate) || 1.0,
-          pitch: Number(pitch) || 1.0,
-          volume: Number(volume) || 1.0,
-          architecture: normalizedArch,
-          emotion,
-          cfgStrength: Number(cfgStrength) || 1.0,
-          isClonedVoice,
-          effectiveSpeakerName,
-          storedProfile,
-          userEmail,
-          identifier,
-          role,
-          effectiveGender,
-          effectiveSampleAudio,
-          step1Duration,
-          step2Duration,
-          isHindi
-        }).catch(err => {
-          logger.error("Unhandled error in executeBackgroundSynthesis", err);
-        });
+        // Mirror in legacy store for backward compatibility
+        ttsJobStore.set(jobId, queuedJob as any);
+
+        const currentJobState = unifiedInferenceQueue.getJob(jobId);
+        const isQueued = currentJobState?.status === 'queued';
 
         return res.status(202).json({
           success: true,
           async: true,
           jobId,
-          status: "processing",
-          estimatedSec: 25,
-          message: "Neural voice synthesis dispatched in background daemon.",
-          steps: [
-            { id: "validate", label: "Text & Tokenizer Validation", status: "completed", durationMs: step1Duration },
-            { id: "profile", label: "Voice Profile & Speaker Latents", status: "completed", durationMs: step2Duration },
-            { id: "gateway", label: "Neural Gateway Dispatch (VM 2)", status: "completed", durationMs: 120 },
-            { id: "inference", label: "Acoustic Flow & Neural Vocoder", status: "running" },
-            { id: "decode", label: "Audio Stream Decoding", status: "idle" }
-          ]
+          status: currentJobState?.status || "processing",
+          queuePosition: currentJobState?.queueInfo?.position ?? 1,
+          totalInQueue: currentJobState?.queueInfo?.totalInQueue ?? 1,
+          estimatedWaitSec: currentJobState?.queueInfo?.estimatedWaitSec ?? 25,
+          activeTask: currentJobState?.activeTask,
+          message: isQueued
+            ? `Job is queued in position #${currentJobState?.queueInfo?.position ?? 1}. Est. wait: ~${currentJobState?.queueInfo?.estimatedWaitSec ?? 25}s.`
+            : "Neural voice synthesis dispatched in background daemon.",
+          steps: currentJobState?.steps || queuedJob.steps
         });
       }
 
@@ -1552,41 +1648,59 @@ export function registerRoutes(router: Router) {
         const { email } = getUserIdentifierAndRole(req);
         const callerEmail = email || identifier;
 
-        ttsJobStore.set(jobId, {
+        const queuedJob = unifiedInferenceQueue.enqueueJob({
           id: jobId,
+          type: 'VOICE_CALIBRATION',
           userId: callerEmail,
-          status: 'processing',
-          createdAt: Date.now(),
-          progressStep: 'inference',
-          progressPercent: 30
+          userEmail: callerEmail,
+          userRole: role,
+          description: `Voice Calibration & Timbre Extraction (${speakerName})`,
+          params: { speakerName, voiceId: voiceId || req.body.id },
+          steps: [
+            { id: "validate", label: "Audio Sample & Format Check", status: "completed", durationMs: 20 },
+            { id: "queue", label: "Multi-Tenant Queue Allocation", status: "idle" },
+            { id: "gateway", label: "Neural Gateway Dispatch (VM 2)", status: "idle" },
+            { id: "inference", label: "Acoustic Timbre & Latent Calibration", status: "idle" },
+            { id: "decode", label: "Calibration Verification Stream", status: "idle" }
+          ],
+          handler: async (qJob, updateStep) => {
+            return await executeBackgroundCloning(qJob.id, {
+              text: processedText,
+              rawText,
+              sampleAudio,
+              referenceText,
+              speakerName,
+              voiceId: voiceId || req.body.id,
+              callerEmail,
+              effectiveGender,
+              rate: Number(rate) || 1.0,
+              pitch: Number(pitch) || 1.0,
+              volume: Number(volume) || 1.0,
+              selectedArch,
+              identifier,
+              role
+            }, updateStep);
+          }
         });
 
-        executeBackgroundCloning(jobId, {
-          text: processedText,
-          rawText,
-          sampleAudio,
-          referenceText,
-          speakerName,
-          voiceId: voiceId || req.body.id,
-          callerEmail,
-          effectiveGender,
-          rate: Number(rate) || 1.0,
-          pitch: Number(pitch) || 1.0,
-          volume: Number(volume) || 1.0,
-          selectedArch,
-          identifier,
-          role
-        }).catch(err => {
-          logger.error("Unhandled error in executeBackgroundCloning", err);
-        });
+        ttsJobStore.set(jobId, queuedJob as any);
+
+        const currentJobState = unifiedInferenceQueue.getJob(jobId);
+        const isQueued = currentJobState?.status === 'queued';
 
         return res.status(202).json({
           success: true,
           async: true,
           jobId,
-          status: "processing",
-          estimatedSec: 25,
-          message: "Voice cloning synthesis dispatched in background daemon."
+          status: currentJobState?.status || "processing",
+          queuePosition: currentJobState?.queueInfo?.position ?? 1,
+          totalInQueue: currentJobState?.queueInfo?.totalInQueue ?? 1,
+          estimatedWaitSec: currentJobState?.queueInfo?.estimatedWaitSec ?? 25,
+          activeTask: currentJobState?.activeTask,
+          message: isQueued
+            ? `Calibration job is queued in position #${currentJobState?.queueInfo?.position ?? 1}. Est. wait: ~${currentJobState?.queueInfo?.estimatedWaitSec ?? 25}s.`
+            : "Voice cloning synthesis dispatched in background daemon.",
+          steps: currentJobState?.steps || queuedJob.steps
         });
       }
 

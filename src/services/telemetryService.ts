@@ -200,6 +200,7 @@ export interface FleetTelemetry {
     vm3: NodeTelemetry;     // sutharlabs-backend: Web Gateway & Express Backend
     vercel: NodeTelemetry;  // Vercel Edge Gateway (bom1 / Mumbai)
   };
+  inferenceQueue?: any;
   timestamp: number;
 }
 

@@ -101,6 +101,16 @@ export interface FleetTelemetry {
     vm3: NodeTelemetry;
     vercel: NodeTelemetry;
   };
+  inferenceQueue?: {
+    activeHeavyTask: any;
+    queueLength: number;
+    distinctUsersWaiting: number;
+    slotsOccupied: number;
+    maxSlots: number;
+    totalCompleted: number;
+    totalFailed: number;
+    rollingAvgInferenceSec: number;
+  };
   timestamp: number;
 }
 
@@ -1242,6 +1252,47 @@ export default function AdminConsoleView({ logs, onAddLog, currentUserEmail, use
                   </div>
                 </div>
               </div>
+
+              {/* Multi-Model Inference Queue & Concurrency Slot Status */}
+              {fleetTelemetry.inferenceQueue && (
+                <div className={`p-2.5 rounded-lg border font-mono text-[10px] ${
+                  isLight ? 'bg-slate-50 border-slate-200' : 'bg-surface-container-high/40 border-outline/10'
+                }`}>
+                  <div className="flex items-center justify-between gap-2 flex-wrap mb-1.5">
+                    <div className="flex items-center gap-1.5 font-bold">
+                      <Layers className="w-3.5 h-3.5 text-[#00dbe7] shrink-0" />
+                      <span className="text-on-surface uppercase tracking-wider">Inference Node Concurrency &amp; Queue</span>
+                    </div>
+                    <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${
+                      fleetTelemetry.inferenceQueue.slotsOccupied > 0
+                        ? isLight ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-amber-500/15 text-amber-300 border-amber-500/30'
+                        : isLight ? 'bg-emerald-50 text-emerald-800 border-emerald-300' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                    }`}>
+                      {fleetTelemetry.inferenceQueue.slotsOccupied > 0 ? '1 / 1 HEAVY SLOT BUSY' : '1 SLOT IDLE & READY'}
+                    </span>
+                  </div>
+
+                  {fleetTelemetry.inferenceQueue.activeHeavyTask ? (
+                    <div className="flex items-center justify-between gap-2 text-[10px] opacity-90 mb-1">
+                      <span className="truncate text-[#00dbe7] font-semibold">
+                        Active: {fleetTelemetry.inferenceQueue.activeHeavyTask.description}
+                      </span>
+                      <span className="shrink-0 font-bold">
+                        {fleetTelemetry.inferenceQueue.activeHeavyTask.elapsedSec}s elapsed
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-on-surface-variant opacity-80 mb-1">
+                      Node idle. Ready for XTTS-v2 speech replication, Ollama LLM, or FinLLM sentiment tasks.
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between gap-2 text-[9px] text-on-surface-variant border-t border-current/10 pt-1">
+                    <span>Queued Tasks: <strong className="text-on-surface">{fleetTelemetry.inferenceQueue.queueLength}</strong> waiting ({fleetTelemetry.inferenceQueue.distinctUsersWaiting} users)</span>
+                    <span>Scheduler: <strong className="text-emerald-400">Interleaved Fair-Share</strong></span>
+                  </div>
+                </div>
+              )}
 
               {/* Active Services List */}
               <div className="pt-2 border-t border-outline/10 flex items-center justify-between gap-2 flex-wrap text-[10px] font-mono">

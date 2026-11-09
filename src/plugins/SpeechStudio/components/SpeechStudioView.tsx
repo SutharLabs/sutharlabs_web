@@ -57,9 +57,10 @@ export interface SynthesisStepInfo {
 const DEFAULT_SYNTHESIS_STEPS: SynthesisStepInfo[] = [
   { id: 'validate', label: '1. Text Tokenizer', detail: 'Phonemes & Script Validation', status: 'idle' },
   { id: 'profile', label: '2. Voice Resolution', detail: 'Speaker Latents & Timbre Matching', status: 'idle' },
-  { id: 'gateway', label: '3. Neural Gateway', detail: 'VM 2 Link (132.226.190.125)', status: 'idle' },
-  { id: 'inference', label: '4. Neural Vocoder', detail: 'HiFi-GAN & Acoustic Synthesis', status: 'idle' },
-  { id: 'decode', label: '5. Audio Stream', detail: 'RIFF Header & Browser Decoding', status: 'idle' }
+  { id: 'queue', label: '3. Multi-Tenant Queue', detail: 'Fair Scheduler & Compute Slot', status: 'idle' },
+  { id: 'gateway', label: '4. Neural Gateway', detail: 'VM 2 Link (132.226.190.125)', status: 'idle' },
+  { id: 'inference', label: '5. Neural Vocoder', detail: 'HiFi-GAN & Acoustic Synthesis', status: 'idle' },
+  { id: 'decode', label: '6. Audio Stream', detail: 'RIFF Header & Browser Decoding', status: 'idle' }
 ];
 
 const SAMPLE_PROMPTS = [
@@ -872,6 +873,13 @@ export default function SpeechStudioView({
   const [synthesisSteps, setSynthesisSteps] = useState<SynthesisStepInfo[]>(DEFAULT_SYNTHESIS_STEPS);
   const [synthesisOverallStatus, setSynthesisOverallStatus] = useState<'idle' | 'running' | 'success' | 'failed'>('idle');
   const [synthesisFailedStep, setSynthesisFailedStep] = useState<SynthesisStepInfo | null>(null);
+  const [queueInfo, setQueueInfo] = useState<{
+    position: number;
+    totalInQueue: number;
+    estimatedWaitSec: number;
+    activeTaskDescription?: string;
+    jobId?: string;
+  } | null>(null);
 
 
   // Speech history
@@ -882,6 +890,44 @@ export default function SpeechStudioView({
     } catch { }
     return [];
   });
+
+  const handleCancelQueuedJob = async () => {
+    if (!queueInfo?.jobId) return;
+    try {
+      await fetch(`/api/plugins/speech-studio/jobs/${queueInfo.jobId}/cancel`, {
+        method: 'POST',
+        headers
+      });
+      setQueueInfo(null);
+      setIsSynthesizing(false);
+      setIsReplicating(false);
+      setSynthesisOverallStatus('idle');
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'WARN',
+        message: 'Queued synthesis was cancelled by user.'
+      });
+    } catch (e: any) {
+      console.warn('Failed to cancel job:', e);
+    }
+  };
+
+  const handleInstantEdgeFallback = () => {
+    if (queueInfo?.jobId) {
+      fetch(`/api/plugins/speech-studio/jobs/${queueInfo.jobId}/cancel`, {
+        method: 'POST',
+        headers
+      }).catch(() => {});
+    }
+    setQueueInfo(null);
+    setArchitecture('edge-tts');
+    setSelectedVoiceId('aarav-neural');
+    onAddLog({
+      timestamp: new Date().toLocaleTimeString(),
+      type: 'INFO',
+      message: 'Bypassing queue: Switched to Instant Edge Neural Engine for immediate synthesis.'
+    });
+  };
 
   const copyToClipboard = (content: string, key: string) => {
     navigator.clipboard.writeText(content);
@@ -1318,18 +1364,41 @@ export default function SpeechStudioView({
         throw new Error(data.message || data.error || data.details || `Speech synthesis failed (HTTP ${res.status}).`);
       }
 
-      // Handle Asynchronous Job Polling (Immune to Vercel Serverless 10-15s timeouts)
+      // Handle Asynchronous Job Polling & Multi-Tenant Queuing
       if (res.status === 202 || (data.async && data.jobId)) {
         const jobId = data.jobId;
+
+        if (data.status === 'queued') {
+          setQueueInfo({
+            position: data.queuePosition || 1,
+            totalInQueue: data.totalInQueue || 1,
+            estimatedWaitSec: data.estimatedWaitSec || 28,
+            activeTaskDescription: data.activeTask?.description,
+            jobId
+          });
+        }
+
         setSynthesisSteps(prev => prev.map(s => {
-          if (s.id === 'validate' || s.id === 'profile' || s.id === 'gateway') {
-            return { ...s, status: 'completed', durationMs: s.durationMs || 100 };
+          if (s.id === 'validate' || s.id === 'profile') {
+            return { ...s, status: 'completed', durationMs: s.durationMs || 15 };
           }
-          if (s.id === 'inference') {
+          if (s.id === 'queue') {
             return {
               ...s,
-              status: 'running',
-              detail: 'Neural vocoder synthesizing audio latents on VM 2... (0s elapsed, ~25s total)'
+              status: data.status === 'queued' ? 'running' : 'completed',
+              detail: data.status === 'queued'
+                ? `Position #${data.queuePosition || 1} • Est. wait ~${data.estimatedWaitSec || 28}s`
+                : 'Compute slot acquired on VM 2',
+              durationMs: data.status === 'queued' ? undefined : 0
+            };
+          }
+          if (s.id === 'gateway' || s.id === 'inference') {
+            return {
+              ...s,
+              status: data.status === 'queued' ? 'idle' : 'running',
+              detail: data.status === 'queued'
+                ? 'Waiting in queue...'
+                : 'Neural vocoder synthesizing audio latents on VM 2... (est. 25-45s)'
             };
           }
           return { ...s, status: 'idle' };
@@ -1344,17 +1413,6 @@ export default function SpeechStudioView({
           pollCount++;
           const elapsedSec = (pollCount * 1.5).toFixed(0);
 
-          setSynthesisSteps(prev => prev.map(s => {
-            if (s.id === 'inference') {
-              return {
-                ...s,
-                status: 'running',
-                detail: `Neural vocoder synthesizing audio latents on VM 2... (${elapsedSec}s elapsed, est. 25-45s)`
-              };
-            }
-            return s;
-          }));
-
           try {
             const pollRes = await fetch(`/api/plugins/speech-studio/jobs/${jobId}`, { headers });
             if (!pollRes.ok) {
@@ -1362,8 +1420,47 @@ export default function SpeechStudioView({
               throw new Error(`Job status polling failed (HTTP ${pollRes.status})`);
             }
             const pollData = await pollRes.json();
+
+            if (pollData.status === 'queued') {
+              setQueueInfo({
+                position: pollData.queuePosition || 1,
+                totalInQueue: pollData.totalInQueue || 1,
+                estimatedWaitSec: pollData.estimatedWaitSec || 28,
+                activeTaskDescription: pollData.activeTask?.description || 'Compute slot busy with another model on VM 2',
+                jobId
+              });
+              setSynthesisSteps(prev => prev.map(s => {
+                if (s.id === 'validate' || s.id === 'profile') return { ...s, status: 'completed', durationMs: s.durationMs || 15 };
+                if (s.id === 'queue') {
+                  return {
+                    ...s,
+                    status: 'running',
+                    detail: `Position #${pollData.queuePosition || 1} • Est. wait ~${pollData.estimatedWaitSec || 28}s • Slot allocated next`
+                  };
+                }
+                return { ...s, status: 'idle' };
+              }));
+              continue;
+            } else if (pollData.status === 'processing') {
+              setQueueInfo(null);
+              setSynthesisSteps(prev => prev.map(s => {
+                if (s.id === 'validate' || s.id === 'profile' || s.id === 'queue' || s.id === 'gateway') {
+                  return { ...s, status: 'completed', durationMs: s.durationMs || 100 };
+                }
+                if (s.id === 'inference') {
+                  return {
+                    ...s,
+                    status: 'running',
+                    detail: `Neural vocoder synthesizing audio latents on VM 2... (${elapsedSec}s elapsed, est. 25-45s)`
+                  };
+                }
+                return s;
+              }));
+            }
+
             if (pollData.status === 'completed') {
               completedJob = pollData;
+              setQueueInfo(null);
               break;
             } else if (pollData.status === 'failed') {
               const failedId = pollData.failedStep || 'inference';
@@ -1872,8 +1969,23 @@ export default function SpeechStudioView({
               throw new Error(`Voice replication status poll failed (HTTP ${pollRes.status})`);
             }
             const pollData = await pollRes.json();
+
+            if (pollData.status === 'queued') {
+              setQueueInfo({
+                position: pollData.queuePosition || 1,
+                totalInQueue: pollData.totalInQueue || 1,
+                estimatedWaitSec: pollData.estimatedWaitSec || 28,
+                activeTaskDescription: pollData.activeTask?.description || 'Compute slot busy on VM 2',
+                jobId
+              });
+              continue;
+            } else if (pollData.status === 'processing') {
+              setQueueInfo(null);
+            }
+
             if (pollData.status === 'completed') {
               completedJob = pollData;
+              setQueueInfo(null);
               break;
             } else if (pollData.status === 'failed') {
               throw new Error(pollData.error || pollData.details || 'Voice cloning failed on VM 2.');
@@ -2569,8 +2681,63 @@ export default function SpeechStudioView({
                     </div>
                   </div>
 
-                  {/* 5 Steps Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-5 gap-2 pt-1">
+                  {/* Multi-Tenant Queue Position Banner */}
+                  {queueInfo && (
+                    <div className={`p-3 sm:p-3.5 rounded-xl border flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 transition-all animate-in fade-in duration-150 ${
+                      isLight ? 'bg-amber-50 border-amber-300 text-amber-950' : 'bg-amber-500/10 border-amber-500/40 text-amber-200'
+                    }`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 shadow-sm ${
+                          isLight ? 'bg-amber-100 border-amber-300 text-amber-800' : 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+                        }`}>
+                          <Layers className="w-4 h-4 shrink-0 animate-pulse" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-mono font-bold uppercase tracking-wider">
+                              Queue Position #{queueInfo.position} of {queueInfo.totalInQueue}
+                            </span>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold border ${
+                              isLight ? 'bg-amber-100 text-amber-900 border-amber-300' : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                            }`}>
+                              Est. Wait ~{queueInfo.estimatedWaitSec}s
+                            </span>
+                          </div>
+                          <p className="text-[11px] font-mono opacity-85 mt-0.5 leading-snug">
+                            {queueInfo.activeTaskDescription || 'Oracle VM 2 compute slot busy with active inference task. Fair-share scheduler will auto-dispatch your job next.'}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 flex-nowrap w-full sm:w-auto justify-end">
+                        <button
+                          type="button"
+                          onClick={handleCancelQueuedJob}
+                          className={`h-7 px-2.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-colors cursor-pointer ${
+                            isLight
+                              ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                              : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-rose-400'
+                          }`}
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleInstantEdgeFallback}
+                          className={`h-7 px-2.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider border transition-colors cursor-pointer ${
+                            isLight
+                              ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-sm'
+                              : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/50'
+                          }`}
+                          title="Bypass queue and synthesize instantly with high-speed Edge neural voice"
+                        >
+                          Instant Voice
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 6 Steps Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 pt-1">
                     {synthesisSteps.map((step) => {
                       const isDone = step.status === 'completed';
                       const isCurrent = step.status === 'running';
