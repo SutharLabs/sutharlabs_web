@@ -4822,14 +4822,14 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
     res.write(": keep-alive\n\n");
     res.write(": " + " ".repeat(1024) + "\n\n");
 
-    // Heartbeat every 5s to prevent mobile cellular TCP disconnects while LLM evaluates
+    // Heartbeat every 3s to prevent mobile cellular TCP disconnects while LLM evaluates
     keepAliveInterval = setInterval(() => {
       try {
         res.write(": keep-alive\n\n");
       } catch {
         if (keepAliveInterval) clearInterval(keepAliveInterval);
       }
-    }, 5000);
+    }, 3000);
 
   }
 
@@ -4998,6 +4998,13 @@ const getChatBackupPath = (email: string) => {
   return path.join(CHAT_DATA_DIR, `${safeEmail}.json`);
 };
 
+const toSafeTimestamp = (val: any): number => {
+  if (!val) return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const parsed = new Date(val).getTime();
+  return isNaN(parsed) ? 0 : parsed;
+};
+
 // GET /api/ai/chat/sessions: Fetch unified user sessions (Merges DB and disk backup to eliminate mobile-desktop desync)
 app.get("/api/ai/chat/sessions", authenticateToken, async (req: any, res: any) => {
   const userEmail = (req.user?.email || "developer@sutharlabs.com").toLowerCase();
@@ -5036,7 +5043,7 @@ app.get("/api/ai/chat/sessions", authenticateToken, async (req: any, res: any) =
             const parsed = JSON.parse(d.content);
             if (parsed && parsed.id) {
               const existing = sessionMap.get(parsed.id);
-              if (!existing || (parsed.updatedAt || 0) >= (existing.updatedAt || 0)) {
+              if (!existing || toSafeTimestamp(parsed.updatedAt) >= toSafeTimestamp(existing.updatedAt) || (parsed.messages?.length || 0) > (existing.messages?.length || 0)) {
                 sessionMap.set(parsed.id, parsed);
               }
             }
@@ -5047,7 +5054,7 @@ app.get("/api/ai/chat/sessions", authenticateToken, async (req: any, res: any) =
       console.warn("[AI Chat Sessions DB] Query notice:", dbErr);
     }
 
-    const sessions = Array.from(sessionMap.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const sessions = Array.from(sessionMap.values()).sort((a, b) => toSafeTimestamp(b.updatedAt) - toSafeTimestamp(a.updatedAt));
     return res.json({ sessions });
   } catch (err: any) {
     console.error("[AI Chat Sessions GET] Error:", err);
@@ -5078,16 +5085,26 @@ app.post("/api/ai/chat/sessions", authenticateToken, async (req: any, res: any) 
       } catch {}
     }
 
-    // Merge incoming sessions
+    // Merge incoming sessions with strict priority logic
     for (const sess of sessions) {
       if (!sess || !sess.id) continue;
       const existing = sessionMap.get(sess.id);
-      if (!existing || (sess.updatedAt || 0) >= (existing.updatedAt || 0) || (sess.messages?.length || 0) >= (existing.messages?.length || 0)) {
+      if (!existing) {
         sessionMap.set(sess.id, sess);
+      } else {
+        const incomingLen = sess.messages?.length || 0;
+        const existingLen = existing.messages?.length || 0;
+        const incomingTime = toSafeTimestamp(sess.updatedAt);
+        const existingTime = toSafeTimestamp(existing.updatedAt);
+
+        // If incoming has more messages or is strictly newer, overwrite
+        if (incomingLen > existingLen || incomingTime >= existingTime) {
+          sessionMap.set(sess.id, sess);
+        }
       }
     }
 
-    const mergedList = Array.from(sessionMap.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const mergedList = Array.from(sessionMap.values()).sort((a, b) => toSafeTimestamp(b.updatedAt) - toSafeTimestamp(a.updatedAt));
 
     try {
       fs.writeFileSync(backupPath, JSON.stringify(mergedList, null, 2), "utf-8");

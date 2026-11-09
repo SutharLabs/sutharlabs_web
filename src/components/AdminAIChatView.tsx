@@ -98,6 +98,25 @@ interface AdminAIChatViewProps {
   theme?: 'light' | 'dark';
 }
 
+const toSafeTimestamp = (val: any): number => {
+  if (!val) return 0;
+  if (typeof val === 'number') return isNaN(val) ? 0 : val;
+  const parsed = new Date(val).getTime();
+  return isNaN(parsed) ? 0 : parsed;
+};
+
+const budgetDocumentText = (rawText: string, maxChars: number = 8000): string => {
+  const cleaned = (rawText || '').replace(/\r\n/g, '\n').replace(/\n{3,}/g, '\n\n').trim();
+  if (cleaned.length <= maxChars) return cleaned;
+
+  const headChars = Math.floor(maxChars * 0.65);
+  const tailChars = Math.max(0, maxChars - headChars - 180);
+  const head = cleaned.slice(0, headChars);
+  const tail = cleaned.slice(-tailChars);
+
+  return `${head}\n\n[... Document excerpt truncated for optimal context budget (${(cleaned.length / 1024).toFixed(1)} KB total) ...]\n\n${tail}`;
+};
+
 const INITIAL_PROMPTS = [
   {
     agentId: 'cloud-architect',
@@ -264,6 +283,25 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const initialSyncDoneRef = useRef<boolean>(false);
 
+  // Helper to immediately flush sessions to backend without debounce delay
+  const flushCloudSync = async (sessionsToSync: ChatSession[]) => {
+    if (!userToken || sessionsToSync.length === 0) return;
+    try {
+      await fetch('/api/ai/chat/sessions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${userToken}`
+        },
+        body: JSON.stringify({ sessions: sessionsToSync }),
+        keepalive: true
+      });
+      setIsCloudSynced(true);
+    } catch (err) {
+      console.warn('Immediate session flush notice:', err);
+    }
+  };
+
   // 1. Initial Cloud Sync: Fetch user sessions from server
   const fetchCloudSessions = async () => {
     if (!userToken) return;
@@ -288,12 +326,25 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
               if (!serverSess) {
                 map.set(localSess.id, localSess);
               } else {
-                if ((localSess.updatedAt || 0) > (serverSess.updatedAt || 0) || (localSess.messages?.length || 0) > (serverSess.messages?.length || 0)) {
+                const localTime = toSafeTimestamp(localSess.updatedAt);
+                const serverTime = toSafeTimestamp(serverSess.updatedAt);
+                const localLen = localSess.messages?.length || 0;
+                const serverLen = serverSess.messages?.length || 0;
+
+                // Priority: If local session has more messages, it has recent turns that haven't synced yet -> KEEP local!
+                if (localLen > serverLen) {
                   map.set(localSess.id, localSess);
+                } else if (localLen === serverLen) {
+                  if (localTime >= serverTime) {
+                    map.set(localSess.id, localSess);
+                  }
+                } else {
+                  // Server has more messages (e.g. user was chatting on mobile) -> accept server session
+                  map.set(localSess.id, serverSess);
                 }
               }
             });
-            const merged = Array.from(map.values()).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+            const merged = Array.from(map.values()).sort((a, b) => toSafeTimestamp(b.updatedAt) - toSafeTimestamp(a.updatedAt));
             try {
               localStorage.setItem('sutharlabs_ai_chat_sessions', JSON.stringify(merged));
             } catch {}
@@ -301,15 +352,11 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
           });
           setIsCloudSynced(true);
 
-          // Auto-switch to newest cloud session if it has newer messages than active session
+          // Keep active session if it exists in merged sessions; do not jarringly switch sessions on refresh
           setActiveSessionId(prevId => {
+            if (prevId && prevId !== 'default-session') return prevId;
             const newestCloud = data.sessions[0];
-            if (!newestCloud) return prevId;
-            const current = sessions.find(s => s.id === prevId);
-            if (!current || current.messages.length === 0 || (newestCloud.updatedAt || 0) > (current.updatedAt || 0)) {
-              return newestCloud.id;
-            }
-            return prevId;
+            return newestCloud ? newestCloud.id : prevId;
           });
         }
       }
@@ -323,6 +370,31 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   useEffect(() => {
     fetchCloudSessions();
   }, [userToken]);
+
+  // Handle beforeunload to guarantee all local changes are saved and flushed on page refresh/close
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      try {
+        localStorage.setItem('sutharlabs_ai_chat_sessions', JSON.stringify(sessions));
+        localStorage.setItem('sutharlabs_ai_chat_history', JSON.stringify(messages));
+      } catch {}
+      if (userToken && sessions.length > 0) {
+        try {
+          fetch('/api/ai/chat/sessions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${userToken}`
+            },
+            body: JSON.stringify({ sessions }),
+            keepalive: true
+          });
+        } catch {}
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [sessions, messages, userToken]);
 
   // Keep Web and Mobile sessions continuously synchronized on tab focus, visibility change, and interval
   useEffect(() => {
@@ -411,7 +483,8 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${userToken}`
           },
-          body: JSON.stringify({ sessions })
+          body: JSON.stringify({ sessions }),
+          keepalive: true
         });
         if (res.ok) {
           const data = await res.json();
@@ -435,7 +508,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
 
   const setMessages = (updater: AIChatMessage[] | ((prev: AIChatMessage[]) => AIChatMessage[])) => {
     setSessions(prevSessions => {
-      return prevSessions.map(sess => {
+      const updated = prevSessions.map(sess => {
         if (sess.id === activeSession.id) {
           const nextMsgs = typeof updater === 'function' ? updater(sess.messages) : updater;
           let title = sess.title;
@@ -456,6 +529,17 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         }
         return sess;
       });
+
+      // Synchronously write to localStorage right here so refresh never loses the newest message
+      try {
+        localStorage.setItem('sutharlabs_ai_chat_sessions', JSON.stringify(updated));
+        const active = updated.find(s => s.id === activeSession.id);
+        if (active) {
+          localStorage.setItem('sutharlabs_ai_chat_history', JSON.stringify(active.messages));
+        }
+      } catch {}
+
+      return updated;
     });
   };
 
@@ -760,14 +844,20 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         const arrayBuffer = await file.arrayBuffer();
         const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
         let fullText = '';
-        const maxPages = Math.min(pdf.numPages, 15);
+        const maxPages = Math.min(pdf.numPages, 10);
         for (let pageNum = 1; pageNum <= maxPages; pageNum++) {
           const page = await pdf.getPage(pageNum);
           const textContent = await page.getTextContent();
-          const pageStr = textContent.items.map((item: any) => (item as any).str).join(' ');
-          fullText += `--- Page ${pageNum} of ${pdf.numPages} ---\n${pageStr}\n\n`;
+          const pageStr = textContent.items
+            .map((item: any) => (item as any).str)
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          if (pageStr) {
+            fullText += `--- Page ${pageNum} of ${pdf.numPages} ---\n${pageStr}\n\n`;
+          }
         }
-        extractedText = fullText.trim();
+        extractedText = budgetDocumentText(fullText.trim(), 8000);
       } catch (err: any) {
         console.warn('PDF parsing error:', err);
         extractedText = `[PDF Document: ${file.name} (Client OCR note: ${err?.message})]`;
@@ -778,7 +868,8 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         const xmlFile = zip.file('word/document.xml');
         if (xmlFile) {
           const xmlText = await xmlFile.async('text');
-          extractedText = xmlText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+          const cleanXml = xmlText.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+          extractedText = budgetDocumentText(cleanXml, 8000);
         }
       } catch (err: any) {
         console.warn('DOCX parsing error:', err);
@@ -787,7 +878,8 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
     } else {
       // Plain text, code, markdown, csv, json
       try {
-        extractedText = await file.text();
+        const raw = await file.text();
+        extractedText = budgetDocumentText(raw, 8000);
       } catch (err: any) {
         extractedText = `[File: ${file.name}]`;
       }
@@ -953,7 +1045,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
     if (currentAttachments.length > 0) {
       const docSnippets = currentAttachments
         .filter(a => a.extractedText)
-        .map(a => `### Document: ${a.name} (${(a.size / 1024).toFixed(1)} KB)\n\`\`\`\n${a.extractedText}\n\`\`\``)
+        .map(a => `### Document: ${a.name} (${(a.size / 1024).toFixed(1)} KB)\n\`\`\`\n${budgetDocumentText(a.extractedText || '', 8000)}\n\`\`\``)
         .join('\n\n');
 
       promptForLLM = `[Attached Files Context: ${currentAttachments.map(a => a.name).join(', ')}]\n\n${docSnippets}\n\nUser Instruction/Question:\n${cleanedText || 'Please analyze the attached document(s) and provide a structured synthesis.'}`;
@@ -1073,11 +1165,44 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
           setStreamBuffer('');
           extractArtifactsFromContent(fullGeneratedText, assistantMsg.id);
           addLog('INFERENCE', `Inference complete. Generated ${metrics.totalTokens} tokens at ${metrics.speedTokensPerSec} tokens/sec (${(metrics.durationMs / 1000).toFixed(2)}s).`, 'SUCCESS');
+
+          // Immediately flush to cloud backend to prevent refresh race conditions
+          setSessions(latestSessions => {
+            flushCloudSync(latestSessions);
+            return latestSessions;
+          });
         }
       });
     } catch (err: any) {
       if (err.name !== 'AbortError') {
         console.error('Chat error:', err);
+        const errMsg = err?.message || '';
+        const isNetworkFailure = errMsg.includes('Network') || errMsg.includes('fetch') || errMsg.includes('timeout') || errMsg.includes('504');
+
+        // If attachments were present or query timed out over HTTP proxy, promote seamlessly to server background worker
+        if (isNetworkFailure && currentAttachments.length > 0) {
+          addLog('AGENT', 'Streaming timed out on document attachment. Automatically promoting to server background worker...', 'ALERT');
+          try {
+            const taskRes = await createBackgroundAITask({
+              sessionId: activeSession.id,
+              prompt: promptForLLM,
+              mode: 'chat',
+              model: selectedModel,
+              agentId: selectedAgent.id,
+              skillId: selectedSkillId || undefined,
+              mcpEnabled: true,
+              isDeepResearch,
+              attachments: currentAttachments
+            }, userToken);
+
+            setActiveTask(taskRes.task);
+            addLog('AGENT', `Document analysis enqueued on server worker (${taskRes.taskId}). Running in background safely.`, 'SUCCESS');
+            return;
+          } catch (taskErr: any) {
+            console.error('Background fallback failed:', taskErr);
+          }
+        }
+
         const errorMsg: AIChatMessage = {
           id: `error-${Date.now()}`,
           role: 'assistant',

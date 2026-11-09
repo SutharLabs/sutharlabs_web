@@ -3,7 +3,7 @@
   "outputDirectory": "dist",
   "functions": {
     "api/server.ts": {
-      "maxDuration": 60
+      "maxDuration": 120
     }
   },
   "rewrites": [

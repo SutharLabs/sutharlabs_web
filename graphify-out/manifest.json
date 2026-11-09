@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794260112.8811338,
-    "seen": 1794260747.4518278,
-    "ast_hash": "a284c47ca81ba9de7a7d98c094fad750",
+    "mtime": 1794262164.7722886,
+    "seen": 1794262411.2517335,
+    "ast_hash": "45795ed29c0a55f27506001a51fdb8d3",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -824,9 +824,9 @@
     "semantic_hash": "3fb5d98480b7ea548bcaa3616c444da1"
   },
   "vercel.json": {
-    "mtime": 1794044143.7919931,
-    "seen": 1794044297.5786054,
-    "ast_hash": "304b8bb0e101a4ad97a3cb8e076472e2",
+    "mtime": 1794262109.9975398,
+    "seen": 1794262411.252623,
+    "ast_hash": "7c7195ea35fd058471d0f6ebd4435053",
     "semantic_hash": ""
   },
   "vite.config.ts": {
@@ -1100,9 +1100,9 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1794260550.5900078,
-    "seen": 1794260747.4518404,
-    "ast_hash": "fed3d38ba3e4d472ac48a56bf6a36024",
+    "mtime": 1794262042.1290097,
+    "seen": 1794262411.2517478,
+    "ast_hash": "1717d994c4e86cc5cae9deb09c92cc96",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
@@ -1682,9 +1682,9 @@
     "semantic_hash": ""
   },
   "docs/SYSTEM_UPDATES_AND_CHANGELOG.md": {
-    "mtime": 1794241066.7739155,
-    "seen": 1794260747.4527771,
-    "ast_hash": "ac816294d8824087efd72fd33b711fae",
+    "mtime": 1794260825.3410583,
+    "seen": 1794262411.2526705,
+    "ast_hash": "56c0f9486ba7e529f4f92f5e538e4b33",
     "semantic_hash": ""
   },
   "public/voices/catalog.json": {
