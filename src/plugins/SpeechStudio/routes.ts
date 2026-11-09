@@ -709,7 +709,7 @@ async function executeBackgroundSynthesis(jobId: string, params: {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(clonePayload),
-            signal: AbortSignal.timeout(60000)
+            signal: AbortSignal.timeout(180000)
           });
 
           if (vmResponse.ok) {
@@ -729,6 +729,10 @@ async function executeBackgroundSynthesis(jobId: string, params: {
         } catch (cloneErr: any) {
           lastCloneError = cloneErr;
           console.warn(`[SpeechStudio] Neural clone attempt at ${baseUrl} failed:`, cloneErr.message);
+          // If the request timed out on the primary internal IP, do not retry secondary URL (same physical VM)
+          if (cloneErr?.name === 'TimeoutError' || cloneErr?.message?.includes('timeout') || cloneErr?.message?.includes('aborted')) {
+            break;
+          }
         }
       }
 
@@ -926,7 +930,7 @@ async function executeBackgroundCloning(jobId: string, params: {
               rate: params.rate,
               pitch: params.pitch
             }),
-            signal: AbortSignal.timeout(60000)
+            signal: AbortSignal.timeout(180000)
           });
 
           if (vmResponse.ok) {
@@ -945,6 +949,9 @@ async function executeBackgroundCloning(jobId: string, params: {
           }
         } catch (xttsErr: any) {
           console.warn(`[SpeechStudio] Neural clone attempt at ${baseUrl} failed:`, xttsErr.message);
+          if (xttsErr?.name === 'TimeoutError' || xttsErr?.message?.includes('timeout') || xttsErr?.message?.includes('aborted')) {
+            break;
+          }
         }
       }
     }
@@ -1315,7 +1322,7 @@ export function registerRoutes(router: Router) {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(clonePayload),
-                signal: AbortSignal.timeout(45000)
+                signal: AbortSignal.timeout(120000)
               });
 
               if (vmResponse.ok) {
@@ -1618,7 +1625,7 @@ export function registerRoutes(router: Router) {
                   rate,
                   pitch
                 }),
-                signal: AbortSignal.timeout(45000)
+                signal: AbortSignal.timeout(120000)
               });
 
               if (vmResponse.ok) {

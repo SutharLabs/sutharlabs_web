@@ -1,7 +1,7 @@
 # Graph Report - website  (2026-11-09)
 
 ## Corpus Check
-- 209 files · ~436,791 words
+- 209 files · ~437,176 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `d71c4b82`
+- Built from commit: `5fcf6106`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -108,12 +108,12 @@
 10. `registerRoutes()` - 26 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `startServer()` --indirect_call--> `requireAdmin()`  [INFERRED]
+  server.ts → src/middleware/auth.ts
 - `startServer()` --indirect_call--> `errorHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
 - `startServer()` --indirect_call--> `notFoundHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
-- `startServer()` --indirect_call--> `requireAdmin()`  [INFERRED]
-  server.ts → src/middleware/auth.ts
 - `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
   server.ts → src/middleware/auth.ts
 - `getUserIdentifierAndRole()` --calls--> `verifyToken()`  [EXTRACTED]
@@ -423,16 +423,16 @@ Nodes (9): FlowDesignerView(), FlowDesignerViewProps, StepExecutionRecord, TEMPL
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `react` to `clientRegistry.ts`, `src/types.ts`, `indicatorEngine.ts`, `dependencies`, `package.json`, `patterns/types.ts`, `documentParsers.ts`, `StudioCastCompositor`, `GSTInvoice`, `AdminAIChatView.tsx`, `StockTrackerView.tsx`, `server.js`, `ManageDatabaseView.tsx`, `LandingPage.tsx`, `Accounting/storage.ts`, `backtest/engine.ts`, `DocNexusStudio`, `PdfToolsStudio.tsx`, `scannerEngine.ts`, `react`, `SpeechStudio/routes.ts`, `DocNexus/types.ts`, `Accounting/types.ts`, `OcrReceiptModal.tsx`, `DocNexus/types.ts`, `lucide-react`, `WorkspacePluginStore.tsx`, `ResumeEngine.tsx`, `ImageStudioView.tsx`, `StockSimulatorPanel.tsx`, `DocNexusStudio.tsx`, `FlowDesignerView.tsx`?**
-  _High betweenness centrality (0.269) - this node is a cross-community bridge._
+  _High betweenness centrality (0.240) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `registerRoutes()` (e.g. with `server.js` and `authenticateToken()`) actually correct?**
   _`registerRoutes()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Should `clientRegistry.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.07676767676767676 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `src/types.ts` to `clientRegistry.ts`, `indicatorEngine.ts`, `dependencies`, `react`, `package.json`, `patterns/types.ts`, `documentParsers.ts`, `StudioCastCompositor`, `AdminAIChatView.tsx`, `StockTrackerView.tsx`, `server.js`, `ManageDatabaseView.tsx`, `LandingPage.tsx`, `backtest/engine.ts`, `DocNexusStudio`, `PdfToolsStudio.tsx`, `scannerEngine.ts`, `SpeechStudio/routes.ts`, `DocNexus/types.ts`, `OcrReceiptModal.tsx`, `DocNexus/types.ts`, `lucide-react`, `WorkspacePluginStore.tsx`, `ResumeEngine.tsx`, `ImageStudioView.tsx`, `StockSimulatorPanel.tsx`, `DocNexusStudio.tsx`, `FlowDesignerView.tsx`?**
-  _High betweenness centrality (0.133) - this node is a cross-community bridge._
+  _High betweenness centrality (0.130) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `startServer()` (e.g. with `authenticateToken()` and `requireAdmin()`) actually correct?**
   _`startServer()` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **Should `src/types.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.1051693404634581 - nodes in this community are weakly interconnected._
 - **Why does `express` connect `express` to `StockTracker/routes.ts`, `package.json`, `server.ts`, `serverRegistry.ts`, `DocNexus/storage.ts`, `SpeechStudio/routes.ts`, `StudioCastCompositor`, `ref_fs`, `server.js`, `telemetryService.ts`, `Accounting/storage.ts`?**
-  _High betweenness centrality (0.055) - this node is a cross-community bridge._
+  _High betweenness centrality (0.074) - this node is a cross-community bridge._

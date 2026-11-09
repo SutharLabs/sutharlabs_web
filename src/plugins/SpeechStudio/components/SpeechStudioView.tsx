@@ -1336,7 +1336,7 @@ export default function SpeechStudioView({
         }));
 
         let pollCount = 0;
-        const maxPolls = 60; // 60 * 1500ms = 90s max
+        const maxPolls = 120; // 120 * 1500ms = 180s (3 minutes max)
         let completedJob: any = null;
 
         while (pollCount < maxPolls) {
@@ -1349,7 +1349,7 @@ export default function SpeechStudioView({
               return {
                 ...s,
                 status: 'running',
-                detail: `Neural vocoder synthesizing audio latents on VM 2... (${elapsedSec}s elapsed, ~25s total)`
+                detail: `Neural vocoder synthesizing audio latents on VM 2... (${elapsedSec}s elapsed, est. 25-45s)`
               };
             }
             return s;
@@ -1392,7 +1392,7 @@ export default function SpeechStudioView({
         }
 
         if (!completedJob) {
-          throw new Error('Neural voice synthesis exceeded the 90s execution window. Please check VM 2 neural-tts service.');
+          throw new Error('Neural voice synthesis exceeded the 180s execution window. Please check VM 2 neural-tts service.');
         }
 
         data = completedJob;
@@ -1859,7 +1859,7 @@ export default function SpeechStudioView({
       if (res.status === 202 || (data.async && data.jobId)) {
         const jobId = data.jobId;
         let pollCount = 0;
-        const maxPolls = 60; // 60 * 1500ms = 90s max
+        const maxPolls = 120; // 120 * 1500ms = 180s max
         let completedJob: any = null;
 
         while (pollCount < maxPolls) {
@@ -1887,7 +1887,7 @@ export default function SpeechStudioView({
         }
 
         if (!completedJob) {
-          throw new Error('Voice cloning synthesis exceeded the 90s cloud execution window. Please check VM 2 neural-tts service.');
+          throw new Error('Voice cloning synthesis exceeded the 180s cloud execution window. Please check VM 2 neural-tts service.');
         }
 
         data = completedJob;
