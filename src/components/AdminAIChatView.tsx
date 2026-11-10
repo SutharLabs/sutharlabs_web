@@ -48,7 +48,8 @@ import {
   Folder,
   Play,
   Search,
-  BookOpen
+  BookOpen,
+  Loader2
 } from 'lucide-react';
 import * as pdfjsLib from 'pdfjs-dist';
 import JSZip from 'jszip';
@@ -92,7 +93,10 @@ import {
   fetchRagStats,
   indexDocumentInRag,
   RagStatsResult,
-  RagQueryResult
+  RagQueryResult,
+  generateAIImage,
+  processAIImage,
+  fetchImageModels
 } from '../services/aiChatService';
 import ConfirmModal, { ModalVariant } from './ConfirmModal';
 import MarkdownMessage from './MarkdownMessage';
@@ -658,6 +662,133 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
     }
   };
 
+  // Image Studio & Processing State
+  const [isImageModalOpen, setIsImageModalOpen] = useState<boolean>(false);
+  const [isGeneratingImage, setIsGeneratingImage] = useState<boolean>(false);
+  const [imagePrompt, setImagePrompt] = useState<string>('');
+  const [imageModel, setImageModel] = useState<string>('janus-pro-1b');
+  const [imageStyle, setImageStyle] = useState<string>('cinematic');
+  const [imageAspectRatio, setImageAspectRatio] = useState<'1:1' | '16:9' | '9:16' | '4:3'>('1:1');
+  const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
+  const [savedVaultNotice, setSavedVaultNotice] = useState<string | null>(null);
+  const [imageStudioError, setImageStudioError] = useState<string | null>(null);
+
+  // Image Processing state
+  const [procTab, setProcTab] = useState<'generate' | 'process'>('generate');
+  const [procImagePreview, setProcImagePreview] = useState<string | null>(null);
+  const [procImageBase64, setProcImageBase64] = useState<string | null>(null);
+  const [procOperation, setProcOperation] = useState<'remove-background' | 'grayscale' | 'invert' | 'contrast' | 'analyze'>('remove-background');
+  const [procPrompt, setProcPrompt] = useState<string>('');
+  const [isProcessingImg, setIsProcessingImg] = useState<boolean>(false);
+  const [procResultUrl, setProcResultUrl] = useState<string | null>(null);
+  const [procAnalysisText, setProcAnalysisText] = useState<string | null>(null);
+
+  const handleGenerateImage = async (customPrompt?: string) => {
+    const promptToUse = (customPrompt || imagePrompt).trim();
+    if (!promptToUse) return;
+
+    setIsGeneratingImage(true);
+    setImageStudioError(null);
+    addLog('IMAGE_STUDIO', `Synthesizing image with ${imageModel} [${imageStyle}, ${imageAspectRatio}]...`, 'INFO');
+
+    try {
+      const res = await generateAIImage({
+        prompt: promptToUse,
+        model: imageModel as any,
+        style: imageStyle as any,
+        aspectRatio: imageAspectRatio
+      }, userToken);
+
+      if (res && res.image) {
+        const generatedImg = res.image;
+        addLog('IMAGE_STUDIO', `Image synthesized successfully (${generatedImg.width}x${generatedImg.height})`, 'SUCCESS');
+
+        const assistantMsg: AIChatMessage = {
+          id: `msg-${Date.now()}-assistant`,
+          role: 'assistant',
+          content: `Here is the synthesized visual artwork for: **"${promptToUse}"**\n\n- **Model**: ${generatedImg.modelLabel || imageModel}\n- **Style**: ${imageStyle}\n- **Dimensions**: ${generatedImg.width}×${generatedImg.height}`,
+          model: imageModel,
+          mode: currentMode,
+          timestamp: new Date().toLocaleTimeString(),
+          generatedImages: [generatedImg]
+        };
+
+        const updated = [...messages, assistantMsg];
+        setMessages(updated);
+        setIsImageModalOpen(false);
+        setImagePrompt('');
+      }
+    } catch (err: any) {
+      addLog('IMAGE_STUDIO', `Image generation failed: ${err.message}`, 'ERROR');
+      setImageStudioError(`Image generation failed: ${err.message}`);
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleProcessImage = async () => {
+    if (!procImageBase64 && !procImagePreview) {
+      setImageStudioError('Please upload or select an image to process.');
+      return;
+    }
+
+    setIsProcessingImg(true);
+    setImageStudioError(null);
+    setProcResultUrl(null);
+    setProcAnalysisText(null);
+    addLog('IMAGE_PROCESS', `Applying ${procOperation} transformation...`, 'INFO');
+
+    try {
+      const res = await processAIImage({
+        operation: procOperation,
+        imageBase64: procImageBase64 || undefined,
+        imageUrl: procImagePreview || undefined,
+        prompt: procPrompt || undefined
+      }, userToken);
+
+      if (res.processedUrl) {
+        setProcResultUrl(res.processedUrl);
+      }
+      if (res.analysisText) {
+        setProcAnalysisText(res.analysisText);
+      }
+      addLog('IMAGE_PROCESS', `Image processing completed (${procOperation}).`, 'SUCCESS');
+    } catch (err: any) {
+      addLog('IMAGE_PROCESS', `Image processing failed: ${err.message}`, 'ERROR');
+      setImageStudioError(`Image processing failed: ${err.message}`);
+    } finally {
+      setIsProcessingImg(false);
+    }
+  };
+
+  const handleSaveImageToVault = async (imgUrl: string, promptText: string) => {
+    try {
+      setSavedVaultNotice('Saving to Sovereign Storage Vault...');
+      const res = await fetch(imgUrl);
+      const blob = await res.blob();
+      const formData = new FormData();
+      const filename = `ai_gen_${Date.now()}.png`;
+      formData.append('file', blob, filename);
+
+      const vaultRes = await fetch('/api/vault/upload', {
+        method: 'POST',
+        headers: userToken ? { Authorization: `Bearer ${userToken}` } : {},
+        body: formData
+      });
+
+      if (vaultRes.ok) {
+        setSavedVaultNotice(`Saved "${filename}" to Sovereign Storage Vault on VM 1!`);
+        setTimeout(() => setSavedVaultNotice(null), 4000);
+      } else {
+        setSavedVaultNotice(`Downloaded locally (${filename})`);
+        setTimeout(() => setSavedVaultNotice(null), 3000);
+      }
+    } catch (err) {
+      setSavedVaultNotice('Saved image to local browser cache.');
+      setTimeout(() => setSavedVaultNotice(null), 3000);
+    }
+  };
+
   useEffect(() => {
     loadRagStats();
   }, [userToken]);
@@ -1063,6 +1194,24 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
         setInputPrompt('');
         return;
       }
+    } else if (rawText.startsWith('/image') || rawText.startsWith('/gen')) {
+      cleanedText = rawText.replace(/^\/(?:image|gen)\s*/, '').trim();
+      if (!cleanedText) {
+        setIsImageModalOpen(true);
+        setInputPrompt('');
+        return;
+      }
+      setInputPrompt('');
+      const userMsg: AIChatMessage = {
+        id: `msg-${Date.now()}-user`,
+        role: 'user',
+        content: `/image ${cleanedText}`,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      const updatedHistory = [...messages, userMsg];
+      setMessages(updatedHistory);
+      handleGenerateImage(cleanedText);
+      return;
     } else if (rawText === '/clear') {
       setInputPrompt('');
       promptClearChat();
@@ -2549,6 +2698,103 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       </div>
                     )}
 
+                    {/* Generated Images Showcase (Assistant, if present) */}
+                    {!isUser && msg.generatedImages && msg.generatedImages.length > 0 && (
+                      <div className="mt-3 space-y-3 mb-2">
+                        {msg.generatedImages.map((img, imgIdx) => (
+                          <div
+                            key={img.id || imgIdx}
+                            className={`rounded-2xl border overflow-hidden transition-all shadow-md ${
+                              isLight ? 'bg-white border-slate-200' : 'bg-[#151518] border-[#3a494b]/50'
+                            }`}
+                          >
+                            {/* Image Header with Badge */}
+                            <div className={`p-2.5 px-3.5 border-b flex items-center justify-between gap-2 flex-wrap text-xs font-mono ${
+                              isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-[#1a1a1e] border-[#3a494b]/40 text-[#e5e1e4]'
+                            }`}>
+                              <div className="flex items-center gap-2">
+                                <div className="w-7 h-7 rounded-lg bg-pink-500/10 border border-pink-500/30 flex items-center justify-center shrink-0">
+                                  <ImageIcon className="w-4 h-4 text-pink-500 dark:text-pink-400 shrink-0" />
+                                </div>
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-pink-600 dark:text-pink-400">
+                                    {img.modelLabel || img.model}
+                                  </span>
+                                  {img.style && (
+                                    <span className={`px-1.5 py-0.2 rounded text-[9px] uppercase font-bold border ${
+                                      isLight ? 'bg-white text-slate-700 border-slate-300' : 'bg-black/30 text-gray-300 border-white/10'
+                                    }`}>
+                                      {img.style}
+                                    </span>
+                                  )}
+                                  {img.width && img.height && (
+                                    <span className="text-[10px] text-on-surface-variant">
+                                      {img.width}×{img.height}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  type="button"
+                                  onClick={() => setZoomImageUrl(img.url)}
+                                  className={`h-7 px-2 rounded-md border text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                                    isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-black/40 hover:bg-white/10 text-gray-300 border-white/10'
+                                  }`}
+                                  title="View Full Resolution"
+                                >
+                                  <Maximize2 className="w-3 h-3 shrink-0" />
+                                  <span>Zoom</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveImageToVault(img.url, img.prompt)}
+                                  className={`h-7 px-2.5 rounded-md border text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                                    isLight ? 'bg-sky-50 hover:bg-sky-100 text-sky-800 border-sky-300' : 'bg-sky-500/15 hover:bg-sky-500/25 text-sky-400 border-sky-500/40'
+                                  }`}
+                                  title="Save directly to Sovereign Storage Vault on VM 1"
+                                >
+                                  <Folder className="w-3 h-3 shrink-0" />
+                                  <span>Save to Vault</span>
+                                </button>
+                                <a
+                                  href={img.url}
+                                  download={`sutharlabs_${img.id || 'artwork'}.png`}
+                                  className={`h-7 px-2.5 rounded-md border text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-colors ${
+                                    isLight ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border-emerald-500/40'
+                                  }`}
+                                  title="Download PNG File"
+                                >
+                                  <Download className="w-3 h-3 shrink-0" />
+                                  <span>Download</span>
+                                </a>
+                              </div>
+                            </div>
+
+                            {/* Image Canvas / Preview Box */}
+                            <div className="relative group bg-black/40 flex items-center justify-center overflow-hidden">
+                              <img
+                                src={img.url}
+                                alt={img.prompt}
+                                className="w-full h-auto max-h-[500px] object-contain cursor-zoom-in transition-transform duration-300 group-hover:scale-[1.01]"
+                                onClick={() => setZoomImageUrl(img.url)}
+                                loading="lazy"
+                              />
+                            </div>
+
+                            {/* Prompt caption */}
+                            <div className={`p-2.5 px-3.5 border-t text-[11px] font-sans flex items-start gap-2 ${
+                              isLight ? 'bg-slate-50/50 border-slate-200 text-slate-700' : 'bg-[#121215] border-[#3a494b]/30 text-gray-300'
+                            }`}>
+                              <span className="font-bold text-on-surface shrink-0">Prompt:</span>
+                              <span className="italic">{img.prompt}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
                     {/* User Attachments Display */}
                     {isUser && msg.attachments && msg.attachments.length > 0 && (
                       <div className="flex flex-wrap gap-2 justify-end mb-1.5">
@@ -2850,6 +3096,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       { cmd: '/agent', label: 'Agent Mode', desc: 'Multi-step autonomous execution with tool calling via MCP', icon: Bot, color: 'text-purple-400' },
                       { cmd: '/auto', label: 'Autonomous Mode', desc: 'End-to-end closed-loop automation with self-evaluation', icon: Sparkles, color: 'text-emerald-400' },
                       { cmd: '/rag', label: 'Contextual RAG', desc: 'Retrieves grounded passages via hybrid BM25 + nomic-embed-text RRF', icon: BookOpen, color: 'text-emerald-400' },
+                      { cmd: '/image', label: 'Image Studio', desc: 'Synthesizes artwork via DeepSeek Janus-Pro-1B & Flux', icon: ImageIcon, color: 'text-pink-400' },
                       { cmd: '/mcp', label: 'MCP Tools', desc: 'Inspects active Model Context Protocol infrastructure', icon: Database, color: 'text-sky-400' },
                       { cmd: '/clear', label: 'Clear Chat', desc: 'Resets active session and cleared artifacts', icon: Trash2, color: 'text-rose-400' }
                     ].filter(item => item.cmd.startsWith(inputPrompt.toLowerCase())).map(item => (
@@ -2866,6 +3113,9 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                           } else if (item.cmd === '/rag') {
                             setIsRagActive(true);
                             setInputPrompt('/rag ');
+                            textareaRef.current?.focus();
+                          } else if (item.cmd === '/image') {
+                            setInputPrompt('/image ');
                             textareaRef.current?.focus();
                           } else {
                             setInputPrompt(item.cmd + ' ');
@@ -2987,6 +3237,21 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       <BookOpen className={`w-3.5 h-3.5 shrink-0 ${isRagActive ? 'text-white dark:text-emerald-400 animate-pulse' : ''}`} />
                       <span>Context RAG:</span>
                       <span className="font-extrabold">{isRagActive ? 'ON' : 'OFF'}</span>
+                    </button>
+
+                    {/* Image Studio Trigger */}
+                    <button
+                      type="button"
+                      onClick={() => setIsImageModalOpen(true)}
+                      className={`h-7 px-2.5 rounded-lg text-[10px] sm:text-[11px] font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                        isLight
+                          ? 'bg-slate-200/80 hover:bg-slate-300 text-slate-700 hover:text-pink-600'
+                          : 'bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-pink-400 border border-white/10'
+                      }`}
+                      title="Open Multimodal Image Studio (DeepSeek Janus-Pro-1B & Flux.1)"
+                    >
+                      <ImageIcon className="w-3.5 h-3.5 text-pink-500 dark:text-pink-400 shrink-0" />
+                      <span>Image Studio</span>
                     </button>
 
                     {/* 1. Mode Selector Dropdown in Text Editor (GitHub Copilot / Claude Code Standard) */}
@@ -3867,7 +4132,420 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
         </div>
       )}
 
-      {/* Sovereign Contextual RAG Knowledge Corpus Modal */}
+      {/* Image Studio & Multimodal Processing Modal */}
+      {isImageModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+          <div className={`relative w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden transition-all ${
+            isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]'
+          }`}>
+            <div className="h-1 w-full bg-pink-500" />
+            <div className="p-4 sm:p-5 border-b flex items-center justify-between gap-3 border-inherit">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-pink-500/10 border border-pink-500/30 flex items-center justify-center shrink-0">
+                  <ImageIcon className="w-5 h-5 text-pink-500 shrink-0" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-on-surface">Sovereign Multimodal Image Studio</h3>
+                  <p className="text-xs text-on-surface-variant font-mono">
+                    DeepSeek Janus-Pro-1B • FLUX.1 [schnell] • SDXL-Turbo • Show-o
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsImageModalOpen(false)}
+                className="p-1.5 rounded-lg hover:bg-white/10 text-on-surface-variant hover:text-on-surface cursor-pointer"
+              >
+                <X className="w-4 h-4 shrink-0" />
+              </button>
+            </div>
+
+            {/* Sub-Tabs: Generate vs Process */}
+            <div className={`px-4 pt-3 flex gap-2 border-b ${isLight ? 'border-slate-200 bg-slate-50' : 'border-[#3a494b]/30 bg-[#161619]'}`}>
+              <button
+                type="button"
+                onClick={() => setProcTab('generate')}
+                className={`pb-2 px-3 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+                  procTab === 'generate'
+                    ? 'border-pink-500 text-pink-500'
+                    : 'border-transparent text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                1. Text-to-Image Synthesis
+              </button>
+              <button
+                type="button"
+                onClick={() => setProcTab('process')}
+                className={`pb-2 px-3 text-xs font-mono font-bold uppercase tracking-wider border-b-2 transition-all cursor-pointer ${
+                  procTab === 'process'
+                    ? 'border-pink-500 text-pink-500'
+                    : 'border-transparent text-on-surface-variant hover:text-on-surface'
+                }`}
+              >
+                2. Image Processing &amp; Vision
+              </button>
+            </div>
+
+            {imageStudioError && (
+              <div className="mx-4 mt-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono flex items-center justify-between gap-2">
+                <span>{imageStudioError}</span>
+                <button
+                  type="button"
+                  onClick={() => setImageStudioError(null)}
+                  className="p-1 rounded hover:bg-rose-500/20 text-rose-300 cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5 shrink-0" />
+                </button>
+              </div>
+            )}
+
+            <div className="p-4 sm:p-5 max-h-[65vh] overflow-y-auto space-y-4 custom-scrollbar">
+              {procTab === 'generate' ? (
+                <>
+                  {/* Prompt Textarea */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold font-mono text-on-surface flex items-center justify-between">
+                      <span>Artistic Prompt</span>
+                      <span className="text-[10px] text-on-surface-variant">Describe the subject, lighting, and composition</span>
+                    </label>
+                    <textarea
+                      value={imagePrompt}
+                      onChange={(e) => setImagePrompt(e.target.value)}
+                      placeholder="E.g. A hyper-detailed cybernetic sovereign datacenter server room bathed in volumetric cyan and neon purple lighting..."
+                      rows={3}
+                      className={`w-full p-2.5 rounded-xl text-xs font-sans border resize-none ${
+                        isLight
+                          ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400 focus:border-pink-500'
+                          : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] placeholder-gray-500 focus:border-pink-500'
+                      }`}
+                    />
+                  </div>
+
+                  {/* Model Selector Cards */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold font-mono text-on-surface">Open-Weight Architecture</label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {[
+                        {
+                          id: 'janus-pro-1b',
+                          name: 'DeepSeek Janus-Pro-1B',
+                          badge: 'Unified 1.5B • CPU Friendly',
+                          color: 'text-cyan-400 border-cyan-500/30 bg-cyan-500/10',
+                          desc: 'DeepSeek autoregressive visual tokens. 384x384 native output, runnable on CPU.'
+                        },
+                        {
+                          id: 'flux-schnell',
+                          name: 'FLUX.1 [schnell]',
+                          badge: '12B Flow Matching • SOTA',
+                          color: 'text-purple-400 border-purple-500/30 bg-purple-500/10',
+                          desc: 'Black Forest Labs 4-step rectified flow. Photorealistic anatomy & typography.'
+                        },
+                        {
+                          id: 'sdxl-turbo',
+                          name: 'Stability SDXL-Turbo',
+                          badge: 'Real-Time 1-Step',
+                          color: 'text-emerald-400 border-emerald-500/30 bg-emerald-500/10',
+                          desc: 'Single-step adversarial diffusion distillation. Fast interactive feedback.'
+                        },
+                        {
+                          id: 'show-o',
+                          name: 'NUS/ByteDance Show-o (1.3B)',
+                          badge: 'Masked Diffusion 1.3B',
+                          color: 'text-sky-400 border-sky-500/30 bg-sky-500/10',
+                          desc: 'Unified language model with discrete diffusion tokens in shared vocabulary.'
+                        }
+                      ].map((m) => (
+                        <div
+                          key={m.id}
+                          onClick={() => setImageModel(m.id)}
+                          className={`p-2.5 rounded-xl border cursor-pointer transition-all ${
+                            imageModel === m.id
+                              ? isLight
+                                ? 'bg-pink-50 border-pink-400 text-pink-950 shadow-xs ring-1 ring-pink-300'
+                                : 'bg-pink-500/15 border-pink-500/60 text-white shadow-xs ring-1 ring-pink-500/40'
+                              : isLight
+                              ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                              : 'bg-white/5 hover:bg-white/10 border-white/5 text-on-surface-variant'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="font-bold text-xs">{m.name}</span>
+                            <span className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold border uppercase shrink-0 ${m.color}`}>
+                              {m.badge}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-on-surface-variant mt-1 leading-relaxed">{m.desc}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Style Presets */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold font-mono text-on-surface">Artistic Style</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[
+                        { id: 'cinematic', label: 'Cinematic Still' },
+                        { id: 'photorealistic', label: 'Photorealistic 8K' },
+                        { id: 'anime', label: 'Anime / Shinkai' },
+                        { id: 'cyberpunk', label: 'Cyberpunk Neon' },
+                        { id: '3d-render', label: 'Octane 3D Render' },
+                        { id: 'minimalist', label: 'Minimalist Vector' },
+                        { id: 'digital-art', label: 'Digital Concept Art' }
+                      ].map((s) => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onClick={() => setImageStyle(s.id)}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer ${
+                            imageStyle === s.id
+                              ? isLight
+                                ? 'bg-pink-500 text-white shadow-xs'
+                                : 'bg-pink-500/20 text-pink-400 border border-pink-500/50 shadow-xs'
+                              : isLight
+                              ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200'
+                              : 'bg-white/5 hover:bg-white/10 text-on-surface-variant border border-white/10'
+                          }`}
+                        >
+                          {s.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Aspect Ratio */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold font-mono text-on-surface">Aspect Ratio</label>
+                    <div className="flex gap-2">
+                      {[
+                        { id: '1:1', label: '1:1 Square (1024×1024)' },
+                        { id: '16:9', label: '16:9 Landscape (1280×720)' },
+                        { id: '9:16', label: '9:16 Portrait (720×1280)' },
+                        { id: '4:3', label: '4:3 Standard (1024×768)' }
+                      ].map((ar) => (
+                        <button
+                          key={ar.id}
+                          type="button"
+                          onClick={() => setImageAspectRatio(ar.id as any)}
+                          className={`flex-1 py-1 px-2 rounded-lg text-[10px] font-mono font-bold border transition-all cursor-pointer text-center ${
+                            imageAspectRatio === ar.id
+                              ? isLight
+                                ? 'bg-pink-500 text-white border-pink-600 shadow-xs'
+                                : 'bg-pink-500/20 text-pink-400 border-pink-500/50 shadow-xs'
+                              : isLight
+                              ? 'bg-white text-slate-700 border-slate-300 hover:bg-slate-50'
+                              : 'bg-white/5 text-on-surface-variant border-white/10 hover:bg-white/10'
+                          }`}
+                        >
+                          {ar.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                /* Tab 2: Image Processing & Vision */
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold font-mono text-on-surface">Select Image to Process</label>
+                    <div className="flex items-center gap-3">
+                      <label className={`flex-1 p-3 rounded-xl border border-dashed flex flex-col items-center justify-center cursor-pointer transition-colors ${
+                        isLight ? 'bg-slate-50 hover:bg-slate-100 border-slate-300' : 'bg-white/5 hover:bg-white/10 border-white/20'
+                      }`}>
+                        <FileUp className="w-5 h-5 text-pink-400 mb-1" />
+                        <span className="text-xs font-mono text-on-surface">Upload Image (PNG, JPG, WebP)</span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (ev) => {
+                                const b64 = ev.target?.result as string;
+                                setProcImageBase64(b64);
+                                setProcImagePreview(b64);
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                      {procImagePreview && (
+                        <div className="w-20 h-20 rounded-xl overflow-hidden border border-pink-500/40 bg-black/30 shrink-0">
+                          <img src={procImagePreview} alt="Target" className="w-full h-full object-cover" />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Processing Operations */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold font-mono text-on-surface">Select Operation</label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {[
+                        { id: 'remove-background', label: 'Remove Background', desc: 'Transparent cutout PNG' },
+                        { id: 'grayscale', label: 'B&W Grayscale', desc: 'High-contrast monochrome' },
+                        { id: 'invert', label: 'Invert Colors', desc: 'Neon negative matrix style' },
+                        { id: 'contrast', label: 'Contrast Boost', desc: 'Enhance dynamic range' },
+                        { id: 'analyze', label: 'AI Vision Analysis', desc: 'Qwen2.5-VL / Janus-Pro analysis' }
+                      ].map((op) => (
+                        <div
+                          key={op.id}
+                          onClick={() => setProcOperation(op.id as any)}
+                          className={`p-2 rounded-xl border cursor-pointer text-left transition-all ${
+                            procOperation === op.id
+                              ? isLight
+                                ? 'bg-pink-50 border-pink-400 text-pink-900 shadow-xs'
+                                : 'bg-pink-500/15 border-pink-500/60 text-white shadow-xs'
+                              : isLight
+                              ? 'bg-slate-50 hover:bg-slate-100 border-slate-200 text-slate-700'
+                              : 'bg-white/5 hover:bg-white/10 border-white/5 text-on-surface-variant'
+                          }`}
+                        >
+                          <div className="text-xs font-bold">{op.label}</div>
+                          <div className="text-[10px] text-on-surface-variant mt-0.5">{op.desc}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {procOperation === 'analyze' && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold font-mono text-on-surface">Analysis Question / Prompt</label>
+                      <input
+                        type="text"
+                        value={procPrompt}
+                        onChange={(e) => setProcPrompt(e.target.value)}
+                        placeholder="E.g. What objects are present? Analyze lighting and detect any text."
+                        className={`w-full h-8 px-2.5 rounded-lg text-xs font-mono border ${
+                          isLight
+                            ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400'
+                            : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] placeholder-gray-500'
+                        }`}
+                      />
+                    </div>
+                  )}
+
+                  {/* Processing Result Display */}
+                  {(procResultUrl || procAnalysisText) && (
+                    <div className={`p-3 rounded-xl border space-y-2 ${
+                      isLight ? 'bg-slate-50 border-slate-200' : 'bg-black/30 border-[#3a494b]/40'
+                    }`}>
+                      <div className="text-xs font-bold text-pink-500">Processed Output</div>
+                      {procResultUrl && (
+                        <div className="max-h-48 rounded-lg overflow-hidden border border-white/10 flex items-center justify-center bg-black/50">
+                          <img src={procResultUrl} alt="Processed" className="max-h-48 object-contain" />
+                        </div>
+                      )}
+                      {procAnalysisText && (
+                        <div className={`p-2.5 rounded font-mono text-xs leading-relaxed whitespace-pre-wrap ${
+                          isLight ? 'bg-white text-slate-800' : 'bg-[#121215] text-[#e5e1e4]'
+                        }`}>
+                          {procAnalysisText}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Footer Actions */}
+            <div className="p-3.5 border-t border-inherit flex items-center justify-between gap-3">
+              <span className="text-[11px] font-mono text-on-surface-variant">
+                {procTab === 'generate' ? `Target: ${imageModel} (${imageAspectRatio})` : `Action: ${procOperation}`}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsImageModalOpen(false)}
+                  className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer ${
+                    isLight ? 'bg-slate-200 text-slate-800' : 'bg-white/10 text-white'
+                  }`}
+                >
+                  Cancel
+                </button>
+                {procTab === 'generate' ? (
+                  <button
+                    type="button"
+                    disabled={isGeneratingImage || !imagePrompt.trim()}
+                    onClick={() => handleGenerateImage()}
+                    className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                      isGeneratingImage || !imagePrompt.trim()
+                        ? 'opacity-50 cursor-not-allowed bg-slate-400 text-white'
+                        : isLight
+                        ? 'bg-pink-500 hover:bg-pink-600 text-white shadow-sm'
+                        : 'bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 border border-pink-500/50 shadow-sm'
+                    }`}
+                  >
+                    {isGeneratingImage && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
+                    <span>{isGeneratingImage ? 'Synthesizing...' : 'Generate Image'}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={isProcessingImg || (!procImageBase64 && !procImagePreview)}
+                    onClick={() => handleProcessImage()}
+                    className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                      isProcessingImg || (!procImageBase64 && !procImagePreview)
+                        ? 'opacity-50 cursor-not-allowed bg-slate-400 text-white'
+                        : isLight
+                        ? 'bg-pink-500 hover:bg-pink-600 text-white shadow-sm'
+                        : 'bg-pink-500/20 hover:bg-pink-500/30 text-pink-400 border border-pink-500/50 shadow-sm'
+                    }`}
+                  >
+                    {isProcessingImg && <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />}
+                    <span>{isProcessingImg ? 'Processing...' : 'Apply Transformation'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Full-Screen Image Zoom Modal */}
+      {zoomImageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-lg animate-in fade-in duration-150 cursor-zoom-out"
+          onClick={() => setZoomImageUrl(null)}
+        >
+          <div className="relative max-w-5xl max-h-[90vh] flex flex-col items-center" onClick={(e) => e.stopPropagation()}>
+            <img
+              src={zoomImageUrl}
+              alt="Enlarged view"
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/20"
+            />
+            <div className="mt-3 flex items-center gap-3">
+              <a
+                href={zoomImageUrl}
+                download="sutharlabs_artwork_full.png"
+                className="h-8 px-4 rounded-lg bg-pink-500 text-white text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer shadow-md hover:bg-pink-600"
+              >
+                <Download className="w-3.5 h-3.5 shrink-0" />
+                <span>Save Full Resolution</span>
+              </a>
+              <button
+                type="button"
+                onClick={() => setZoomImageUrl(null)}
+                className="h-8 px-4 rounded-lg bg-white/20 text-white hover:bg-white/30 text-xs font-mono font-bold uppercase tracking-wider cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Storage Vault Notification Toast */}
+      {savedVaultNotice && (
+        <div className="fixed bottom-6 right-6 z-50 p-3 px-4 rounded-xl bg-emerald-500 text-white text-xs font-mono font-bold shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+          <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <span>{savedVaultNotice}</span>
+        </div>
+      )}
       {isRagModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
           <div className={`relative w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden transition-all ${

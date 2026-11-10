@@ -301,22 +301,232 @@ const DEFAULT_NEURAL_VOICES: TTSVoiceOption[] = [
     description: 'Authentic, warm masculine tone with confident conversational articulation.'
   },
   {
-    id: 'kokoro-heart',
-    name: 'Kokoro Heart (SOTA Arena #1)',
+    id: 'kokoro-af-heart',
+    name: 'Kokoro Heart (af_heart)',
     lang: 'en-US',
     languageLabel: 'English (US)',
     gender: 'female',
-    accent: 'American Studio',
+    accent: 'American Dynamic',
     isNeural: true,
     engine: 'neural',
-    emotionTag: 'Natural & Warm',
-    usageTag: 'Studio Narration & Audiobooks',
+    communityGrade: 'Grade A (Top Rated)',
+    emotionTag: 'Warm & Dynamic',
+    usageTag: 'Conversational Dialogue & Books',
+    architecture: 'kokoro-82m',
+    sampleRate: '24,000 Hz',
+    latency: '~240ms',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'Warm, dynamic conversational pacing. Widely considered the gold standard for realistic human dialogue. Apache 2.0.'
+  },
+  {
+    id: 'kokoro-af-bella',
+    name: 'Kokoro Bella (af_bella)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'female',
+    accent: 'American Articulate',
+    isNeural: true,
+    engine: 'neural',
+    communityGrade: 'Grade A−',
+    emotionTag: 'Clean & Upbeat',
+    usageTag: 'Instruction & Narration',
+    architecture: 'kokoro-82m',
+    sampleRate: '24,000 Hz',
+    latency: '~240ms',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'Clean, articulate, and upbeat. Best for clear instruction, software alerts, and professional narration.'
+  },
+  {
+    id: 'kokoro-bf-emma',
+    name: 'Kokoro Emma (bf_emma)',
+    lang: 'en-GB',
+    languageLabel: 'English (UK)',
+    gender: 'female',
+    accent: 'British RP Studio',
+    isNeural: true,
+    engine: 'neural',
+    communityGrade: 'Grade B−',
+    emotionTag: 'Refined & Cadenced',
+    usageTag: 'Long-Form Reading',
     architecture: 'kokoro-82m',
     sampleRate: '24,000 Hz',
     latency: '~250ms',
     commercialUse: 'commercial_safe',
     commercialLabel: 'Commercial Safe',
-    description: 'Ranked #1 on Hugging Face TTS Arena. Apache 2.0 open weights. Sub-second CPU latency.'
+    description: 'Refined RP British accent with natural rhythmic cadence; excels at long-form reading and audiobooks.'
+  },
+  {
+    id: 'kokoro-af-nicole',
+    name: 'Kokoro Nicole (af_nicole)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'female',
+    accent: 'American Informal',
+    isNeural: true,
+    engine: 'neural',
+    communityGrade: 'Grade B−',
+    emotionTag: 'Soft & Companion',
+    usageTag: 'Assistants & Companions',
+    architecture: 'kokoro-82m',
+    sampleRate: '24,000 Hz',
+    latency: '~240ms',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'Softer, slightly informal tone suitable for assistants and companion interfaces.'
+  },
+  {
+    id: 'kokoro-am-fenrir',
+    name: 'Kokoro Fenrir (am_fenrir)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'male',
+    accent: 'American Deep Baritone',
+    isNeural: true,
+    engine: 'neural',
+    communityGrade: 'Grade C+ (Top Male)',
+    emotionTag: 'Deep & Authoritative',
+    usageTag: 'Documentation & Changelogs',
+    architecture: 'kokoro-82m',
+    sampleRate: '24,000 Hz',
+    latency: '~250ms',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'Deep, resonant, authoritative baritone; top-rated male voice for documentation, technical changelogs, and governance.'
+  },
+  {
+    id: 'kokoro-am-michael',
+    name: 'Kokoro Michael (am_michael)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'male',
+    accent: 'American Steady',
+    isNeural: true,
+    engine: 'neural',
+    communityGrade: 'Grade C+',
+    emotionTag: 'Neutral & Steady',
+    usageTag: 'Financial News & Factual',
+    architecture: 'kokoro-82m',
+    sampleRate: '24,000 Hz',
+    latency: '~250ms',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'Neutral, steady male voice with minimal inflection drift; ideal for financial news and factual updates.'
+  },
+  {
+    id: 'kokoro-bm-george',
+    name: 'Kokoro George (bm_george)',
+    lang: 'en-GB',
+    languageLabel: 'English (UK)',
+    gender: 'male',
+    accent: 'British Documentary',
+    isNeural: true,
+    engine: 'neural',
+    communityGrade: 'Grade C',
+    emotionTag: 'Documentary Classic',
+    usageTag: 'Documentary & History',
+    architecture: 'kokoro-82m',
+    sampleRate: '24,000 Hz',
+    latency: '~250ms',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'Classic documentary-style British delivery with measured cadence.'
+  },
+  {
+    id: 'kokoro-hf-alpha',
+    name: 'Kokoro Alpha (hf_alpha)',
+    lang: 'hi-IN',
+    languageLabel: 'Hindi (हिंदी)',
+    gender: 'female',
+    accent: 'Indian Regional',
+    isNeural: true,
+    engine: 'neural',
+    communityGrade: 'Grade C',
+    emotionTag: 'Regional & Natural',
+    usageTag: 'Regional Apps & Alerts',
+    architecture: 'kokoro-82m',
+    sampleRate: '24,000 Hz',
+    latency: '~260ms',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'Indian English and Hindi localized accent for regional interfaces.'
+  },
+  {
+    id: 'kokoro-hm-omega',
+    name: 'Kokoro Omega (hm_omega)',
+    lang: 'hi-IN',
+    languageLabel: 'Hindi (हिंदी)',
+    gender: 'male',
+    accent: 'Indian Regional Baritone',
+    isNeural: true,
+    engine: 'neural',
+    communityGrade: 'Grade C',
+    emotionTag: 'Regional Masculine',
+    usageTag: 'Regional News & Podcasts',
+    architecture: 'kokoro-82m',
+    sampleRate: '24,000 Hz',
+    latency: '~260ms',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'Indian English and Hindi localized male accent with authentic articulation.'
+  },
+  {
+    id: 'piper-lessac-high',
+    name: 'Piper Lessac (en_US-lessac-high)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'female',
+    accent: 'American Balanced',
+    isNeural: true,
+    engine: 'neural',
+    communityGrade: 'High Tier (22kHz)',
+    emotionTag: 'Neutral & Sub-100ms',
+    usageTag: 'Embedded & Edge Bots',
+    architecture: 'piper',
+    sampleRate: '22,050 Hz',
+    latency: '~80ms',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'Piper lightweight C++ neural engine. Sub-100ms execution with balanced, neutral American English assistant delivery.'
+  },
+  {
+    id: 'piper-libritts-high',
+    name: 'Piper LibriTTS (en_US-libritts-high)',
+    lang: 'en-US',
+    languageLabel: 'English (US)',
+    gender: 'male',
+    accent: 'American Narrative',
+    isNeural: true,
+    engine: 'neural',
+    communityGrade: 'High Tier (22kHz)',
+    emotionTag: 'Authoritative & Fast',
+    usageTag: 'Realtime Agent Prompts',
+    architecture: 'piper',
+    sampleRate: '22,050 Hz',
+    latency: '~85ms',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'High-clarity male voice trained on LibriTTS-R. High fidelity with minimal CPU footprint.'
+  },
+  {
+    id: 'piper-alan-medium',
+    name: 'Piper Alan (en_GB-alan-medium)',
+    lang: 'en-GB',
+    languageLabel: 'English (UK)',
+    gender: 'male',
+    accent: 'British Neutral',
+    isNeural: true,
+    engine: 'neural',
+    communityGrade: 'Medium Tier (22kHz)',
+    emotionTag: 'Refined & Sub-100ms',
+    usageTag: 'Low Latency Narration',
+    architecture: 'piper',
+    sampleRate: '22,050 Hz',
+    latency: '~75ms',
+    commercialUse: 'commercial_safe',
+    commercialLabel: 'Commercial Safe',
+    description: 'Fast British English narrator for low-latency terminal feeds and agent feedback.'
   },
   {
     id: 'neerja-expressive',
@@ -761,6 +971,20 @@ const DEFAULT_ARCHITECTURES: TTSArchitectureOption[] = [
     parameters: '400M',
     license: 'Open Source',
     supportedEmotions: ['Conversational Laughter', 'Sighs & Breaths', 'Casual Chuckle', 'Empathetic Pause']
+  },
+  {
+    id: 'piper',
+    name: 'Piper (Deterministic Low-Resource)',
+    badge: 'Sub-100ms ARM / CPU C++',
+    badgeColor: 'emerald',
+    description: 'Deterministic, ultra-fast neural text-to-speech system optimized for ARM64 and embedded devices. Written in C++ on ONNX runtime with zero GPU overhead and sub-100ms real-time generation factor.',
+    status: 'ready',
+    speed: '~0.08s (Sub-100ms RTF 0.02)',
+    emotionCapability: 'Consistent Articulation & Fast Guidance',
+    keyFeature: 'Sub-100ms CPU inference on ARM64 cloud instances and edge daemons with zero per-character cost.',
+    parameters: '25M - 60M',
+    license: 'MIT',
+    supportedEmotions: ['Balanced Assistant', 'Articulate Technical', 'Narrative Clear', 'Crisp Notification']
   }
 ];
 
@@ -775,7 +999,7 @@ export default function SpeechStudioView({
   const isLight = theme === 'light';
 
   // Sub-tabs: synthesize (Studio Voices) | clone (Replicate My Voice) | models (Architectures) | history
-  const [activeTab, setActiveTab] = useState<'synthesize' | 'clone' | 'models' | 'history'>('synthesize');
+  const [activeTab, setActiveTab] = useState<'synthesize' | 'clone' | 'blend' | 'models' | 'history'>('synthesize');
 
   // Input text and voice parameters for Studio synthesis
   const [text, setText] = useState<string>(SAMPLE_PROMPTS[0].text);
@@ -818,6 +1042,17 @@ export default function SpeechStudioView({
   const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState<boolean>(false);
   const [isPaused, setIsPaused] = useState<boolean>(false);
+
+  // Voice Blending (Vector Interpolation) State
+  const [isBlendingMode, setIsBlendingMode] = useState<boolean>(false);
+  const [blendPrimaryVoiceId, setBlendPrimaryVoiceId] = useState<string>('kokoro-am-fenrir');
+  const [blendSecondaryVoiceId, setBlendSecondaryVoiceId] = useState<string>('kokoro-af-bella');
+  const [blendRatio, setBlendRatio] = useState<number>(0.4);
+  const [isBlendingSynthesizing, setIsBlendingSynthesizing] = useState<boolean>(false);
+  const [blendedAudioUrl, setBlendedAudioUrl] = useState<string | null>(null);
+  const [blendedVoiceName, setBlendedVoiceName] = useState<string | null>(null);
+  const blendedAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [isBlendedPlaying, setIsBlendedPlaying] = useState<boolean>(false);
   const [isSynthesizing, setIsSynthesizing] = useState<boolean>(false);
   const [playbackProgress, setPlaybackProgress] = useState<number>(0);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
@@ -1049,53 +1284,30 @@ export default function SpeechStudioView({
           if (data.voices && Array.isArray(data.voices)) {
             setClonedProfiles(prev => {
               const nameMap = new Map<string, ClonedVoiceProfile>();
-              const serverNames = new Set<string>();
-              const serverIds = new Set<string>();
 
+              // 1. Canonical server profiles take absolute priority
               data.voices.forEach((v: ClonedVoiceProfile) => {
                 const norm = (v.name || '').trim().toLowerCase();
                 if (norm) {
                   nameMap.set(norm, v);
-                  serverNames.add(norm);
                 }
-                serverIds.add(v.id);
               });
 
-              // Detect locally cached profiles not yet on server
-              const missingOnServer: ClonedVoiceProfile[] = [];
+              // 2. Retain local audio data URL if present, and only keep un-synced profiles if truly unique
               prev.forEach(v => {
                 const norm = (v.name || '').trim().toLowerCase();
                 if (!norm) return;
 
-                if (!serverNames.has(norm) && !serverIds.has(v.id)) {
-                  nameMap.set(norm, v);
-                  serverNames.add(norm);
-                  missingOnServer.push(v);
-                } else {
-                  // Keep local sampleAudioDataUrl if server record only has disk reference
-                  const existing = nameMap.get(norm);
-                  if (existing && !existing.sampleAudioDataUrl && v.sampleAudioDataUrl) {
+                if (nameMap.has(norm)) {
+                  const existing = nameMap.get(norm)!;
+                  if (!existing.sampleAudioDataUrl && v.sampleAudioDataUrl) {
                     nameMap.set(norm, { ...existing, sampleAudioDataUrl: v.sampleAudioDataUrl });
                   }
+                } else if (!v.id || v.id.startsWith('cloned-')) {
+                  // Only retain if unique
+                  nameMap.set(norm, v);
                 }
               });
-
-              // Automatically synchronize orphaned local profiles up to the central server
-              if (missingOnServer.length > 0) {
-                missingOnServer.forEach(async (profileToSync) => {
-                  try {
-                    const postHeaders: Record<string, string> = { 'Content-Type': 'application/json' };
-                    if (userToken) postHeaders['Authorization'] = `Bearer ${userToken}`;
-                    await fetch('/api/plugins/speech-studio/cloned-voices', {
-                      method: 'POST',
-                      headers: postHeaders,
-                      body: JSON.stringify(profileToSync)
-                    });
-                  } catch (syncErr) {
-                    console.warn('[SpeechStudio] Auto-sync local voice to server warning:', syncErr);
-                  }
-                });
-              }
 
               const combined = Array.from(nameMap.values());
               try {
@@ -2123,11 +2335,22 @@ export default function SpeechStudioView({
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (userToken) headers['Authorization'] = `Bearer ${userToken}`;
-      await fetch('/api/plugins/speech-studio/cloned-voices', {
+      const res = await fetch('/api/plugins/speech-studio/cloned-voices', {
         method: 'POST',
         headers,
         body: JSON.stringify(newProfile)
       });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.voice && data.voice.id) {
+          // Adopt canonical database ID immediately to eliminate client/server ID mismatch
+          setClonedProfiles(prev => {
+            const remapped = prev.map(p => (p.name || '').trim().toLowerCase() === normNewName ? { ...p, id: data.voice.id } : p);
+            try { localStorage.setItem('sutharlabs_cloned_voice_profiles', JSON.stringify(remapped)); } catch {}
+            return remapped;
+          });
+        }
+      }
     } catch (err) {
       console.warn('[SpeechStudio] Server profile sync warning:', err);
     }
@@ -2171,6 +2394,97 @@ export default function SpeechStudioView({
     setTimeout(() => setCopiedKey(null), 1800);
   };
 
+  const handleBlendSynthesize = async () => {
+    if (!blendPrimaryVoiceId || !blendSecondaryVoiceId) {
+      setErrorMessage('Please select two distinct voices to blend.');
+      return;
+    }
+    setIsBlendingSynthesizing(true);
+    setErrorMessage(null);
+    try {
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (userToken) headers['Authorization'] = `Bearer ${userToken}`;
+
+      const primaryVoice = neuralVoices.find(v => v.id === blendPrimaryVoiceId);
+      const secondaryVoice = neuralVoices.find(v => v.id === blendSecondaryVoiceId);
+
+      const blendText = text.trim() || 'SutharLabs neural speech blending. Linear acoustic interpolation active across model embeddings.';
+
+      const res = await fetch('/api/plugins/speech-studio/blend-voices', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          primaryVoiceId: blendPrimaryVoiceId,
+          secondaryVoiceId: blendSecondaryVoiceId,
+          blendRatio: blendRatio,
+          text: blendText,
+          rate,
+          pitch,
+          volume
+        })
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Voice blending failed with HTTP ${res.status}`);
+      }
+
+      const data = await res.json();
+      if (data.audioUrl) {
+        setBlendedAudioUrl(data.audioUrl);
+        setBlendedVoiceName(data.blendedVoiceName || `Blended Voice (${((1 - blendRatio) * 100).toFixed(0)}% / ${(blendRatio * 100).toFixed(0)}%)`);
+
+        onAddLog({
+          timestamp: new Date().toLocaleTimeString(),
+          type: 'SUCCESS',
+          message: `Acoustic blending completed: ${data.formula || `${primaryVoice?.name} + ${secondaryVoice?.name}`}`
+        });
+
+        // Add to speech history
+        const newHistoryItem: SpeechHistoryItem = {
+          id: `blend-${Date.now()}`,
+          text: blendText,
+          language: primaryVoice?.lang || 'en-US',
+          voiceId: `blend-${blendPrimaryVoiceId}-${blendSecondaryVoiceId}`,
+          voiceName: data.blendedVoiceName || 'Blended Voice',
+          audioUrl: data.audioUrl,
+          timestamp: new Date().toLocaleTimeString(),
+          charCount: blendText.length,
+          durationEstimateSec: Math.max(1, Math.round(blendText.length / 14))
+        };
+        setHistory(prev => [newHistoryItem, ...prev.slice(0, 49)]);
+      }
+    } catch (err: any) {
+      console.error('[SpeechStudio] Voice Blending Error:', err);
+      setErrorMessage(err.message || 'Voice blending synthesis encountered an error');
+      onAddLog({
+        timestamp: new Date().toLocaleTimeString(),
+        type: 'ERROR',
+        message: `Voice blending failed: ${err.message}`
+      });
+    } finally {
+      setIsBlendingSynthesizing(false);
+    }
+  };
+
+  const handleToggleBlendedPlay = () => {
+    if (!blendedAudioUrl) return;
+    const audio = blendedAudioRef.current;
+    if (!audio) return;
+
+    if (isBlendedPlaying) {
+      audio.pause();
+      setIsBlendedPlaying(false);
+    } else {
+      audio.src = blendedAudioUrl;
+      audio.play().then(() => {
+        setIsBlendedPlaying(true);
+      }).catch(() => {
+        setIsBlendedPlaying(false);
+      });
+    }
+  };
+
   return (
     <div className="space-y-5 animate-in fade-in duration-200">
       {/* Hidden Audio Elements */}
@@ -2179,6 +2493,12 @@ export default function SpeechStudioView({
         ref={verificationAudioRef}
         onEnded={() => setIsVerificationPlaying(false)}
         onError={() => setIsVerificationPlaying(false)}
+        preload="auto"
+      />
+      <audio
+        ref={blendedAudioRef}
+        onEnded={() => setIsBlendedPlaying(false)}
+        onError={() => setIsBlendedPlaying(false)}
         preload="auto"
       />
 
@@ -2193,8 +2513,11 @@ export default function SpeechStudioView({
               <h2 className="text-xl font-bold tracking-tight text-on-surface font-sans">
                 Neural Speech Studio & Voice Replication
               </h2>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                v1.0.0 PRODUCTION ENTERPRISE EDITION
+              </span>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold font-mono bg-sky-500/10 text-sky-400 border border-sky-500/30">
-                VOICE-FIRST ARCHITECTURE
+                KOKORO-82M & F5-TTS
               </span>
             </div>
             <p className="text-xs text-on-surface-variant font-mono mt-0.5">
@@ -2255,6 +2578,21 @@ export default function SpeechStudioView({
           >
             <Mic className="w-3.5 h-3.5 shrink-0" />
             <span>Replicate My Voice</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('blend')}
+            className={`px-3 py-1.5 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 shrink-0 whitespace-nowrap ${
+              activeTab === 'blend'
+                ? isLight
+                  ? 'bg-white text-emerald-800 font-bold shadow-sm border border-slate-300'
+                  : 'bg-emerald-500/15 text-emerald-400 font-bold border border-emerald-500/30'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            <Sliders className="w-3.5 h-3.5 shrink-0" />
+            <span>Voice Blending</span>
           </button>
 
           <button
@@ -2887,7 +3225,7 @@ export default function SpeechStudioView({
                   </span>
                 </div>
                 <span className="text-[10px] font-mono text-[#00dbe7] font-semibold bg-[#00dbe7]/10 px-2 py-0.5 rounded border border-[#00dbe7]/20">
-                  {filteredVoices.length + clonedProfiles.length} Voices
+                  {filteredVoices.length + Array.from(new Map(clonedProfiles.map(p => [(p.name || '').trim().toLowerCase() || p.id, p])).values()).length} Voices
                 </span>
               </div>
 
@@ -2900,7 +3238,7 @@ export default function SpeechStudioView({
                   { id: 'commercial', label: 'Commercial Safe' },
                   { id: 'hi', label: 'Hindi' },
                   { id: 'en', label: 'English' },
-                  { id: 'cloned', label: `My Replicated (${clonedProfiles.length})` }
+                  { id: 'cloned', label: `My Replicated (${Array.from(new Map(clonedProfiles.map(p => [(p.name || '').trim().toLowerCase() || p.id, p])).values()).length})` }
                 ].map(filter => (
                   <button
                     key={filter.id}
@@ -2927,7 +3265,7 @@ export default function SpeechStudioView({
                     <div className="flex items-center justify-between text-[10px] font-mono text-purple-400 font-bold uppercase tracking-wider px-1">
                       <span className="flex items-center gap-1.5">
                         <Sparkles className="w-3 h-3 text-[#ce5dff] shrink-0" />
-                        My Replicated Voices ({clonedProfiles.length})
+                        My Replicated Voices ({Array.from(new Map(clonedProfiles.map(p => [(p.name || '').trim().toLowerCase() || p.id, p])).values()).length})
                       </span>
                       <button
                         type="button"
@@ -2938,7 +3276,7 @@ export default function SpeechStudioView({
                       </button>
                     </div>
 
-                    {clonedProfiles.map(cloned => (
+                    {Array.from(new Map(clonedProfiles.map(p => [(p.name || '').trim().toLowerCase() || p.id, p])).values()).map(cloned => (
                       <div
                         key={cloned.id}
                         onClick={() => setSelectedVoiceId(cloned.id)}
@@ -2985,11 +3323,13 @@ export default function SpeechStudioView({
                     ? 'Hush VoxCPM'
                     : voice.architecture === 'kokoro-82m'
                       ? 'Kokoro-82M'
-                      : voice.architecture === 'indic-tts'
-                        ? 'Indic Parler'
-                        : voice.architecture === 'melotts'
-                          ? 'MeloTTS'
-                          : 'Neural Edge';
+                      : voice.architecture === 'piper'
+                        ? 'Piper Fast C++'
+                        : voice.architecture === 'indic-tts'
+                          ? 'Indic Parler'
+                          : voice.architecture === 'melotts'
+                            ? 'MeloTTS'
+                            : 'Neural Edge';
 
                   return (
                     <div
@@ -3078,6 +3418,19 @@ export default function SpeechStudioView({
                         <span className="px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase bg-white/5 text-on-surface-variant border border-outline/20">
                           {archBadge}
                         </span>
+
+                        {/* Community Grade Badge (Kokoro-82M / Piper Community Rating) */}
+                        {voice.communityGrade && (
+                          <span className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold shrink-0 ${
+                            voice.communityGrade.startsWith('Grade A')
+                              ? isLight ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                              : voice.communityGrade.startsWith('Grade B')
+                                ? isLight ? 'bg-sky-100 text-sky-800 border border-sky-300' : 'bg-sky-500/15 text-sky-400 border border-sky-500/30'
+                                : isLight ? 'bg-purple-100 text-purple-800 border border-purple-300' : 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                          }`}>
+                            ★ {voice.communityGrade}
+                          </span>
+                        )}
 
                         {/* Commercial License Pill */}
                         {voice.commercialUse === 'commercial_safe' ? (
@@ -3624,11 +3977,11 @@ export default function SpeechStudioView({
                 </div>
               </div>
               <span className="text-xs font-mono font-bold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/30">
-                {clonedProfiles.length} Approved Voices
+                {Array.from(new Map(clonedProfiles.map(p => [(p.name || '').trim().toLowerCase() || p.id, p])).values()).length} Approved Voices
               </span>
             </div>
 
-            {clonedProfiles.length === 0 ? (
+            {Array.from(new Map(clonedProfiles.map(p => [(p.name || '').trim().toLowerCase() || p.id, p])).values()).length === 0 ? (
               <div className="p-8 rounded-xl border border-dashed border-outline/25 text-center space-y-2">
                 <Mic className="w-8 h-8 mx-auto text-on-surface-variant opacity-60" />
                 <p className="text-xs font-mono text-on-surface-variant">
@@ -3637,7 +3990,7 @@ export default function SpeechStudioView({
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                {clonedProfiles.map(profile => (
+                {Array.from(new Map(clonedProfiles.map(p => [(p.name || '').trim().toLowerCase() || p.id, p])).values()).map(profile => (
                   <div
                     key={profile.id}
                     className={`p-3.5 rounded-xl border transition-all space-y-2.5 ${
@@ -3938,6 +4291,493 @@ export default function SpeechStudioView({
           )}
         </div>
       )}
+
+      {/* TAB 5: VOICE BLENDING & ACOUSTIC INTERPOLATOR */}
+      {activeTab === 'blend' && (() => {
+        const primaryBlendVoice = neuralVoices.find(v => v.id === blendPrimaryVoiceId) || neuralVoices[0];
+        const secondaryBlendVoice = neuralVoices.find(v => v.id === blendSecondaryVoiceId) || neuralVoices[1] || neuralVoices[0];
+        const weightA = Math.round((1 - blendRatio) * 100);
+        const weightB = Math.round(blendRatio * 100);
+
+        return (
+          <div className="space-y-5 animate-in fade-in duration-200">
+            {/* Header Card with Icon Badge */}
+            <div className={`p-4 sm:p-5 rounded-2xl border shadow-sm ${
+              isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
+            }`}>
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div className="flex items-center gap-3.5">
+                  <div className="w-10 h-10 rounded-xl bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center shrink-0 shadow-sm">
+                    <Sliders className="w-5 h-5 text-emerald-400 shrink-0" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold tracking-tight text-on-surface font-sans">
+                      Neural Voice Blending &amp; Acoustic Interpolator
+                    </h2>
+                    <p className="text-xs text-on-surface-variant font-mono mt-0.5">
+                      Linear acoustic vector interpolation between Kokoro-82M &amp; neural voice embeddings
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0 flex-nowrap">
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border ${
+                    isLight
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  }`}>
+                    {weightA}% {primaryBlendVoice?.name?.split('(')[0]?.trim()} + {weightB}% {secondaryBlendVoice?.name?.split('(')[0]?.trim()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Two-Column Voice Selectors */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* Voice A (Base) Card */}
+              <div className={`p-4 rounded-2xl border space-y-3 shadow-xs ${
+                isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-sky-500/10 border border-sky-500/30 flex items-center justify-center shrink-0">
+                      <Volume2 className="w-4 h-4 text-sky-400 shrink-0" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface">
+                        Base Profile (Voice A)
+                      </h3>
+                      <p className="text-[10px] text-on-surface-variant font-mono">
+                        Provides foundation timbre and dominant prosodic cadence
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-sky-400 bg-sky-500/10 px-2 py-0.5 rounded border border-sky-500/25">
+                    {weightA}% Weight
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-on-surface-variant mb-1 font-bold">
+                    Select Voice A:
+                  </label>
+                  <select
+                    value={blendPrimaryVoiceId}
+                    onChange={(e) => setBlendPrimaryVoiceId(e.target.value)}
+                    className={`w-full p-2.5 rounded-xl border font-mono text-xs cursor-pointer ${
+                      isLight
+                        ? 'bg-white border-slate-300 text-slate-900 focus:border-sky-500'
+                        : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] focus:border-[#00dbe7]'
+                    }`}
+                  >
+                    {neuralVoices.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} {v.communityGrade ? `★ ${v.communityGrade}` : ''} ({v.gender}) - {v.accent || v.languageLabel}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {primaryBlendVoice && (
+                  <div className={`p-3 rounded-xl border text-xs font-mono space-y-1.5 ${
+                    isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-black/30 border-white/5 text-[#e5e1e4]'
+                  }`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-on-surface truncate">{primaryBlendVoice.name}</span>
+                      {primaryBlendVoice.communityGrade && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
+                          ★ {primaryBlendVoice.communityGrade}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap text-[9px] text-on-surface-variant">
+                      <span className="px-1.5 py-0.2 rounded bg-white/5 border border-outline/20 uppercase">
+                        {primaryBlendVoice.architecture || 'kokoro-82m'}
+                      </span>
+                      <span>•</span>
+                      <span>{primaryBlendVoice.accent || primaryBlendVoice.languageLabel}</span>
+                      <span>•</span>
+                      <span className="uppercase">{primaryBlendVoice.gender}</span>
+                    </div>
+                    <p className="text-[10px] text-on-surface-variant line-clamp-2 mt-1">
+                      {primaryBlendVoice.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Voice B (Target) Card */}
+              <div className={`p-4 rounded-2xl border space-y-3 shadow-xs ${
+                isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center shrink-0">
+                      <Sparkles className="w-4 h-4 text-[#ce5dff] shrink-0" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface">
+                        Blend Target Profile (Voice B)
+                      </h3>
+                      <p className="text-[10px] text-on-surface-variant font-mono">
+                        Injects secondary vocal warmth, brightness, or specific timbre
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-mono font-bold text-[#ce5dff] bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/25">
+                    {weightB}% Weight
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-mono uppercase text-on-surface-variant mb-1 font-bold">
+                    Select Voice B:
+                  </label>
+                  <select
+                    value={blendSecondaryVoiceId}
+                    onChange={(e) => setBlendSecondaryVoiceId(e.target.value)}
+                    className={`w-full p-2.5 rounded-xl border font-mono text-xs cursor-pointer ${
+                      isLight
+                        ? 'bg-white border-slate-300 text-slate-900 focus:border-sky-500'
+                        : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] focus:border-[#00dbe7]'
+                    }`}
+                  >
+                    {neuralVoices.map(v => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} {v.communityGrade ? `★ ${v.communityGrade}` : ''} ({v.gender}) - {v.accent || v.languageLabel}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {secondaryBlendVoice && (
+                  <div className={`p-3 rounded-xl border text-xs font-mono space-y-1.5 ${
+                    isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-black/30 border-white/5 text-[#e5e1e4]'
+                  }`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-bold text-on-surface truncate">{secondaryBlendVoice.name}</span>
+                      {secondaryBlendVoice.communityGrade && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-purple-500/15 text-purple-300 border border-purple-500/30 shrink-0">
+                          ★ {secondaryBlendVoice.communityGrade}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 flex-wrap text-[9px] text-on-surface-variant">
+                      <span className="px-1.5 py-0.2 rounded bg-white/5 border border-outline/20 uppercase">
+                        {secondaryBlendVoice.architecture || 'kokoro-82m'}
+                      </span>
+                      <span>•</span>
+                      <span>{secondaryBlendVoice.accent || secondaryBlendVoice.languageLabel}</span>
+                      <span>•</span>
+                      <span className="uppercase">{secondaryBlendVoice.gender}</span>
+                    </div>
+                    <p className="text-[10px] text-on-surface-variant line-clamp-2 mt-1">
+                      {secondaryBlendVoice.description}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Interactive Weight Ratio Slider & Distribution Bar */}
+            <div className={`p-4 sm:p-5 rounded-2xl border shadow-sm space-y-4 ${
+              isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                    <Sliders className="w-4 h-4 text-emerald-400 shrink-0" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-on-surface">Vector Weight Ratio &amp; Distribution</h3>
+                    <p className="text-[10px] text-on-surface-variant font-mono">
+                      Continuous acoustic vector interpolation α ∈ [0.0, 1.0]
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs font-mono font-bold text-emerald-400">
+                    α = {blendRatio.toFixed(2)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Dual-Tone Distribution Bar */}
+              <div className="space-y-1">
+                <div className="w-full h-3 rounded-full bg-black/40 overflow-hidden flex border border-outline/20">
+                  <div
+                    className="h-full bg-sky-500 transition-all duration-150"
+                    style={{ width: `${weightA}%` }}
+                    title={`Voice A: ${weightA}%`}
+                  />
+                  <div
+                    className="h-full bg-[#ce5dff] transition-all duration-150"
+                    style={{ width: `${weightB}%` }}
+                    title={`Voice B: ${weightB}%`}
+                  />
+                </div>
+                <div className="flex items-center justify-between text-[10px] font-mono text-on-surface-variant">
+                  <span className="text-sky-400 font-bold">{weightA}% {primaryBlendVoice?.name?.split('(')[0]?.trim()}</span>
+                  <span className="text-[#ce5dff] font-bold">{weightB}% {secondaryBlendVoice?.name?.split('(')[0]?.trim()}</span>
+                </div>
+              </div>
+
+              {/* Slider Input */}
+              <div className="space-y-2">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={blendRatio}
+                  onChange={(e) => setBlendRatio(parseFloat(e.target.value))}
+                  className="w-full accent-emerald-400 cursor-pointer h-2 bg-outline/20 rounded-lg"
+                />
+              </div>
+
+              {/* Formula Code Snippet Box (Strict Rule 5 Standard) */}
+              <div className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl border font-mono text-[11px] sm:text-xs select-all shadow-xs transition-colors ${
+                isLight
+                  ? 'bg-slate-100 border-slate-300 text-slate-800'
+                  : 'bg-[#121215] border-[#3a494b]/40 text-[#e5e1e4]'
+              }`}>
+                <span className={isLight ? 'text-sky-600 font-bold' : 'text-[#00dbe7] font-bold'}>Acoustic Vector Interpolation: </span>
+                <span>voice = {(1 - blendRatio).toFixed(2)} * {primaryBlendVoice?.id || 'VoiceA'} + {blendRatio.toFixed(2)} * {secondaryBlendVoice?.id || 'VoiceB'}</span>
+              </div>
+
+              {/* Benchmark Quick Presets */}
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                <span className="text-[10px] font-mono text-on-surface-variant uppercase font-bold shrink-0">
+                  Quick Presets:
+                </span>
+                {[
+                  { label: '90% A / 10% B (Subtle Accent)', ratio: 0.10 },
+                  { label: '60% Fenrir + 40% Bella (Benchmark)', ratio: 0.40, recommended: true },
+                  { label: '50% A / 50% B (Equal Mix)', ratio: 0.50 },
+                  { label: '30% A / 70% B (Target Lead)', ratio: 0.70 }
+                ].map(preset => (
+                  <button
+                    key={preset.label}
+                    type="button"
+                    onClick={() => {
+                      setBlendRatio(preset.ratio);
+                      if (preset.recommended) {
+                        setBlendPrimaryVoiceId('kokoro-am-fenrir');
+                        setBlendSecondaryVoiceId('kokoro-af-bella');
+                      }
+                    }}
+                    className={`h-7 px-2.5 rounded text-[10px] font-mono border transition-all cursor-pointer ${
+                      Math.abs(blendRatio - preset.ratio) < 0.02
+                        ? isLight
+                          ? 'bg-emerald-50 text-emerald-800 border-emerald-400 font-bold shadow-xs'
+                          : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold shadow-xs'
+                        : isLight
+                          ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                          : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                    }`}
+                  >
+                    {preset.recommended && '★ '}
+                    {preset.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Synthesis Script Input Card */}
+            <div className={`p-4 sm:p-5 rounded-2xl border shadow-sm space-y-4 ${
+              isLight ? 'bg-white border-slate-200' : 'bg-[#18181b] border-[#3a494b]/40'
+            }`}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center shrink-0">
+                    <Music className="w-4 h-4 text-emerald-400 shrink-0" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-on-surface">Synthesis Script</h3>
+                    <p className="text-[10px] text-on-surface-variant font-mono">
+                      Input narration script for acoustic synthesis
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-mono text-on-surface-variant">
+                    {text.length} chars • ~{Math.max(1, Math.round(text.length / 14))}s estimated
+                  </span>
+                </div>
+              </div>
+
+              <textarea
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                rows={3}
+                placeholder="Enter text to synthesize using blended acoustic model..."
+                className={`w-full p-3 rounded-xl border font-sans text-xs resize-y focus:outline-none transition-colors ${
+                  isLight
+                    ? 'bg-slate-50 border-slate-300 text-slate-900 focus:border-emerald-500'
+                    : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] focus:border-emerald-400'
+                }`}
+              />
+
+              {/* Sample Script Quick Fill */}
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <span className="text-[10px] font-mono text-on-surface-variant uppercase font-bold shrink-0">
+                  Sample Scripts:
+                </span>
+                {SAMPLE_PROMPTS.map(p => (
+                  <button
+                    key={p.label}
+                    type="button"
+                    onClick={() => setText(p.text)}
+                    className={`h-6 px-2 rounded text-[9px] font-mono border transition-all cursor-pointer ${
+                      isLight
+                        ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                        : 'bg-white/5 hover:bg-white/10 text-on-surface-variant border-white/10'
+                    }`}
+                  >
+                    {p.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Synthesis Action Bar (Strict Button Standard Rule 2) */}
+              <div className="flex items-center justify-between gap-3 pt-2 border-t border-outline/15 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setBlendRatio(0.40);
+                      setBlendPrimaryVoiceId('kokoro-am-fenrir');
+                      setBlendSecondaryVoiceId('kokoro-af-bella');
+                      setText(SAMPLE_PROMPTS[0].text);
+                    }}
+                    className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 leading-none cursor-pointer ${
+                      isLight
+                        ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm'
+                        : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border border-[#3a494b]/40 shadow-sm'
+                    }`}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5 shrink-0" />
+                    <span>Reset</span>
+                  </button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleBlendSynthesize}
+                    disabled={isBlendingSynthesizing || !text.trim()}
+                    className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 leading-none transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${
+                      isLight
+                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white border border-emerald-700 shadow-emerald-500/10'
+                        : 'bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 hover:text-white border border-emerald-500/50 shadow-emerald-500/10'
+                    }`}
+                  >
+                    {isBlendingSynthesizing ? (
+                      <>
+                        <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+                        <span>Blending Acoustic Vectors...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                        <span>Synthesize Blended Voice</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Result Audio Card (When Generated) */}
+            {blendedAudioUrl && (
+              <div className={`p-4 sm:p-5 rounded-2xl border shadow-lg space-y-4 animate-in fade-in zoom-in-95 ${
+                isLight ? 'bg-white border-emerald-300' : 'bg-[#18181b] border-emerald-500/40'
+              }`}>
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-outline/15 pb-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-8 h-8 rounded-lg bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-mono font-bold uppercase text-on-surface">
+                        {blendedVoiceName || 'Synthesized Blended Audio'}
+                      </h4>
+                      <p className="text-[10px] text-on-surface-variant font-mono">
+                        Linear vector interpolation rendered at 24,000 Hz RIFF WAV
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className="text-[10px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+                    SOTA Acoustic Blend Ready
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <audio
+                    controls
+                    src={blendedAudioUrl}
+                    className="w-full h-8"
+                  />
+                </div>
+
+                {/* Actions for Blended Audio */}
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-outline/15 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleToggleBlendedPlay}
+                      className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 leading-none transition-all cursor-pointer ${
+                        isBlendedPlaying
+                          ? 'bg-emerald-500 text-white border border-emerald-600'
+                          : isLight
+                            ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm'
+                            : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border border-[#3a494b]/40 shadow-sm'
+                      }`}
+                    >
+                      {isBlendedPlaying ? <Pause className="w-3.5 h-3.5 shrink-0" /> : <Play className="w-3.5 h-3.5 shrink-0" />}
+                      <span>{isBlendedPlaying ? 'Pause Audio' : 'Play Blended Voice'}</span>
+                    </button>
+
+                    <a
+                      href={blendedAudioUrl}
+                      download={`sutharlabs-blended-voice-${Date.now()}.wav`}
+                      className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 leading-none transition-all cursor-pointer ${
+                        isLight
+                          ? 'bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 shadow-sm'
+                          : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border border-[#3a494b]/40 shadow-sm'
+                      }`}
+                    >
+                      <Download className="w-3.5 h-3.5 shrink-0" />
+                      <span>Download WAV</span>
+                    </a>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedVoiceId(blendPrimaryVoiceId);
+                      setActiveTab('synthesize');
+                      onAddLog({
+                        timestamp: new Date().toLocaleTimeString(),
+                        type: 'INFO',
+                        message: `Loaded blended voice into Main TTS Studio.`
+                      });
+                    }}
+                    className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center justify-center gap-1.5 leading-none transition-all cursor-pointer ${
+                      isLight
+                        ? 'bg-sky-500 hover:bg-sky-600 text-white border border-sky-600 shadow-sm font-bold'
+                        : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border border-[#00dbe7]/50 shadow-[#00dbe7]/10 font-bold'
+                    }`}
+                  >
+                    <span>Use in Main TTS Studio →</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Clear History Confirmation Modal */}
       <ConfirmModal

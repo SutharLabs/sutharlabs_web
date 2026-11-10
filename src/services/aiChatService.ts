@@ -459,4 +459,70 @@ export async function indexDocumentInRag(
   return res.json();
 }
 
+export interface ClientImageGenOptions {
+  prompt: string;
+  model?: 'janus-pro-1b' | 'flux-schnell' | 'sdxl-turbo' | 'show-o';
+  aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:2';
+  style?: 'photorealistic' | 'cinematic' | 'anime' | 'cyberpunk' | '3d-render' | 'minimalist' | 'digital-art';
+  negativePrompt?: string;
+  seed?: number;
+}
+
+export async function generateAIImage(
+  options: ClientImageGenOptions,
+  token?: string
+): Promise<{ success: boolean; image: any }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/image/generate', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(options)
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Image generation failed (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function processAIImage(
+  options: {
+    imageUrl?: string;
+    imageBase64?: string;
+    operation: 'remove-background' | 'grayscale' | 'invert' | 'contrast' | 'sepia' | 'analyze';
+    prompt?: string;
+  },
+  token?: string
+): Promise<{ success: boolean; operation: string; processedUrl?: string; analysisText?: string }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/image/process', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(options)
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Image processing failed (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+export async function fetchImageModels(token?: string): Promise<{ models: any[] }> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/ai/image/models', { headers });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch image models (HTTP ${res.status})`);
+  }
+  return res.json();
+}
+
+
 

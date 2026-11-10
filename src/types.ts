@@ -118,6 +118,24 @@ export interface AIChatMessage {
   executionSteps?: TaskExecutionStep[];
   mcpCalls?: Array<{ server: string; tool: string; params: any; resultSummary: string }>;
   ragResults?: Array<{ chunkId?: string; docId?: string; title?: string; document?: string; section?: string; text?: string; excerpt?: string; score?: number; relevance?: string; source?: string }>;
+  generatedImages?: Array<GeneratedImageMeta>;
+}
+
+export interface GeneratedImageMeta {
+  id: string;
+  url: string;
+  prompt: string;
+  revisedPrompt?: string;
+  model: string;
+  modelLabel?: string;
+  architecture?: string;
+  width?: number;
+  height?: number;
+  aspectRatio?: string;
+  createdAt: number;
+  format?: string;
+  style?: string;
+  fileSize?: number;
 }
 
 export interface AIAgentPersona {
@@ -162,6 +180,7 @@ export interface AIChatBackgroundTask {
   isDeepResearch?: boolean;
   researchSources?: Array<{ title: string; url: string; snippet: string; source: string; date?: string }>;
   ragResults?: any[];
+  generatedImages?: GeneratedImageMeta[];
   prompt: string;
   status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
   progress: {

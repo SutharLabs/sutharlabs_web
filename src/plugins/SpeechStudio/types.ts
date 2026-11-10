@@ -10,6 +10,8 @@ export interface TTSVoiceOption {
   description?: string;
   previewSample?: string;
   emotionTag?: string;
+  communityGrade?: string; // e.g. "Grade A (Top Rated)", "Grade A−", "Grade B−", "Grade C+"
+  blendWeight?: number; // 0.0 to 1.0 for vector interpolation blending
   usageTag?: string; // e.g. "Conversational & Podcast", "Narrative & Audiobooks", "Customer Support"
   architecture?: string;
   sampleRate?: string; // e.g. "24,000 Hz", "48,000 Hz"
@@ -94,6 +96,7 @@ export interface SpeechHistoryItem {
   id: string;
   text: string;
   language: string;
+  voiceId?: string;
   voiceName: string;
   charCount: number;
   timestamp: string;

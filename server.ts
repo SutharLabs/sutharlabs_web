@@ -92,6 +92,11 @@ import {
 } from "./src/middleware/index.js";
 
 import { sovereignRag } from "./src/services/contextualRagService.js";
+import {
+  generateSovereignImage,
+  processSovereignImage,
+  OPEN_WEIGHT_IMAGE_MODELS
+} from "./src/services/imageGenService.js";
 
 
 
@@ -5201,6 +5206,7 @@ interface BackgroundAITaskInternal {
   isDeepResearch?: boolean;
   researchSources?: any[];
   ragResults?: any[];
+  generatedImages?: any[];
   prompt: string;
   attachments?: any[];
   status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -5600,6 +5606,50 @@ async function performServerWebResearch(query: string) {
       }
     }
 
+    case 'generate_image': {
+      try {
+        const prompt = params.prompt || params.query || '';
+        const style = params.style || 'cinematic';
+        const model = params.model || 'janus-pro-1b';
+        const aspectRatio = params.aspectRatio || '1:1';
+        const result = await generateSovereignImage({ prompt, style, model, aspectRatio });
+        return {
+          status: 'success',
+          server: 'sovereign-image-mcp',
+          data: {
+            imageId: result.id,
+            url: result.url,
+            prompt: result.prompt,
+            model: result.modelLabel,
+            width: result.width,
+            height: result.height,
+            style: result.style
+          }
+        };
+      } catch (err: any) {
+        return { status: 'error', error: err.message };
+      }
+    }
+
+    case 'process_image': {
+      try {
+        const operation = params.operation || 'analyze';
+        const result = await processSovereignImage({
+          operation,
+          imageUrl: params.imageUrl,
+          imageBase64: params.imageBase64,
+          prompt: params.prompt
+        });
+        return {
+          status: 'success',
+          server: 'sovereign-image-mcp',
+          data: result
+        };
+      } catch (err: any) {
+        return { status: 'error', error: err.message };
+      }
+    }
+
     default:
       return { status: 'unknown_tool', tool: toolName };
   }
@@ -5687,6 +5737,11 @@ async function runBackgroundAITask(task: BackgroundAITaskInternal) {
       toolPromises.push(executeMcpTool('web_search', { query: task.prompt.slice(0, 100) }));
     }
 
+    const isImageIntent = pLower.includes('image') || pLower.includes('generate image') || pLower.includes('illustration') || pLower.includes('draw') || pLower.includes('picture') || pLower.includes('artwork');
+    if (isImageIntent) {
+      toolPromises.push(executeMcpTool('generate_image', { prompt: task.prompt }));
+    }
+
     if (toolPromises.length === 0 && (isAgent || isAuto)) {
       toolPromises.push(executeMcpTool('contextual_rag_query', { query: task.prompt }));
       toolPromises.push(executeMcpTool('database_schema_and_stats'));
@@ -5704,6 +5759,21 @@ async function runBackgroundAITask(task: BackgroundAITaskInternal) {
       if (ragMcp && ragMcp.data?.results && ragMcp.data.results.length > 0) {
         task.ragResults = ragMcp.data.results;
         task.logs.push(`[${new Date().toLocaleTimeString()}] Contextual RAG: Retrieved ${ragMcp.data.results.length} grounded passage(s) via Hybrid BM25/Vector RRF.`);
+      }
+      const imgMcp = validMcp.find(r => r.server === 'sovereign-image-mcp');
+      if (imgMcp && imgMcp.data?.url) {
+        task.generatedImages = [{
+          id: imgMcp.data.imageId,
+          url: imgMcp.data.url,
+          prompt: imgMcp.data.prompt,
+          model: imgMcp.data.model,
+          modelLabel: imgMcp.data.model,
+          width: imgMcp.data.width,
+          height: imgMcp.data.height,
+          style: imgMcp.data.style,
+          createdAt: Date.now()
+        }];
+        task.logs.push(`[${new Date().toLocaleTimeString()}] Sovereign Image Studio: Synthesized visual artifact (${imgMcp.data.model}, ${imgMcp.data.width}x${imgMcp.data.height}).`);
       }
       mcpContextText = '\n\n[Active MCP Tools Live Context]\n' + validMcp.map(r => `### MCP Server: ${r.server}\n\`\`\`json\n${JSON.stringify(r.data, null, 2)}\n\`\`\``).join('\n\n');
       task.steps.push({
@@ -5877,7 +5947,8 @@ When answering factual, news, or research queries using live web intelligence:
       planData: task.planData,
       executionSteps: task.steps,
       researchSources: task.researchSources,
-      ragResults: task.ragResults
+      ragResults: task.ragResults,
+      generatedImages: task.generatedImages
     };
 
     await appendMessageToSession(task.userEmail, task.sessionId, assistantMsg);
@@ -5964,6 +6035,17 @@ app.get("/api/ai/chat/mcp/tools", authenticateToken, async (_req: any, res: any)
         tools: [
           { name: 'contextual_rag_query', description: 'Executes hybrid dense vector and BM25 search over sovereign indexed documents.' }
         ]
+      },
+      {
+        id: 'sovereign-image-mcp',
+        name: 'Sovereign Multimodal Image Studio MCP',
+        description: 'Text-to-image synthesis (Janus-Pro-1B, Flux, SDXL-Turbo) and image processing (background removal, vision analysis)',
+        category: 'Multimodal',
+        status: 'connected',
+        tools: [
+          { name: 'generate_image', description: 'Generates visual illustrations, artwork, and diagrams from text prompts.' },
+          { name: 'process_image', description: 'Applies image transformations (remove-background, grayscale, vision analysis).' }
+        ]
       }
     ]
   });
@@ -6020,6 +6102,39 @@ app.get("/api/ai/rag/stats", authenticateToken, async (_req: any, res: any) => {
     engine: 'Anthropic Contextual Retrieval + Dense nomic-embed-text (768-dim) + BM25 RRF',
     stats: sovereignRag.getStats()
   });
+});
+
+// POST /api/ai/image/generate: Generate an image using open-weight models (Janus-Pro-1B, Flux, SDXL-Turbo)
+app.post("/api/ai/image/generate", authenticateToken, async (req: any, res: any) => {
+  const { prompt, model, aspectRatio, style, negativePrompt, seed } = req.body;
+  if (!prompt || typeof prompt !== 'string') {
+    return res.status(400).json({ error: "Prompt is required for image generation" });
+  }
+
+  try {
+    const result = await generateSovereignImage({ prompt, model, aspectRatio, style, negativePrompt, seed });
+    return res.json({ success: true, image: result });
+  } catch (err: any) {
+    return res.status(500).json({ error: "Image generation failed", details: err.message });
+  }
+});
+
+// POST /api/ai/image/process: Process an existing image (remove-background, filters, vision analysis)
+app.post("/api/ai/image/process", authenticateToken, async (req: any, res: any) => {
+  const { operation, imageUrl, imageBase64, prompt } = req.body;
+  if (!operation) return res.status(400).json({ error: "Operation is required" });
+
+  try {
+    const result = await processSovereignImage({ operation, imageUrl, imageBase64, prompt });
+    return res.json(result);
+  } catch (err: any) {
+    return res.status(500).json({ error: "Image processing failed", details: err.message });
+  }
+});
+
+// GET /api/ai/image/models: List supported open-weight models
+app.get("/api/ai/image/models", authenticateToken, async (_req: any, res: any) => {
+  res.json({ models: OPEN_WEIGHT_IMAGE_MODELS });
 });
 
 // GET /api/ai/chat/skills: Enumerate specialized AI engineering skills
