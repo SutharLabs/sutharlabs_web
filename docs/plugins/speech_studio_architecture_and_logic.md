@@ -2,7 +2,7 @@
 
 > **Standard:** SutharLabs Sovereign Engine Specification  
 > **Plugin Identifier:** `speech-studio` (`wp_speech_studio`)  
-> **Current Version:** `v0.3.1`  
+> **Current Version:** `v1.0.0 (Production Enterprise Edition)`  
 > **Classification:** High-Definition Neural Text-to-Speech (TTS), Expressive Voice Synthesis & Zero-Shot Cloning
 
 ---
@@ -197,3 +197,84 @@ To ensure consistent replication quality, Speech Studio provides pre-tested phon
 
 ### C. Reference Transcript Synchronization
 Neural zero-shot cloning requires exact phonetic conditioning. When the user selects a calibration script, Speech Studio automatically populates the `referenceTranscript` field. The backend passes this exact text alongside the audio payload, guaranteeing 100% phonetic alignment without hallucination.
+
+
+---
+
+## 8. Neural Voice Blending & Acoustic Vector Interpolation (v1.0.0 Enterprise)
+
+### A. Mathematical Formulation
+Speech Studio v1.0.0 introduces continuous acoustic latent space vector blending between neural voice embeddings. For any base voice profile $A$ and target voice profile $B$, the acoustic vector $\vec{v}_{\text{blend}}$ is computed via linear interpolation parameterized by blending weight $\alpha \in [0.0, 1.0]$:
+
+$$\vec{v}_{\text{blend}} = (1 - \alpha)\vec{v}_{A} + \alpha\vec{v}_{B}$$
+
+* When $\alpha = 0.0$: Output is 100% Base Profile $A$.
+* When $\alpha = 1.0$: Output is 100% Target Profile $B$.
+* When $\alpha = 0.40$ (Community Golden Benchmark): Synthesizes 60% Authoritative Base (`kokoro-am-fenrir`) blended with 40% Articulate Cadence (`kokoro-af-bella`), providing natural warmth and vocal presence without drift.
+
+### B. REST API Endpoint Specification
+* **Endpoint**: `POST /api/plugins/speech-studio/blend-voices`
+* **Request Body**:
+  ```json
+  {
+    "primaryVoiceId": "kokoro-am-fenrir",
+    "secondaryVoiceId": "kokoro-af-bella",
+    "blendRatio": 0.40,
+    "text": "SutharLabs sovereign speech blending active across model embeddings.",
+    "rate": 1.0,
+    "pitch": 1.0,
+    "volume": 1.0
+  }
+  ```
+* **Response Payload**:
+  ```json
+  {
+    "success": true,
+    "audioUrl": "data:audio/wav;base64,UklGR...",
+    "blendedVoiceName": "60% Kokoro Fenrir (am_fenrir) + 40% Kokoro Bella (af_bella)",
+    "formula": "voice = 0.60 * kokoro-am-fenrir + 0.40 * kokoro-af-bella",
+    "primaryVoice": "Kokoro Fenrir (am_fenrir)",
+    "secondaryVoice": "Kokoro Bella (af_bella)",
+    "blendRatio": 0.4
+  }
+  ```
+
+---
+
+## 9. Kokoro-82M & Piper Community Grade Standards
+
+SutharLabs calibrates all preset neural profiles according to community listening test benchmarks:
+
+| Voice ID | Gender & Locale | Community Grade | Architecture | Primary Characteristic |
+| :--- | :--- | :--- | :--- | :--- |
+| **`kokoro-af-heart`** | Female (US) | **★ Grade A (Top Rated)** | Kokoro-82M (Hexgrad) | Benchmark leader for realistic human dialogue and audiobooks. |
+| **`kokoro-af-bella`** | Female (US) | **★ Grade A−** | Kokoro-82M (Hexgrad) | Clean, upbeat articulation for software narration. |
+| **`kokoro-bf-emma`** | Female (UK) | **★ Grade B−** | Kokoro-82M (Hexgrad) | Refined British RP cadence for long-form reading. |
+| **`kokoro-af-nicole`** | Female (US) | **★ Grade B−** | Kokoro-82M (Hexgrad) | Soft, informal companion tone for conversational agents. |
+| **`kokoro-am-fenrir`** | Male (US) | **★ Grade C+ (Top Male)** | Kokoro-82M (Hexgrad) | Deep resonant baritone for technical changelogs and governance. |
+| **`kokoro-am-michael`** | Male (US) | **★ Grade C+** | Kokoro-82M (Hexgrad) | Neutral, steady male voice with minimal inflection drift. |
+| **`kokoro-bm-george`** | Male (UK) | **★ Grade C** | Kokoro-82M (Hexgrad) | Measured British delivery for documentaries. |
+| **`kokoro-hf-alpha`** | Female (IN) | **★ Grade C** | Kokoro-82M (Hexgrad) | Authentic localized Indian English and Hindi accent. |
+| **`kokoro-hm-omega`** | Male (IN) | **★ Grade C** | Kokoro-82M (Hexgrad) | Regional masculine Indian baritone delivery. |
+| **`piper-lessac-high`** | Female (US) | **★ High Tier (22kHz)** | Piper (MIT License) | Sub-100ms deterministic C++ neural execution on ARM64. |
+| **`piper-libritts-high`** | Male (US) | **★ High Tier (22kHz)** | Piper (MIT License) | High-clarity LibriTTS-R trained male voice for terminal feeds. |
+| **`piper-alan-medium`** | Male (UK) | **★ Medium Tier** | Piper (MIT License) | Low-memory British English narrator for low latency feedback. |
+
+---
+
+## 10. Replicated Voice Duplication Prevention Architecture
+
+### A. Root Cause Analysis
+During voice cloning testing, approving a synthesized voice profile created a client-side temporary identifier `cloned-${Date.now()}`. When the server saved the profile to PostgreSQL, it generated a canonical UUID.
+
+On subsequent queries to `GET /api/plugins/speech-studio/cloned-voices`, client-side state comparisons observed an ID mismatch between the temporary and persistent IDs. This triggered an automatic post loop that created duplicate PostgreSQL records.
+
+### B. Production Solution
+1. **Canonical ID Synchronization**: `handleApproveAndSaveVoice` adopts the server-returned UUID immediately into local state and `localStorage`.
+2. **Normalized Name Deduplication**: Both the voice selector list and the "My Replicated Voices Library" filter profiles by normalized name:
+   ```typescript
+   const uniqueClonedProfiles = Array.from(
+     new Map(clonedProfiles.map(p => [(p.name || '').trim().toLowerCase() || p.id, p])).values()
+   );
+   ```
+This guarantees that even if historical duplicate entries exist in browser cache, every unique voice profile renders exactly once.

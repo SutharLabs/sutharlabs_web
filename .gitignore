@@ -16,3 +16,6 @@ data/*.json
 
 server.js
 server.js.map
+*.tar.gz
+*.lock
+dist.tar.gz

@@ -807,4 +807,64 @@ flowchart LR
     * **Deep Research Toggle**: Direct one-click toggle with active pulsing indicator.
   * Eliminates redundant top-level toolbars and optimizes vertical viewport space across mobile and desktop.
 
+---
+
+## 29. Sovereign Open-Weight Image Studio & Vision Processing Pipeline (`imageGenService.ts`, `server.ts`, `AdminAIChatView.tsx`)
+
+* **1. Multi-Model Open-Weight Image Generation**:
+  * **DeepSeek Janus-Pro-1B (1.5B Unified Autoregressive Transformer)**: Decoupled SigLIP visual understanding from discrete VQ-tokenizer vector decoding. Runs natively on CPU without GPU overhead.
+  * **FLUX.1 [schnell] (12B 4-step Rectified Flow)**: High-resolution photorealistic rendering with anatomy and typography fidelity.
+  * **Stability SDXL-Turbo (3.5B 1-step ADD Distilled)**: Sub-second visual evaluations.
+  * **NUS/ByteDance Show-o (1.3B)**: Unified autoregressive multimodal understanding with masked diffusion tokens.
+  * **Autonomous Deterministic SVG Fallback**: Instant, high-resolution vector geometry generator ensuring synthesis never breaks if external gateways encounter network latency.
+
+* **2. Computer Vision & Image Transformation Engine**:
+  * Added operations: `remove-background`, `grayscale`, `invert`, `contrast`, and `analyze` (vision reasoning via Qwen2.5-VL / Ollama on VM 2).
+  * Storage Vault integration: Saves generated artifacts to `storage/ai-generated/{id}.png` statically served from `/storage/ai-generated/*`.
+
+* **3. AI Studio Direct Integration**:
+  * Added `/image <prompt>` and `/gen <prompt>` slash command handling with command palette autocomplete.
+  * Added "Image Studio" action button in the bottom editor toolbar with pink badge.
+  * Added generated image showcase card in message feed with zoom modal, "Save to Storage Vault on VM 1", and "Download PNG".
+  * Mounted endpoints `POST /api/ai/image/generate`, `POST /api/ai/image/process`, and `GET /api/ai/image/models`.
+  * Registered `sovereign-image-mcp` with autonomous tools `generate_image` and `process_image` for agent background task orchestration.
+
+---
+
+## 30. Speech Studio v1.0.0 Production Enterprise Edition & Kokoro-82M Voice Blending
+
+* **1. Production Enterprise Edition Upgrade (v1.0.0)**:
+  * Bumped plugin version from `0.3.3` Beta to `1.0.0` Production Enterprise Edition across `manifest.json`, `manifest.ts`, and `SpeechStudioView.tsx`.
+
+* **2. Full Kokoro-82M Community Roster & Ratings**:
+  * Integrated all 9 community-graded Kokoro-82M voice profiles:
+    * `kokoro-af-heart` (Female US, ★ Grade A Top Rated)
+    * `kokoro-af-bella` (Female US, ★ Grade A−)
+    * `kokoro-bf-emma` (Female UK, ★ Grade B−)
+    * `kokoro-af-nicole` (Female US, ★ Grade B−)
+    * `kokoro-am-fenrir` (Male US, ★ Grade C+ Top Male)
+    * `kokoro-am-michael` (Male US, ★ Grade C+)
+    * `kokoro-bm-george` (Male UK, ★ Grade C)
+    * `kokoro-hf-alpha` (Female Hindi/Indian, ★ Grade C)
+    * `kokoro-hm-omega` (Male Hindi/Indian, ★ Grade C)
+
+* **3. Deterministic Low-Resource Piper Engine (MIT License)**:
+  * Integrated ultra-fast C++ ONNX binary execution with sub-100ms latency on ARM64 (`piper-lessac-high`, `piper-libritts-high`, `piper-alan-medium`).
+
+* **4. Neural Voice Blending & Acoustic Vector Interpolation**:
+  * Implemented linear acoustic vector interpolation $\vec{v}_{\text{blend}} = (1 - \alpha)\vec{v}_{A} + \alpha\vec{v}_{B}$.
+  * Added `POST /api/plugins/speech-studio/blend-voices` with dynamic pitch and formant contour blending.
+  * Built interactive Cockpit UI (`activeTab === 'blend'`):
+    * Primary (Voice A) and Secondary (Voice B) dropdown selectors.
+    * Interactive ratio slider with real-time percentage feedback and dual-tone weight distribution progress bar.
+    * Golden benchmark presets (`60% Fenrir + 40% Bella`).
+    * Formula display adhering to Rule 5 styling standard.
+    * Native audio waveform player, WAV download, and "Use as Primary Voice in Studio" button.
+
+* **5. Replicated Voice Duplication Prevention**:
+  * Resolved the bug where cloned voices duplicated on re-render.
+  * `handleApproveAndSaveVoice` adopts canonical server UUIDs immediately into state and `localStorage`.
+  * Applied normalized name deduplication across voice selector lists and the Replicated Voices Library.
+
+
 

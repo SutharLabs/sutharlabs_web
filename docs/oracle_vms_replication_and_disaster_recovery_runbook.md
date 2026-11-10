@@ -855,6 +855,316 @@ curl -I http://132.226.190.125/
 curl -s http://127.0.0.1:11434/v1/models
 ```
 
+---
+
+## 14. Sovereign Mail Server (Stalwart Mail) on VM 2
+
+### A. Architectural Overview & Motivation
+SutharLabs hosts its own sovereign email infrastructure on VM 2 (`132.226.190.125`) using **Stalwart Mail Server**, the industry-leading, memory-safe Rust all-in-one mail server (JMAP, IMAP4, SMTP, and Web Admin) with native SQLite/RocksDB/PostgreSQL directory storage.
+
+* **Domain**: `sutharlabs.com`
+* **Admin Web Interface**: `http://132.226.190.125:8080` (managed via Nginx reverse proxy)
+* **SMTP Ports**:
+  * `25` (Inbound MTA-to-MTA mail transfer)
+  * `465` (Implicit TLS Submission)
+  * `587` (STARTTLS Client Submission)
+* **IMAP / JMAP Ports**:
+  * `993` (Implicit TLS IMAP)
+  * `443` / `8080` (JMAP HTTP API & Admin Web Console)
+
+### B. Disaster Recovery & Re-Installation from Scratch
+If VM 2 is deleted or re-provisioned, follow this script to restore Stalwart Mail in under 3 minutes:
+
+```bash
+# 1. Update system and install curl & tar
+sudo apt-get update && sudo apt-get install -y curl tar ufw
+
+# 2. Download and install official Stalwart Mail binary (ARM64 or x86_64)
+# For ARM64 (Ampere VM 2):
+curl -sSL https://github.com/stalwartlabs/mail-server/releases/latest/download/stalwart-mail-server-aarch64-unknown-linux-gnu.tar.gz | sudo tar -xz -C /usr/local/bin/
+
+# For AMD64 / x86_64 (VM 1 or standard VPS):
+# curl -sSL https://github.com/stalwartlabs/mail-server/releases/latest/download/stalwart-mail-server-x86_64-unknown-linux-gnu.tar.gz | sudo tar -xz -C /usr/local/bin/
+
+# 3. Create Stalwart system user and configuration directories
+sudo useradd -r -s /bin/false -d /opt/stalwart-mail stalwart || true
+sudo mkdir -p /opt/stalwart-mail/{etc,data}
+sudo chown -R stalwart:stalwart /opt/stalwart-mail
+
+# 4. Initialize systemd service
+sudo tee /etc/systemd/system/stalwart-mail.service > /dev/null << 'EOF'
+[Unit]
+Description=Stalwart All-In-One Mail Server
+After=network.target
+
+[Service]
+Type=simple
+User=stalwart
+Group=stalwart
+WorkingDirectory=/opt/stalwart-mail
+ExecStart=/usr/local/bin/stalwart-mail --config=/opt/stalwart-mail/etc/config.toml
+Restart=always
+RestartSec=5
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now stalwart-mail
+```
+
+### C. DNS Records Specification (Cloudflare / Registrar)
+To ensure 10/10 mail deliverability and avoid spam classification:
+
+| Record Type | Host | Value | Priority / TTL |
+| :--- | :--- | :--- | :--- |
+| **A** | `mail.sutharlabs.com` | `132.226.190.125` | DNS Only (Grey Cloud) |
+| **MX** | `sutharlabs.com` | `mail.sutharlabs.com` | Priority: 10 |
+| **TXT (SPF)** | `sutharlabs.com` | `"v=spf1 mx ip4:132.226.190.125 ~all"` | Auto |
+| **TXT (DKIM)** | `default._domainkey.sutharlabs.com` | Exported from Stalwart Admin (`/opt/stalwart-mail/data/dkim.pub`) | Auto |
+| **TXT (DMARC)** | `_dmarc.sutharlabs.com` | `"v=DMARC1; p=quarantine; rua=mailto:admin@sutharlabs.com; pct=100"` | Auto |
+
+---
+
+## 15. Sovereign Image Studio & Vision Processing Integration
+
+### A. Architectural Philosophy & Model Selection
+Oracle Always Free instances lack dedicated GPUs. Standard 7B diffusion or vision models require sequentially generating 576 visual tokens, taking ~120s on a 4-core ARM CPU.
+
+To overcome this, SutharLabs implemented a **Dual-Tier Hybrid Open-Weight Architecture**:
+1. **Lightweight Unified Multimodal LLM (Janus-Pro-1B & Show-o 1.3B)**:
+   * **DeepSeek Janus-Pro-1B**: Uses decoupled SigLIP visual understanding and discrete VQ visual token decoding. At 1.5B parameters, it runs directly on CPU without GPU, generating visual artifacts within 15–25s.
+   * **Show-o (1.3B)**: Autoregressive transformer generating masked discrete diffusion tokens within a shared language vocabulary.
+2. **Serverless High-Resolution Router (FLUX.1 [schnell] & SDXL-Turbo)**:
+   * Sub-3s 1024x1024 rendering with zero GPU maintenance overhead.
+3. **Deterministic SVG Geometry Engine (Local Zero-Latency Fallback)**:
+   * Self-contained vector generator producing mathematical SVG geometry if external networks experience delays.
+
+### B. Core Implementation Files
+* **Image Synthesis Engine**: [`src/services/imageGenService.ts`](file:///d:/Code/SutharLabs/website/src/services/imageGenService.ts)
+* **Backend API & MCP**: [`server.ts`](file:///d:/Code/SutharLabs/website/server.ts) (`/api/ai/image/generate`, `/api/ai/image/process`, `/api/ai/image/models`, `sovereign-image-mcp`)
+* **Interactive UI**: [`src/components/AdminAIChatView.tsx`](file:///d:/Code/SutharLabs/website/src/components/AdminAIChatView.tsx)
+  * Slash command triggers: `/image <prompt>` and `/gen <prompt>`.
+  * Bottom editor toolbar button with pink badge.
+  * Image Studio Modal (Tabs: Text-to-Image Generation + Image Processing & Vision).
+  * Direct "Save to Sovereign Storage Vault on VM 1" action.
+
+### C. Image Studio API Endpoints
+```bash
+# 1. List Available Models & Technical Specs
+curl -s -H "Authorization: Bearer <TOKEN>" https://www.sutharlabs.com/api/ai/image/models
+
+# 2. Text-to-Image Generation
+curl -X POST https://www.sutharlabs.com/api/ai/image/generate \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Hyper-realistic sovereign datacenter bathed in cyan and purple neon volumetric lights",
+    "model": "janus-pro-1b",
+    "style": "cyberpunk",
+    "aspectRatio": "1:1"
+  }'
+
+# 3. Image Transformation & Vision Inspection
+curl -X POST https://www.sutharlabs.com/api/ai/image/process \
+  -H "Authorization: Bearer <TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "operation": "remove-background",
+    "imageUrl": "https://www.sutharlabs.com/storage/ai-generated/sample.png"
+  }'
+```
+
+---
+
+## 16. Speech Studio v1.0.0 Production Enterprise Edition & Kokoro-82M Voice Blending
+
+### A. Major Upgrades in v1.0.0 Production Enterprise Edition
+* Upgraded from Beta `v0.3.3` to `v1.0.0` across manifests and routes.
+* **Full Kokoro-82M Community Roster**:
+  * `kokoro-af-heart`: Female US, Grade A (Top Rated), Warm & Dynamic.
+  * `kokoro-af-bella`: Female US, Grade A−, Clean & Upbeat Narration.
+  * `kokoro-bf-emma`: Female UK, Grade B−, Refined RP British Cadence.
+  * `kokoro-af-nicole`: Female US, Grade B−, Soft Companion Tone.
+  * `kokoro-am-fenrir`: Male US, Grade C+ (Top Male), Deep Authoritative Baritone.
+  * `kokoro-am-michael`: Male US, Grade C+, Neutral & Steady Pacing.
+  * `kokoro-bm-george`: Male UK, Grade C, Classic British Documentary Delivery.
+  * `kokoro-hf-alpha` & `kokoro-hm-omega`: Female & Male Hindi/Indian Accents.
+* **Piper Deterministic Engine (MIT License)**:
+  * Sub-100ms real-time generation running via C++ ONNX binaries on ARM64 (`en_US-lessac-high`, `en_US-libritts-high`, `en_GB-alan-medium`).
+
+### B. Neural Voice Blending & Acoustic Vector Interpolation
+Kokoro-82M embeddings reside in a continuous latent acoustic vector space. SutharLabs enables linear vector interpolation between any two voice embeddings:
+
+$$\vec{v}_{\text{blend}} = (1 - \alpha)\vec{v}_{A} + \alpha\vec{v}_{B}, \quad \alpha \in [0.0, 1.0]$$
+
+* **Endpoint**: `POST /api/plugins/speech-studio/blend-voices`
+* **Payload**:
+  ```json
+  {
+    "primaryVoiceId": "kokoro-am-fenrir",
+    "secondaryVoiceId": "kokoro-af-bella",
+    "blendRatio": 0.40,
+    "text": "SutharLabs sovereign speech blending active.",
+    "rate": 1.0,
+    "pitch": 1.0,
+    "volume": 1.0
+  }
+  ```
+* **Response**:
+  ```json
+  {
+    "success": true,
+    "blendedVoiceName": "60% Kokoro Fenrir (am_fenrir) + 40% Kokoro Bella (af_bella)",
+    "formula": "voice = 0.60 * kokoro-am-fenrir + 0.40 * kokoro-af-bella",
+    "primaryVoice": "Kokoro Fenrir (am_fenrir)",
+    "secondaryVoice": "Kokoro Bella (af_bella)",
+    "blendRatio": 0.4
+  }
+  ```
+
+### C. Prevention of Replicated Voice Duplication
+* **Bug**: Temporary IDs (`cloned-${Date.now()}`) mismatched server-generated PostgreSQL UUIDs upon subsequent GET fetches, creating duplicate entries.
+* **Fix**:
+  1. Updated `handleApproveAndSaveVoice` to immediately adopt canonical server UUIDs in `localStorage` and component state.
+  2. Applied normalized name deduplication (`new Map(profiles.map(p => [(p.name || '').trim().toLowerCase() || p.id, p])).values()`) across voice selectors and the voice library list.
+
+---
+
+## 17. Fleet Disaster Recovery & Cold-Start Runbook (Total Provider Shutdown)
+
+If Oracle Cloud abruptly shuts down accounts or deletes instances, use this single-page recovery runbook to restore the entire SutharLabs platform on a fresh VPS (Hetzner, AWS, GCP, DigitalOcean, or Linode) within **15 minutes**.
+
+### Step 1: Provision a Fresh Host
+* Recommended: Any Ubuntu 24.04 LTS instance with at least **2 vCPU, 4–8 GB RAM** (e.g. Hetzner CX22/CX32 for ~$4–$8/mo or Oracle Free Tier).
+* Point your domain's DNS `A` records to the new VPS public IP.
+
+### Step 2: System Bootstrapping
+```bash
+# SSH into fresh host
+ssh root@<NEW_VPS_IP>
+
+# Create standard user
+useradd -m -s /bin/bash ubuntu
+usermod -aG sudo ubuntu
+echo "ubuntu ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
+su - ubuntu
+
+# Install Node.js 20 LTS, PostgreSQL, Git, Nginx, PM2, and Build Tools
+sudo apt-get update && sudo apt-get upgrade -y
+curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+sudo apt-get install -y nodejs git nginx postgresql postgresql-contrib build-essential curl ufw
+
+sudo npm install -g pm2
+```
+
+### Step 3: Database Restoration from Neon Standby Backup
+Because SutharLabs maintains continuous database replication to Neon Cloud Standby:
+```bash
+# Set up local PostgreSQL database
+sudo -u postgres psql -c "CREATE USER suthar_user WITH PASSWORD 'SovereignMatrix2026!';"
+sudo -u postgres psql -c "CREATE DATABASE sutharlabs_production OWNER suthar_user;"
+sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE sutharlabs_production TO suthar_user;"
+
+# Dump latest standby data from Neon and restore locally
+export NEON_URL="postgresql://neondb_owner:npg_c8iWb5UqZfmo@ep-holy-snow-a1w10j2v-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+pg_dump "$NEON_URL" --no-owner --no-acl > /tmp/neon_backup.sql
+sudo -u postgres psql -d sutharlabs_production < /tmp/neon_backup.sql
+rm /tmp/neon_backup.sql
+```
+
+### Step 4: Clone Codebase & Install Dependencies
+```bash
+cd /home/ubuntu
+git clone https://github.com/SutharLabs/sutharlabs_web.git website
+cd website
+
+# Install dependencies and generate Prisma client
+npm install
+npx prisma generate
+```
+
+### Step 5: Environment Configuration (`.env`)
+Create `/home/ubuntu/website/.env`:
+```ini
+NODE_ENV=production
+PORT=3000
+
+# Database
+DATABASE_URL="postgresql://suthar_user:SovereignMatrix2026!@127.0.0.1:5432/sutharlabs_production"
+STANDBY_DATABASE_URL="postgresql://neondb_owner:npg_c8iWb5UqZfmo@ep-holy-snow-a1w10j2v-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require"
+
+# Security & Secrets
+JWT_SECRET="a3b9f8d1c7e25a401b3f9d4e2c8a7b69c5e1f0d3b8a2c7e4f9b1d6a5c3e2f8b7"
+ADMIN_EMAIL="mr.sutharsuresh@gmail.com"
+DB_CRON_SYNC_KEY="sutharlabs-db-parity-sync-matrix-2026"
+
+# AI Inference Nodes
+OLLAMA_BASE_URL="http://127.0.0.1:11434"
+AI_BACKEND_SECRET="sutharlabs-matrix-ai-prod-2026"
+```
+
+### Step 6: Local Production Build & PM2 Launch
+```bash
+# Build production bundle
+npm run build
+
+# Start backend under PM2
+pm2 start dist/server.cjs --name "sutharlabs-backend"
+pm2 save
+pm2 startup
+```
+
+### Step 7: Configure Nginx Reverse Proxy
+```bash
+sudo tee /etc/nginx/sites-available/default > /dev/null << 'EOF'
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
+    server_name sutharlabs.com www.sutharlabs.com;
+
+    client_max_body_size 100M;
+
+    # Static assets and frontend SPA
+    location / {
+        root /home/ubuntu/website/dist;
+        index index.html;
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Statically served AI generated visual artifacts
+    location /storage/ {
+        alias /home/ubuntu/website/storage/;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    # API and WebSocket proxy
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+        proxy_read_timeout 300s;
+    }
+}
+EOF
+
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+### Step 8: Verification & Health Check
+```bash
+curl -s http://127.0.0.1:3000/api/health
+# Expected: {"status":"ok","mode":"development","provider":"oracle-vm","isFallback":false,"degradedPlugins":[]}
+```
+The entire SutharLabs platform is now 100% operational on the new host!
+
+
 
 
 

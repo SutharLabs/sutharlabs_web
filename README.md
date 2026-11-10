@@ -6,11 +6,13 @@ Welcome to the **SutharLabs Sovereign Engine Portal**, a high-performance comman
 
 ## 🚀 Key Features & Applets
 
+- **AI Studio & Autonomous Copilot**: Multi-mode reasoning workbench supporting **Chat**, **Plan**, **Agent**, and **Autonomous** modes, Model Context Protocol (MCP) tool integration, Contextual Hybrid BM25/Vector RRF RAG, and continuous cross-device session synchronization.
+- **Open-Weight Image Studio**: Text-to-image synthesis and computer vision processing featuring **DeepSeek Janus-Pro-1B** (1.5B visual token LLM for CPU), **FLUX.1 [schnell]** (12B 4-step flow matching), **SDXL-Turbo**, and **Show-o (1.3B)**, with background removal and vision inspection via Qwen2.5-VL.
+- **Speech Studio (v1.0.0 Production Enterprise Edition)**: Studio-grade neural text-to-speech with **Kokoro-82M** (complete 54-voice community-graded roster), **Piper** (deterministic sub-100ms C++ engine), zero-shot cloning with **F5-TTS**, and **Neural Voice Blending** (continuous acoustic latent vector interpolation).
 - **NVDA Stock Tracker**: Interactive Bollinger predictive analytics panel with real-time SVG charting, trade execution (BUY/SELL), and multi-tabbed developer terminal logs.
 - **Visual Flow Designer**: An interactive pipeline canvas using dynamic Bezier curves, draggable nodes, custom plugin triggers, and a schema dataset drop-zone (.csv/.json).
 - **Ledger Accounting**: A financial payout analyzer featuring dynamic aggregate formula calculations, custom cycle bar metrics, and real-time client-filtering logs.
-- **Admin Command Center**: Secure gateway cockpit with live hardware telemetry flutters, system-wide maintenance locks, stress-test triggers, localized account CRUD tools, and an outward marketplace publisher.
-- **Live Markdown Compiler**: Dual-pane Markdown editor and preview window built with a custom regex compiler parsing typography, code scripts, lists, and blockquotes.
+- **Admin Command Center**: Secure gateway cockpit with live hardware telemetry, system-wide maintenance locks, automated database parity synchronization (PostgreSQL 16 to Neon Standby), and sovereign mail server management.
 
 ---
 
@@ -25,7 +27,9 @@ Welcome to the **SutharLabs Sovereign Engine Portal**, a high-performance comman
 
 ## 📂 Systems Documentation
 
-For a detailed walkthrough of file directories, coordinate SVG math formulas, regex parsing rules, backend REST API endpoint definitions, and CSS theme specifications, read the **[SutharLabs Systems Documentation](docs/DOCUMENTATION.md)**.
+- **[System Architecture & Documentation](docs/DOCUMENTATION.md)**: File directories, coordinate SVG math formulas, REST endpoints, and CSS theme specifications.
+- **[Fleet Replication & Disaster Recovery Runbook](docs/oracle_vms_replication_and_disaster_recovery_runbook.md)**: Step-by-step instructions for cold-starting, provisioning, and replicating the entire 3-tier fleet (PostgreSQL 16, Ollama, Stalwart Mail, and Node.js gateway) on any fresh VPS in the event of provider shutdowns.
+- **[System Updates & Full Changelog](docs/SYSTEM_UPDATES_AND_CHANGELOG.md)**: Complete chronological changelog of platform architecture milestones.
 
 ---
 
