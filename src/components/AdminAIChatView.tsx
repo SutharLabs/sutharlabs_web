@@ -277,24 +277,29 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const modelMenuRef = useRef<HTMLDivElement>(null);
   const quickOptionsMenuRef = useRef<HTMLDivElement>(null);
 
-  // Close menus on outside click
+  // Close menus on outside click (supporting mouse and touch)
   useEffect(() => {
-    const handleOutsideClick = (e: MouseEvent) => {
-      if (agentMenuRef.current && !agentMenuRef.current.contains(e.target as Node)) {
+    const handleOutsideClick = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      if (agentMenuRef.current && !agentMenuRef.current.contains(target)) {
         setIsAgentMenuOpen(false);
       }
-      if (modeMenuRef.current && !modeMenuRef.current.contains(e.target as Node)) {
+      if (modeMenuRef.current && !modeMenuRef.current.contains(target)) {
         setIsModeMenuOpen(false);
       }
-      if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
+      if (modelMenuRef.current && !modelMenuRef.current.contains(target)) {
         setIsModelMenuOpen(false);
       }
-      if (quickOptionsMenuRef.current && !quickOptionsMenuRef.current.contains(e.target as Node)) {
+      if (quickOptionsMenuRef.current && !quickOptionsMenuRef.current.contains(target)) {
         setIsQuickOptionsMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
+    document.addEventListener('touchstart', handleOutsideClick, { passive: true });
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+      document.removeEventListener('touchstart', handleOutsideClick);
+    };
   }, []);
 
   // Slash Commands Auto-suggest Popup State
@@ -1771,23 +1776,27 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                   </span>
                 </button>
 
-                {/* Agent Persona Menu Button */}
+                {/* Agent Persona Menu Button -> Navigates to Dedicated Agents & Tools Studio */}
                 <button
                   type="button"
-                  onClick={() => setIsAgentModalOpen(true)}
+                  onClick={() => setStudioMode('ecosystem')}
                   className={`h-8 px-2.5 rounded-lg border flex items-center gap-1.5 text-xs font-mono font-bold transition-all cursor-pointer shadow-sm select-none ${
                     isLight
-                      ? 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
+                      ? 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300 hover:text-sky-600'
                       : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
                   }`}
-                  title="Open Agent Persona Selector"
+                  title="Open Dedicated Agents & Tools Studio (Personas, MCP, Hooks, Skills)"
                 >
                   <div className="w-4 h-4 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
                     {getAgentIcon(selectedAgent.icon)}
                   </div>
                   <span className="hidden md:inline">{selectedAgent.name}</span>
-                  <span className="text-[10px] px-1 py-0.2 rounded bg-purple-500/10 text-purple-400 uppercase tracking-wider">{selectedAgent.badge}</span>
-                  <ChevronDown className="w-3 h-3 opacity-60 shrink-0" />
+                  <span className={`text-[10px] px-1 py-0.2 rounded uppercase tracking-wider font-mono ${
+                    isLight ? 'bg-purple-100 text-purple-700' : 'bg-purple-500/15 text-purple-300'
+                  }`}>
+                    {selectedAgent.badge}
+                  </span>
+                  <ExternalLink className="w-3 h-3 opacity-60 shrink-0" />
                 </button>
 
                 {/* Copilot-Style Mode Switcher: Chat | Plan | Agent | Autonomous */}
@@ -2080,10 +2089,11 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
 
                     <button
                       type="button"
-                      onClick={() => setIsAgentModalOpen(true)}
+                      onClick={() => setStudioMode('ecosystem')}
                       className={`h-7 px-2 rounded-lg border flex items-center gap-1 text-[11px] font-mono font-bold ${
                         isLight ? 'bg-white text-slate-800 border-slate-300' : 'bg-[#201f21] text-[#e5e1e4] border-[#3a494b]/40'
                       }`}
+                      title="Open Dedicated Agents & Tools Studio"
                     >
                       <div className="w-3.5 h-3.5 rounded-full bg-purple-500/20 flex items-center justify-center shrink-0">
                         {getAgentIcon(selectedAgent.icon)}
@@ -3086,14 +3096,14 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
           </div>
 
           {/* Bottom Chat Input Form */}
-          <div className={`p-3 sm:p-4 border-t shrink-0 transition-colors ${
+          <div className={`p-3 sm:p-4 border-t shrink-0 relative z-30 transition-colors ${
             isLight ? 'bg-white/95 border-slate-200' : 'bg-surface-container-low/50 border-outline/15'
           }`}>
             <form 
               onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}
               className="max-w-3xl mx-auto relative"
             >
-              <div className={`rounded-xl border p-2 flex flex-col gap-2 transition-all ${
+              <div className={`rounded-xl border p-2 flex flex-col gap-2 transition-colors ${
                 isLight 
                   ? 'bg-slate-50 border-slate-300 focus-within:border-sky-500 shadow-xs' 
                   : 'bg-[#121215] border-[#3a494b]/40 focus-within:border-[#00dbe7]/60'
@@ -3216,7 +3226,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                 />
 
                 <div className="flex items-center justify-between pt-1.5 border-t border-outline/10 gap-1.5 w-full">
-                  <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 overflow-x-auto no-scrollbar py-0.5">
+                  <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 flex-wrap sm:flex-nowrap py-0.5">
                     {/* 1. Attach File Button */}
                     <button
                       type="button"
@@ -3281,10 +3291,12 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       </button>
 
                       {isModeMenuOpen && (
-                        <div className={`fixed sm:absolute bottom-16 sm:bottom-full left-4 sm:left-0 mb-1.5 w-[calc(100vw-32px)] sm:w-64 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
-                          isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
+                        <div className={`absolute bottom-full left-0 mb-2 w-64 max-w-[calc(100vw-32px)] rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
+                          isLight ? 'bg-white border-slate-300 text-slate-800 shadow-slate-300/50' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
                         }`}>
-                          <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10 flex items-center justify-between">
+                          <div className={`px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider border-b flex items-center justify-between ${
+                            isLight ? 'border-slate-200 text-slate-500' : 'border-outline/10 text-gray-400'
+                          }`}>
                             <span>Reasoning Mode</span>
                             <span className="text-[9px] opacity-60">Copilot Standard</span>
                           </div>
@@ -3300,17 +3312,17 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                               onClick={() => { setCurrentMode(m.id); setIsModeMenuOpen(false); }}
                               className={`p-2 rounded-lg text-left transition-colors flex items-start gap-2.5 cursor-pointer ${
                                 currentMode === m.id
-                                  ? isLight ? 'bg-sky-50 text-sky-900 font-bold' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
-                                  : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant hover:text-on-surface'
+                                  ? isLight ? 'bg-sky-50 text-sky-900 font-bold border border-sky-200' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                                  : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-gray-300 hover:text-white'
                               }`}
                             >
                               <m.icon className={`w-4 h-4 shrink-0 mt-0.5 ${m.color}`} />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between text-xs">
                                   <span>{m.name}</span>
-                                  {currentMode === m.id && <span className="text-[9px] text-[#00dbe7] font-mono">ACTIVE</span>}
+                                  {currentMode === m.id && <span className={`text-[9px] font-mono font-bold ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`}>ACTIVE</span>}
                                 </div>
-                                <p className="text-[10px] text-on-surface-variant line-clamp-1 mt-0.5 font-sans font-normal">{m.desc}</p>
+                                <p className={`text-[10px] line-clamp-1 mt-0.5 font-sans font-normal ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{m.desc}</p>
                               </div>
                             </button>
                           ))}
@@ -3339,10 +3351,12 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       </button>
 
                       {isModelMenuOpen && (
-                        <div className={`fixed sm:absolute bottom-16 sm:bottom-full left-4 sm:left-0 mb-1.5 w-[calc(100vw-32px)] sm:w-60 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
-                          isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
+                        <div className={`absolute bottom-full left-0 mb-2 w-60 max-w-[calc(100vw-32px)] rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
+                          isLight ? 'bg-white border-slate-300 text-slate-800 shadow-slate-300/50' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
                         }`}>
-                          <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10 flex items-center justify-between">
+                          <div className={`px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider border-b flex items-center justify-between ${
+                            isLight ? 'border-slate-200 text-slate-500' : 'border-outline/10 text-gray-400'
+                          }`}>
                             <span>Select Local Model</span>
                             <span className="text-[9px] opacity-60">ARM64</span>
                           </div>
@@ -3360,12 +3374,12 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                                 onClick={() => { setSelectedModel(m.id); setIsModelMenuOpen(false); }}
                                 className={`w-full px-2 py-1.5 rounded-lg text-left text-xs font-mono transition-colors flex items-center justify-between cursor-pointer ${
                                   selectedModel === m.id
-                                    ? isLight ? 'bg-sky-50 text-sky-900 font-bold' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
-                                    : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant hover:text-on-surface'
+                                    ? isLight ? 'bg-sky-50 text-sky-900 font-bold border border-sky-200' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                                    : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-gray-300 hover:text-white'
                                 }`}
                               >
                                 <span>{m.name}</span>
-                                <span className="text-[9px] opacity-60">{m.note}</span>
+                                <span className={`text-[9px] ${isLight ? 'text-slate-500' : 'opacity-60'}`}>{m.note}</span>
                               </button>
                             ))}
                           </div>
@@ -3398,10 +3412,12 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       </button>
 
                       {isAgentMenuOpen && (
-                        <div className={`fixed sm:absolute bottom-16 sm:bottom-full left-4 sm:left-0 mb-1.5 w-[calc(100vw-32px)] sm:w-72 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
-                          isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
+                        <div className={`absolute bottom-full right-0 sm:right-auto sm:left-0 mb-2 w-72 max-w-[calc(100vw-32px)] rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
+                          isLight ? 'bg-white border-slate-300 text-slate-800 shadow-slate-300/50' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
                         }`}>
-                          <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10 flex items-center justify-between">
+                          <div className={`px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider border-b flex items-center justify-between ${
+                            isLight ? 'border-slate-200 text-slate-500' : 'border-outline/10 text-gray-400'
+                          }`}>
                             <span>Agent Personas</span>
                             <button
                               type="button"
@@ -3409,7 +3425,9 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                                 setIsAgentMenuOpen(false);
                                 setStudioMode('ecosystem');
                               }}
-                              className="text-[9px] text-[#00dbe7] hover:underline cursor-pointer flex items-center gap-0.5 font-bold"
+                              className={`text-[9px] hover:underline cursor-pointer flex items-center gap-0.5 font-bold ${
+                                isLight ? 'text-sky-600' : 'text-[#00dbe7]'
+                              }`}
                             >
                               <span>Manage All</span>
                               <ExternalLink className="w-2.5 h-2.5 shrink-0" />
@@ -3425,8 +3443,8 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                                   onClick={() => { handleAgentSelect(agent); setIsAgentMenuOpen(false); }}
                                   className={`w-full p-2 rounded-lg text-left transition-colors flex items-start gap-2.5 cursor-pointer ${
                                     isSel
-                                      ? isLight ? 'bg-sky-50 text-sky-900 font-bold border border-sky-300/50' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
-                                      : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant hover:text-on-surface'
+                                      ? isLight ? 'bg-sky-50 text-sky-900 font-bold border border-sky-300/60' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                                      : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-gray-300 hover:text-white'
                                   }`}
                                 >
                                   <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 mt-0.5">
@@ -3434,19 +3452,21 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                                   </div>
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center justify-between text-xs">
-                                      <span className="truncate">{agent.name}</span>
-                                      <span className="text-[9px] px-1 rounded uppercase bg-purple-500/15 text-purple-400 font-mono shrink-0 ml-1">
+                                      <span className={`truncate ${isLight ? 'text-slate-900' : 'text-[#e5e1e4]'}`}>{agent.name}</span>
+                                      <span className={`text-[9px] px-1 rounded uppercase font-mono shrink-0 ml-1 ${
+                                        isLight ? 'bg-purple-100 text-purple-700 border border-purple-300/40' : 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                                      }`}>
                                         {agent.badge}
                                       </span>
                                     </div>
-                                    <p className="text-[10px] text-on-surface-variant line-clamp-1 mt-0.5 font-sans font-normal">{agent.description}</p>
+                                    <p className={`text-[10px] line-clamp-1 mt-0.5 font-sans font-normal ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>{agent.description}</p>
                                   </div>
                                 </button>
                               );
                             })}
                           </div>
 
-                          <div className="pt-1.5 border-t border-outline/10">
+                          <div className={`pt-1.5 border-t ${isLight ? 'border-slate-200' : 'border-outline/10'}`}>
                             <button
                               type="button"
                               onClick={() => {
@@ -3454,7 +3474,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                                 setStudioMode('ecosystem');
                               }}
                               className={`w-full py-1.5 px-2 rounded-lg text-xs font-mono font-bold uppercase tracking-wider text-center flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
-                                isLight ? 'bg-slate-100 hover:bg-slate-200 text-sky-700' : 'bg-white/5 hover:bg-white/10 text-[#00dbe7]'
+                                isLight ? 'bg-slate-100 hover:bg-slate-200 text-sky-700 border border-slate-300' : 'bg-white/5 hover:bg-white/10 text-[#00dbe7] border border-white/10'
                               }`}
                             >
                               <Cpu className="w-3.5 h-3.5 shrink-0" />
@@ -3491,10 +3511,12 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       </button>
 
                       {isQuickOptionsMenuOpen && (
-                        <div className={`fixed sm:absolute bottom-16 sm:bottom-full left-4 sm:left-auto sm:right-0 mb-1.5 w-[calc(100vw-32px)] sm:w-64 rounded-xl border shadow-2xl p-2 z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100 ${
-                          isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
+                        <div className={`absolute bottom-full right-0 mb-2 w-64 max-w-[calc(100vw-32px)] rounded-xl border shadow-2xl p-2 z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100 ${
+                          isLight ? 'bg-white border-slate-300 text-slate-800 shadow-slate-300/50' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
                         }`}>
-                          <div className="px-1.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10 flex items-center justify-between">
+                          <div className={`px-1.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider border-b flex items-center justify-between ${
+                            isLight ? 'border-slate-200 text-slate-500' : 'border-outline/10 text-gray-400'
+                          }`}>
                             <span>Chat Enhancements</span>
                             <span className="text-[9px] opacity-60">Copilot Engine</span>
                           </div>
@@ -3506,18 +3528,20 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                             className={`p-2 rounded-lg text-left transition-all flex items-center justify-between cursor-pointer ${
                               isDeepResearch
                                 ? isLight ? 'bg-sky-50 text-sky-900 border border-sky-300/60' : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
-                                : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant'
+                                : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-gray-300 hover:text-white'
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <Globe className={`w-4 h-4 shrink-0 ${isDeepResearch ? 'text-[#00dbe7] animate-pulse' : 'text-gray-400'}`} />
+                              <Globe className={`w-4 h-4 shrink-0 ${isDeepResearch ? (isLight ? 'text-sky-600 animate-pulse' : 'text-[#00dbe7] animate-pulse') : 'text-gray-400'}`} />
                               <div>
                                 <div className="text-xs font-bold font-mono">Deep Research</div>
-                                <div className="text-[10px] text-on-surface-variant opacity-75">Live web intelligence</div>
+                                <div className={`text-[10px] opacity-75 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Live web intelligence</div>
                               </div>
                             </div>
                             <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                              isDeepResearch ? 'bg-[#00dbe7]/20 text-[#00dbe7]' : 'bg-gray-500/20 text-gray-400'
+                              isDeepResearch 
+                                ? (isLight ? 'bg-sky-100 text-sky-700' : 'bg-[#00dbe7]/20 text-[#00dbe7]')
+                                : (isLight ? 'bg-slate-200 text-slate-600' : 'bg-gray-500/20 text-gray-400')
                             }`}>
                               {isDeepResearch ? 'ON' : 'OFF'}
                             </span>
@@ -3530,18 +3554,20 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                             className={`p-2 rounded-lg text-left transition-all flex items-center justify-between cursor-pointer ${
                               isRagActive
                                 ? isLight ? 'bg-emerald-50 text-emerald-900 border border-emerald-300/60' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
-                                : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant'
+                                : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-gray-300 hover:text-white'
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
-                              <BookOpen className={`w-4 h-4 shrink-0 ${isRagActive ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`} />
+                              <BookOpen className={`w-4 h-4 shrink-0 ${isRagActive ? (isLight ? 'text-emerald-600 animate-pulse' : 'text-emerald-400 animate-pulse') : 'text-gray-400'}`} />
                               <div>
                                 <div className="text-xs font-bold font-mono">Contextual RAG</div>
-                                <div className="text-[10px] text-on-surface-variant opacity-75">Hybrid BM25 + dense vectors</div>
+                                <div className={`text-[10px] opacity-75 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Hybrid BM25 + dense vectors</div>
                               </div>
                             </div>
                             <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                              isRagActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/20 text-gray-400'
+                              isRagActive
+                                ? (isLight ? 'bg-emerald-100 text-emerald-800' : 'bg-emerald-500/20 text-emerald-400')
+                                : (isLight ? 'bg-slate-200 text-slate-600' : 'bg-gray-500/20 text-gray-400')
                             }`}>
                               {isRagActive ? 'ON' : 'OFF'}
                             </span>
@@ -3552,14 +3578,14 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                             type="button"
                             onClick={() => { setIsImageModalOpen(true); setIsQuickOptionsMenuOpen(false); }}
                             className={`p-2 rounded-lg text-left transition-all flex items-center justify-between cursor-pointer ${
-                              isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant'
+                              isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-gray-300 hover:text-white'
                             }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <ImageIcon className="w-4 h-4 text-pink-500 shrink-0" />
                               <div>
                                 <div className="text-xs font-bold font-mono">Image Studio</div>
-                                <div className="text-[10px] text-on-surface-variant opacity-75">Janus-Pro &amp; Flux.1</div>
+                                <div className={`text-[10px] opacity-75 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>Janus-Pro &amp; Flux.1</div>
                               </div>
                             </div>
                             <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
@@ -3569,7 +3595,9 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                           <button
                             type="button"
                             onClick={() => { promptClearChat(); setIsQuickOptionsMenuOpen(false); }}
-                            className="p-2 rounded-lg text-left transition-all flex items-center justify-between cursor-pointer border-t border-outline/10 text-rose-500 hover:bg-rose-500/10"
+                            className={`p-2 rounded-lg text-left transition-all flex items-center justify-between cursor-pointer border-t text-rose-500 hover:bg-rose-500/10 ${
+                              isLight ? 'border-slate-200' : 'border-outline/10'
+                            }`}
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <Trash2 className="w-4 h-4 shrink-0" />
@@ -4083,83 +4111,126 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
         </div>
       )}
 
-      {/* OpenCode-Style Agent Persona Modal */}
+      {/* Agent Persona Selection Modal */}
       {isAgentModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
-          <div className={`relative w-full max-w-2xl rounded-2xl border shadow-2xl overflow-hidden transition-all ${
+          <div className={`relative w-full max-w-3xl rounded-2xl border shadow-2xl overflow-hidden transition-all ${
             isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]'
           }`}>
             <div className="h-1 w-full bg-[#00dbe7]" />
-            <div className="p-5 border-b flex items-center justify-between gap-3 border-inherit">
+            <div className={`p-4 sm:p-5 border-b flex items-center justify-between gap-3 ${
+              isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c]/60 border-[#3a494b]/40'
+            }`}>
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/25 flex items-center justify-center shrink-0">
-                  <Bot className="w-5 h-5 text-purple-400 shrink-0" />
+                  <Bot className={`w-5 h-5 shrink-0 ${isLight ? 'text-purple-600' : 'text-purple-400'}`} />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-on-surface">Agent Personas & Capabilities</h3>
-                  <p className="text-xs text-on-surface-variant font-mono">Select an autonomous role for specialized reasoning</p>
+                  <h3 className={`text-base font-bold font-sans ${isLight ? 'text-slate-900' : 'text-[#e5e1e4]'}`}>
+                    Agent Personas
+                  </h3>
+                  <p className={`text-xs font-mono mt-0.5 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                    Select an autonomous role for specialized reasoning
+                  </p>
                 </div>
               </div>
               <button
                 type="button"
                 onClick={() => setIsAgentModalOpen(false)}
-                className="p-1.5 rounded-lg hover:bg-white/10 text-on-surface-variant hover:text-on-surface cursor-pointer"
+                className={`p-1.5 rounded-lg cursor-pointer transition-colors ${
+                  isLight ? 'hover:bg-slate-200 text-slate-500 hover:text-slate-800' : 'hover:bg-white/10 text-gray-400 hover:text-white'
+                }`}
+                title="Close modal"
               >
                 <X className="w-4 h-4 shrink-0" />
               </button>
             </div>
 
-            <div className="p-4 sm:p-5 max-h-[65vh] overflow-y-auto space-y-2.5">
-              {AGENT_PERSONAS.map((agent) => {
-                const isSelected = selectedAgent.id === agent.id;
-                return (
-                  <div
-                    key={agent.id}
-                    onClick={() => {
-                      handleAgentSelect(agent);
-                      setIsAgentModalOpen(false);
-                    }}
-                    className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3.5 select-none ${
-                      isSelected
-                        ? isLight
-                          ? 'bg-sky-50 border-sky-400 text-slate-900 shadow-xs'
-                          : 'bg-[#00dbe7]/10 border-[#00dbe7]/50 text-[#e5e1e4] shadow-xs'
-                        : isLight
-                          ? 'bg-slate-50 hover:bg-white border-slate-200 text-slate-700'
-                          : 'bg-white/3 hover:bg-white/6 border-white/5 text-on-surface-variant hover:text-on-surface'
-                    }`}
-                  >
-                    <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 mt-0.5">
-                      {getAgentIcon(agent.icon)}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="font-bold text-sm text-on-surface">{agent.name}</span>
-                        <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-400 uppercase font-semibold">
-                          {agent.badge}
-                        </span>
+            <div className="p-4 sm:p-5 max-h-[60vh] overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {AGENT_PERSONAS.map((agent) => {
+                  const isSelected = selectedAgent.id === agent.id;
+                  return (
+                    <div
+                      key={agent.id}
+                      onClick={() => {
+                        handleAgentSelect(agent);
+                        setIsAgentModalOpen(false);
+                      }}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-start gap-3 select-none ${
+                        isSelected
+                          ? isLight
+                            ? 'bg-sky-50 border-sky-400 text-slate-900 shadow-xs ring-1 ring-sky-400/40'
+                            : 'bg-[#00dbe7]/10 border-[#00dbe7]/50 text-[#e5e1e4] shadow-xs ring-1 ring-[#00dbe7]/30'
+                          : isLight
+                            ? 'bg-slate-50 hover:bg-white border-slate-200 hover:border-slate-300 text-slate-800 hover:shadow-xs'
+                            : 'bg-[#18181c]/70 hover:bg-[#18181c] border-[#3a494b]/40 hover:border-[#3a494b]/80 text-[#e5e1e4]'
+                      }`}
+                    >
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 mt-0.5">
+                        {getAgentIcon(agent.icon)}
                       </div>
-                      <p className="text-xs text-on-surface-variant font-mono mt-0.5">{agent.title}</p>
-                      <p className="text-xs mt-1.5 leading-relaxed text-on-surface-variant/90">{agent.description}</p>
-                      <div className="mt-2 flex items-center gap-2 text-[10px] font-mono">
-                        <span className="text-on-surface-variant">Recommended Model:</span>
-                        <span className="text-emerald-400 font-bold">{agent.recommendedModel}</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-1.5">
+                          <span className={`font-bold text-xs sm:text-sm truncate ${isLight ? 'text-slate-900' : 'text-[#e5e1e4]'}`}>
+                            {agent.name}
+                          </span>
+                          <span className={`text-[9px] font-mono px-1.5 py-0.5 rounded uppercase font-semibold shrink-0 ${
+                            isLight
+                              ? 'bg-purple-100 text-purple-700 border border-purple-200'
+                              : 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                          }`}>
+                            {agent.badge}
+                          </span>
+                        </div>
+                        <p className={`text-[11px] font-mono mt-0.5 line-clamp-1 ${isLight ? 'text-slate-500' : 'text-gray-400'}`}>
+                          {agent.title}
+                        </p>
+                        <p className={`text-[11px] leading-relaxed mt-1 line-clamp-2 ${isLight ? 'text-slate-600' : 'text-gray-300'}`}>
+                          {agent.description}
+                        </p>
+                        <div className="mt-2 flex items-center gap-1.5 text-[10px] font-mono">
+                          <span className={isLight ? 'text-slate-500' : 'text-gray-400'}>Model:</span>
+                          <span className={isLight ? 'text-emerald-700 font-bold' : 'text-emerald-400 font-bold'}>
+                            {agent.recommendedModel}
+                          </span>
+                        </div>
                       </div>
+                      {isSelected && (
+                        <CheckCircle2 className={`w-4 h-4 shrink-0 mt-1 ${isLight ? 'text-sky-600' : 'text-[#00dbe7]'}`} />
+                      )}
                     </div>
-                    {isSelected && (
-                      <CheckCircle2 className="w-5 h-5 text-[#00dbe7] shrink-0 mt-1" />
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
 
-            <div className="p-3.5 border-t border-inherit flex justify-end">
+            <div className={`p-3.5 border-t flex items-center justify-between gap-3 ${
+              isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#18181c]/60 border-[#3a494b]/40'
+            }`}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAgentModalOpen(false);
+                  setStudioMode('ecosystem');
+                }}
+                className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-100 text-sky-700 border border-slate-300 shadow-xs'
+                    : 'bg-white/5 hover:bg-white/10 text-[#00dbe7] border border-white/10'
+                }`}
+              >
+                <Cpu className="w-3.5 h-3.5 shrink-0" />
+                <span>Open Agents &amp; Tools Studio →</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setIsAgentModalOpen(false)}
-                className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer ${
-                  isLight ? 'bg-slate-200 text-slate-800' : 'bg-white/10 text-white'
+                className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider cursor-pointer border transition-all ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300 shadow-xs'
+                    : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
                 }`}
               >
                 Close
