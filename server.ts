@@ -4864,20 +4864,25 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
       console.warn("[AI Chat] Heavy slot acquisition notice:", slotErr.message);
     }
 
+    const upstreamAbortController = new AbortController();
+    const cleanupUpstream = () => {
+      if (keepAliveInterval) {
+        clearInterval(keepAliveInterval);
+        keepAliveInterval = null;
+      }
+      try { upstreamAbortController.abort(); } catch {}
+    };
+    req.on("close", cleanupUpstream);
+
     const targetUrl = `${ORACLE_AI_URL}/api/chat`;
 
     let response = await fetch(targetUrl, {
-
       method: "POST",
-
       headers: {
-
         "Content-Type": "application/json",
-
         "x-ai-secret": ORACLE_AI_SECRET
-
       },
-
+      signal: upstreamAbortController.signal,
       body: JSON.stringify(payload)
     });
 
@@ -4901,6 +4906,7 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
             "Content-Type": "application/json",
             "x-ai-secret": ORACLE_AI_SECRET
           },
+          signal: upstreamAbortController.signal,
           body: JSON.stringify(fallbackPayload)
         });
 
@@ -4981,11 +4987,8 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
 
 
       req.on("close", () => {
-
-        if (keepAliveInterval) clearInterval(keepAliveInterval);
-
-        webStream.destroy();
-
+        cleanupUpstream();
+        try { webStream.destroy(); } catch {}
       });
 
     } else {

@@ -1069,13 +1069,83 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
     addLog('AGENT', `Activated "${agent.name}" with recommended model ${agent.recommendedModel}`, 'INFO');
   };
 
-  const handleStopGeneration = () => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      setIsGenerating(false);
-      addLog('AGENT', 'Generation halted by user.', 'ALERT');
+  const handleStopGeneration = (e?: React.MouseEvent | KeyboardEvent) => {
+    if (e && 'preventDefault' in e) {
+      e.preventDefault();
+      e.stopPropagation();
     }
+
+    if (abortControllerRef.current) {
+      try {
+        abortControllerRef.current.abort();
+      } catch (abortErr) {
+        console.warn('Abort error:', abortErr);
+      }
+      abortControllerRef.current = null;
+    }
+
+    isStreamingRef.current = false;
+    setIsGenerating(false);
+
+    // Commit partial response to message list and persistent storage so it is NEVER lost
+    const stoppedText = (activeStreamTextRef.current || streamBuffer).trim();
+    if (stoppedText) {
+      const assistantMsg: AIChatMessage = {
+        id: `assistant-${Date.now()}-stopped`,
+        role: 'assistant',
+        content: stoppedText + '\n\n*(Generation stopped by user)*',
+        model: selectedModelRef.current,
+        mode: currentModeRef.current,
+        timestamp: new Date().toLocaleTimeString(),
+        agentId: selectedAgentRef.current.id
+      };
+
+      setMessages((prev) => {
+        const filtered = prev.filter(m => !m.id.startsWith('assistant-stream-'));
+        return [...filtered, assistantMsg];
+      });
+
+      const targetSessionId = activeSessionIdRef.current;
+      setSessions((prevSessions) => {
+        const updated = prevSessions.map(s => {
+          if (s.id === targetSessionId) {
+            const msgs = s.messages.filter(m => !m.id.startsWith('assistant-stream-'));
+            return {
+              ...s,
+              messages: [...msgs, assistantMsg],
+              updatedAt: Date.now()
+            };
+          }
+          return s;
+        });
+        try {
+          localStorage.setItem('sutharlabs_ai_chat_sessions', JSON.stringify(updated));
+          const active = updated.find(s => s.id === targetSessionId);
+          if (active) {
+            localStorage.setItem('sutharlabs_ai_chat_history', JSON.stringify(active.messages));
+          }
+        } catch {}
+        return updated;
+      });
+
+      extractArtifactsFromContent(stoppedText, assistantMsg.id);
+    }
+
+    setStreamBuffer('');
+    activeStreamTextRef.current = '';
+    addLog('AGENT', 'Generation halted by user. Partial output saved.', 'ALERT');
   };
+
+  // Keyboard shortcut: Esc to halt generation immediately
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isGenerating) {
+        handleStopGeneration(e);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isGenerating]);
 
   // Attachments State & Client Processing (Claude / ChatGPT / Gemini Standard)
   const [pendingAttachments, setPendingAttachments] = useState<AIChatAttachment[]>([]);
@@ -1577,10 +1647,14 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
           });
         }
       });
+      // If aborted during streaming, handleStopGeneration already committed the partial message cleanly
+      if (abortController.signal.aborted) {
+        return;
+      }
     } catch (err: any) {
       isStreamingRef.current = false;
       activeStreamTextRef.current = '';
-      if (err.name !== 'AbortError') {
+      if (err.name !== 'AbortError' && !abortController.signal.aborted) {
         console.error('Chat error:', err);
         const errMsg = err?.message || '';
         const isNetworkFailure = errMsg.includes('Network') || errMsg.includes('fetch') || errMsg.includes('timeout') || errMsg.includes('504');
@@ -3790,8 +3864,9 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                     {isGenerating ? (
                       <button
                         type="button"
-                        onClick={handleStopGeneration}
-                        className="h-7 sm:h-8 px-2.5 sm:px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1.5 cursor-pointer shadow-sm select-none shrink-0"
+                        onClick={(e) => handleStopGeneration(e)}
+                        title="Stop Generation (Esc)"
+                        className="h-7 sm:h-8 px-2.5 sm:px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1.5 cursor-pointer shadow-sm select-none shrink-0 transition-all active:scale-95"
                       >
                         <Square className="w-3.5 h-3.5 fill-current shrink-0" />
                         <span>Stop</span>

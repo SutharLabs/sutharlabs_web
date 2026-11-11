@@ -188,8 +188,24 @@ export async function streamAIChat({
   let finalEvalCount = 0;
   let finalEvalDurationNs = 0;
 
+  // Immediate abort listener: Cancels reader stream immediately upon abort signal
+  const abortHandler = () => {
+    try {
+      reader.cancel();
+    } catch {}
+  };
+
+  if (signal) {
+    if (signal.aborted) {
+      abortHandler();
+      return;
+    }
+    signal.addEventListener('abort', abortHandler, { once: true });
+  }
+
   try {
     while (true) {
+      if (signal?.aborted) break;
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -198,6 +214,7 @@ export async function streamAIChat({
       buffer = lines.pop() || '';
 
       for (const line of lines) {
+        if (signal?.aborted) break;
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith(':')) continue; // Ignore SSE keep-alive heartbeats
 
@@ -228,10 +245,17 @@ export async function streamAIChat({
       }
     }
   } catch (err: any) {
-    if (err.name === 'AbortError') {
-      return; // Handled cancel
+    if (err.name === 'AbortError' || signal?.aborted) {
+      return; // Handled cancel cleanly
     }
     throw err;
+  } finally {
+    if (signal) {
+      signal.removeEventListener('abort', abortHandler);
+    }
+    try {
+      reader.releaseLock();
+    } catch {}
   }
 
   const durationMs = Date.now() - startTime;
