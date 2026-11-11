@@ -476,6 +476,7 @@ export interface ClientImageGenOptions {
   style?: 'photorealistic' | 'cinematic' | 'anime' | 'cyberpunk' | '3d-render' | 'minimalist' | 'digital-art';
   negativePrompt?: string;
   seed?: number;
+  allowCloudFallback?: boolean;
 }
 
 export async function generateAIImage(

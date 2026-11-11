@@ -689,6 +689,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
   const [savedVaultNotice, setSavedVaultNotice] = useState<string | null>(null);
   const [imageStudioError, setImageStudioError] = useState<string | null>(null);
+  const [allowCloudFallback, setAllowCloudFallback] = useState<boolean>(false);
 
   // Image Processing state
   const [procTab, setProcTab] = useState<'generate' | 'process'>('generate');
@@ -706,14 +707,15 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
 
     setIsGeneratingImage(true);
     setImageStudioError(null);
-    addLog('IMAGE_STUDIO', `Synthesizing image with ${imageModel} [${imageStyle}, ${imageAspectRatio}]...`, 'INFO');
+    addLog('IMAGE_STUDIO', `Synthesizing image with ${imageModel} [${imageStyle}, ${imageAspectRatio}, engine: ${allowCloudFallback ? 'Local+CloudFallback' : 'SovereignLocalOnly'}]...`, 'INFO');
 
     try {
       const res = await generateAIImage({
         prompt: promptToUse,
         model: imageModel as any,
         style: imageStyle as any,
-        aspectRatio: imageAspectRatio
+        aspectRatio: imageAspectRatio,
+        allowCloudFallback
       }, userToken);
 
       if (res && res.image) {
@@ -2796,6 +2798,15 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                                       {img.width}×{img.height}
                                     </span>
                                   )}
+                                  {img.engineSource === 'cloud-fallback' ? (
+                                    <span className="px-1.5 py-0.2 rounded text-[8px] uppercase font-bold border bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                                      Cloud Fallback
+                                    </span>
+                                  ) : (
+                                    <span className="px-1.5 py-0.2 rounded text-[8px] uppercase font-bold border bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30">
+                                      Sovereign Local
+                                    </span>
+                                  )}
                                 </div>
                               </div>
 
@@ -4601,6 +4612,57 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                           {ar.label}
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Inference Engine & Cloud Fallback Routing */}
+                  <div className={`p-3 rounded-xl border space-y-2 transition-all ${
+                    isLight ? 'bg-slate-50 border-slate-200' : 'bg-[#161619] border-[#3a494b]/40'
+                  }`}>
+                    <div className="flex items-center justify-between gap-3 flex-wrap">
+                      <div className="flex items-center gap-2.5">
+                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border ${
+                          allowCloudFallback
+                            ? isLight ? 'bg-amber-50 border-amber-300 text-amber-600' : 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+                            : isLight ? 'bg-emerald-50 border-emerald-300 text-emerald-600' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400'
+                        }`}>
+                          {allowCloudFallback ? <Globe className="w-4 h-4 shrink-0" /> : <ShieldCheck className="w-4 h-4 shrink-0" />}
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold font-mono text-on-surface flex items-center gap-1.5">
+                            <span>Inference Engine Routing</span>
+                            <span className={`px-1.5 py-0.2 rounded text-[8px] font-mono font-bold uppercase border ${
+                              allowCloudFallback
+                                ? isLight ? 'bg-amber-100 text-amber-800 border-amber-300' : 'bg-amber-500/15 text-amber-400 border-amber-500/40'
+                                : isLight ? 'bg-emerald-100 text-emerald-800 border-emerald-300' : 'bg-emerald-500/15 text-emerald-400 border-emerald-500/40'
+                            }`}>
+                              {allowCloudFallback ? 'Cloud Fallback Allowed' : '100% Sovereign Local Only'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-on-surface-variant font-mono mt-0.5">
+                            {allowCloudFallback
+                              ? 'Tries local models first; falls back to pollinations.ai cloud open weights if local is unavailable.'
+                              : 'Works exclusively using local VM models. Zero external API calls, zero tracking, and zero watermarks.'}
+                          </p>
+                        </div>
+                      </div>
+
+                      <label className="relative inline-flex items-center cursor-pointer shrink-0 select-none">
+                        <input
+                          type="checkbox"
+                          checked={allowCloudFallback}
+                          onChange={(e) => setAllowCloudFallback(e.target.checked)}
+                          className="sr-only peer"
+                        />
+                        <div className={`w-9 h-5 rounded-full peer transition-colors peer-focus:outline-none after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all ${
+                          allowCloudFallback
+                            ? 'bg-amber-500 after:translate-x-full after:border-white'
+                            : isLight ? 'bg-slate-300' : 'bg-[#2a2a30]'
+                        }`} />
+                        <span className="ml-2 text-[10px] font-mono font-bold text-on-surface">
+                          {allowCloudFallback ? 'Fallback Enabled' : 'Local Only'}
+                        </span>
+                      </label>
                     </div>
                   </div>
                 </>

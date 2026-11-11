@@ -136,6 +136,7 @@ export interface GeneratedImageMeta {
   format?: string;
   style?: string;
   fileSize?: number;
+  engineSource?: 'local' | 'cloud-fallback';
 }
 
 export interface AIAgentPersona {

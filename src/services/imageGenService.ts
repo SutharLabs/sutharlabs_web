@@ -18,6 +18,7 @@ export interface GeneratedImageResult {
   format: string;
   fileSize?: number;
   style?: string;
+  engineSource?: 'local' | 'cloud-fallback';
 }
 
 export interface ImageGenOptions {
@@ -29,6 +30,7 @@ export interface ImageGenOptions {
   seed?: number;
   width?: number;
   height?: number;
+  allowCloudFallback?: boolean;
 }
 
 export interface ImageProcessOptions {
@@ -176,34 +178,71 @@ export async function generateSovereignImage(options: ImageGenOptions): Promise<
 
   const modelMeta = OPEN_WEIGHT_IMAGE_MODELS.find(m => m.id === model) || OPEN_WEIGHT_IMAGE_MODELS[0];
 
-  // 1. Primary Generation: Open-weight Neural Inference Pipeline
-  // Pollinations.ai open weights router / Hugging Face open weights
-  const encodedPrompt = encodeURIComponent(revisedPrompt);
-  const polModel = model === "janus-pro-1b" ? "flux" : model === "flux-schnell" ? "flux" : "turbo";
-  const remoteUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${targetWidth}&height=${targetHeight}&model=${polModel}&seed=${seed}&nologo=true`;
-
   let imageBuffer: Buffer | null = null;
+  let engineSource: 'local' | 'cloud-fallback' = 'local';
+
+  // 1. Primary Engine: Sovereign Local Inference Pipeline
+  // Checks local neural daemon on VM 2 (port 8082) or local image runtime if configured
+  const localImageServiceUrl = process.env.LOCAL_IMAGE_SERVICE_URL || "http://132.226.190.125:8082";
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 35000);
-
-    const response = await fetch(remoteUrl, {
-      signal: controller.signal,
-      headers: {
-        "User-Agent": "SutharLabs-Sovereign-Engine/2.0 (AI Agent Studio)"
-      }
+    const timeout = setTimeout(() => controller.abort(), 12000);
+    const localRes = await fetch(`${localImageServiceUrl}/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: revisedPrompt,
+        model,
+        width: targetWidth,
+        height: targetHeight,
+        seed
+      }),
+      signal: controller.signal
     });
     clearTimeout(timeout);
 
-    if (response.ok) {
-      const arrayBuf = await response.arrayBuffer();
-      imageBuffer = Buffer.from(arrayBuf);
+    if (localRes.ok) {
+      const arrayBuf = await localRes.arrayBuffer();
+      if (arrayBuf.byteLength > 500) {
+        imageBuffer = Buffer.from(arrayBuf);
+        engineSource = 'local';
+      }
     }
-  } catch (err: any) {
-    console.warn(`[ImageGen] Remote neural generation encountered glitch (${err.message}), triggering sovereign vector fallback...`);
+  } catch (localErr: any) {
+    // Local daemon still spinning up or not responding
   }
 
-  // 2. High-Fidelity Sovereign Vector / SVG Fallback if remote network was unreachable
+  // 2. Cloud Fallback (pollinations.ai): Executed ONLY IF the user explicitly enabled cloud fallback
+  if ((!imageBuffer || imageBuffer.length < 500) && options.allowCloudFallback) {
+    const encodedPrompt = encodeURIComponent(revisedPrompt);
+    const polModel = model === "janus-pro-1b" ? "flux" : model === "flux-schnell" ? "flux" : "turbo";
+    const remoteUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${targetWidth}&height=${targetHeight}&model=${polModel}&seed=${seed}&nologo=true`;
+
+    try {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 35000);
+
+      const response = await fetch(remoteUrl, {
+        signal: controller.signal,
+        headers: {
+          "User-Agent": "SutharLabs-Sovereign-Engine/2.0 (AI Agent Studio)"
+        }
+      });
+      clearTimeout(timeout);
+
+      if (response.ok) {
+        const arrayBuf = await response.arrayBuffer();
+        if (arrayBuf.byteLength > 500) {
+          imageBuffer = Buffer.from(arrayBuf);
+          engineSource = 'cloud-fallback';
+        }
+      }
+    } catch (err: any) {
+      console.warn(`[ImageGen] Remote cloud fallback encountered error (${err.message}), reverting to sovereign vector artwork...`);
+    }
+  }
+
+  // 3. High-Fidelity Sovereign Vector / SVG Fallback (100% Offline, Zero-Watermark, Deterministic)
   if (!imageBuffer || imageBuffer.length < 500) {
     const svgFallback = generateSovereignVisualSVG({
       prompt,
@@ -214,7 +253,6 @@ export async function generateSovereignImage(options: ImageGenOptions): Promise<
       height: targetHeight
     });
     imageBuffer = Buffer.from(svgFallback, "utf8");
-    // Write as SVG or PNG
     const svgFilename = `${imageId}.svg`;
     const svgPath = path.join(storageDir, svgFilename);
     fs.writeFileSync(svgPath, imageBuffer);
@@ -234,7 +272,8 @@ export async function generateSovereignImage(options: ImageGenOptions): Promise<
       createdAt: Date.now(),
       format: "svg",
       fileSize: imageBuffer.length,
-      style
+      style,
+      engineSource: 'local'
     };
   }
 
@@ -263,7 +302,8 @@ export async function generateSovereignImage(options: ImageGenOptions): Promise<
     createdAt: Date.now(),
     format: ext,
     fileSize: imageBuffer.length,
-    style
+    style,
+    engineSource
   };
 }
 
