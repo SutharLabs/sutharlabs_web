@@ -28,6 +28,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const search = urlObj.searchParams.toString();
     targetPath = `/api/${apiPath}${search ? '?' + search : ''}`;
     req.url = targetPath;
+  } else if (req.query && req.query.storagePath) {
+    const storagePath = Array.isArray(req.query.storagePath) ? req.query.storagePath[0] : req.query.storagePath;
+    const urlObj = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    urlObj.searchParams.delete('storagePath');
+    const search = urlObj.searchParams.toString();
+    targetPath = `/storage/${storagePath}${search ? '?' + search : ''}`;
+    req.url = targetPath;
   } else if (req.url && req.url.startsWith('/api/server')) {
     targetPath = req.url.replace('/api/server', '/api');
     req.url = targetPath;
@@ -54,6 +61,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const isLongRunningRoute =
         targetPath.startsWith('/api/ai/chat') ||
+        targetPath.startsWith('/api/ai/image') ||
+        targetPath.startsWith('/storage') ||
         targetPath.startsWith('/api/vault/upload') ||
         targetPath.startsWith('/api/vault/complete-chunk-upload') ||
         targetPath.includes('ocr-receipt') ||

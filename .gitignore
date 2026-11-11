@@ -18,4 +18,5 @@ server.js
 server.js.map
 *.tar.gz
 *.lock
+storage/
 dist.tar.gz

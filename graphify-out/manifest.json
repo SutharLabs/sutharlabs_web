@@ -6,9 +6,9 @@
     "semantic_hash": "6eab2f1626c4f1fbdd66aa25ee74fd00"
   },
   "api/server.ts": {
-    "mtime": 1794188255.8123727,
-    "seen": 1794191330.376686,
-    "ast_hash": "64d8686014c586825f2a24209763c69b",
+    "mtime": 1794408457.0036147,
+    "seen": 1794408948.4865603,
+    "ast_hash": "699be123b30116a617623e73f0621616",
     "semantic_hash": ""
   },
   "metadata.json": {
@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794278574.3180387,
-    "seen": 1794279047.259356,
-    "ast_hash": "8b050401ed4bbca37d4e2dd17eeea325",
+    "mtime": 1794408388.7657971,
+    "seen": 1794408948.4867532,
+    "ast_hash": "5f0c6f63277170d6ba8bb84198b9ddfb",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -824,9 +824,9 @@
     "semantic_hash": "3fb5d98480b7ea548bcaa3616c444da1"
   },
   "vercel.json": {
-    "mtime": 1794263483.4573102,
-    "seen": 1794265356.6022427,
-    "ast_hash": "7c7195ea35fd058471d0f6ebd4435053",
+    "mtime": 1794408424.730025,
+    "seen": 1794408948.4876928,
+    "ast_hash": "0face8680fd3f0c4764a7d7efab47c7b",
     "semantic_hash": ""
   },
   "vite.config.ts": {
@@ -1100,9 +1100,9 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1794406859.70894,
-    "seen": 1794407151.5110278,
-    "ast_hash": "d1183090c1c59731c1ba7411318b209b",
+    "mtime": 1794408649.7104971,
+    "seen": 1794408948.4867706,
+    "ast_hash": "bed107823639ba5700a0c88a549a9c08",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
@@ -1958,9 +1958,9 @@
     "semantic_hash": ""
   },
   "src/services/imageGenService.ts": {
-    "mtime": 1794278530.6992042,
-    "seen": 1794279047.2601316,
-    "ast_hash": "f1138c698bc901c5417af925facb63ec",
+    "mtime": 1794408652.3813035,
+    "seen": 1794408948.487662,
+    "ast_hash": "a85935e37586787e28d59ada4a3488c3",
     "semantic_hash": ""
   },
   "src/components/AIEcosystemStudioView.tsx": {

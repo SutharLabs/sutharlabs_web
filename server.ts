@@ -6119,6 +6119,43 @@ app.post("/api/ai/image/generate", authenticateToken, async (req: any, res: any)
   }
 });
 
+// GET /api/ai/image/file/:filename: Public image streaming endpoint for AI synthesized images
+app.get("/api/ai/image/file/:filename", async (req: any, res: any) => {
+  const filename = path.basename(req.params.filename);
+  const filePath = path.join(process.cwd(), "storage", "ai-generated", filename);
+  if (!fs.existsSync(filePath)) {
+    return res.status(404).json({ error: "Image file not found" });
+  }
+
+  // Sniff magic bytes for guaranteed correct MIME type
+  let contentType = "image/png";
+  try {
+    const fd = fs.openSync(filePath, "r");
+    const buf = Buffer.alloc(4);
+    fs.readSync(fd, buf, 0, 4, 0);
+    fs.closeSync(fd);
+    if (buf[0] === 0xff && buf[1] === 0xd8) {
+      contentType = "image/jpeg";
+    } else if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) {
+      contentType = "image/png";
+    } else if (buf[0] === 0x3c && (buf[1] === 0x73 || buf[1] === 0x21 || buf[1] === 0x3f)) {
+      contentType = "image/svg+xml";
+    } else if (buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46) {
+      contentType = "image/webp";
+    }
+  } catch (e) {
+    const ext = path.extname(filename).toLowerCase();
+    if (ext === ".jpg" || ext === ".jpeg") contentType = "image/jpeg";
+    else if (ext === ".svg") contentType = "image/svg+xml";
+    else if (ext === ".webp") contentType = "image/webp";
+  }
+
+  res.setHeader("Content-Type", contentType);
+  res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.sendFile(filePath);
+});
+
 // POST /api/ai/image/process: Process an existing image (remove-background, filters, vision analysis)
 app.post("/api/ai/image/process", authenticateToken, async (req: any, res: any) => {
   const { operation, imageUrl, imageBase64, prompt } = req.body;

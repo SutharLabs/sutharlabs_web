@@ -221,7 +221,7 @@ export async function generateSovereignImage(options: ImageGenOptions): Promise<
 
     return {
       id: imageId,
-      url: `/storage/ai-generated/${svgFilename}`,
+      url: `/api/ai/image/file/${svgFilename}`,
       localPath: svgPath,
       prompt,
       revisedPrompt,
@@ -238,13 +238,20 @@ export async function generateSovereignImage(options: ImageGenOptions): Promise<
     };
   }
 
-  // Save the downloaded PNG to disk
-  fs.writeFileSync(localFilePath, imageBuffer);
+  // Detect image format from magic bytes
+  const isJpeg = imageBuffer[0] === 0xff && imageBuffer[1] === 0xd8;
+  const isWebp = imageBuffer[0] === 0x52 && imageBuffer[1] === 0x49;
+  const ext = isJpeg ? "jpg" : isWebp ? "webp" : "png";
+  const actualFilename = `${imageId}.${ext}`;
+  const actualLocalFilePath = path.join(storageDir, actualFilename);
+
+  // Save the downloaded image to disk
+  fs.writeFileSync(actualLocalFilePath, imageBuffer);
 
   return {
     id: imageId,
-    url: `/storage/ai-generated/${filename}`,
-    localPath: localFilePath,
+    url: `/api/ai/image/file/${actualFilename}`,
+    localPath: actualLocalFilePath,
     prompt,
     revisedPrompt,
     model: modelMeta.id,
@@ -254,7 +261,7 @@ export async function generateSovereignImage(options: ImageGenOptions): Promise<
     height: targetHeight,
     aspectRatio,
     createdAt: Date.now(),
-    format: "png",
+    format: ext,
     fileSize: imageBuffer.length,
     style
   };

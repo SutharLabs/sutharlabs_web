@@ -720,10 +720,11 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
         const generatedImg = res.image;
         addLog('IMAGE_STUDIO', `Image synthesized successfully (${generatedImg.width}x${generatedImg.height})`, 'SUCCESS');
 
+        const cleanPrompt = promptToUse.replace(/^["']+|["']+$/g, '');
         const assistantMsg: AIChatMessage = {
           id: `msg-${Date.now()}-assistant`,
           role: 'assistant',
-          content: `Here is the synthesized visual artwork for: **"${promptToUse}"**\n\n- **Model**: ${generatedImg.modelLabel || imageModel}\n- **Style**: ${imageStyle}\n- **Dimensions**: ${generatedImg.width}×${generatedImg.height}`,
+          content: `Here is the synthesized visual artwork for: **"${cleanPrompt}"**\n\n- **Model**: ${generatedImg.modelLabel || imageModel}\n- **Style**: ${imageStyle}\n- **Dimensions**: ${generatedImg.width}×${generatedImg.height}`,
           model: imageModel,
           mode: currentMode,
           timestamp: new Date().toLocaleTimeString(),
@@ -2834,13 +2835,21 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                             </div>
 
                             {/* Image Canvas / Preview Box */}
-                            <div className="relative group bg-black/40 flex items-center justify-center overflow-hidden">
+                            <div className="relative group bg-black/40 flex items-center justify-center overflow-hidden min-h-[220px]">
                               <img
                                 src={img.url}
                                 alt={img.prompt}
                                 className="w-full h-auto max-h-[500px] object-contain cursor-zoom-in transition-transform duration-300 group-hover:scale-[1.01]"
                                 onClick={() => setZoomImageUrl(img.url)}
                                 loading="lazy"
+                                onError={(e) => {
+                                  const target = e.currentTarget;
+                                  if (img.url && img.url.includes('storage/ai-generated/') && !target.dataset.triedApi) {
+                                    target.dataset.triedApi = 'true';
+                                    const filename = img.url.split('/').pop();
+                                    if (filename) target.src = `/api/ai/image/file/${filename}`;
+                                  }
+                                }}
                               />
                             </div>
 
@@ -4766,6 +4775,14 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
               src={zoomImageUrl}
               alt="Enlarged view"
               className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl border border-white/20"
+              onError={(e) => {
+                const target = e.currentTarget;
+                if (zoomImageUrl && zoomImageUrl.includes('storage/ai-generated/') && !target.dataset.triedApi) {
+                  target.dataset.triedApi = 'true';
+                  const filename = zoomImageUrl.split('/').pop();
+                  if (filename) target.src = `/api/ai/image/file/${filename}`;
+                }
+              }}
             />
             <div className="mt-3 flex items-center gap-3">
               <a
