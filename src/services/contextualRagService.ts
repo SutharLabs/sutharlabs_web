@@ -433,6 +433,7 @@ The topology consists of three primary virtual machines and managed serverless e
   - Active Models:
     * nomic-embed-text: 768-dimensional dense semantic embedding model with 8,192 token context window. Powers the Contextual RAG Engine.
     * qwen2.5:1.5b: High-speed general reasoning and instruction following.
+    * edgerock:4b: Constant-memory hybrid LLM (4.5B) powered by Gated DeltaNet and Rock Memory Anchors (RMA). Handles 256,000 token context at fixed 72MB memory.
     * qwen2.5-coder:3b: Code generation, full-stack React/Node architecture, and artifact synthesis.
     * deepseek-r1:1.5b: Mathematical chain-of-thought (CoT) and symbolic deduction.
     * gemma2:2b: Ultra-fast conversational assistant.

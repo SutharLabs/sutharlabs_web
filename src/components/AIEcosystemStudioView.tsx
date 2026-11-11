@@ -263,6 +263,7 @@ export default function AIEcosystemStudioView({
       case 'globe': return <Globe className="w-5 h-5 text-blue-400 shrink-0" />;
       case 'film': return <Film className="w-5 h-5 text-pink-400 shrink-0" />;
       case 'palette': return <Palette className="w-5 h-5 text-indigo-400 shrink-0" />;
+      case 'zap': return <Zap className="w-5 h-5 text-amber-400 shrink-0" />;
       default: return <Sparkles className="w-5 h-5 text-[#00dbe7] shrink-0" />;
     }
   };
@@ -282,8 +283,8 @@ export default function AIEcosystemStudioView({
 
     if (agentCategoryFilter === 'all') return true;
     if (agentCategoryFilter === 'infra') return ['cloud-architect', 'database-architect'].includes(persona.id);
-    if (agentCategoryFilter === 'code') return ['software-engineer', 'research-synthesizer'].includes(persona.id);
-    if (agentCategoryFilter === 'math') return ['quant-analyst', 'math-reasoner'].includes(persona.id);
+    if (agentCategoryFilter === 'code') return ['software-engineer', 'research-synthesizer', 'edgerock-reasoner'].includes(persona.id);
+    if (agentCategoryFilter === 'math') return ['quant-analyst', 'math-reasoner', 'edgerock-reasoner'].includes(persona.id);
     if (agentCategoryFilter === 'creative') return ['video-director', 'creative-designer'].includes(persona.id);
     if (agentCategoryFilter === 'custom') return persona.id.startsWith('custom-');
     return true;
@@ -558,6 +559,7 @@ export default function AIEcosystemStudioView({
                       }`}
                     >
                       <option value="qwen2.5:1.5b">Qwen 2.5 1.5B (Fast CPU)</option>
+                      <option value="edgerock:4b">EdgeRock 4B (Constant Memory • 256K Context)</option>
                       <option value="qwen2.5-coder:3b">Qwen 2.5 Coder 3B (Code SOTA)</option>
                       <option value="deepseek-r1:1.5b">DeepSeek R1 1.5B (CoT Reasoner)</option>
                       <option value="gemma2:2b">Gemma 2 2B (Google Architecture)</option>

@@ -1963,8 +1963,9 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                         : 'bg-[#201f21] border-[#3a494b]/40 text-[#00dbe7] focus:border-[#00dbe7]/60'
                     }`}
                   >
-                    <optgroup label="⚡ Ultra-Fast & Instant (Recommended for CPU)">
+                    <optgroup label="⚡ Ultra-Fast & Constant Memory (Recommended for CPU)">
                       <option value="qwen2.5:1.5b">Qwen 2.5 1.5B (⚡ Sub-Second ~48 t/s)</option>
+                      <option value="edgerock:4b">EdgeRock 4B (⚡ 256K Constant KV ~72MB ~32 t/s)</option>
                       <option value="deepseek-r1:1.5b">DeepSeek R1 1.5B (🧠 Reasoning ~40 t/s)</option>
                       <option value="gemma2:2b">Gemma 2 2B (⚡ Fast ~35 t/s)</option>
                       <option value="qwen2.5-coder:3b">Qwen 2.5 Coder 3B (💻 SOTA Code ~28 t/s)</option>
@@ -1974,7 +1975,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       <option value="deepseek-r1:7b">DeepSeek R1 7B (🧠 Frontier Reasoning ~6 t/s)</option>
                     </optgroup>
                     {availableModels
-                      .filter(m => !['deepseek-r1:7b', 'deepseek-r1:1.5b', 'qwen2.5:1.5b', 'gemma2:2b', 'qwen2.5-coder:3b', 'qwen2.5:7b'].includes(m.name))
+                      .filter(m => !['deepseek-r1:7b', 'deepseek-r1:1.5b', 'edgerock:4b', 'qwen2.5:1.5b', 'gemma2:2b', 'qwen2.5-coder:3b', 'qwen2.5:7b'].includes(m.name))
                       .map(m => (
                         <option key={m.name} value={m.name}>{m.name}</option>
                       ))}
@@ -2226,6 +2227,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                   >
                     <optgroup label="⚡ Fast CPU Models">
                       <option value="qwen2.5:1.5b">Qwen 2.5 1.5B (⚡ Fast ~48 t/s)</option>
+                      <option value="edgerock:4b">EdgeRock 4B (⚡ 256K Flat KV)</option>
                       <option value="deepseek-r1:1.5b">DeepSeek R1 1.5B (🧠 Reasoning)</option>
                       <option value="gemma2:2b">Gemma 2 2B (⚡ Fast)</option>
                       <option value="qwen2.5-coder:3b">Qwen 2.5 Coder 3B (💻 Code)</option>
@@ -2235,7 +2237,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       <option value="deepseek-r1:7b">DeepSeek R1 7B (~6 t/s)</option>
                     </optgroup>
                     {availableModels
-                      .filter(m => !['deepseek-r1:7b', 'deepseek-r1:1.5b', 'qwen2.5:1.5b', 'gemma2:2b', 'qwen2.5-coder:3b', 'qwen2.5:7b'].includes(m.name))
+                      .filter(m => !['deepseek-r1:7b', 'deepseek-r1:1.5b', 'edgerock:4b', 'qwen2.5:1.5b', 'gemma2:2b', 'qwen2.5-coder:3b', 'qwen2.5:7b'].includes(m.name))
                       .map(m => (
                         <option key={m.name} value={m.name}>{m.name}</option>
                       ))}
@@ -3372,6 +3374,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                           <div className="max-h-56 overflow-y-auto space-y-0.5 custom-scrollbar">
                             {[
                               { id: 'qwen2.5:1.5b', name: 'Qwen 2.5 1.5B', note: '⚡ Fast CPU (Default)' },
+                              { id: 'edgerock:4b', name: 'EdgeRock 4B', note: '⚡ 256K Flat KV (4.5B)' },
                               { id: 'qwen2.5:7b', name: 'Qwen 2.5 7B', note: '🧠 High Intelligence' },
                               { id: 'qwen2.5-coder:3b', name: 'Qwen 2.5 Coder 3B', note: '💻 Code Specialist' },
                               { id: 'deepseek-r1:1.5b', name: 'DeepSeek R1 1.5B', note: '🧠 Reasoning CoT' },

@@ -101,6 +101,16 @@ export const AGENT_PERSONAS: AIAgentPersona[] = [
     description: 'Specializes in high-CTR YouTube thumbnails, 3D device mockups, apparel design, and crisp SVG visual assets without diffusion hallucination.',
     systemPrompt: `You are the Lead Creative Visual Designer and Mockup Specialist for SutharLabs. You create high-CTR YouTube thumbnails, device frames (MacBook, iPhone), transparent PNG cutouts, and SVG graphics. You guide users on color theory, typography hierarchy, sticker glow outlines, and 3D isometric perspectives compatible with the Thumbnail & Mockup Studio (/tools/mockup-studio) and AI Background Remover (/tools/background-remover).`,
     recommendedModel: 'qwen2.5-coder:3b'
+  },
+  {
+    id: 'edgerock-reasoner',
+    name: 'EdgeRock Constant-Memory Reasoner',
+    title: 'Long-Context & Flat-KV Specialist',
+    icon: 'zap',
+    badge: '256K Constant KV',
+    description: 'Powered by EdgeRock-4B (Rock Matrix Gated DeltaNet). Retains massive 256K context at constant 72MB memory for uninterrupted complex reasoning.',
+    systemPrompt: `You are the Lead Constant-Memory Reasoning Specialist for SutharLabs, powered by EdgeRock-4B (4.5B parameters, Rock Matrix hybrid architecture). You leverage Gated DeltaNet recurrent memory and Rock Memory Anchors (RMA) to process ultra-long multi-turn contexts (up to 256K tokens) with fixed-size memory footprint. Synthesize deep codebases, multi-file architectural specifications, and complex mathematical proofs without context loss or attention degradation.`,
+    recommendedModel: 'edgerock:4b'
   }
 ];
 

@@ -1074,6 +1074,7 @@ export default function FlowDesignerView({ logs = [], onAddLog, userToken, theme
                     >
                       <option value="finllm:latest">finllm:latest (Quant & Momentum Agent)</option>
                       <option value="qwen2.5:1.5b">qwen2.5:1.5b (Fast Sub-Second Synthesizer)</option>
+                      <option value="edgerock:4b">edgerock:4b (EdgeRock 4.5B Constant Memory 256K)</option>
                       <option value="deepseek-r1:1.5b">deepseek-r1:1.5b (Fast Reasoning CoT)</option>
                       <option value="qwen2.5-coder:3b">qwen2.5-coder:3b (Code & Logic Specialist)</option>
                     </select>

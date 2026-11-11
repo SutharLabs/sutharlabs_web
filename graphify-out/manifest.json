@@ -122,9 +122,9 @@
     "semantic_hash": "324737b86b55bbc04f585145e05470c7"
   },
   "src/components/FlowDesignerView.tsx": {
-    "mtime": 1793980934.3505523,
-    "seen": 1793980986.2090034,
-    "ast_hash": "c3c3d4f280d049a8008f3cc90ecd64f0",
+    "mtime": 1794409813.5909023,
+    "seen": 1794410440.9257944,
+    "ast_hash": "f5ba29ab0b5982cf22d0f0fff10d8f63",
     "semantic_hash": ""
   },
   "src/components/HeroStudioConsole.tsx": {
@@ -1100,15 +1100,15 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1794408649.7104971,
-    "seen": 1794408948.4867706,
-    "ast_hash": "bed107823639ba5700a0c88a549a9c08",
+    "mtime": 1794409984.499969,
+    "seen": 1794410440.925754,
+    "ast_hash": "ded6587007350d86924d09d66ba20448",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
-    "mtime": 1794277088.8308837,
-    "seen": 1794279047.2601118,
-    "ast_hash": "0e23c79d636a6fb1f003c92be0b56ae2",
+    "mtime": 1794409636.7721872,
+    "seen": 1794410440.926994,
+    "ast_hash": "e83646dd0dd8308fcfd926f7f5782672",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
@@ -1952,9 +1952,9 @@
     "semantic_hash": ""
   },
   "src/services/contextualRagService.ts": {
-    "mtime": 1794275648.3541596,
-    "seen": 1794279047.2601202,
-    "ast_hash": "8d3a8280cffdba1eef14dd07f40739b9",
+    "mtime": 1794409842.0289423,
+    "seen": 1794410440.927008,
+    "ast_hash": "1670536c8618e841304aa6cf3985e388",
     "semantic_hash": ""
   },
   "src/services/imageGenService.ts": {
@@ -1964,9 +1964,9 @@
     "semantic_hash": ""
   },
   "src/components/AIEcosystemStudioView.tsx": {
-    "mtime": 1794405423.1305456,
-    "seen": 1794407151.5110192,
-    "ast_hash": "a362b7b658ae9313fd818e0d54d14394",
+    "mtime": 1794409982.20882,
+    "seen": 1794410440.9257443,
+    "ast_hash": "b1c2d3d38e76585b2f814713626fb432",
     "semantic_hash": ""
   },
   "package-lock.json": {
