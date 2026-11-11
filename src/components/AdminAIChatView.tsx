@@ -656,6 +656,78 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
 
   const [inputPrompt, setInputPrompt] = useState<string>('');
   const [streamBuffer, setStreamBuffer] = useState<string>('');
+
+  // Streaming performance & crash-protection refs (prevents UI freeze & preserves responses on reload)
+  const activeStreamTextRef = useRef<string>('');
+  const isStreamingRef = useRef<boolean>(false);
+  const activeSessionIdRef = useRef<string>(activeSessionId);
+  const selectedModelRef = useRef<string>(selectedModel);
+  const selectedAgentRef = useRef<AIAgentPersona>(selectedAgent);
+  const currentModeRef = useRef<AIChatMode>(currentMode);
+
+  useEffect(() => {
+    activeSessionIdRef.current = activeSessionId;
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    selectedModelRef.current = selectedModel;
+  }, [selectedModel]);
+
+  useEffect(() => {
+    selectedAgentRef.current = selectedAgent;
+  }, [selectedAgent]);
+
+  useEffect(() => {
+    currentModeRef.current = currentMode;
+  }, [currentMode]);
+
+  // Window Reload & Crash Protection: Immediately commits streaming text to localStorage beforeunload
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (isStreamingRef.current && activeStreamTextRef.current.trim()) {
+        const partialText = activeStreamTextRef.current.trim() + '\n\n*(Response streaming was interrupted on window reload)*';
+        const targetSessionId = activeSessionIdRef.current;
+        try {
+          const raw = localStorage.getItem('sutharlabs_ai_chat_sessions');
+          if (raw) {
+            const parsedSessions: ChatSession[] = JSON.parse(raw);
+            const updated = parsedSessions.map(s => {
+              if (s.id === targetSessionId) {
+                const msgs = s.messages.filter(m => !m.id.startsWith('assistant-stream-'));
+                const interruptedMsg: AIChatMessage = {
+                  id: `assistant-${Date.now()}-interrupted`,
+                  role: 'assistant',
+                  content: partialText,
+                  model: selectedModelRef.current,
+                  mode: currentModeRef.current,
+                  timestamp: new Date().toLocaleTimeString(),
+                  agentId: selectedAgentRef.current.id
+                };
+                return {
+                  ...s,
+                  messages: [...msgs, interruptedMsg],
+                  updatedAt: Date.now()
+                };
+              }
+              return s;
+            });
+            localStorage.setItem('sutharlabs_ai_chat_sessions', JSON.stringify(updated));
+            const active = updated.find(s => s.id === targetSessionId);
+            if (active) {
+              localStorage.setItem('sutharlabs_ai_chat_history', JSON.stringify(active.messages));
+            }
+          }
+        } catch (e) {
+          console.warn('Failed to save interrupted stream on beforeunload:', e);
+        }
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, []);
   const [isDeepResearch, setIsDeepResearch] = useState<boolean>(false);
   const [isSearchingWeb, setIsSearchingWeb] = useState<boolean>(false);
   const [isRagActive, setIsRagActive] = useState<boolean>(true);
@@ -940,10 +1012,13 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
     discoverOpencode();
   }, [userToken]);
 
-  // Auto-scroll chat
+  // Auto-scroll chat without layout thrashing during streaming
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamBuffer]);
+    if (!chatEndRef.current) return;
+    // When generating a stream, use 'auto' (instantaneous 0ms layout change) to avoid layout thrashing
+    // Only use 'smooth' when generation is complete
+    chatEndRef.current.scrollIntoView({ behavior: isGenerating ? 'auto' : 'smooth' });
+  }, [messages, streamBuffer, isGenerating]);
 
   // Auto-resize textarea
   useEffect(() => {
@@ -1384,6 +1459,53 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
     abortControllerRef.current = abortController;
 
     let fullGeneratedText = '';
+    activeStreamTextRef.current = '';
+    isStreamingRef.current = true;
+    let rafPending = false;
+    let lastFlushTime = 0;
+    let lastCheckpointTime = performance.now();
+
+    const flushStreamBuffer = () => {
+      setStreamBuffer(fullGeneratedText);
+      rafPending = false;
+    };
+
+    const checkpointStreamToStorage = (text: string) => {
+      try {
+        const targetSessionId = activeSessionIdRef.current;
+        const raw = localStorage.getItem('sutharlabs_ai_chat_sessions');
+        if (raw) {
+          const parsed: ChatSession[] = JSON.parse(raw);
+          const updated = parsed.map(s => {
+            if (s.id === targetSessionId) {
+              const msgs = [...s.messages];
+              const streamMsgId = `assistant-stream-${targetSessionId}`;
+              const lastIdx = msgs.findIndex(m => m.id === streamMsgId);
+              if (lastIdx >= 0) {
+                msgs[lastIdx] = { ...msgs[lastIdx], content: text };
+              } else {
+                msgs.push({
+                  id: streamMsgId,
+                  role: 'assistant',
+                  content: text,
+                  model: selectedModelRef.current,
+                  mode: currentModeRef.current,
+                  timestamp: new Date().toLocaleTimeString(),
+                  agentId: selectedAgentRef.current.id
+                });
+              }
+              return { ...s, messages: msgs, updatedAt: Date.now() };
+            }
+            return s;
+          });
+          localStorage.setItem('sutharlabs_ai_chat_sessions', JSON.stringify(updated));
+          const active = updated.find(s => s.id === targetSessionId);
+          if (active) {
+            localStorage.setItem('sutharlabs_ai_chat_history', JSON.stringify(active.messages));
+          }
+        }
+      } catch {}
+    };
 
     try {
       addLog('INFERENCE', `Sending inference query to ${selectedModel} on sutharlabs-prod...`, 'INFO');
@@ -1395,9 +1517,36 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
         signal: abortController.signal,
         onChunk: (chunk) => {
           fullGeneratedText += chunk;
-          setStreamBuffer((prev) => prev + chunk);
+          activeStreamTextRef.current = fullGeneratedText;
+
+          const now = performance.now();
+
+          // Checkpoint partial response to storage every 3.5s so browser reload never loses text
+          if (now - lastCheckpointTime >= 3500) {
+            lastCheckpointTime = now;
+            checkpointStreamToStorage(fullGeneratedText);
+          }
+
+          if (!rafPending) {
+            // Throttle React state updates to at most ~40ms (25 FPS) using requestAnimationFrame
+            // Keeps the browser event loop completely responsive during rapid token generation
+            if (now - lastFlushTime >= 40) {
+              lastFlushTime = now;
+              flushStreamBuffer();
+            } else {
+              rafPending = true;
+              requestAnimationFrame(() => {
+                lastFlushTime = performance.now();
+                flushStreamBuffer();
+              });
+            }
+          }
         },
         onDone: (metrics) => {
+          isStreamingRef.current = false;
+          activeStreamTextRef.current = '';
+          flushStreamBuffer();
+
           const assistantMsg: AIChatMessage = {
             id: `assistant-${Date.now()}`,
             role: 'assistant',
@@ -1413,7 +1562,10 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
             ragResults: ragResults.length > 0 ? ragResults : undefined
           };
 
-          setMessages((prev) => [...prev, assistantMsg]);
+          setMessages((prev) => {
+            const filtered = prev.filter(m => !m.id.startsWith('assistant-stream-'));
+            return [...filtered, assistantMsg];
+          });
           setStreamBuffer('');
           extractArtifactsFromContent(fullGeneratedText, assistantMsg.id);
           addLog('INFERENCE', `Inference complete. Generated ${metrics.totalTokens} tokens at ${metrics.speedTokensPerSec} tokens/sec (${(metrics.durationMs / 1000).toFixed(2)}s).`, 'SUCCESS');
@@ -1426,6 +1578,8 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
         }
       });
     } catch (err: any) {
+      isStreamingRef.current = false;
+      activeStreamTextRef.current = '';
       if (err.name !== 'AbortError') {
         console.error('Chat error:', err);
         const errMsg = err?.message || '';
@@ -1467,6 +1621,8 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
         addLog('INFERENCE', `Inference request failed: ${err.message}`, 'ERROR');
       }
     } finally {
+      isStreamingRef.current = false;
+      activeStreamTextRef.current = '';
       setIsGenerating(false);
       abortControllerRef.current = null;
     }
@@ -2930,9 +3086,6 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                         <MarkdownMessage
                           content={msg.content}
                           theme={theme}
-                          onExtractArtifact={(code, lang) => {
-                            extractArtifactsFromContent(`\`\`\`${lang}\n${code}\n\`\`\``, msg.id);
-                          }}
                         />
                       )}
 

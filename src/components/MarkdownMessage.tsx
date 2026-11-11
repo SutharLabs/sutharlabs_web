@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   Copy, 
   Check, 
@@ -17,7 +17,7 @@ interface MarkdownMessageProps {
   onExtractArtifact?: (code: string, language: string) => void;
 }
 
-export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({
+export const MarkdownMessage: React.FC<MarkdownMessageProps> = React.memo(({
   content,
   theme = 'dark',
   onExtractArtifact
@@ -105,8 +105,8 @@ export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({
     });
   };
 
-  // High-performance block-level parser
-  const renderBlocks = () => {
+  // High-performance block-level parser (memoized to prevent layout thrashing on streams)
+  const renderedBlocks = useMemo(() => {
     const lines = content.split('\n');
     const elements: React.ReactNode[] = [];
     let i = 0;
@@ -543,14 +543,20 @@ export const MarkdownMessage: React.FC<MarkdownMessageProps> = ({
     }
 
     return elements;
-  };
+  }, [content, isLight, onExtractArtifact, copiedIndex]);
 
   return (
     <div className="markdown-body space-y-1 text-xs break-words overflow-hidden max-w-full">
-      {renderBlocks()}
+      {renderedBlocks}
     </div>
   );
-};
+}, (prevProps, nextProps) => {
+  return (
+    prevProps.content === nextProps.content &&
+    prevProps.theme === nextProps.theme &&
+    prevProps.onExtractArtifact === nextProps.onExtractArtifact
+  );
+});
 
 export default MarkdownMessage;
 
