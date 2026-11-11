@@ -49,8 +49,14 @@ import {
   Play,
   Search,
   BookOpen,
-  Loader2
+  Loader2,
+  Sliders,
+  Shield,
+  Activity,
+  ArrowRight,
+  ArrowLeft
 } from 'lucide-react';
+import AIEcosystemStudioView from './AIEcosystemStudioView';
 import * as pdfjsLib from 'pdfjs-dist';
 import JSZip from 'jszip';
 import { 
@@ -151,6 +157,7 @@ const INITIAL_PROMPTS = [
 ];
 
 export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
+  logs = [],
   onAddLog,
   userToken,
   theme = 'dark'
@@ -264,9 +271,11 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const [isAgentMenuOpen, setIsAgentMenuOpen] = useState<boolean>(false);
   const [isModeMenuOpen, setIsModeMenuOpen] = useState<boolean>(false);
   const [isModelMenuOpen, setIsModelMenuOpen] = useState<boolean>(false);
+  const [isQuickOptionsMenuOpen, setIsQuickOptionsMenuOpen] = useState<boolean>(false);
   const agentMenuRef = useRef<HTMLDivElement>(null);
   const modeMenuRef = useRef<HTMLDivElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const quickOptionsMenuRef = useRef<HTMLDivElement>(null);
 
   // Close menus on outside click
   useEffect(() => {
@@ -279,6 +288,9 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
       }
       if (modelMenuRef.current && !modelMenuRef.current.contains(e.target as Node)) {
         setIsModelMenuOpen(false);
+      }
+      if (quickOptionsMenuRef.current && !quickOptionsMenuRef.current.contains(e.target as Node)) {
+        setIsQuickOptionsMenuOpen(false);
       }
     };
     document.addEventListener('mousedown', handleOutsideClick);
@@ -806,8 +818,8 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const [isArtifactPanelOpen, setIsArtifactPanelOpen] = useState<boolean>(false);
   const [isArtifactFullscreen, setIsArtifactFullscreen] = useState<boolean>(false);
 
-  // OpenCode SOTA Agent vs Custom Chat Studio Mode (Default: Custom Chat)
-  const [studioMode, setStudioMode] = useState<'custom-chat' | 'opencode'>('custom-chat');
+  // OpenCode SOTA Agent vs Custom Chat Studio Mode (Default: Custom Chat Cockpit)
+  const [studioMode, setStudioMode] = useState<'custom-chat' | 'ecosystem' | 'opencode'>('custom-chat');
   const [iframeKey, setIframeKey] = useState<number>(0);
   const [opencodeUrl, setOpencodeUrl] = useState<string>(() => {
     return localStorage.getItem('sutharlabs_opencode_url') || 'https://basin-engine-expensive-innocent.trycloudflare.com';
@@ -1590,6 +1602,8 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
           <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/25 flex items-center justify-center shrink-0 shadow-sm">
             {studioMode === 'opencode' ? (
               <Bot className="w-5 h-5 text-[#00dbe7] shrink-0" />
+            ) : studioMode === 'ecosystem' ? (
+              <Cpu className="w-5 h-5 text-[#00dbe7] shrink-0" />
             ) : (
               <Sparkles className="w-5 h-5 text-[#00dbe7] shrink-0" />
             )}
@@ -1597,7 +1611,11 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
           <div>
             <div className="flex items-center gap-2">
               <h2 className="text-xl font-bold tracking-tight text-on-surface font-sans">
-                {studioMode === 'opencode' ? 'OpenCode AI Studio' : 'AI Agent Studio'}
+                {studioMode === 'opencode' 
+                  ? 'OpenCode AI Studio' 
+                  : studioMode === 'ecosystem'
+                  ? 'Agents, MCP & Ecosystem Studio'
+                  : 'AI Agent Studio'}
               </h2>
               <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
                 VM2 132.226.190.125 (Live)
@@ -1606,12 +1624,14 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
             <p className="text-xs text-on-surface-variant font-mono mt-0.5">
               {studioMode === 'opencode' 
                 ? 'Autonomous open-source coding agent on Ampere ARM A1 (12 GB RAM) · Local Ollama Models' 
+                : studioMode === 'ecosystem'
+                ? 'Copilot-style control center: 9 Agent Personas, 6 MCP Servers, Execution Hooks & Skills'
                 : 'Claude-style multi-agent aggregator on Ampere ARM A1 (12 GB RAM + 4 GB Swap)'}
             </p>
           </div>
         </div>
 
-        {/* Sub-Tab Switcher: 1st Custom Chat / AI Agent Studio, 2nd OpenCode Studio */}
+        {/* Sub-Tab Switcher: 1st Chat Cockpit, 2nd Agents & Tools, 3rd OpenCode Studio */}
         <div className={`flex rounded-lg p-0.5 border text-[11px] shrink-0 ${
           isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
         }`}>
@@ -1626,8 +1646,23 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                 : 'text-on-surface-variant hover:text-on-surface'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 shrink-0" />
-            <span>AI Agent Studio</span>
+            <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+            <span>Chat Cockpit</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setStudioMode('ecosystem')}
+            className={`px-3 py-1 rounded-md font-mono cursor-pointer transition-all flex items-center gap-1.5 ${
+              studioMode === 'ecosystem'
+                ? isLight
+                  ? 'bg-white text-slate-900 font-bold shadow-sm border border-slate-300'
+                  : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                : 'text-on-surface-variant hover:text-on-surface'
+            }`}
+          >
+            <Cpu className="w-3.5 h-3.5 shrink-0" />
+            <span>Agents &amp; Tools</span>
+            <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 animate-pulse" />
           </button>
           <button
             type="button"
@@ -1689,6 +1724,22 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                 <ExternalLink className="w-3.5 h-3.5 shrink-0" />
                 <span>Launch Fullscreen</span>
               </a>
+            </div>
+          ) : studioMode === 'ecosystem' ? (
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                type="button"
+                onClick={() => setStudioMode('custom-chat')}
+                className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer shadow-sm select-none ${
+                  isLight
+                    ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                    : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border-[#00dbe7]/50'
+                }`}
+              >
+                <MessageSquare className="w-3.5 h-3.5 shrink-0" />
+                <span>Return to Chat Cockpit</span>
+                <ArrowRight className="w-3.5 h-3.5 shrink-0 ml-0.5" />
+              </button>
             </div>
           ) : (
             <>
@@ -3164,14 +3215,14 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                   className="w-full bg-transparent resize-none border-none outline-hidden text-xs font-sans text-on-surface placeholder:text-on-surface-variant/50 max-h-44 p-1"
                 />
 
-                <div className="flex items-center justify-between pt-1 border-t border-outline/10 gap-2 flex-wrap sm:flex-nowrap">
-                  <div className="flex items-center gap-2">
-                    {/* Attach File Button */}
+                <div className="flex items-center justify-between pt-1.5 border-t border-outline/10 gap-1.5 w-full">
+                  <div className="flex items-center gap-1 sm:gap-1.5 min-w-0 overflow-x-auto no-scrollbar py-0.5">
+                    {/* 1. Attach File Button */}
                     <button
                       type="button"
                       onClick={() => fileAttachmentInputRef.current?.click()}
                       disabled={isProcessingAttachment || isGenerating}
-                      className={`h-7 px-2.5 rounded-lg text-[10px] sm:text-[11px] font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                      className={`h-7 px-2 rounded-lg text-[10px] sm:text-[11px] font-mono font-bold transition-all flex items-center gap-1 shrink-0 cursor-pointer select-none ${
                         isProcessingAttachment
                           ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40'
                           : isLight
@@ -3181,7 +3232,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       title="Attach PDF, Word (.docx), TXT, CSV, Code, or Images"
                     >
                       <Paperclip className={`w-3.5 h-3.5 shrink-0 ${isProcessingAttachment ? 'animate-spin' : ''}`} />
-                      <span>{isProcessingAttachment ? 'Extracting...' : 'Attach'}</span>
+                      <span className="hidden sm:inline">{isProcessingAttachment ? 'Extracting...' : 'Attach'}</span>
                       {pendingAttachments.length > 0 && (
                         <span className="w-4 h-4 rounded-full bg-sky-500 text-white text-[9px] flex items-center justify-center font-bold">
                           {pendingAttachments.length}
@@ -3200,66 +3251,17 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       className="hidden"
                     />
 
-                    <button
-                      type="button"
-                      onClick={() => setIsDeepResearch(!isDeepResearch)}
-                      className={`h-7 px-2.5 rounded-lg text-[10px] sm:text-[11px] font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                        isDeepResearch
-                          ? isLight
-                            ? 'bg-sky-500 text-white shadow-xs'
-                            : 'bg-[#00dbe7]/20 text-[#00dbe7] border border-[#00dbe7]/50 shadow-[0_0_8px_rgba(0,219,231,0.25)]'
-                          : isLight
-                            ? 'bg-slate-200/80 hover:bg-slate-300 text-slate-700'
-                            : 'bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-on-surface border border-white/10'
-                      }`}
-                      title={isDeepResearch ? "Deep Web Research Enabled: Live web intelligence and citations injected" : "Click to Enable Real-Time Web Research"}
-                    >
-                      <Globe className={`w-3.5 h-3.5 shrink-0 ${isDeepResearch ? 'text-white dark:text-[#00dbe7] animate-pulse' : ''}`} />
-                      <span>Deep Research:</span>
-                      <span className="font-extrabold">{isDeepResearch ? 'ON' : 'OFF'}</span>
-                    </button>
-
-                    {/* Contextual RAG Toggle */}
-                    <button
-                      type="button"
-                      onClick={() => setIsRagActive(!isRagActive)}
-                      className={`h-7 px-2.5 rounded-lg text-[10px] sm:text-[11px] font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                        isRagActive
-                          ? isLight
-                            ? 'bg-emerald-600 text-white shadow-xs'
-                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 shadow-[0_0_8px_rgba(0,228,118,0.25)]'
-                          : isLight
-                            ? 'bg-slate-200/80 hover:bg-slate-300 text-slate-700'
-                            : 'bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-on-surface border border-white/10'
-                      }`}
-                      title={isRagActive ? "Contextual RAG Active: Hybrid BM25 + nomic-embed-text dense semantic retrieval with Anthropic situation headers" : "Click to Enable Contextual RAG"}
-                    >
-                      <BookOpen className={`w-3.5 h-3.5 shrink-0 ${isRagActive ? 'text-white dark:text-emerald-400 animate-pulse' : ''}`} />
-                      <span>Context RAG:</span>
-                      <span className="font-extrabold">{isRagActive ? 'ON' : 'OFF'}</span>
-                    </button>
-
-                    {/* Image Studio Trigger */}
-                    <button
-                      type="button"
-                      onClick={() => setIsImageModalOpen(true)}
-                      className={`h-7 px-2.5 rounded-lg text-[10px] sm:text-[11px] font-mono font-bold transition-all flex items-center gap-1.5 cursor-pointer select-none ${
-                        isLight
-                          ? 'bg-slate-200/80 hover:bg-slate-300 text-slate-700 hover:text-pink-600'
-                          : 'bg-white/5 hover:bg-white/10 text-on-surface-variant hover:text-pink-400 border border-white/10'
-                      }`}
-                      title="Open Multimodal Image Studio (DeepSeek Janus-Pro-1B & Flux.1)"
-                    >
-                      <ImageIcon className="w-3.5 h-3.5 text-pink-500 dark:text-pink-400 shrink-0" />
-                      <span>Image Studio</span>
-                    </button>
-
-                    {/* 1. Mode Selector Dropdown in Text Editor (GitHub Copilot / Claude Code Standard) */}
-                    <div className="relative" ref={modeMenuRef}>
+                    {/* 2. Mode Selector Dropdown (Chat, Plan, Agent, Auto) */}
+                    <div className="relative shrink-0" ref={modeMenuRef}>
                       <button
                         type="button"
-                        onClick={() => { setIsModeMenuOpen(!isModeMenuOpen); setIsAgentMenuOpen(false); setIsModelMenuOpen(false); }}
-                        className={`h-7 px-2 sm:px-2.5 rounded-lg border text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer transition-all select-none shadow-xs ${
+                        onClick={() => {
+                          setIsModeMenuOpen(!isModeMenuOpen);
+                          setIsAgentMenuOpen(false);
+                          setIsModelMenuOpen(false);
+                          setIsQuickOptionsMenuOpen(false);
+                        }}
+                        className={`h-7 px-2 rounded-lg border text-[10px] sm:text-[11px] font-mono font-bold uppercase tracking-wider flex items-center gap-1 cursor-pointer transition-all select-none shadow-xs ${
                           currentMode === 'plan'
                             ? isLight ? 'bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100' : 'bg-amber-400/15 text-amber-300 border-amber-400/40 hover:bg-amber-400/25'
                             : currentMode === 'agent'
@@ -3278,9 +3280,8 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                         <ChevronDown className="w-3 h-3 opacity-70 shrink-0 ml-0.5" />
                       </button>
 
-                      {/* Mode Menu Dropdown */}
                       {isModeMenuOpen && (
-                        <div className={`absolute bottom-full left-0 mb-1.5 w-64 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
+                        <div className={`fixed sm:absolute bottom-16 sm:bottom-full left-4 sm:left-0 mb-1.5 w-[calc(100vw-32px)] sm:w-64 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
                           isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
                         }`}>
                           <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10 flex items-center justify-between">
@@ -3317,34 +3318,104 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       )}
                     </div>
 
-                    {/* 2. Agent Persona Dropdown in Text Editor (Replaces Horizontal Slider) */}
-                    <div className="relative" ref={agentMenuRef}>
+                    {/* 3. Model Selector Dropdown */}
+                    <div className="relative shrink-0" ref={modelMenuRef}>
                       <button
                         type="button"
-                        onClick={() => { setIsAgentMenuOpen(!isAgentMenuOpen); setIsModeMenuOpen(false); setIsModelMenuOpen(false); }}
-                        className={`h-7 px-2 sm:px-2.5 rounded-lg border text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all select-none shadow-xs ${
+                        onClick={() => {
+                          setIsModelMenuOpen(!isModelMenuOpen);
+                          setIsAgentMenuOpen(false);
+                          setIsModeMenuOpen(false);
+                          setIsQuickOptionsMenuOpen(false);
+                        }}
+                        className={`h-7 px-2 rounded-lg border text-[10px] sm:text-[11px] font-mono flex items-center gap-1 cursor-pointer transition-all select-none shadow-xs ${
+                          isLight ? 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300' : 'bg-surface-container-high/60 hover:bg-surface-container-high text-[#00dbe7] border-outline/20'
+                        }`}
+                        title={`Selected Model: ${selectedModel}`}
+                      >
+                        <Cpu className="w-3 h-3 text-[#00dbe7] shrink-0" />
+                        <span className="font-bold truncate max-w-[65px] sm:max-w-[110px]">{selectedModel}</span>
+                        <ChevronDown className="w-3 h-3 opacity-70 shrink-0" />
+                      </button>
+
+                      {isModelMenuOpen && (
+                        <div className={`fixed sm:absolute bottom-16 sm:bottom-full left-4 sm:left-0 mb-1.5 w-[calc(100vw-32px)] sm:w-60 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
+                          isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
+                        }`}>
+                          <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10 flex items-center justify-between">
+                            <span>Select Local Model</span>
+                            <span className="text-[9px] opacity-60">ARM64</span>
+                          </div>
+                          <div className="max-h-56 overflow-y-auto space-y-0.5 custom-scrollbar">
+                            {[
+                              { id: 'qwen2.5:1.5b', name: 'Qwen 2.5 1.5B', note: '⚡ Fast CPU (Default)' },
+                              { id: 'qwen2.5:7b', name: 'Qwen 2.5 7B', note: '🧠 High Intelligence' },
+                              { id: 'qwen2.5-coder:3b', name: 'Qwen 2.5 Coder 3B', note: '💻 Code Specialist' },
+                              { id: 'deepseek-r1:1.5b', name: 'DeepSeek R1 1.5B', note: '🧠 Reasoning CoT' },
+                              { id: 'gemma2:2b', name: 'Gemma 2 2B', note: '⚡ Google Architecture' }
+                            ].map(m => (
+                              <button
+                                key={m.id}
+                                type="button"
+                                onClick={() => { setSelectedModel(m.id); setIsModelMenuOpen(false); }}
+                                className={`w-full px-2 py-1.5 rounded-lg text-left text-xs font-mono transition-colors flex items-center justify-between cursor-pointer ${
+                                  selectedModel === m.id
+                                    ? isLight ? 'bg-sky-50 text-sky-900 font-bold' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
+                                    : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant hover:text-on-surface'
+                                }`}
+                              >
+                                <span>{m.name}</span>
+                                <span className="text-[9px] opacity-60">{m.note}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* 4. Active Agent Persona Pill */}
+                    <div className="relative shrink-0" ref={agentMenuRef}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsAgentMenuOpen(!isAgentMenuOpen);
+                          setIsModeMenuOpen(false);
+                          setIsModelMenuOpen(false);
+                          setIsQuickOptionsMenuOpen(false);
+                        }}
+                        className={`h-7 px-2 rounded-lg border text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-all select-none shadow-xs ${
                           isLight
                             ? 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300'
                             : 'bg-surface-container-high/60 hover:bg-surface-container-high text-on-surface border-outline/20'
                         }`}
-                        title="Switch Autonomous Agent Persona"
+                        title={`Active Persona: ${selectedAgent.name}`}
                       >
-                        {getAgentIcon(selectedAgent.icon)}
-                        <span className="truncate max-w-[85px] sm:max-w-[120px]">{selectedAgent.name}</span>
-                        <span className="text-[9px] px-1 py-0.2 rounded uppercase bg-purple-500/15 text-purple-400 hidden sm:inline">{selectedAgent.badge}</span>
+                        <div className="w-3.5 h-3.5 shrink-0 flex items-center justify-center">
+                          {getAgentIcon(selectedAgent.icon)}
+                        </div>
+                        <span className="truncate max-w-[70px] sm:max-w-[110px]">{selectedAgent.name}</span>
                         <ChevronDown className="w-3 h-3 opacity-70 shrink-0 ml-0.5" />
                       </button>
 
-                      {/* Agent Dropdown Menu */}
                       {isAgentMenuOpen && (
-                        <div className={`absolute bottom-full left-0 mb-1.5 w-72 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
+                        <div className={`fixed sm:absolute bottom-16 sm:bottom-full left-4 sm:left-0 mb-1.5 w-[calc(100vw-32px)] sm:w-72 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
                           isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
                         }`}>
                           <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10 flex items-center justify-between">
                             <span>Agent Personas</span>
-                            <span className="text-[9px] opacity-60">{AGENT_PERSONAS.length} Specialized</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsAgentMenuOpen(false);
+                                setStudioMode('ecosystem');
+                              }}
+                              className="text-[9px] text-[#00dbe7] hover:underline cursor-pointer flex items-center gap-0.5 font-bold"
+                            >
+                              <span>Manage All</span>
+                              <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+                            </button>
                           </div>
-                          <div className="max-h-60 overflow-y-auto space-y-1">
+                          <div className="max-h-56 overflow-y-auto space-y-1 custom-scrollbar">
                             {AGENT_PERSONAS.map(agent => {
                               const isSel = selectedAgent.id === agent.id;
                               return (
@@ -3374,64 +3445,149 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                               );
                             })}
                           </div>
+
+                          <div className="pt-1.5 border-t border-outline/10">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsAgentMenuOpen(false);
+                                setStudioMode('ecosystem');
+                              }}
+                              className={`w-full py-1.5 px-2 rounded-lg text-xs font-mono font-bold uppercase tracking-wider text-center flex items-center justify-center gap-1.5 cursor-pointer transition-all ${
+                                isLight ? 'bg-slate-100 hover:bg-slate-200 text-sky-700' : 'bg-white/5 hover:bg-white/10 text-[#00dbe7]'
+                              }`}
+                            >
+                              <Cpu className="w-3.5 h-3.5 shrink-0" />
+                              <span>Open Agents &amp; Tools Studio →</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
 
-                    {/* 3. Model Selector Dropdown in Text Editor */}
-                    <div className="relative hidden sm:block" ref={modelMenuRef}>
+                    {/* 5. Quick Options / Tools Menu (Deep Research, RAG, Image Studio, Clear) */}
+                    <div className="relative shrink-0" ref={quickOptionsMenuRef}>
                       <button
                         type="button"
-                        onClick={() => { setIsModelMenuOpen(!isModelMenuOpen); setIsAgentMenuOpen(false); setIsModeMenuOpen(false); }}
-                        className={`h-7 px-2 rounded-lg border text-[10px] sm:text-[11px] font-mono flex items-center gap-1 cursor-pointer transition-all select-none shadow-xs ${
-                          isLight ? 'bg-white hover:bg-slate-50 text-slate-800 border-slate-300' : 'bg-surface-container-high/60 hover:bg-surface-container-high text-[#00dbe7] border-outline/20'
+                        onClick={() => {
+                          setIsQuickOptionsMenuOpen(!isQuickOptionsMenuOpen);
+                          setIsModeMenuOpen(false);
+                          setIsAgentMenuOpen(false);
+                          setIsModelMenuOpen(false);
+                        }}
+                        className={`h-7 px-2 rounded-lg border text-[10px] sm:text-[11px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-all select-none shadow-xs ${
+                          isDeepResearch || isRagActive
+                            ? isLight ? 'bg-sky-50 text-sky-800 border-sky-300' : 'bg-[#00dbe7]/15 text-[#00dbe7] border-[#00dbe7]/40'
+                            : isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-surface-container-high text-on-surface-variant hover:text-on-surface border-outline/20'
                         }`}
-                        title="Select Model Running on Oracle ARM64 Compute Node"
+                        title="Chat Enhancements: Deep Web Research, Context RAG, Image Studio"
                       >
-                        <Cpu className="w-3 h-3 text-[#00dbe7] shrink-0" />
-                        <span className="font-bold">{selectedModel}</span>
+                        <Sliders className="w-3.5 h-3.5 shrink-0" />
+                        <span className="hidden md:inline">Tools</span>
+                        {(isDeepResearch || isRagActive) && (
+                          <span className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 animate-pulse" />
+                        )}
                         <ChevronDown className="w-3 h-3 opacity-70 shrink-0" />
                       </button>
 
-                      {isModelMenuOpen && (
-                        <div className={`absolute bottom-full left-0 mb-1.5 w-56 rounded-xl border shadow-2xl p-1.5 z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100 ${
+                      {isQuickOptionsMenuOpen && (
+                        <div className={`fixed sm:absolute bottom-16 sm:bottom-full left-4 sm:left-auto sm:right-0 mb-1.5 w-[calc(100vw-32px)] sm:w-64 rounded-xl border shadow-2xl p-2 z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100 ${
                           isLight ? 'bg-white border-slate-300 text-slate-800' : 'bg-[#18181c] border-[#3a494b]/60 text-[#e5e1e4]'
                         }`}>
-                          <div className="px-2 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10">
-                            Select Local Model
+                          <div className="px-1.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline/10 flex items-center justify-between">
+                            <span>Chat Enhancements</span>
+                            <span className="text-[9px] opacity-60">Copilot Engine</span>
                           </div>
-                          {[
-                            { id: 'qwen2.5:1.5b', name: 'Qwen 2.5 1.5B', note: 'Fast CPU (Default)' },
-                            { id: 'qwen2.5:7b', name: 'Qwen 2.5 7B', note: 'High Intelligence' },
-                            { id: 'qwen2.5-coder:3b', name: 'Qwen 2.5 Coder 3B', note: 'Code Specialist' },
-                            { id: 'deepseek-r1:1.5b', name: 'DeepSeek R1 1.5B', note: 'Reasoning CoT' },
-                            { id: 'gemma2:2b', name: 'Gemma 2 2B', note: 'Google Architecture' }
-                          ].map(m => (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => { setSelectedModel(m.id); setIsModelMenuOpen(false); }}
-                              className={`px-2 py-1.5 rounded-lg text-left text-xs font-mono transition-colors flex items-center justify-between cursor-pointer ${
-                                selectedModel === m.id
-                                  ? isLight ? 'bg-sky-50 text-sky-900 font-bold' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold'
-                                  : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant hover:text-on-surface'
-                              }`}
-                            >
-                              <span>{m.name}</span>
-                              <span className="text-[9px] opacity-60">{m.note}</span>
-                            </button>
-                          ))}
+
+                          {/* Deep Web Research Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => setIsDeepResearch(!isDeepResearch)}
+                            className={`p-2 rounded-lg text-left transition-all flex items-center justify-between cursor-pointer ${
+                              isDeepResearch
+                                ? isLight ? 'bg-sky-50 text-sky-900 border border-sky-300/60' : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/30'
+                                : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Globe className={`w-4 h-4 shrink-0 ${isDeepResearch ? 'text-[#00dbe7] animate-pulse' : 'text-gray-400'}`} />
+                              <div>
+                                <div className="text-xs font-bold font-mono">Deep Research</div>
+                                <div className="text-[10px] text-on-surface-variant opacity-75">Live web intelligence</div>
+                              </div>
+                            </div>
+                            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                              isDeepResearch ? 'bg-[#00dbe7]/20 text-[#00dbe7]' : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {isDeepResearch ? 'ON' : 'OFF'}
+                            </span>
+                          </button>
+
+                          {/* Contextual RAG Toggle */}
+                          <button
+                            type="button"
+                            onClick={() => setIsRagActive(!isRagActive)}
+                            className={`p-2 rounded-lg text-left transition-all flex items-center justify-between cursor-pointer ${
+                              isRagActive
+                                ? isLight ? 'bg-emerald-50 text-emerald-900 border border-emerald-300/60' : 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/30'
+                                : isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <BookOpen className={`w-4 h-4 shrink-0 ${isRagActive ? 'text-emerald-400 animate-pulse' : 'text-gray-400'}`} />
+                              <div>
+                                <div className="text-xs font-bold font-mono">Contextual RAG</div>
+                                <div className="text-[10px] text-on-surface-variant opacity-75">Hybrid BM25 + dense vectors</div>
+                              </div>
+                            </div>
+                            <span className={`text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                              isRagActive ? 'bg-emerald-500/20 text-emerald-400' : 'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {isRagActive ? 'ON' : 'OFF'}
+                            </span>
+                          </button>
+
+                          {/* Image Studio Trigger */}
+                          <button
+                            type="button"
+                            onClick={() => { setIsImageModalOpen(true); setIsQuickOptionsMenuOpen(false); }}
+                            className={`p-2 rounded-lg text-left transition-all flex items-center justify-between cursor-pointer ${
+                              isLight ? 'hover:bg-slate-100 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <ImageIcon className="w-4 h-4 text-pink-500 shrink-0" />
+                              <div>
+                                <div className="text-xs font-bold font-mono">Image Studio</div>
+                                <div className="text-[10px] text-on-surface-variant opacity-75">Janus-Pro &amp; Flux.1</div>
+                              </div>
+                            </div>
+                            <ExternalLink className="w-3.5 h-3.5 opacity-60 shrink-0" />
+                          </button>
+
+                          {/* Clear Conversation */}
+                          <button
+                            type="button"
+                            onClick={() => { promptClearChat(); setIsQuickOptionsMenuOpen(false); }}
+                            className="p-2 rounded-lg text-left transition-all flex items-center justify-between cursor-pointer border-t border-outline/10 text-rose-500 hover:bg-rose-500/10"
+                          >
+                            <div className="flex items-center gap-2 min-w-0">
+                              <Trash2 className="w-4 h-4 shrink-0" />
+                              <div className="text-xs font-bold font-mono">Clear Chat</div>
+                            </div>
+                          </button>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  {/* Right: Fixed Send / Stop Action */}
+                  <div className="flex items-center shrink-0">
                     {isGenerating ? (
                       <button
                         type="button"
                         onClick={handleStopGeneration}
-                        className="h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1.5 cursor-pointer shadow-sm"
+                        className="h-7 sm:h-8 px-2.5 sm:px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 flex items-center gap-1.5 cursor-pointer shadow-sm select-none shrink-0"
                       >
                         <Square className="w-3.5 h-3.5 fill-current shrink-0" />
                         <span>Stop</span>
@@ -3440,7 +3596,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       <button
                         type="submit"
                         disabled={!inputPrompt.trim() && pendingAttachments.length === 0}
-                        className="h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border border-[#00dbe7]/50 hover:border-[#00dbe7] transition-all cursor-pointer shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
+                        className="h-7 sm:h-8 px-3 sm:px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border border-[#00dbe7]/50 hover:border-[#00dbe7] transition-all cursor-pointer shadow-sm flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed select-none shrink-0"
                       >
                         <Send className="w-3.5 h-3.5 shrink-0" />
                         <span>Send</span>
@@ -3584,6 +3740,28 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
 
       </div>
       </>
+      ) : studioMode === 'ecosystem' ? (
+        <AIEcosystemStudioView
+          theme={theme}
+          selectedAgent={selectedAgent}
+          onSelectAgent={(agent) => {
+            handleAgentSelect(agent);
+          }}
+          onOpenChat={() => setStudioMode('custom-chat')}
+          mcpServers={mcpServers}
+          onExecuteMcpTool={async (toolName, args) => {
+            return executeMcpToolCall(toolName, args, userToken);
+          }}
+          terminalLogs={logs}
+          skills={skills}
+          selectedSkillId={selectedSkillId}
+          onSelectSkill={setSelectedSkillId}
+          userToken={userToken}
+          onPrepopulatePrompt={(prompt) => {
+            setInputPrompt(prompt);
+            textareaRef.current?.focus();
+          }}
+        />
       ) : (
         <div className="flex-1 flex flex-col min-h-0 bg-background overflow-hidden">
           {/* OpenCode Studio Top Toolbar */}

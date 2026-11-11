@@ -842,9 +842,9 @@
     "semantic_hash": ""
   },
   "README.md": {
-    "mtime": 1779611471.1472805,
-    "seen": 1793773436.622257,
-    "ast_hash": "7ebad1de65227be2636bfb84e82eccbb",
+    "mtime": 1794281393.478596,
+    "seen": 1794405003.3062935,
+    "ast_hash": "f44c47b33258346eeec6d1614d92b0ee",
     "semantic_hash": ""
   },
   "docs/DOCUMENTATION.md": {
@@ -1100,9 +1100,9 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1794278846.3416586,
-    "seen": 1794279047.2593687,
-    "ast_hash": "a173a57840b3545df586944941d80eda",
+    "mtime": 1794404671.8935356,
+    "seen": 1794405003.3053386,
+    "ast_hash": "379ede82e87c5b3f7578984af60f4383",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
@@ -1142,9 +1142,9 @@
     "semantic_hash": ""
   },
   "docs/oracle_vms_replication_and_disaster_recovery_runbook.md": {
-    "mtime": 1793857793.4885726,
-    "seen": 1793859015.4470136,
-    "ast_hash": "8a90a5cb4e4e00b9a34dbe231e5aae77",
+    "mtime": 1794280913.6797905,
+    "seen": 1794405003.3064344,
+    "ast_hash": "6c076cefd3da2d36f3edfbf870d395c0",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/manifest.json": {
@@ -1232,9 +1232,9 @@
     "semantic_hash": ""
   },
   "docs/plugins/speech_studio_architecture_and_logic.md": {
-    "mtime": 1793880981.5093846,
-    "seen": 1793884436.9295466,
-    "ast_hash": "88483aa70107120e69357ee55fc9919e",
+    "mtime": 1794281394.0585682,
+    "seen": 1794405003.3064818,
+    "ast_hash": "a07b524b5387746669c3d5440ade6881",
     "semantic_hash": ""
   },
   "docs/README.md": {
@@ -1346,9 +1346,9 @@
     "semantic_hash": ""
   },
   "docs/plugins/image_studio_architecture_and_logic.md": {
-    "mtime": 1793887004.2500916,
-    "seen": 1793888518.6370053,
-    "ast_hash": "9c6ee8cbbba56f8e4379cd784082f713",
+    "mtime": 1794281055.4544556,
+    "seen": 1794405003.3064687,
+    "ast_hash": "02101b09a8bc6ab80a59aeb6f1eb8700",
     "semantic_hash": ""
   },
   "docs/plugins/publishing_and_versioning.md": {
@@ -1682,9 +1682,9 @@
     "semantic_hash": ""
   },
   "docs/SYSTEM_UPDATES_AND_CHANGELOG.md": {
-    "mtime": 1794260825.3410583,
-    "seen": 1794262411.2526705,
-    "ast_hash": "56c0f9486ba7e529f4f92f5e538e4b33",
+    "mtime": 1794280933.2627585,
+    "seen": 1794405003.3063152,
+    "ast_hash": "75ae50870d8f3b590e9d26975ba0266f",
     "semantic_hash": ""
   },
   "public/voices/catalog.json": {
@@ -1961,6 +1961,12 @@
     "mtime": 1794278530.6992042,
     "seen": 1794279047.2601316,
     "ast_hash": "f1138c698bc901c5417af925facb63ec",
+    "semantic_hash": ""
+  },
+  "src/components/AIEcosystemStudioView.tsx": {
+    "mtime": 1794403945.8290465,
+    "seen": 1794405003.3053281,
+    "ast_hash": "150508b979d5c5d38891d819e104580b",
     "semantic_hash": ""
   },
   "package-lock.json": {
