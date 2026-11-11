@@ -4895,8 +4895,13 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
       // route seamlessly to deepseek-r1:1.5b with transparent architectural notice
       if (isEdgerock && isCompatError) {
         console.warn(`[AI Chat] EdgeRock-4B custom RMA kernel compatibility active. Seamlessly routing reasoning to deepseek-r1:1.5b...`);
+        const cleanMessages = (payload.messages || []).filter((m: any) => 
+          !m.content?.startsWith('⚠️') && !m.content?.includes('Ollama error') && !m.content?.includes('Inference Error')
+        );
+
         const fallbackPayload = {
           ...payload,
+          messages: cleanMessages.length > 0 ? cleanMessages : payload.messages,
           model: 'deepseek-r1:1.5b'
         };
 
@@ -4919,7 +4924,7 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
               },
               done: false
             });
-            res.write(`data: ${noticeChunk}\n\n`);
+            res.write(`${noticeChunk}\n`);
           }
           response = fallbackResponse;
         } else {
@@ -4951,9 +4956,17 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
 
 
       webStream.on("data", (chunk: Buffer) => {
-
         res.write(chunk);
-
+        try {
+          const chunkStr = chunk.toString("utf8");
+          if (chunkStr.includes('"done":true') || chunkStr.includes('"done": true')) {
+            if (keepAliveInterval) {
+              clearInterval(keepAliveInterval);
+              keepAliveInterval = null;
+            }
+            res.end();
+          }
+        } catch {}
       });
 
 

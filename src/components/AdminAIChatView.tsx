@@ -1512,11 +1512,14 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
       }
     }
 
-    // Smart sliding context window: keep system prompt, first intent anchor, and recent turns
+    // Smart sliding context window: filter out UI errors, keep system prompt, first intent anchor, and recent turns
     const maxHistoryTurns = 8;
-    const trimmedHistory = newHistory.length > maxHistoryTurns
-      ? [newHistory[0], ...newHistory.slice(-maxHistoryTurns)]
-      : newHistory;
+    const cleanHistory = newHistory.filter(
+      (m) => !m.id.startsWith('error-') && !m.content.startsWith('⚠️')
+    );
+    const trimmedHistory = cleanHistory.length > maxHistoryTurns
+      ? [cleanHistory[0], ...cleanHistory.slice(-maxHistoryTurns)]
+      : cleanHistory;
 
     // Prepare message history with agent system prompt & augmented document context
     const apiMessages = [

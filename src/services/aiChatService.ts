@@ -203,9 +203,11 @@ export async function streamAIChat({
     signal.addEventListener('abort', abortHandler, { once: true });
   }
 
+  let isStreamFinished = false;
+
   try {
     while (true) {
-      if (signal?.aborted) break;
+      if (signal?.aborted || isStreamFinished) break;
       const { done, value } = await reader.read();
       if (done) break;
 
@@ -235,6 +237,8 @@ export async function streamAIChat({
           if (parsed.done) {
             finalEvalCount = parsed.eval_count || 0;
             finalEvalDurationNs = parsed.eval_duration || 0;
+            isStreamFinished = true;
+            break;
           }
         } catch (jsonErr: any) {
           if (jsonErr.message && !jsonErr.message.includes('JSON')) {
@@ -243,6 +247,8 @@ export async function streamAIChat({
           // Ignore partial or malformed JSON chunks in stream
         }
       }
+
+      if (isStreamFinished) break;
     }
   } catch (err: any) {
     if (err.name === 'AbortError' || signal?.aborted) {
