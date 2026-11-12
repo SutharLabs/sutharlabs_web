@@ -4476,60 +4476,79 @@ app.get("/api/ai/health", async (_req: any, res: any) => {
 
 
 
+async function resolveOpenCodeBridgeInfo() {
+  const directUrl = (process.env.OPENCODE_DIRECT_URL || "http://132.226.190.125/").replace(/\/+$/, "") + "/";
+  let publicUrl = process.env.OPENCODE_PUBLIC_URL || "";
+
+  let status: "online" | "offline" = "offline";
+  let reason = "Remote tunnel URL is unreachable or expired.";
+
+  // Auto-discover active trycloudflare tunnel URL from VM 2 if OPENCODE_PUBLIC_URL is not pinned
+  if (!publicUrl) {
+    try {
+      const discoveryRes = await fetch(`${directUrl}opencode-url`, {
+        method: "GET",
+        signal: AbortSignal.timeout(2500),
+      });
+      if (discoveryRes.ok) {
+        const data: any = await discoveryRes.json();
+        if (data?.url && typeof data.url === "string") {
+          publicUrl = data.url;
+        }
+      }
+    } catch {
+      // Fall through to offline reason below
+    }
+  }
+
+  if (publicUrl) {
+    try {
+      const probe = await fetch(publicUrl, { method: "HEAD", signal: AbortSignal.timeout(3000) });
+      if (probe.ok || probe.status === 401) {
+        status = "online";
+        reason = "Tunnel active";
+      } else {
+        reason = `Remote tunnel returned HTTP ${probe.status}`;
+      }
+    } catch (e: any) {
+      reason = e?.name === "TimeoutError" || e?.name === "AbortError"
+        ? "Remote tunnel timed out (trycloudflare tunnel expired)."
+        : `Remote tunnel unreachable (${e?.message || "network error"}).`;
+    }
+  } else {
+    publicUrl = "https://basin-engine-expensive-innocent.trycloudflare.com";
+    reason = "OPENCODE_PUBLIC_URL is not configured and VM 2 /opencode-url discovery failed.";
+  }
+
+  return {
+    url: publicUrl,
+    directUrl,
+    status,
+    reason,
+    node: "VM 2 (132.226.190.125)",
+    version: "1.19.5"
+  };
+}
+
 // GET /api/ai/opencode-info - OpenCode engine and tunnel discovery endpoint with live reachability probe
 app.get("/api/ai/opencode-info", async (_req: any, res: any) => {
   try {
-    const directUrl = (process.env.OPENCODE_DIRECT_URL || "http://132.226.190.125/").replace(/\/+$/, "") + "/";
-    let publicUrl = process.env.OPENCODE_PUBLIC_URL || "";
+    const info = await resolveOpenCodeBridgeInfo();
+    res.json(info);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
-    let status: "online" | "offline" = "offline";
-    let reason = "Remote tunnel URL is unreachable or expired.";
-
-    // Auto-discover active trycloudflare tunnel URL from VM 2 if OPENCODE_PUBLIC_URL is not pinned
-    if (!publicUrl) {
-      try {
-        const discoveryRes = await fetch(`${directUrl}opencode-url`, {
-          method: "GET",
-          signal: AbortSignal.timeout(2500),
-        });
-        if (discoveryRes.ok) {
-          const data: any = await discoveryRes.json();
-          if (data?.url && typeof data.url === "string") {
-            publicUrl = data.url;
-          }
-        }
-      } catch {
-        // Fall through to offline reason below
-      }
-    }
-
-    if (publicUrl) {
-      try {
-        const probe = await fetch(publicUrl, { method: "HEAD", signal: AbortSignal.timeout(3000) });
-        if (probe.ok || probe.status === 401) {
-          status = "online";
-          reason = "Tunnel active";
-        } else {
-          reason = `Remote tunnel returned HTTP ${probe.status}`;
-        }
-      } catch (e: any) {
-        reason = e?.name === "TimeoutError" || e?.name === "AbortError"
-          ? "Remote tunnel timed out (trycloudflare tunnel expired)."
-          : `Remote tunnel unreachable (${e?.message || "network error"}).`;
-      }
-    } else {
-      publicUrl = "https://basin-engine-expensive-innocent.trycloudflare.com";
-      reason = "OPENCODE_PUBLIC_URL is not configured and VM 2 /opencode-url discovery failed.";
-    }
-
-    res.json({
-      url: publicUrl,
-      directUrl,
-      status,
-      reason,
-      node: "VM 2 (132.226.190.125)",
-      version: "1.19.5"
-    });
+// GET /api/ai/opencode-bridge-session - Admin-authenticated endpoint returning auto-auth iframe launchUrl
+app.get("/api/ai/opencode-bridge-session", authenticateToken, async (_req: any, res: any) => {
+  try {
+    const info = await resolveOpenCodeBridgeInfo();
+    const baseUrl = info.url.replace(/\/+$/, "");
+    const launchUrl = info.status === "online"
+      ? `${baseUrl}/_sl_bridge_auth?token=${encodeURIComponent(ORACLE_AI_SECRET)}`
+      : info.url;
+    res.json({ ...info, launchUrl });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

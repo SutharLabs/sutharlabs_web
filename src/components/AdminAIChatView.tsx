@@ -918,12 +918,16 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
       setBridgeStatus('checking');
 
       try {
-        const res = await fetch('/api/ai/opencode-info');
+        const endpoint = userToken ? '/api/ai/opencode-bridge-session' : '/api/ai/opencode-info';
+        const res = await fetch(endpoint, {
+          headers: userToken ? { Authorization: `Bearer ${userToken}` } : undefined
+        });
         if (res.ok) {
           const info = await res.json();
           const savedUrl = localStorage.getItem('sutharlabs_opencode_url');
-          if (!savedUrl && info.url) {
-            setOpencodeUrl(isHttps ? info.url : (info.directUrl || info.url));
+          const resolvedUrl = info.launchUrl || info.url;
+          if ((!savedUrl || savedUrl.includes('.trycloudflare.com')) && resolvedUrl) {
+            setOpencodeUrl(isHttps ? resolvedUrl : (info.directUrl || resolvedUrl));
           }
           if (info.directUrl) {
             setDirectVmUrl(info.directUrl);
