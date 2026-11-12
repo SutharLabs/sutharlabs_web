@@ -23,7 +23,7 @@ export interface GeneratedImageResult {
 
 export interface ImageGenOptions {
   prompt: string;
-  model?: 'janus-pro-1b' | 'flux-schnell' | 'sdxl-turbo' | 'show-o' | 'qwen-image';
+  model?: 'flux-schnell' | 'sdxl-turbo';
   aspectRatio?: '1:1' | '16:9' | '9:16' | '4:3' | '3:2';
   style?: 'photorealistic' | 'cinematic' | 'anime' | 'cyberpunk' | '3d-render' | 'minimalist' | 'digital-art';
   negativePrompt?: string;
@@ -56,19 +56,6 @@ export interface ImageModelInfo {
 
 export const OPEN_WEIGHT_IMAGE_MODELS: ImageModelInfo[] = [
   {
-    id: "janus-pro-1b",
-    name: "DeepSeek Janus-Pro-1B",
-    badge: "Unified Multimodal • SOTA 1.5B",
-    badgeColor: "cyan",
-    parameters: "1.5B",
-    architecture: "unified-multimodal",
-    description: "DeepSeek's breakthrough open-weight multimodal LLM. Decouples visual encoding (SigLIP) from visual decoding (VQ-tokenizer). Natively generates 384x384 visual tokens directly from language representations. Extremely lightweight, runs on CPU/laptop without GPU.",
-    resolution: "384x384 (Upscalable to 1024x1024)",
-    cpuFriendly: true,
-    recommendedFor: "Sovereign local VM execution, multimodal reasoning, vision QA & text-to-image",
-    license: "DeepSeek License (Commercial Permitted)"
-  },
-  {
     id: "flux-schnell",
     name: "FLUX.1 [schnell]",
     badge: "12B Flow Matching • 4-Step SOTA",
@@ -93,19 +80,6 @@ export const OPEN_WEIGHT_IMAGE_MODELS: ImageModelInfo[] = [
     cpuFriendly: true,
     recommendedFor: "Real-time interactive generation, UI assets, fast prototyping",
     license: "Stability AI Open Weights"
-  },
-  {
-    id: "show-o",
-    name: "NUS/ByteDance Show-o (1.3B)",
-    badge: "Unified Masked Diffusion • 1.3B",
-    badgeColor: "sky",
-    parameters: "1.3B",
-    architecture: "discrete-diffusion",
-    description: "Single unified language model capable of autoregressive text understanding and masked discrete diffusion for vision synthesis within a shared vocabulary.",
-    resolution: "512x512",
-    cpuFriendly: true,
-    recommendedFor: "Unified vision-language chat, in-context image generation",
-    license: "Open Source"
   }
 ];
 
@@ -215,7 +189,7 @@ export async function generateSovereignImage(options: ImageGenOptions): Promise<
   // 2. Cloud Fallback (pollinations.ai): Executed ONLY IF the user explicitly enabled cloud fallback
   if ((!imageBuffer || imageBuffer.length < 500) && options.allowCloudFallback) {
     const encodedPrompt = encodeURIComponent(revisedPrompt);
-    const polModel = model === "janus-pro-1b" ? "flux" : model === "flux-schnell" ? "flux" : "turbo";
+    const polModel = model === "flux-schnell" ? "flux" : "turbo";
     // nologo=true removes watermarks; nofeed=true and enhance=false guarantee deterministic private output
     const remoteUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${targetWidth}&height=${targetHeight}&model=${polModel}&seed=${seed}&nologo=true&nofeed=true&enhance=false`;
 

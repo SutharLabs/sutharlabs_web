@@ -92,11 +92,6 @@ import {
 } from "./src/middleware/index.js";
 
 import { sovereignRag } from "./src/services/contextualRagService.js";
-import {
-  generateSovereignImage,
-  processSovereignImage,
-  OPEN_WEIGHT_IMAGE_MODELS
-} from "./src/services/imageGenService.js";
 
 
 
@@ -5911,50 +5906,6 @@ async function performServerWebResearch(query: string) {
       }
     }
 
-    case 'generate_image': {
-      try {
-        const prompt = params.prompt || params.query || '';
-        const style = params.style || 'cinematic';
-        const model = params.model || 'janus-pro-1b';
-        const aspectRatio = params.aspectRatio || '1:1';
-        const result = await generateSovereignImage({ prompt, style, model, aspectRatio });
-        return {
-          status: 'success',
-          server: 'sovereign-image-mcp',
-          data: {
-            imageId: result.id,
-            url: result.url,
-            prompt: result.prompt,
-            model: result.modelLabel,
-            width: result.width,
-            height: result.height,
-            style: result.style
-          }
-        };
-      } catch (err: any) {
-        return { status: 'error', error: err.message };
-      }
-    }
-
-    case 'process_image': {
-      try {
-        const operation = params.operation || 'analyze';
-        const result = await processSovereignImage({
-          operation,
-          imageUrl: params.imageUrl,
-          imageBase64: params.imageBase64,
-          prompt: params.prompt
-        });
-        return {
-          status: 'success',
-          server: 'sovereign-image-mcp',
-          data: result
-        };
-      } catch (err: any) {
-        return { status: 'error', error: err.message };
-      }
-    }
-
     default:
       return { status: 'unknown_tool', tool: toolName };
   }
@@ -6040,11 +5991,6 @@ async function runBackgroundAITask(task: BackgroundAITaskInternal) {
     const isSearchIntent = task.isDeepResearch || pLower.includes('search') || pLower.includes('news') || pLower.includes('latest') || pLower.includes('tally') || pLower.includes('medal') || pLower.includes('score') || pLower.includes('games');
     if (isSearchIntent) {
       toolPromises.push(executeMcpTool('web_search', { query: task.prompt.slice(0, 100) }));
-    }
-
-    const isImageIntent = pLower.includes('image') || pLower.includes('generate image') || pLower.includes('illustration') || pLower.includes('draw') || pLower.includes('picture') || pLower.includes('artwork');
-    if (isImageIntent) {
-      toolPromises.push(executeMcpTool('generate_image', { prompt: task.prompt }));
     }
 
     if (toolPromises.length === 0 && (isAgent || isAuto)) {
@@ -6355,17 +6301,6 @@ app.get("/api/ai/chat/mcp/tools", authenticateToken, async (_req: any, res: any)
         tools: [
           { name: 'contextual_rag_query', description: 'Executes hybrid dense vector and BM25 search over sovereign indexed documents.' }
         ]
-      },
-      {
-        id: 'sovereign-image-mcp',
-        name: 'Sovereign Multimodal Image Studio MCP',
-        description: 'Text-to-image synthesis (Janus-Pro-1B, Flux, SDXL-Turbo) and image processing (background removal, vision analysis)',
-        category: 'Multimodal',
-        status: 'connected',
-        tools: [
-          { name: 'generate_image', description: 'Generates visual illustrations, artwork, and diagrams from text prompts.' },
-          { name: 'process_image', description: 'Applies image transformations (remove-background, grayscale, vision analysis).' }
-        ]
       }
     ]
   });
@@ -6424,30 +6359,7 @@ app.get("/api/ai/rag/stats", authenticateToken, async (_req: any, res: any) => {
   });
 });
 
-// POST /api/ai/image/generate: Generate an image using open-weight models (Janus-Pro-1B, Flux, SDXL-Turbo)
-app.post("/api/ai/image/generate", authenticateToken, async (req: any, res: any) => {
-  const { prompt, model, aspectRatio, style, negativePrompt, seed, allowCloudFallback } = req.body;
-  if (!prompt || typeof prompt !== 'string') {
-    return res.status(400).json({ error: "Prompt is required for image generation" });
-  }
-
-  try {
-    const result = await generateSovereignImage({
-      prompt,
-      model,
-      aspectRatio,
-      style,
-      negativePrompt,
-      seed,
-      allowCloudFallback: allowCloudFallback === true
-    });
-    return res.json({ success: true, image: result });
-  } catch (err: any) {
-    return res.status(500).json({ error: "Image generation failed", details: err.message });
-  }
-});
-
-// GET /api/ai/image/file/:filename: Public image streaming endpoint for AI synthesized images
+// GET /api/ai/image/file/:filename: Public image streaming endpoint for historical AI synthesized images
 app.get("/api/ai/image/file/:filename", async (req: any, res: any) => {
   const filename = path.basename(req.params.filename);
   const filePath = path.join(process.cwd(), "storage", "ai-generated", filename);
@@ -6482,24 +6394,6 @@ app.get("/api/ai/image/file/:filename", async (req: any, res: any) => {
   res.setHeader("Cache-Control", "public, max-age=31536000, immutable");
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.sendFile(filePath);
-});
-
-// POST /api/ai/image/process: Process an existing image (remove-background, filters, vision analysis)
-app.post("/api/ai/image/process", authenticateToken, async (req: any, res: any) => {
-  const { operation, imageUrl, imageBase64, prompt } = req.body;
-  if (!operation) return res.status(400).json({ error: "Operation is required" });
-
-  try {
-    const result = await processSovereignImage({ operation, imageUrl, imageBase64, prompt });
-    return res.json(result);
-  } catch (err: any) {
-    return res.status(500).json({ error: "Image processing failed", details: err.message });
-  }
-});
-
-// GET /api/ai/image/models: List supported open-weight models
-app.get("/api/ai/image/models", authenticateToken, async (_req: any, res: any) => {
-  res.json({ models: OPEN_WEIGHT_IMAGE_MODELS });
 });
 
 // GET /api/ai/chat/skills: Enumerate specialized AI engineering skills
