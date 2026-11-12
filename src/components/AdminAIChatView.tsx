@@ -85,6 +85,7 @@ import {
   fetchAIModels, 
   fetchAIHealth, 
   streamAIChat, 
+  abortAIChatStream,
   performWebResearch,
   WebResearchSource,
   OllamaModelTag,
@@ -970,6 +971,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const chatEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+  const currentStreamIdRef = useRef<string | null>(null);
 
   // Modal State
   const [modalConfig, setModalConfig] = useState<{
@@ -1100,6 +1102,11 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
     if (e && 'preventDefault' in e) {
       e.preventDefault();
       e.stopPropagation();
+    }
+
+    if (currentStreamIdRef.current) {
+      abortAIChatStream(currentStreamIdRef.current, userToken).catch(() => {});
+      currentStreamIdRef.current = null;
     }
 
     if (abortControllerRef.current) {
@@ -1487,6 +1494,9 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
     setIsGenerating(true);
     setStreamBuffer('');
 
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
     let researchSources: WebResearchSource[] = [];
     let ragResults: Array<{
       document: string;
@@ -1539,10 +1549,20 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
       }
     }
 
+    if (abortController.signal.aborted) {
+      setIsGenerating(false);
+      return;
+    }
+
     // Smart sliding context window: filter out UI errors, keep system prompt, first intent anchor, and recent turns
     const maxHistoryTurns = 8;
     const cleanHistory = newHistory.filter(
-      (m) => !m.id.startsWith('error-') && !m.content.startsWith('⚠️')
+      (m) => !m.id.startsWith('error-') && 
+             !m.content.startsWith('⚠️') &&
+             !m.content.includes('Inference Error') &&
+             !m.content.includes('Ollama error') &&
+             !m.content.includes('model version edgerock') &&
+             !m.content.includes('not found in your environment')
     );
     const trimmedHistory = cleanHistory.length > maxHistoryTurns
       ? [cleanHistory[0], ...cleanHistory.slice(-maxHistoryTurns)]
@@ -1554,9 +1574,6 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
       ...trimmedHistory.slice(0, -1).map(m => ({ role: m.role, content: m.content })),
       { role: 'user' as const, content: promptForLLM }
     ];
-
-    const abortController = new AbortController();
-    abortControllerRef.current = abortController;
 
     let fullGeneratedText = '';
     activeStreamTextRef.current = '';
@@ -1615,6 +1632,9 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
         messages: apiMessages,
         token: userToken,
         signal: abortController.signal,
+        onStreamId: (id) => {
+          currentStreamIdRef.current = id;
+        },
         onChunk: (chunk) => {
           fullGeneratedText += chunk;
           activeStreamTextRef.current = fullGeneratedText;
@@ -1644,6 +1664,8 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
         },
         onDone: (metrics) => {
           isStreamingRef.current = false;
+          setIsGenerating(false);
+          currentStreamIdRef.current = null;
           activeStreamTextRef.current = '';
           flushStreamBuffer();
 
@@ -1729,6 +1751,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
       activeStreamTextRef.current = '';
       setIsGenerating(false);
       abortControllerRef.current = null;
+      currentStreamIdRef.current = null;
     }
   };
 

@@ -133,6 +133,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Standard JSON endpoints (synthesize, clone-voice, complete-chunk-upload, OCR) must NOT be piped
       // as raw streams because unclosed stream adapters cause Vercel FUNCTION_INVOCATION_TIMEOUT (504).
       if ((isSseStream || isVaultDownload) && proxyRes.body) {
+        if (typeof (res as any).flushHeaders === 'function') {
+          (res as any).flushHeaders();
+        }
         const { pipeline } = await import('stream/promises');
         const { Readable } = await import('stream');
         const nodeStream = Readable.fromWeb(proxyRes.body as any);

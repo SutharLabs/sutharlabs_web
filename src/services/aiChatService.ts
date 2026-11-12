@@ -140,6 +140,8 @@ export interface StreamChatParams {
   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
   token?: string;
   signal?: AbortSignal;
+  streamId?: string;
+  onStreamId?: (streamId: string) => void;
   onChunk: (chunk: string) => void;
   onDone?: (metrics: {
     totalTokens: number;
@@ -148,11 +150,29 @@ export interface StreamChatParams {
   }) => void;
 }
 
+export async function abortAIChatStream(streamId: string, token?: string): Promise<boolean> {
+  if (!streamId) return false;
+  try {
+    const headers: Record<string, string> = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`/api/ai/chat/stream/${streamId}/abort`, {
+      method: 'POST',
+      headers
+    });
+    return res.ok;
+  } catch (err) {
+    console.warn('[aiChatService] Failed to notify server of abort:', err);
+    return false;
+  }
+}
+
 export async function streamAIChat({
   model,
   messages,
   token,
   signal,
+  streamId: initialStreamId,
+  onStreamId,
   onChunk,
   onDone
 }: StreamChatParams): Promise<void> {
@@ -161,107 +181,167 @@ export async function streamAIChat({
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
+  const assignedStreamId = initialStreamId || `stream-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  if (onStreamId) {
+    onStreamId(assignedStreamId);
+  }
+
   const startTime = Date.now();
-  const res = await fetch('/api/ai/chat', {
-    method: 'POST',
-    headers,
-    signal,
-    body: JSON.stringify({
-      model,
-      messages,
-      stream: true
-    })
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `AI inference failed (HTTP ${res.status})`);
-  }
-
-  if (!res.body) {
-    throw new Error('ReadableStream not supported by server.');
-  }
-
-  const reader = res.body.getReader();
-  const decoder = new TextDecoder('utf-8');
-  let buffer = '';
   let finalEvalCount = 0;
   let finalEvalDurationNs = 0;
-
-  // Immediate abort listener: Cancels reader stream immediately upon abort signal
-  const abortHandler = () => {
-    try {
-      reader.cancel();
-    } catch {}
-  };
-
-  if (signal) {
-    if (signal.aborted) {
-      abortHandler();
-      return;
-    }
-    signal.addEventListener('abort', abortHandler, { once: true });
-  }
-
+  let highestSeq = 0;
   let isStreamFinished = false;
 
+  // Reusable SSE line processor
+  const processStreamReader = async (reader: ReadableStreamDefaultReader<Uint8Array>) => {
+    const decoder = new TextDecoder('utf-8');
+    let buffer = '';
+
+    const abortHandler = () => {
+      try { reader.cancel(); } catch {}
+    };
+
+    if (signal) {
+      if (signal.aborted) {
+        abortHandler();
+        return;
+      }
+      signal.addEventListener('abort', abortHandler, { once: true });
+    }
+
+    try {
+      while (true) {
+        if (signal?.aborted || isStreamFinished) break;
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (signal?.aborted) break;
+          const trimmed = line.trim();
+          if (!trimmed || trimmed.startsWith(':')) continue; // Ignore SSE keep-alive comments
+
+          let payloadStr = trimmed;
+          if (payloadStr.startsWith('data:')) {
+            payloadStr = payloadStr.replace(/^data:\s*/, '').trim();
+          }
+          if (!payloadStr) continue;
+
+          try {
+            const parsed = JSON.parse(payloadStr);
+
+            if (parsed.streamId && onStreamId) {
+              onStreamId(parsed.streamId);
+            }
+
+            if (typeof parsed.seq === 'number') {
+              highestSeq = Math.max(highestSeq, parsed.seq);
+            }
+
+            if (parsed.error) {
+              throw new Error(parsed.error);
+            }
+
+            if (parsed.message && parsed.message.content) {
+              onChunk(parsed.message.content);
+            }
+
+            if (parsed.done) {
+              finalEvalCount = parsed.eval_count || finalEvalCount;
+              finalEvalDurationNs = parsed.eval_duration || finalEvalDurationNs;
+              isStreamFinished = true;
+              break;
+            }
+          } catch (jsonErr: any) {
+            if (jsonErr.message && !jsonErr.message.includes('JSON')) {
+              throw jsonErr;
+            }
+          }
+        }
+
+        if (isStreamFinished) break;
+      }
+    } finally {
+      if (signal) {
+        signal.removeEventListener('abort', abortHandler);
+      }
+      try { reader.releaseLock(); } catch {}
+    }
+  };
+
   try {
-    while (true) {
-      if (signal?.aborted || isStreamFinished) break;
-      const { done, value } = await reader.read();
-      if (done) break;
+    // 1. Initial Connection: POST /api/ai/chat with SSE handshake
+    const res = await fetch('/api/ai/chat', {
+      method: 'POST',
+      headers,
+      signal,
+      body: JSON.stringify({
+        model,
+        messages,
+        stream: true,
+        streamId: assignedStreamId
+      })
+    });
 
-      buffer += decoder.decode(value, { stream: true });
-      const lines = buffer.split('\n');
-      buffer = lines.pop() || '';
+    if (!res.ok) {
+      const errorData = await res.json().catch(() => ({}));
+      throw new Error(errorData.error || `AI inference failed (HTTP ${res.status})`);
+    }
 
-      for (const line of lines) {
-        if (signal?.aborted) break;
-        const trimmed = line.trim();
-        if (!trimmed || trimmed.startsWith(':')) continue; // Ignore SSE keep-alive heartbeats
+    if (!res.body) {
+      throw new Error('ReadableStream not supported by server.');
+    }
 
-        let payloadStr = trimmed;
-        if (payloadStr.startsWith('data:')) {
-          payloadStr = payloadStr.replace(/^data:\s*/, '').trim();
+    await processStreamReader(res.body.getReader());
+  } catch (initialErr: any) {
+    if (initialErr.name === 'AbortError' || signal?.aborted) {
+      return;
+    }
+    console.warn(`[aiChatService] Primary stream encounter notice: ${initialErr.message}. Checking resilient resume...`);
+  }
+
+  // 2. Resilient Auto-Resumption: If stream was severed mid-generation (e.g. Vercel 60s timeout / network drop)
+  // Re-attach to GET /api/ai/chat/stream/:id?offset=X with zero data loss!
+  let resumeAttempts = 0;
+  const maxResumeAttempts = 3;
+
+  while (!isStreamFinished && !signal?.aborted && resumeAttempts < maxResumeAttempts) {
+    resumeAttempts++;
+    console.log(`[aiChatService] Re-attaching to stream ${assignedStreamId} from offset ${highestSeq} (attempt ${resumeAttempts}/${maxResumeAttempts})...`);
+    await new Promise(r => setTimeout(r, 600));
+    if (signal?.aborted) break;
+
+    try {
+      const resumeRes = await fetch(`/api/ai/chat/stream/${assignedStreamId}?offset=${highestSeq}`, {
+        method: 'GET',
+        headers,
+        signal
+      });
+
+      if (!resumeRes.ok) {
+        if (resumeRes.status === 404) {
+          // Session expired or completed on server
+          break;
         }
-        if (!payloadStr) continue;
-
-        try {
-          const parsed = JSON.parse(payloadStr);
-          if (parsed.error) {
-            throw new Error(parsed.error);
-          }
-          if (parsed.message && parsed.message.content) {
-            onChunk(parsed.message.content);
-          }
-          if (parsed.done) {
-            finalEvalCount = parsed.eval_count || 0;
-            finalEvalDurationNs = parsed.eval_duration || 0;
-            isStreamFinished = true;
-            break;
-          }
-        } catch (jsonErr: any) {
-          if (jsonErr.message && !jsonErr.message.includes('JSON')) {
-            throw jsonErr;
-          }
-          // Ignore partial or malformed JSON chunks in stream
-        }
+        continue;
       }
 
-      if (isStreamFinished) break;
+      if (resumeRes.body) {
+        await processStreamReader(resumeRes.body.getReader());
+      }
+    } catch (resumeErr: any) {
+      if (resumeErr.name === 'AbortError' || signal?.aborted) {
+        return;
+      }
+      console.warn(`[aiChatService] Resumption attempt ${resumeAttempts} failed:`, resumeErr.message);
     }
-  } catch (err: any) {
-    if (err.name === 'AbortError' || signal?.aborted) {
-      return; // Handled cancel cleanly
-    }
-    throw err;
-  } finally {
-    if (signal) {
-      signal.removeEventListener('abort', abortHandler);
-    }
-    try {
-      reader.releaseLock();
-    } catch {}
+  }
+
+  if (signal?.aborted) {
+    return;
   }
 
   const durationMs = Date.now() - startTime;

@@ -4777,19 +4777,278 @@ app.post("/api/ai/research", authenticateToken, requireAdmin, async (req: any, r
   }
 });
 
-// POST /api/ai/chat - Streaming conversational inference with proactive SSE keep-alive
+// ==========================================
+// FRONTIER SSE ROUTER & STREAM REGISTRY
+// Decoupled generation matching ChatGPT / Claude / Gemini
+// Prevents Vercel 60s proxy timeouts via auto-resumption & keep-alive
+// ==========================================
 
+interface StreamChunkRecord {
+  seq: number;
+  content: string;
+  timestamp: number;
+}
+
+interface ActiveStreamingSession {
+  streamId: string;
+  userId: string;
+  model: string;
+  status: 'streaming' | 'completed' | 'aborted' | 'error';
+  chunks: StreamChunkRecord[];
+  fullText: string;
+  subscribers: Set<any>;
+  upstreamAbortController: AbortController;
+  heavySlot?: { release: () => void; waitedMs: number } | null;
+  metrics?: {
+    totalTokens: number;
+    speedTokensPerSec: number;
+    durationMs: number;
+  };
+  error?: string;
+  createdAt: number;
+  lastActivity: number;
+  disconnectTimeout?: any;
+}
+
+const aiStreamingSessions = new Map<string, ActiveStreamingSession>();
+
+// Cleanup stale sessions every minute (TTL: 15 minutes)
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, session] of aiStreamingSessions.entries()) {
+    if (now - session.lastActivity > 15 * 60 * 1000) {
+      if (session.heavySlot) {
+        try { session.heavySlot.release(); } catch {}
+      }
+      aiStreamingSessions.delete(id);
+    }
+  }
+}, 60000);
+
+function broadcastSessionChunk(session: ActiveStreamingSession, text: string) {
+  if (!text) return;
+  const seq = session.chunks.length + 1;
+  session.chunks.push({ seq, content: text, timestamp: Date.now() });
+  session.fullText += text;
+  session.lastActivity = Date.now();
+
+  const sseData = `data: ${JSON.stringify({
+    seq,
+    streamId: session.streamId,
+    message: { role: 'assistant', content: text },
+    done: false
+  })}\n\n`;
+
+  for (const sub of session.subscribers) {
+    try {
+      sub.write(sseData);
+    } catch {
+      session.subscribers.delete(sub);
+    }
+  }
+}
+
+function broadcastSessionDone(session: ActiveStreamingSession) {
+  const seq = session.chunks.length + 1;
+  session.lastActivity = Date.now();
+
+  const sseData = `data: ${JSON.stringify({
+    seq,
+    streamId: session.streamId,
+    done: true,
+    eval_count: session.metrics?.totalTokens || 0,
+    eval_duration: (session.metrics?.durationMs || 0) * 1e6,
+    speed: session.metrics?.speedTokensPerSec || 0
+  })}\n\n`;
+
+  for (const sub of session.subscribers) {
+    try {
+      sub.write(sseData);
+      sub.end();
+    } catch {
+      session.subscribers.delete(sub);
+    }
+  }
+  session.subscribers.clear();
+}
+
+function broadcastSessionError(session: ActiveStreamingSession, errMsg: string) {
+  session.lastActivity = Date.now();
+  const sseData = `data: ${JSON.stringify({
+    streamId: session.streamId,
+    error: errMsg,
+    done: true
+  })}\n\n`;
+
+  for (const sub of session.subscribers) {
+    try {
+      sub.write(sseData);
+      sub.end();
+    } catch {
+      session.subscribers.delete(sub);
+    }
+  }
+  session.subscribers.clear();
+}
+
+async function runStreamingChatWorker(session: ActiveStreamingSession, targetUrl: string, payload: any) {
+  const startTime = Date.now();
+  let heavySlot: { release: () => void; waitedMs: number } | null = null;
+  let finalTokens = 0;
+  let evalDurationNs = 0;
+
+  try {
+    try {
+      heavySlot = await unifiedInferenceQueue.acquireHeavySlot({
+        type: 'LLM_CHAT_INFERENCE',
+        userId: session.userId,
+        description: `Local LLM inference (${payload.model}) on VM 2`,
+        maxWaitMs: 30000
+      });
+      session.heavySlot = heavySlot;
+    } catch (slotErr: any) {
+      console.warn("[AI Chat Worker] Heavy slot acquisition notice:", slotErr.message);
+    }
+
+    let response = await fetch(targetUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-ai-secret": ORACLE_AI_SECRET
+      },
+      signal: session.upstreamAbortController.signal,
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      const isEdgerock = payload.model && payload.model.includes('edgerock');
+      const isCompatError = errText.includes('unknown model architecture') || errText.includes('not found') || errText.includes('llama-server');
+
+      if (isEdgerock && isCompatError) {
+        console.warn(`[AI Chat] EdgeRock-4B custom RMA kernel compatibility active. Seamlessly routing reasoning to deepseek-r1:1.5b...`);
+        const cleanMessages = (payload.messages || []).filter((m: any) =>
+          !m.content?.startsWith('⚠️') &&
+          !m.content?.includes('Ollama error') &&
+          !m.content?.includes('Inference Error') &&
+          !m.content?.includes('not found in your environment') &&
+          !m.content?.includes('model version edgerock')
+        );
+
+        const fallbackPayload = {
+          ...payload,
+          messages: cleanMessages.length > 0 ? cleanMessages : payload.messages,
+          model: 'deepseek-r1:1.5b'
+        };
+
+        const noticeText = `> **[EdgeRock-4B Constant-Memory Engine Note]**: *Running in High-Precision Reasoning Compatibility Mode (Gated DeltaNet / RMA native runtime fallback via DeepSeek-R1 core).*\n\n`;
+        broadcastSessionChunk(session, noticeText);
+
+        response = await fetch(targetUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-ai-secret": ORACLE_AI_SECRET
+          },
+          signal: session.upstreamAbortController.signal,
+          body: JSON.stringify(fallbackPayload)
+        });
+      }
+
+      if (!response.ok) {
+        const finalErr = await response.text().catch(() => errText);
+        throw new Error(`Ollama inference error (HTTP ${response.status}): ${finalErr}`);
+      }
+    }
+
+    if (response.body) {
+      const { Readable } = await import("stream");
+      const webStream = Readable.fromWeb(response.body as any);
+
+      let buffer = '';
+      for await (const chunk of webStream) {
+        if (session.status === 'aborted') break;
+        buffer += chunk.toString('utf8');
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const parsed = JSON.parse(trimmed);
+            if (parsed.message?.content) {
+              broadcastSessionChunk(session, parsed.message.content);
+            }
+            if (parsed.done) {
+              finalTokens = parsed.eval_count || 0;
+              evalDurationNs = parsed.eval_duration || 0;
+            }
+          } catch {}
+        }
+      }
+    }
+
+    if (session.status !== 'aborted') {
+      const durationMs = Date.now() - startTime;
+      const speed = evalDurationNs > 0
+        ? finalTokens / (evalDurationNs / 1e9)
+        : (finalTokens / (durationMs / 1000));
+
+      session.status = 'completed';
+      session.metrics = {
+        totalTokens: finalTokens,
+        speedTokensPerSec: parseFloat(speed.toFixed(2)),
+        durationMs
+      };
+
+      broadcastSessionDone(session);
+    }
+  } catch (err: any) {
+    if (session.status !== 'aborted') {
+      console.error(`[AI Chat Worker Error for ${session.streamId}]:`, err.message);
+      session.status = 'error';
+      session.error = err.message;
+      broadcastSessionError(session, err.message);
+    }
+  } finally {
+    if (heavySlot) {
+      try { heavySlot.release(); } catch {}
+      session.heavySlot = null;
+    }
+    for (const sub of session.subscribers) {
+      try { sub.end(); } catch {}
+    }
+    session.subscribers.clear();
+  }
+}
+
+// POST /api/ai/chat - Streaming conversational inference with proactive SSE keep-alive & SSE router
 app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: any) => {
-
-  const { model = "qwen2.5:1.5b", messages = [], stream = true, options = {} } = req.body;
+  const { model = "qwen2.5:1.5b", messages = [], stream = true, options = {}, streamId: clientStreamId } = req.body;
 
   if (!messages || !Array.isArray(messages) || messages.length === 0) {
-
     return res.status(400).json({ error: "Messages array is required." });
-
   }
 
-
+  // Filter out any prior system errors, network failures, Ollama crashes, and "not found" dumps
+  // Prevents reasoning models (e.g. DeepSeek-R1) from hallucinating answers to previous error messages!
+  const sanitizedMessages = messages.map((m: any) => {
+    if (m.role === 'assistant' || m.role === 'system') {
+      const c = m.content || '';
+      if (
+        c.startsWith('⚠️') ||
+        c.includes('Ollama error') ||
+        c.includes('Inference Error') ||
+        c.includes('not found in your environment') ||
+        c.includes('model version edgerock') ||
+        c.includes('unknown model architecture')
+      ) {
+        return null;
+      }
+    }
+    return m;
+  }).filter(Boolean);
 
   // SOTA CPU Optimization for Oracle Always Free ARM64 (2 OCPU / 12GB RAM)
   const is7B = typeof model === "string" && model.includes(":7b");
@@ -4800,252 +5059,242 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
 
   const payload = {
     model,
-    messages,
-    stream,
-    keep_alive: "24h", // Pin model in RAM on VM 2 to eliminate 8-45s model reload penalty
+    messages: sanitizedMessages.length > 0 ? sanitizedMessages : messages,
+    stream: true,
+    keep_alive: "24h",
     options: {
       temperature: options.temperature ?? 0.7,
       num_predict: options.num_predict ?? defaultPredict,
       num_ctx: options.num_ctx ?? defaultCtx,
-      num_thread: options.num_thread ?? 2, // Exactly match the 2 physical OCPUs to prevent context switching
-      num_batch: options.num_batch ?? 512,  // Optimal ARM NEON SIMD vector batch
-      use_mmap: true,                      // Zero-copy memory mapped file pages
+      num_thread: options.num_thread ?? 2,
+      num_batch: options.num_batch ?? 512,
+      use_mmap: true,
       ...options
     }
   };
 
+  const targetUrl = `${ORACLE_AI_URL}/api/chat`;
+  const streamId = clientStreamId || `stream-${Date.now()}-${crypto.randomBytes(4).toString('hex')}`;
+  const userId = (req as any).user?.email || req.ip || 'admin';
 
-
-  // If streaming, send SSE headers immediately so Cloudflare/Nginx proxy does not timeout!
-
-  let keepAliveInterval: any = null;
-  let heavySlot: { release: () => void; waitedMs: number } | null = null;
-
-  if (stream) {
-
-    res.writeHead(200, {
-
-      "Content-Type": "text/event-stream; charset=utf-8",
-
-      "Cache-Control": "no-cache, no-transform",
-
-      "Connection": "keep-alive",
-
-      "X-Accel-Buffering": "no"
-
-    });
-
-    // Send immediate initial comment and 1KB padding so mobile network proxies (iOS Safari, cellular gateways) flush TCP buffers immediately
-    res.write(": keep-alive\n\n");
-    res.write(": " + " ".repeat(1024) + "\n\n");
-
-    // Heartbeat every 3s to prevent mobile cellular TCP disconnects while LLM evaluates
-    keepAliveInterval = setInterval(() => {
-      try {
-        res.write(": keep-alive\n\n");
-      } catch {
-        if (keepAliveInterval) clearInterval(keepAliveInterval);
-      }
-    }, 3000);
-
+  if (!stream) {
+    // Non-streaming fallback
+    try {
+      const directRes = await fetch(targetUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-ai-secret": ORACLE_AI_SECRET },
+        body: JSON.stringify({ ...payload, stream: false })
+      });
+      const data = await directRes.json();
+      return res.json(data);
+    } catch (err: any) {
+      return res.status(500).json({ error: "Inference request failed", details: err.message });
+    }
   }
 
+  // Streaming: Register session in SSE registry and begin streaming
+  const session: ActiveStreamingSession = {
+    streamId,
+    userId,
+    model,
+    status: 'streaming',
+    chunks: [],
+    fullText: '',
+    subscribers: new Set(),
+    upstreamAbortController: new AbortController(),
+    createdAt: Date.now(),
+    lastActivity: Date.now()
+  };
+  aiStreamingSessions.set(streamId, session);
 
+  // Write immediate SSE headers (< 5ms response time)
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no"
+  });
+
+  // Write padding to flush intermediate TCP buffers (iOS Safari, mobile cellular gateways, Nginx, Vercel)
+  res.write(": keep-alive\n\n");
+  res.write(": " + " ".repeat(1024) + "\n\n");
+
+  // Send initial session event so frontend captures streamId immediately
+  res.write(`data: ${JSON.stringify({ type: 'session', streamId, model, status: 'streaming' })}\n\n`);
+
+  session.subscribers.add(res);
+
+  // Proactive keep-alive comment every 2.5s to prevent intermediate proxy idle drops
+  const keepAliveInterval = setInterval(() => {
+    try {
+      res.write(": ping\n\n");
+    } catch {
+      clearInterval(keepAliveInterval);
+      session.subscribers.delete(res);
+    }
+  }, 2500);
+
+  req.on("close", () => {
+    clearInterval(keepAliveInterval);
+    session.subscribers.delete(res);
+    // Allow 90s grace period for client auto-resumption before aborting upstream worker
+    if (session.subscribers.size === 0 && session.status === 'streaming') {
+      if (!session.disconnectTimeout) {
+        session.disconnectTimeout = setTimeout(() => {
+          if (session.subscribers.size === 0 && session.status === 'streaming') {
+            console.log(`[AI Chat] Session ${session.streamId} disconnected for >90s with no reconnect. Releasing resources.`);
+            session.status = 'aborted';
+            try { session.upstreamAbortController.abort(); } catch {}
+            if (session.heavySlot) {
+              try { session.heavySlot.release(); } catch {}
+              session.heavySlot = null;
+            }
+          }
+        }, 90000);
+      }
+    }
+  });
+
+  // Kick off detached worker asynchronously
+  setImmediate(() => {
+    runStreamingChatWorker(session, targetUrl, payload).catch(err => {
+      console.error(`[AI Chat Worker Boot Error for ${streamId}]:`, err);
+    });
+  });
+});
+
+// GET /api/ai/chat/stream/:id - Seamless Stream Resumption Endpoint (Zero Data Loss)
+app.get("/api/ai/chat/stream/:id", authenticateToken, async (req: any, res: any) => {
+  const streamId = req.params.id;
+  const offset = parseInt(req.query.offset || "0", 10);
+  const session = aiStreamingSessions.get(streamId);
+
+  if (!session) {
+    return res.status(404).json({ error: "Streaming session not found or expired." });
+  }
+
+  // Clear disconnect grace timeout since subscriber re-attached
+  if (session.disconnectTimeout) {
+    clearTimeout(session.disconnectTimeout);
+    session.disconnectTimeout = null;
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-cache, no-transform",
+    "Connection": "keep-alive",
+    "X-Accel-Buffering": "no"
+  });
+
+  res.write(": resume-handshake\n\n");
+  res.write(": " + " ".repeat(512) + "\n\n");
+
+  // Fast-forward any chunks the client missed
+  const missedChunks = session.chunks.filter(c => c.seq > offset);
+  for (const c of missedChunks) {
+    res.write(`data: ${JSON.stringify({
+      seq: c.seq,
+      streamId: session.streamId,
+      message: { role: 'assistant', content: c.content },
+      done: false
+    })}\n\n`);
+  }
+
+  if (session.status === 'completed') {
+    res.write(`data: ${JSON.stringify({
+      seq: session.chunks.length + 1,
+      streamId: session.streamId,
+      done: true,
+      eval_count: session.metrics?.totalTokens || 0,
+      eval_duration: (session.metrics?.durationMs || 0) * 1e6,
+      speed: session.metrics?.speedTokensPerSec || 0
+    })}\n\n`);
+    return res.end();
+  }
+
+  if (session.status === 'aborted') {
+    res.write(`data: ${JSON.stringify({ streamId: session.streamId, done: true, aborted: true })}\n\n`);
+    return res.end();
+  }
+
+  if (session.status === 'error') {
+    res.write(`data: ${JSON.stringify({ streamId: session.streamId, error: session.error || 'Inference error', done: true })}\n\n`);
+    return res.end();
+  }
+
+  session.subscribers.add(res);
+  session.lastActivity = Date.now();
+
+  const pingInterval = setInterval(() => {
+    try {
+      res.write(": ping\n\n");
+    } catch {
+      clearInterval(pingInterval);
+      session.subscribers.delete(res);
+    }
+  }, 2500);
+
+  req.on("close", () => {
+    clearInterval(pingInterval);
+    session.subscribers.delete(res);
+    if (session.subscribers.size === 0 && session.status === 'streaming') {
+      if (!session.disconnectTimeout) {
+        session.disconnectTimeout = setTimeout(() => {
+          if (session.subscribers.size === 0 && session.status === 'streaming') {
+            console.log(`[AI Chat] Resumed stream ${session.streamId} disconnected for >90s. Releasing.`);
+            session.status = 'aborted';
+            try { session.upstreamAbortController.abort(); } catch {}
+            if (session.heavySlot) {
+              try { session.heavySlot.release(); } catch {}
+              session.heavySlot = null;
+            }
+          }
+        }, 90000);
+      }
+    }
+  });
+});
+
+// POST /api/ai/chat/stream/:id/abort - Instant Server-Side Stop Endpoint
+app.post("/api/ai/chat/stream/:id/abort", authenticateToken, async (req: any, res: any) => {
+  const streamId = req.params.id;
+  const session = aiStreamingSessions.get(streamId);
+
+  if (!session) {
+    return res.json({ success: true, message: "Session already ended or not found." });
+  }
+
+  session.status = 'aborted';
+  if (session.disconnectTimeout) {
+    clearTimeout(session.disconnectTimeout);
+    session.disconnectTimeout = null;
+  }
 
   try {
-    // Acquire VM 2 heavy compute slot so speech synthesis & LLM do not thrash CPU
-    try {
-      heavySlot = await unifiedInferenceQueue.acquireHeavySlot({
-        type: 'LLM_CHAT_INFERENCE',
-        userId: (req as any).user?.email || req.ip || 'admin',
-        description: `Local LLM inference (${model}) on VM 2`,
-        maxWaitMs: 30000
-      });
-    } catch (slotErr: any) {
-      console.warn("[AI Chat] Heavy slot acquisition notice:", slotErr.message);
-    }
+    session.upstreamAbortController.abort();
+  } catch {}
 
-    const upstreamAbortController = new AbortController();
-    const cleanupUpstream = () => {
-      if (keepAliveInterval) {
-        clearInterval(keepAliveInterval);
-        keepAliveInterval = null;
-      }
-      try { upstreamAbortController.abort(); } catch {}
-    };
-    req.on("close", cleanupUpstream);
-
-    const targetUrl = `${ORACLE_AI_URL}/api/chat`;
-
-    let response = await fetch(targetUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-ai-secret": ORACLE_AI_SECRET
-      },
-      signal: upstreamAbortController.signal,
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      const errText = await response.text();
-      const isEdgerock = payload.model && payload.model.includes('edgerock');
-      const isCompatError = errText.includes('unknown model architecture') || errText.includes('not found') || errText.includes('llama-server');
-
-      // Auto-healing for EdgeRock-4B: If custom RMA kernel is not supported by Ollama binary,
-      // route seamlessly to deepseek-r1:1.5b with transparent architectural notice
-      if (isEdgerock && isCompatError) {
-        console.warn(`[AI Chat] EdgeRock-4B custom RMA kernel compatibility active. Seamlessly routing reasoning to deepseek-r1:1.5b...`);
-        const cleanMessages = (payload.messages || []).filter((m: any) => 
-          !m.content?.startsWith('⚠️') && !m.content?.includes('Ollama error') && !m.content?.includes('Inference Error')
-        );
-
-        const fallbackPayload = {
-          ...payload,
-          messages: cleanMessages.length > 0 ? cleanMessages : payload.messages,
-          model: 'deepseek-r1:1.5b'
-        };
-
-        const fallbackResponse = await fetch(targetUrl, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-ai-secret": ORACLE_AI_SECRET
-          },
-          signal: upstreamAbortController.signal,
-          body: JSON.stringify(fallbackPayload)
-        });
-
-        if (fallbackResponse.ok) {
-          if (stream) {
-            const noticeChunk = JSON.stringify({
-              message: {
-                role: "assistant",
-                content: `> **[EdgeRock-4B Constant-Memory Engine Note]**: *Running in High-Precision Reasoning Compatibility Mode (Gated DeltaNet / RMA native runtime fallback via DeepSeek-R1 core).*\n\n`
-              },
-              done: false
-            });
-            res.write(`${noticeChunk}\n`);
-          }
-          response = fallbackResponse;
-        } else {
-          if (keepAliveInterval) clearInterval(keepAliveInterval);
-          if (stream) {
-            res.write(`data: ${JSON.stringify({ error: `Ollama error: ${errText}`, done: true })}\n\n`);
-            return res.end();
-          }
-          return res.status(response.status).json({ error: `Ollama error: ${errText}` });
-        }
-      } else {
-        if (keepAliveInterval) clearInterval(keepAliveInterval);
-        if (stream) {
-          res.write(`data: ${JSON.stringify({ error: `Ollama error: ${errText}`, done: true })}\n\n`);
-          return res.end();
-        }
-        return res.status(response.status).json({ error: `Ollama error: ${errText}` });
-      }
-    }
-
-
-
-    if (stream && response.body) {
-
-      const { Readable } = await import("stream");
-
-      const webStream = Readable.fromWeb(response.body as any);
-
-
-
-      webStream.on("data", (chunk: Buffer) => {
-        res.write(chunk);
-        try {
-          const chunkStr = chunk.toString("utf8");
-          if (chunkStr.includes('"done":true') || chunkStr.includes('"done": true')) {
-            if (keepAliveInterval) {
-              clearInterval(keepAliveInterval);
-              keepAliveInterval = null;
-            }
-            res.end();
-          }
-        } catch {}
-      });
-
-
-
-      webStream.on("end", () => {
-
-        if (keepAliveInterval) clearInterval(keepAliveInterval);
-
-        res.end();
-
-      });
-
-
-
-      webStream.on("error", (err: any) => {
-
-        if (keepAliveInterval) clearInterval(keepAliveInterval);
-
-        console.error("[AI Chat Stream] Error:", err);
-
-        try {
-
-          res.write(`data: ${JSON.stringify({ error: err.message, done: true })}\n\n`);
-
-          res.end();
-
-        } catch {}
-
-      });
-
-
-
-      req.on("close", () => {
-        cleanupUpstream();
-        try { webStream.destroy(); } catch {}
-      });
-
-    } else {
-
-      if (keepAliveInterval) clearInterval(keepAliveInterval);
-
-      const data = await response.json();
-
-      res.json(data);
-
-    }
-
-  } catch (err: any) {
-
-    if (keepAliveInterval) clearInterval(keepAliveInterval);
-
-    console.error("[AI Chat Proxy] Error:", err);
-
-    if (stream) {
-
-      try {
-
-        res.write(`data: ${JSON.stringify({ error: "Inference node connection failed: " + err.message, done: true })}\n\n`);
-
-        res.end();
-
-      } catch {}
-
-    } else {
-
-      res.status(500).json({ error: "Inference request failed", details: err.message });
-
-    }
-
-  } finally {
-
-    if (heavySlot) {
-      heavySlot.release();
-      heavySlot = null;
-    }
-
+  if (session.heavySlot) {
+    try { session.heavySlot.release(); } catch {}
+    session.heavySlot = null;
   }
 
+  const abortPayload = `data: ${JSON.stringify({
+    streamId,
+    done: true,
+    aborted: true
+  })}\n\n`;
+
+  for (const sub of session.subscribers) {
+    try {
+      sub.write(abortPayload);
+      sub.end();
+    } catch {}
+  }
+  session.subscribers.clear();
+
+  console.log(`[AI Chat] Session ${streamId} explicitly aborted by user.`);
+  return res.json({ success: true, streamId, status: 'aborted' });
 });
 
 // ==========================================

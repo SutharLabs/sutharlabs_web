@@ -6,9 +6,9 @@
     "semantic_hash": "6eab2f1626c4f1fbdd66aa25ee74fd00"
   },
   "api/server.ts": {
-    "mtime": 1794459637.9585903,
-    "seen": 1794459767.5731053,
-    "ast_hash": "8be722a17d9cfa27b687d83e0464dae6",
+    "mtime": 1794465722.090351,
+    "seen": 1794466269.4553785,
+    "ast_hash": "9e3a2fb54e30c9a11d5536c01ad61666",
     "semantic_hash": ""
   },
   "metadata.json": {
@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794459663.7524116,
-    "seen": 1794459767.5731852,
-    "ast_hash": "2b40841a9fe80af1329e6be32e3e5104",
+    "mtime": 1794465837.29394,
+    "seen": 1794466269.4554482,
+    "ast_hash": "0cb43ca1913e0a4651c7a8731137381c",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -1100,15 +1100,15 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1794458048.854185,
-    "seen": 1794459767.573204,
-    "ast_hash": "f435712e36d6e913486ac07edbf7c30e",
+    "mtime": 1794466151.9228213,
+    "seen": 1794466269.4554636,
+    "ast_hash": "0a0fb279e7cbe42d9081ee53c83ef206",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
-    "mtime": 1794458049.4298272,
-    "seen": 1794459767.5739872,
-    "ast_hash": "8c6ca4fcb22ba3adffb5c6bd9ed7d41a",
+    "mtime": 1794465866.909126,
+    "seen": 1794466269.4562068,
+    "ast_hash": "4da091e0c19cc1e6bd19c35353f1fe40",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
