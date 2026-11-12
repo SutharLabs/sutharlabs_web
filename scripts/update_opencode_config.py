@@ -18,7 +18,8 @@ cfg = {
         "qwen2.5:1.5b": { "name": "Qwen 2.5 1.5B (Ultra-Fast 48 tok/s)" },
         "deepseek-r1:1.5b": { "name": "DeepSeek R1 1.5B (Fast Reasoning 40 tok/s)" },
         "qwen2.5-coder:3b": { "name": "Qwen 2.5 Coder 3B (SOTA Code 28 tok/s)" },
-        "gemma2:2b": { "name": "Gemma 2 2B (Fast 35 tok/s)" },
+        "gemma4:e2b": { "name": "Gemma 4 E2B (Edge Multimodal 32 tok/s)" },
+        "gemma4:e4b": { "name": "Gemma 4 E4B (Multimodal 4B 22 tok/s)" },
         "qwen2.5:7b": { "name": "Qwen 2.5 7B (Deep Knowledge 8 tok/s)" },
         "deepseek-r1:7b": { "name": "DeepSeek R1 7B (Frontier Reasoning 6 tok/s)" }
       }

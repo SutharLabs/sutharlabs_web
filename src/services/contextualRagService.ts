@@ -436,7 +436,8 @@ The topology consists of three primary virtual machines and managed serverless e
     * edgerock:4b: Constant-memory hybrid LLM (4.5B) powered by Gated DeltaNet and Rock Memory Anchors (RMA). Handles 256,000 token context at fixed 72MB memory.
     * qwen2.5-coder:3b: Code generation, full-stack React/Node architecture, and artifact synthesis.
     * deepseek-r1:1.5b: Mathematical chain-of-thought (CoT) and symbolic deduction.
-    * gemma2:2b: Ultra-fast conversational assistant.
+    * gemma4:e2b: Google DeepMind Gemma 4 Effective 2B with Per-Layer Embeddings (PLE) and native multimodal (text/vision/audio) edge inference.
+    * gemma4:e4b: Google DeepMind Gemma 4 Effective 4B with 128K context window, advanced reasoning, and multimodal capabilities.
   - XTTS v2 Speech Synthesizer: Running on port 5050 for sovereign neural voice synthesis and custom voice cloning.
 
 ### Oracle Cloud VM 3: Production API Gateway & Backend

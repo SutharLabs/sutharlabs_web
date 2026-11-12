@@ -58,7 +58,8 @@ The inference node runs 6 specialized models covering rapid sub-second responses
 | :--- | :--- | :--- | :--- | :--- |
 | **`qwen2.5:1.5b`** | 986 MB | ~1.6 GB | **~50–60 tokens/sec** | ⚡ Ultra-fast near-instant replies, shell scripts, formatting |
 | **`deepseek-r1:1.5b`** | 1.1 GB | ~1.8 GB | **~45–55 tokens/sec** | 🧠 Fast Chain-of-Thought (CoT) math & algorithmic problem solving |
-| **`gemma2:2b`** | 1.6 GB | ~2.4 GB | **~30–45 tokens/sec** | 🌐 Google-distilled rich prose, conversational warmth, summaries |
+| **`gemma4:e2b`** | 4.6 GB (3.5 GB base + 986 MB mmproj) | ~4.2 GB | **~30–35 tokens/sec** | 🌐 Google DeepMind Gemma 4 Effective 2B: Per-Layer Embeddings (PLE), native multimodal (text/vision/audio), 128K context |
+| **`gemma4:e4b`** | 6.6 GB (5.5 GB base + 991 MB mmproj) | ~5.6 GB | **~20–25 tokens/sec** | 🧠 Google DeepMind Gemma 4 Effective 4B: Balanced edge reasoning, vision & audio processing, function calling |
 | **`qwen2.5-coder:3b`** | 1.9 GB | ~2.9 GB | **~30–40 tokens/sec** | 🚀 Top-ranked coding model for TypeScript, Python, and refactoring |
 | **`deepseek-r1:7b`** | 4.7 GB | ~5.8 GB | **~10–14 tokens/sec** | 🧠 Frontier mathematical reasoning, formal proofs, AIME competition math |
 | **`qwen2.5:7b`** | 4.7 GB | ~5.8 GB | **~10–14 tokens/sec** | 🧠 Deep multi-domain knowledge, cloud architecture, system design |
@@ -67,7 +68,8 @@ The inference node runs 6 specialized models covering rapid sub-second responses
 ```bash
 ollama pull qwen2.5:1.5b
 ollama pull deepseek-r1:1.5b
-ollama pull gemma2:2b
+ollama pull gemma4:e2b
+ollama pull gemma4:e4b
 ollama pull qwen2.5-coder:3b
 ollama pull deepseek-r1:7b
 ollama pull qwen2.5:7b

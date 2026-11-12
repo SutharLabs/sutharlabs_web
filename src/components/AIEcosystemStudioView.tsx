@@ -562,7 +562,8 @@ export default function AIEcosystemStudioView({
                       <option value="edgerock:4b">EdgeRock 4B (Constant Memory • 256K Context)</option>
                       <option value="qwen2.5-coder:3b">Qwen 2.5 Coder 3B (Code SOTA)</option>
                       <option value="deepseek-r1:1.5b">DeepSeek R1 1.5B (CoT Reasoner)</option>
-                      <option value="gemma2:2b">Gemma 2 2B (Google Architecture)</option>
+                      <option value="gemma4:e2b">Gemma 4 E2B (Google Edge Multimodal)</option>
+                      <option value="gemma4:e4b">Gemma 4 E4B (Google Multimodal 4B)</option>
                       <option value="qwen2.5:7b">Qwen 2.5 7B (Deep Knowledge)</option>
                     </select>
                   </div>

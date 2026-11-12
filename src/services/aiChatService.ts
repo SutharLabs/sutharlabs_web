@@ -50,7 +50,7 @@ export const AGENT_PERSONAS: AIAgentPersona[] = [
     badge: 'Quant Models',
     description: 'Analyzes financial markets, statistical indicators, backtesting logic, and risk modeling formulas.',
     systemPrompt: `You are a Senior Quantitative Analyst at SutharLabs. You specialize in statistical arbitrage, algorithmic trading execution, risk modeling (Sharpe, Sortino, VaR), Fibonacci series, moving averages, and technical indicators. Always verify mathematical formulas, detail time and space complexities, and output concise analytical summaries.`,
-    recommendedModel: 'gemma2:2b'
+    recommendedModel: 'gemma4:e2b'
   },
   {
     id: 'math-reasoner',
@@ -78,9 +78,9 @@ export const AGENT_PERSONAS: AIAgentPersona[] = [
     title: 'Fast Synthesis & General Intelligence',
     icon: 'sparkles',
     badge: 'Fast Synthesis',
-    description: 'General-purpose intelligent assistant powered by Google Gemma 2 2B for ultra-fast conversational answers.',
+    description: 'General-purpose intelligent assistant powered by Google Gemma 4 E2B for ultra-fast conversational answers and edge multimodal intelligence.',
     systemPrompt: `You are SutharLabs Sovereign AI, a sharp, concise, and helpful artificial intelligence running locally on private ARM64 cloud infrastructure. Provide clear, direct, and well-structured answers with zero corporate fluff.`,
-    recommendedModel: 'gemma2:2b'
+    recommendedModel: 'gemma4:e2b'
   },
   {
     id: 'video-director',
