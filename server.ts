@@ -4479,15 +4479,33 @@ app.get("/api/ai/health", async (_req: any, res: any) => {
 // GET /api/ai/opencode-info - OpenCode engine and tunnel discovery endpoint with live reachability probe
 app.get("/api/ai/opencode-info", async (_req: any, res: any) => {
   try {
-    const publicUrl = process.env.OPENCODE_PUBLIC_URL || "https://basin-engine-expensive-innocent.trycloudflare.com";
-    const directUrl = process.env.OPENCODE_DIRECT_URL || "http://132.226.190.125/";
+    const directUrl = (process.env.OPENCODE_DIRECT_URL || "http://132.226.190.125/").replace(/\/+$/, "") + "/";
+    let publicUrl = process.env.OPENCODE_PUBLIC_URL || "";
 
     let status: "online" | "offline" = "offline";
     let reason = "Remote tunnel URL is unreachable or expired.";
 
-    if (process.env.OPENCODE_PUBLIC_URL) {
+    // Auto-discover active trycloudflare tunnel URL from VM 2 if OPENCODE_PUBLIC_URL is not pinned
+    if (!publicUrl) {
       try {
-        const probe = await fetch(publicUrl, { method: "HEAD", signal: AbortSignal.timeout(2500) });
+        const discoveryRes = await fetch(`${directUrl}opencode-url`, {
+          method: "GET",
+          signal: AbortSignal.timeout(2500),
+        });
+        if (discoveryRes.ok) {
+          const data: any = await discoveryRes.json();
+          if (data?.url && typeof data.url === "string") {
+            publicUrl = data.url;
+          }
+        }
+      } catch {
+        // Fall through to offline reason below
+      }
+    }
+
+    if (publicUrl) {
+      try {
+        const probe = await fetch(publicUrl, { method: "HEAD", signal: AbortSignal.timeout(3000) });
         if (probe.ok || probe.status === 401) {
           status = "online";
           reason = "Tunnel active";
@@ -4500,7 +4518,8 @@ app.get("/api/ai/opencode-info", async (_req: any, res: any) => {
           : `Remote tunnel unreachable (${e?.message || "network error"}).`;
       }
     } else {
-      reason = "OPENCODE_PUBLIC_URL is not configured (default trycloudflare quick-tunnel expired). Use Native Studio or configure an active HTTPS tunnel.";
+      publicUrl = "https://basin-engine-expensive-innocent.trycloudflare.com";
+      reason = "OPENCODE_PUBLIC_URL is not configured and VM 2 /opencode-url discovery failed.";
     }
 
     res.json({
