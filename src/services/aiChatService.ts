@@ -524,7 +524,7 @@ export async function generateAIImage(
 
   if (!res.ok) {
     const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData.error || `Image generation failed (HTTP ${res.status})`);
+    throw new Error(errorData.details || errorData.error || `Image generation failed (HTTP ${res.status})`);
   }
   return res.json();
 }

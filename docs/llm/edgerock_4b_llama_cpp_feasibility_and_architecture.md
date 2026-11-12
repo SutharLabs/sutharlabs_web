@@ -191,3 +191,4 @@ During testing of the EdgeRock-4B model pipeline, three critical reliability iss
    * Monitored outgoing webStream chunks for `"done":true`. The instant Ollama emits the completion payload, `server.ts` clears the keep-alive timer and invokes `res.end()`.
 3. **LLM Context Error History Sanitization** ([`AdminAIChatView.tsx`](file:///d:/Code/SutharLabs/website/src/components/AdminAIChatView.tsx)):
    * Sanitized `messages` before sending inference requests to `/api/ai/chat`, filtering out any UI error alerts (`⚠️ **Inference Error**...`). This prevents the model from attempting to diagnose past system errors instead of answering the user's actual prompt.
+

@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794412622.2601917,
-    "seen": 1794412737.5787692,
-    "ast_hash": "bc70894b4372c868c462478c630c895b",
+    "mtime": 1794425987.434208,
+    "seen": 1794453722.6114845,
+    "ast_hash": "e83049c86c58925f894afd808275409e",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -1100,15 +1100,15 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1794412500.2788053,
-    "seen": 1794412737.5787873,
-    "ast_hash": "a5673f442636bbed1be29bf8aca24e74",
+    "mtime": 1794453584.784531,
+    "seen": 1794453722.6115031,
+    "ast_hash": "c6396346f205bb30d8d740a0552c4355",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
-    "mtime": 1794412352.35588,
-    "seen": 1794412737.579602,
-    "ast_hash": "2848a125fccfc24a068e5f892ea0af4c",
+    "mtime": 1794453539.6108642,
+    "seen": 1794453722.612266,
+    "ast_hash": "043c0c9da0302ccba0f1cefcab1a7129",
     "semantic_hash": ""
   },
   "src/plugins/SpeechStudio/components/SpeechStudioView.tsx": {
@@ -1226,9 +1226,9 @@
     "semantic_hash": ""
   },
   "src/components/MarkdownMessage.tsx": {
-    "mtime": 1794219748.7224133,
-    "seen": 1794220843.8154593,
-    "ast_hash": "651e347f2f0879a365715b3c29b45356",
+    "mtime": 1794415541.6613865,
+    "seen": 1794417254.5353324,
+    "ast_hash": "3e6c360cce206bf64404a6b7475a9960",
     "semantic_hash": ""
   },
   "docs/plugins/speech_studio_architecture_and_logic.md": {
@@ -1316,9 +1316,9 @@
     "semantic_hash": ""
   },
   "docs/llm/README.md": {
-    "mtime": 1793887004.0431974,
-    "seen": 1793888518.6369746,
-    "ast_hash": "75fa3be87824f8910429bc45c49adfb1",
+    "mtime": 1794452143.5899189,
+    "seen": 1794453722.612452,
+    "ast_hash": "0ce18571914b4ac85609db41c3177d18",
     "semantic_hash": ""
   },
   "docs/llm/inference_node_setup_and_benchmarks.md": {
@@ -1682,9 +1682,9 @@
     "semantic_hash": ""
   },
   "docs/SYSTEM_UPDATES_AND_CHANGELOG.md": {
-    "mtime": 1794280933.2627585,
-    "seen": 1794405003.3063152,
-    "ast_hash": "75ae50870d8f3b590e9d26975ba0266f",
+    "mtime": 1794452167.7907476,
+    "seen": 1794453722.6123676,
+    "ast_hash": "65885407be32c53c7e6c155b93650301",
     "semantic_hash": ""
   },
   "public/voices/catalog.json": {
@@ -1958,15 +1958,21 @@
     "semantic_hash": ""
   },
   "src/services/imageGenService.ts": {
-    "mtime": 1794412330.2161796,
-    "seen": 1794412737.5796237,
-    "ast_hash": "65553c1951cb10661af9c5909f5b660b",
+    "mtime": 1794453530.107486,
+    "seen": 1794453722.6122913,
+    "ast_hash": "60de32a7a3dc8716a8f702b7824011d6",
     "semantic_hash": ""
   },
   "src/components/AIEcosystemStudioView.tsx": {
     "mtime": 1794409982.20882,
     "seen": 1794410440.9257443,
     "ast_hash": "b1c2d3d38e76585b2f814713626fb432",
+    "semantic_hash": ""
+  },
+  "docs/llm/edgerock_4b_llama_cpp_feasibility_and_architecture.md": {
+    "mtime": 1794452379.2065203,
+    "seen": 1794453722.6124556,
+    "ast_hash": "23f1bea677c71012127c5a5b80468570",
     "semantic_hash": ""
   },
   "package-lock.json": {

@@ -216,7 +216,8 @@ export async function generateSovereignImage(options: ImageGenOptions): Promise<
   if ((!imageBuffer || imageBuffer.length < 500) && options.allowCloudFallback) {
     const encodedPrompt = encodeURIComponent(revisedPrompt);
     const polModel = model === "janus-pro-1b" ? "flux" : model === "flux-schnell" ? "flux" : "turbo";
-    const remoteUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${targetWidth}&height=${targetHeight}&model=${polModel}&seed=${seed}&nologo=true`;
+    // nologo=true removes watermarks; nofeed=true and enhance=false guarantee deterministic private output
+    const remoteUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${targetWidth}&height=${targetHeight}&model=${polModel}&seed=${seed}&nologo=true&nofeed=true&enhance=false`;
 
     try {
       const controller = new AbortController();
@@ -238,43 +239,23 @@ export async function generateSovereignImage(options: ImageGenOptions): Promise<
         }
       }
     } catch (err: any) {
-      console.warn(`[ImageGen] Remote cloud fallback encountered error (${err.message}), reverting to sovereign vector artwork...`);
+      console.warn(`[ImageGen] Remote cloud fallback encountered error (${err.message}).`);
     }
   }
 
-  // 3. High-Fidelity Sovereign Vector / SVG Fallback (100% Offline, Zero-Watermark, Deterministic)
+  // 3. Fallback Validation & Honest Failure Handling
+  // If neither local neural engine nor cloud fallback produced a valid image buffer, throw an explicit actionable error.
+  // Never silently emit a decorative template SVG pretending to be an AI synthesized image.
   if (!imageBuffer || imageBuffer.length < 500) {
-    const svgFallback = generateSovereignVisualSVG({
-      prompt,
-      revisedPrompt,
-      style,
-      modelName: modelMeta.name,
-      width: targetWidth,
-      height: targetHeight
-    });
-    imageBuffer = Buffer.from(svgFallback, "utf8");
-    const svgFilename = `${imageId}.svg`;
-    const svgPath = path.join(storageDir, svgFilename);
-    fs.writeFileSync(svgPath, imageBuffer);
-
-    return {
-      id: imageId,
-      url: `/api/ai/image/file/${svgFilename}`,
-      localPath: svgPath,
-      prompt,
-      revisedPrompt,
-      model: modelMeta.id,
-      modelLabel: modelMeta.name,
-      architecture: modelMeta.architecture,
-      width: targetWidth,
-      height: targetHeight,
-      aspectRatio,
-      createdAt: Date.now(),
-      format: "svg",
-      fileSize: imageBuffer.length,
-      style,
-      engineSource: 'local'
-    };
+    if (!options.allowCloudFallback) {
+      throw new Error(
+        "Sovereign local neural image daemon (port 8082 on VM 2) is currently offline or uninstalled. To synthesize images without a running local GPU/CPU worker, please enable 'Cloud Fallback Allowed' in Image Studio or deploy the local image service on VM 2."
+      );
+    } else {
+      throw new Error(
+        "Image generation failed: Local daemon on VM 2 (port 8082) is offline and remote cloud fallback could not be reached. Please verify internet connectivity or try again in a few moments."
+      );
+    }
   }
 
   // Detect image format from magic bytes

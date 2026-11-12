@@ -761,7 +761,20 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
   const [savedVaultNotice, setSavedVaultNotice] = useState<string | null>(null);
   const [imageStudioError, setImageStudioError] = useState<string | null>(null);
-  const [allowCloudFallback, setAllowCloudFallback] = useState<boolean>(false);
+  const [allowCloudFallback, setAllowCloudFallbackState] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('sutharlabs_image_cloud_fallback');
+      if (saved !== null) return saved === 'true';
+    }
+    return false;
+  });
+
+  const setAllowCloudFallback = (val: boolean) => {
+    setAllowCloudFallbackState(val);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sutharlabs_image_cloud_fallback', String(val));
+    }
+  };
 
   // Image Processing state
   const [procTab, setProcTab] = useState<'generate' | 'process'>('generate');
@@ -812,7 +825,21 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
       }
     } catch (err: any) {
       addLog('IMAGE_STUDIO', `Image generation failed: ${err.message}`, 'ERROR');
-      setImageStudioError(`Image generation failed: ${err.message}`);
+      const errMsg = err.message || 'Unknown error occurred during image synthesis.';
+      setImageStudioError(errMsg);
+
+      // If triggered from chat (e.g. via /image prompt) or modal is not currently open, surface the actionable notice directly in the chat feed
+      if (customPrompt || !isImageModalOpen) {
+        const errorMsg: AIChatMessage = {
+          id: `msg-${Date.now()}-error`,
+          role: 'assistant',
+          content: `⚠️ **Image Generation Notice**: ${errMsg}\n\n*Solution*: Since the local neural image daemon (port 8082 on VM 2) is offline, open the **Image Studio** (click \`/image\` or the Image tool icon) and enable **"Cloud Fallback Allowed"** to synthesize using open-weight cloud models without watermarks.`,
+          model: imageModel,
+          mode: currentMode,
+          timestamp: new Date().toLocaleTimeString()
+        };
+        setMessages((prev) => [...prev, errorMsg]);
+      }
     } finally {
       setIsGeneratingImage(false);
     }
@@ -4690,15 +4717,41 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
             </div>
 
             {imageStudioError && (
-              <div className="mx-4 mt-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono flex items-center justify-between gap-2">
-                <span>{imageStudioError}</span>
-                <button
-                  type="button"
-                  onClick={() => setImageStudioError(null)}
-                  className="p-1 rounded hover:bg-rose-500/20 text-rose-300 cursor-pointer"
-                >
-                  <X className="w-3.5 h-3.5 shrink-0" />
-                </button>
+              <div className="mx-4 mt-3 p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold leading-relaxed">{imageStudioError}</span>
+                  <button
+                    type="button"
+                    onClick={() => setImageStudioError(null)}
+                    className="p-1 rounded hover:bg-rose-500/20 text-rose-300 cursor-pointer shrink-0"
+                    title="Dismiss notification"
+                  >
+                    <X className="w-3.5 h-3.5 shrink-0" />
+                  </button>
+                </div>
+                {!allowCloudFallback && (
+                  <div className="pt-2 border-t border-rose-500/20 flex items-center justify-between gap-2 flex-wrap">
+                    <span className="text-[11px] text-on-surface-variant font-mono">
+                      Local neural daemon on VM 2 is offline. Enable cloud fallback to synthesize immediately?
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAllowCloudFallback(true);
+                        setImageStudioError(null);
+                        setTimeout(() => handleGenerateImage(), 50);
+                      }}
+                      className={`h-7 px-3 rounded-lg text-[10px] font-mono font-bold uppercase transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                        isLight
+                          ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-xs'
+                          : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 shadow-xs'
+                      }`}
+                    >
+                      <Globe className="w-3 h-3 shrink-0" />
+                      <span>Enable Fallback &amp; Retry</span>
+                    </button>
+                  </div>
+                )}
               </div>
             )}
 
