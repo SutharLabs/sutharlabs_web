@@ -127,10 +127,6 @@ export default function StockSimulatorPanel({
   const [selectedTimeframe, setSelectedTimeframe] = useState<'1m' | '5m' | '15m' | '1h' | '4h' | '1d'>('1d');
   const [selectedProductType, setSelectedProductType] = useState<'CNC' | 'MIS'>('CNC');
   const lastHydratedSimIdRef = React.useRef<string | null>(null);
-  const selectedSimulationIdRef = React.useRef<string>('');
-  useEffect(() => {
-    selectedSimulationIdRef.current = selectedSimulationId;
-  }, [selectedSimulationId]);
   const [tradeLedgerFilter, setTradeLedgerFilter] = useState<'ALL' | 'EXITS' | 'ENTRIES'>('ALL');
   const [selectedLedgerDate, setSelectedLedgerDate] = useState<string>('ALL');
 
@@ -216,6 +212,10 @@ export default function StockSimulatorPanel({
       return '';
     }
   });
+  const selectedSimulationIdRef = React.useRef<string>(selectedSimulationId);
+  useEffect(() => {
+    selectedSimulationIdRef.current = selectedSimulationId;
+  }, [selectedSimulationId]);
   const [showNewSimModal, setShowNewSimModal] = useState<boolean>(false);
   const [newSimId, setNewSimId] = useState<string>('');
   const [newSimLabel, setNewSimLabel] = useState<string>('');
