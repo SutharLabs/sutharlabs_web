@@ -14,6 +14,30 @@ This milestone completes critical production enhancements across the platform:
 3. **SOTA Free & Commercial Voice Research Guide**: Comprehensive audit of top-rated permissive (Apache 2.0 / MIT) models: Kokoro-82M, Chatterbox, Zonos v0.1, CosyVoice 2, and Edge Neural Expressive Fleet.
 4. **Mobile UI & Responsive Card Alignment**: Fixes fixed `min-w` bottlenecks in Plugin Store cards and Speech Studio toolbar that caused buttons and cards to overflow or wrap awkwardly on mobile screens.
 5. **PostgreSQL Multi-Tenant Scoped Database Voice Hydration**: Guarantees raw PCM/WAV reference audio samples are reliably fetched from isolated PostgreSQL tenant stores during synthesis requests.
+6. **EdgeRock-4B & llama.cpp Integration Feasibility**: Comprehensive architectural audit of EdgeRock-4B (Rock Matrix/HKUST/CMU), mapping all 546 GGUF tensors, identifying the 24 Gated DeltaNet layers and 8 Rock Memory Anchors (RMA) layers, and detailing the exact code path for adding native RMA support to `llama.cpp`.
+7. **AI Studio Streaming Completion & Hang Elimination**: Resolves infinite SSE heartbeat loops on `parsed.done === true`, adds auto-closing socket logic on the backend, decouples system error strings from LLM conversation prompts, and preserves partial generation upon Stop button clicks.
+
+---
+
+## 1.1 EdgeRock-4B Architecture & llama.cpp Integration Feasibility
+
+* **Technical Document**: [`docs/llm/edgerock_4b_llama_cpp_feasibility_and_architecture.md`](file:///d:/Code/SutharLabs/website/docs/llm/edgerock_4b_llama_cpp_feasibility_and_architecture.md)
+* **Model Provenance**: Rock Matrix, HKUST, CMU (arXiv:2610.10118, October 2026).
+* **Core Advantage**: $O(1)$ constant-memory history ($72\text{ MiB}$ fixed KV cache even at $256\text{K}$ context window).
+* **GGUF Tensor Inspection**:
+  * Inspected `EdgeRock-4B-Q4_K_M.gguf` (2.94 GB, 546 tensors).
+  * **24 Recurrent Blocks** (0-2, 4-6, 8-10...): 100% identical to Qwen3.5 Gated DeltaNet linear attention (`attn_qkv`, `ssm_a`, `ssm_conv1d`, `ssm_norm`, `ffn_gate/up/down`). Already supported in `llama.cpp` upstream via PR #19468!
+  * **8 Attention Blocks** (3, 7, 11, 15, 19, 23, 27, 31): Sliding-window self-attention ($W = 1024$) combined with 15 Rock Memory Anchors tensors per block (`blk.N.memory.*`).
+* **llama.cpp Roadmap**:
+  * Step 1: Add `LLM_ARCH_EDGEROCK` to `gguf.h` and `llama-arch.h`.
+  * Step 2: Register 15 `memory.*` tensors per block in `llama-model.cpp`.
+  * Step 3: Allocate a persistent 16 MiB anchor bank buffer in `llama-context.cpp`.
+  * Step 4: Implement memory read (GQA attention against the anchor bank + gated residual addition) and admission scoring in `llama-graph.cpp`.
+* **Streaming & Stop Button Fixes**:
+  * Fixed `aiChatService.ts` loop break when `parsed.done === true` is received, preventing infinite SSE heartbeat loops.
+  * Backend auto-close: `server.ts` monitors chunks for `"done":true`, terminates the keep-alive timer, and invokes `res.end()` immediately.
+  * Sanitized `apiMessages` in `AdminAIChatView.tsx` and `server.ts` to exclude past UI error alerts (`⚠️ **Inference Error**...`).
+  * Instant partial text persistence on Stop button click or <kbd>Esc</kbd> press.
 
 ---
 
