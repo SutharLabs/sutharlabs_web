@@ -4842,6 +4842,7 @@ function broadcastSessionChunk(session: ActiveStreamingSession, text: string) {
   for (const sub of session.subscribers) {
     try {
       sub.write(sseData);
+      if (typeof sub.flush === 'function') sub.flush();
     } catch {
       session.subscribers.delete(sub);
     }
@@ -4864,6 +4865,7 @@ function broadcastSessionDone(session: ActiveStreamingSession) {
   for (const sub of session.subscribers) {
     try {
       sub.write(sseData);
+      if (typeof sub.flush === 'function') sub.flush();
       sub.end();
     } catch {
       session.subscribers.delete(sub);
@@ -4883,6 +4885,7 @@ function broadcastSessionError(session: ActiveStreamingSession, errMsg: string) 
   for (const sub of session.subscribers) {
     try {
       sub.write(sseData);
+      if (typeof sub.flush === 'function') sub.flush();
       sub.end();
     } catch {
       session.subscribers.delete(sub);
@@ -4892,6 +4895,7 @@ function broadcastSessionError(session: ActiveStreamingSession, errMsg: string) 
 }
 
 async function runStreamingChatWorker(session: ActiveStreamingSession, targetUrl: string, payload: any) {
+  console.log(`[AI Chat Worker] Starting for session ${session.streamId}, model: ${payload.model}, subscribers: ${session.subscribers.size}`);
   const startTime = Date.now();
   let heavySlot: { release: () => void; waitedMs: number } | null = null;
   let finalTokens = 0;
@@ -4906,10 +4910,12 @@ async function runStreamingChatWorker(session: ActiveStreamingSession, targetUrl
         maxWaitMs: 30000
       });
       session.heavySlot = heavySlot;
+      console.log(`[AI Chat Worker] Heavy slot acquired for ${session.streamId}`);
     } catch (slotErr: any) {
       console.warn("[AI Chat Worker] Heavy slot acquisition notice:", slotErr.message);
     }
 
+    console.log(`[AI Chat Worker] Fetching upstream ${targetUrl} for ${session.streamId}...`);
     let response = await fetch(targetUrl, {
       method: "POST",
       headers: {
@@ -4919,6 +4925,7 @@ async function runStreamingChatWorker(session: ActiveStreamingSession, targetUrl
       signal: session.upstreamAbortController.signal,
       body: JSON.stringify(payload)
     });
+    console.log(`[AI Chat Worker] Upstream response status: ${response.status} for ${session.streamId}`);
 
     if (!response.ok) {
       const errText = await response.text();
@@ -4962,13 +4969,11 @@ async function runStreamingChatWorker(session: ActiveStreamingSession, targetUrl
     }
 
     if (response.body) {
-      const { Readable } = await import("stream");
-      const webStream = Readable.fromWeb(response.body as any);
-
+      const decoder = new TextDecoder('utf-8');
       let buffer = '';
-      for await (const chunk of webStream) {
+      for await (const chunk of (response.body as any)) {
         if (session.status === 'aborted') break;
-        buffer += chunk.toString('utf8');
+        buffer += decoder.decode(chunk, { stream: true });
         const lines = buffer.split('\n');
         buffer = lines.pop() || '';
 
@@ -5121,6 +5126,7 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
 
   // Send initial session event so frontend captures streamId immediately
   res.write(`data: ${JSON.stringify({ type: 'session', streamId, model, status: 'streaming' })}\n\n`);
+  if (typeof res.flush === 'function') res.flush();
 
   session.subscribers.add(res);
 
@@ -5128,13 +5134,14 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
   const keepAliveInterval = setInterval(() => {
     try {
       res.write(": ping\n\n");
+      if (typeof res.flush === 'function') res.flush();
     } catch {
       clearInterval(keepAliveInterval);
       session.subscribers.delete(res);
     }
   }, 2500);
 
-  req.on("close", () => {
+  res.on("close", () => {
     clearInterval(keepAliveInterval);
     session.subscribers.delete(res);
     // Allow 90s grace period for client auto-resumption before aborting upstream worker
@@ -5234,7 +5241,7 @@ app.get("/api/ai/chat/stream/:id", authenticateToken, async (req: any, res: any)
     }
   }, 2500);
 
-  req.on("close", () => {
+  res.on("close", () => {
     clearInterval(pingInterval);
     session.subscribers.delete(res);
     if (session.subscribers.size === 0 && session.status === 'streaming') {
