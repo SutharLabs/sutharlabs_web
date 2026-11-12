@@ -1708,8 +1708,16 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
       activeStreamTextRef.current = '';
       if (err.name !== 'AbortError' && !abortController.signal.aborted) {
         console.error('Chat error:', err);
-        const errMsg = err?.message || '';
-        const isNetworkFailure = errMsg.includes('Network') || errMsg.includes('fetch') || errMsg.includes('timeout') || errMsg.includes('504');
+        const rawErrMsg = err?.message || '';
+        const errMsg = rawErrMsg.toLowerCase();
+        const isNetworkFailure =
+          errMsg.includes('network') ||
+          errMsg.includes('fetch') ||
+          errMsg.includes('timeout') ||
+          errMsg.includes('504') ||
+          errMsg.includes('econnreset') ||
+          errMsg.includes('load failed') ||
+          errMsg.includes('terminated');
 
         // If attachments were present or query timed out over HTTP proxy, promote seamlessly to server background worker
         if (isNetworkFailure && currentAttachments.length > 0) {

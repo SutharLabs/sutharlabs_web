@@ -259,3 +259,4 @@ curl.exe -N "http://130.210.37.199/api/ai/chat/stream/stream-1731405100-abc123xy
 - **VM 3 Nginx**: Configured with `proxy_read_timeout 600s;` and `proxy_send_timeout 600s;`.
 - **Vercel Edge Proxy**: Configured with immediate `res.flushHeaders()`.
 - **Ollama Host (VM 2)**: Concurrency managed through `unifiedInferenceQueue` to prevent CPU oversubscription.
+
