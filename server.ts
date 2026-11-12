@@ -4476,36 +4476,267 @@ app.get("/api/ai/health", async (_req: any, res: any) => {
 
 
 
-// GET /api/ai/opencode-info - OpenCode engine and tunnel discovery endpoint
-
+// GET /api/ai/opencode-info - OpenCode engine and tunnel discovery endpoint with live reachability probe
 app.get("/api/ai/opencode-info", async (_req: any, res: any) => {
-
   try {
-
     const publicUrl = process.env.OPENCODE_PUBLIC_URL || "https://basin-engine-expensive-innocent.trycloudflare.com";
-
     const directUrl = process.env.OPENCODE_DIRECT_URL || "http://132.226.190.125/";
 
+    let status: "online" | "offline" = "offline";
+    let reason = "Remote tunnel URL is unreachable or expired.";
+
+    if (process.env.OPENCODE_PUBLIC_URL) {
+      try {
+        const probe = await fetch(publicUrl, { method: "HEAD", signal: AbortSignal.timeout(2500) });
+        if (probe.ok || probe.status === 401) {
+          status = "online";
+          reason = "Tunnel active";
+        } else {
+          reason = `Remote tunnel returned HTTP ${probe.status}`;
+        }
+      } catch (e: any) {
+        reason = e?.name === "TimeoutError" || e?.name === "AbortError"
+          ? "Remote tunnel timed out (trycloudflare tunnel expired)."
+          : `Remote tunnel unreachable (${e?.message || "network error"}).`;
+      }
+    } else {
+      reason = "OPENCODE_PUBLIC_URL is not configured (default trycloudflare quick-tunnel expired). Use Native Studio or configure an active HTTPS tunnel.";
+    }
+
     res.json({
-
       url: publicUrl,
-
       directUrl,
-
-      status: "online",
-
+      status,
+      reason,
       node: "VM 2 (132.226.190.125)",
-
       version: "1.19.5"
-
     });
-
   } catch (err: any) {
-
     res.status(500).json({ error: err.message });
-
   }
+});
 
+// =============================================================
+// OpenCode Native Studio: Persistent Workspace & File Management API
+// =============================================================
+const OPENCODE_WORKSPACES_ROOT = path.join(process.cwd(), "data", "opencode-workspaces");
+
+function ensureOpenCodeWorkspacesRoot() {
+  if (!fs.existsSync(OPENCODE_WORKSPACES_ROOT)) {
+    fs.mkdirSync(OPENCODE_WORKSPACES_ROOT, { recursive: true });
+  }
+  const entries = fs.readdirSync(OPENCODE_WORKSPACES_ROOT);
+  if (entries.length === 0) {
+    scaffoldOpenCodeWorkspace("default-sovereign-api", "Sovereign Node API", "node-express-ts");
+  }
+}
+
+function sanitizeWorkspaceId(raw: string): string {
+  const clean = (raw || "").toLowerCase().replace(/[^a-z0-9_-]/g, "-").replace(/^-+|-+$/g, "");
+  if (!clean) throw new Error("Invalid workspace ID");
+  return clean;
+}
+
+function resolveWorkspaceFilePath(workspaceId: string, relPath: string): string {
+  const safeId = sanitizeWorkspaceId(workspaceId);
+  const wsDir = path.resolve(OPENCODE_WORKSPACES_ROOT, safeId);
+  const normalizedRel = (relPath || "").replace(/^[/\\]+/, "");
+  const resolved = path.resolve(wsDir, normalizedRel);
+  if (!resolved.startsWith(wsDir + path.sep) && resolved !== wsDir) {
+    throw new Error("Invalid file path (path traversal blocked)");
+  }
+  return resolved;
+}
+
+function inferLangFromFilename(filename: string): string {
+  const ext = path.extname(filename).toLowerCase();
+  if (ext === ".ts" || ext === ".tsx") return "typescript";
+  if (ext === ".js" || ext === ".jsx" || ext === ".mjs" || ext === ".cjs") return "javascript";
+  if (ext === ".py") return "python";
+  if (ext === ".prisma") return "prisma";
+  if (ext === ".json") return "json";
+  if (ext === ".md") return "markdown";
+  if (ext === ".css") return "css";
+  if (ext === ".html") return "html";
+  if (ext === ".sh") return "bash";
+  return "plaintext";
+}
+
+function scaffoldOpenCodeWorkspace(id: string, name: string, template: string) {
+  const safeId = sanitizeWorkspaceId(id);
+  const wsDir = path.join(OPENCODE_WORKSPACES_ROOT, safeId);
+  fs.mkdirSync(wsDir, { recursive: true });
+
+  const meta = { id: safeId, name: name || safeId, template: template || "node-express-ts", createdAt: new Date().toISOString() };
+  fs.writeFileSync(path.join(wsDir, ".opencode-workspace.json"), JSON.stringify(meta, null, 2));
+
+  if (template === "react-ts") {
+    fs.writeFileSync(path.join(wsDir, "App.tsx"), `import React, { useState } from 'react';\n\nexport default function App() {\n  const [count, setCount] = useState(0);\n  return (\n    <div className="p-6 font-sans">\n      <h1 className="text-xl font-bold">${name}</h1>\n      <button onClick={() => setCount(c => c + 1)}>Count: {count}</button>\n    </div>\n  );\n}\n`);
+    fs.writeFileSync(path.join(wsDir, "types.ts"), `export interface WorkspaceItem {\n  id: string;\n  label: string;\n  active: boolean;\n}\n`);
+    fs.writeFileSync(path.join(wsDir, "README.md"), `# ${name}\n\nReact + TypeScript workspace managed by OpenCode Native Studio.\n`);
+  } else if (template === "python-fastapi") {
+    fs.writeFileSync(path.join(wsDir, "main.py"), `from fastapi import FastAPI\n\napp = FastAPI(title="${name}")\n\n@app.get("/health")\ndef health():\n    return {"status": "ok", "workspace": "${safeId}"}\n`);
+    fs.writeFileSync(path.join(wsDir, "requirements.txt"), `fastapi>=0.110.0\nuvicorn>=0.29.0\n`);
+    fs.writeFileSync(path.join(wsDir, "README.md"), `# ${name}\n\nPython FastAPI service managed by OpenCode Native Studio.\n`);
+  } else if (template === "blank") {
+    fs.writeFileSync(path.join(wsDir, "README.md"), `# ${name}\n\nBlank workspace created in OpenCode Native Studio.\n`);
+  } else {
+    fs.writeFileSync(path.join(wsDir, "index.ts"), `// Sovereign Agent Studio Workspace\nexport async function main() {\n  console.log("⚡ OpenCode Workspace [${safeId}] Initialized");\n}\n\nmain();\n`);
+    fs.writeFileSync(path.join(wsDir, "server.ts"), `import express from 'express';\n\nconst app = express();\nconst PORT = process.env.PORT || 3000;\n\napp.get('/api/health', (_req, res) => {\n  res.json({ status: 'ok', workspace: '${safeId}', uptime: process.uptime() });\n});\n\nexport default app;\n`);
+    fs.writeFileSync(path.join(wsDir, "package.json"), JSON.stringify({ name: safeId, version: "1.0.0", type: "module", scripts: { test: "node --check index.ts" } }, null, 2));
+  }
+  return meta;
+}
+
+function collectWorkspaceFiles(wsDir: string, baseDir: string = wsDir): { name: string; lang: string; content: string; size: number }[] {
+  const results: { name: string; lang: string; content: string; size: number }[] = [];
+  if (!fs.existsSync(wsDir)) return results;
+  for (const entry of fs.readdirSync(wsDir, { withFileTypes: true })) {
+    if (entry.name === ".opencode-workspace.json" || entry.name === "node_modules" || entry.name === ".git") continue;
+    const fullPath = path.join(wsDir, entry.name);
+    if (entry.isDirectory()) {
+      results.push(...collectWorkspaceFiles(fullPath, baseDir));
+    } else if (entry.isFile()) {
+      const rel = path.relative(baseDir, fullPath).replace(/\\/g, "/");
+      const content = fs.readFileSync(fullPath, "utf-8");
+      results.push({ name: rel, lang: inferLangFromFilename(entry.name), content, size: Buffer.byteLength(content, "utf-8") });
+    }
+  }
+  return results.sort((a, b) => a.name.localeCompare(b.name));
+}
+
+app.get("/api/ai/opencode/workspaces", authenticateToken, (_req: any, res: any) => {
+  try {
+    ensureOpenCodeWorkspacesRoot();
+    const dirs = fs.readdirSync(OPENCODE_WORKSPACES_ROOT, { withFileTypes: true }).filter(d => d.isDirectory());
+    const workspaces = dirs.map(d => {
+      const wsDir = path.join(OPENCODE_WORKSPACES_ROOT, d.name);
+      const metaPath = path.join(wsDir, ".opencode-workspace.json");
+      let meta: any = { id: d.name, name: d.name, template: "custom" };
+      if (fs.existsSync(metaPath)) {
+        try { meta = { ...meta, ...JSON.parse(fs.readFileSync(metaPath, "utf-8")) }; } catch {}
+      }
+      const files = collectWorkspaceFiles(wsDir);
+      const stat = fs.statSync(wsDir);
+      return { ...meta, fileCount: files.length, updatedAt: stat.mtime.toISOString() };
+    });
+    res.json({ workspaces });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post("/api/ai/opencode/workspaces", authenticateToken, (req: any, res: any) => {
+  try {
+    ensureOpenCodeWorkspacesRoot();
+    const { name, template = "node-express-ts" } = req.body || {};
+    if (!name || typeof name !== "string" || !name.trim()) {
+      return res.status(400).json({ error: "Workspace name is required" });
+    }
+    const id = sanitizeWorkspaceId(name.trim());
+    const wsDir = path.join(OPENCODE_WORKSPACES_ROOT, id);
+    if (fs.existsSync(wsDir)) {
+      return res.status(409).json({ error: `Workspace "${id}" already exists` });
+    }
+    const meta = scaffoldOpenCodeWorkspace(id, name.trim(), template);
+    const files = collectWorkspaceFiles(wsDir);
+    res.status(201).json({ workspace: { ...meta, fileCount: files.length, updatedAt: new Date().toISOString() }, files });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete("/api/ai/opencode/workspaces/:id", authenticateToken, (req: any, res: any) => {
+  try {
+    const safeId = sanitizeWorkspaceId(req.params.id);
+    const wsDir = path.join(OPENCODE_WORKSPACES_ROOT, safeId);
+    if (!fs.existsSync(wsDir)) return res.status(404).json({ error: "Workspace not found" });
+    fs.rmSync(wsDir, { recursive: true, force: true });
+    res.json({ success: true, deleted: safeId });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.get("/api/ai/opencode/workspaces/:id/files", authenticateToken, (req: any, res: any) => {
+  try {
+    ensureOpenCodeWorkspacesRoot();
+    const safeId = sanitizeWorkspaceId(req.params.id);
+    const wsDir = path.join(OPENCODE_WORKSPACES_ROOT, safeId);
+    if (!fs.existsSync(wsDir)) return res.status(404).json({ error: "Workspace not found" });
+    const files = collectWorkspaceFiles(wsDir);
+    res.json({ workspaceId: safeId, files });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.put("/api/ai/opencode/workspaces/:id/file", authenticateToken, (req: any, res: any) => {
+  try {
+    const { filePath, content = "" } = req.body || {};
+    if (!filePath || typeof filePath !== "string") return res.status(400).json({ error: "filePath is required" });
+    const target = resolveWorkspaceFilePath(req.params.id, filePath);
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.writeFileSync(target, content, "utf-8");
+    res.json({ success: true, file: { name: filePath.replace(/^[/\\]+/, "").replace(/\\/g, "/"), lang: inferLangFromFilename(filePath), content } });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post("/api/ai/opencode/workspaces/:id/rename", authenticateToken, (req: any, res: any) => {
+  try {
+    const { oldPath, newPath } = req.body || {};
+    if (!oldPath || !newPath) return res.status(400).json({ error: "oldPath and newPath are required" });
+    const src = resolveWorkspaceFilePath(req.params.id, oldPath);
+    const dst = resolveWorkspaceFilePath(req.params.id, newPath);
+    if (!fs.existsSync(src)) return res.status(404).json({ error: "Source file not found" });
+    fs.mkdirSync(path.dirname(dst), { recursive: true });
+    fs.renameSync(src, dst);
+    res.json({ success: true, oldPath, newPath });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.delete("/api/ai/opencode/workspaces/:id/file", authenticateToken, (req: any, res: any) => {
+  try {
+    const filePath = (req.query.filePath as string) || req.body?.filePath;
+    if (!filePath) return res.status(400).json({ error: "filePath is required" });
+    const target = resolveWorkspaceFilePath(req.params.id, filePath);
+    if (!fs.existsSync(target)) return res.status(404).json({ error: "File not found" });
+    fs.rmSync(target, { recursive: true, force: true });
+    res.json({ success: true, deleted: filePath });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
+});
+
+app.post("/api/ai/opencode/workspaces/:id/exec", authenticateToken, async (req: any, res: any) => {
+  try {
+    const safeId = sanitizeWorkspaceId(req.params.id);
+    const wsDir = path.join(OPENCODE_WORKSPACES_ROOT, safeId);
+    if (!fs.existsSync(wsDir)) return res.status(404).json({ error: "Workspace not found" });
+    const command = ((req.body?.command as string) || "").trim();
+    if (!command) return res.status(400).json({ error: "command is required" });
+
+    const allowedPrefixes = ["ls", "cat ", "node --check", "node ", "npx tsc", "npm test", "python3 -m py_compile", "git status"];
+    if (!allowedPrefixes.some(p => command === p.trim() || command.startsWith(p))) {
+      return res.status(403).json({ error: `Command not in workspace allowlist. Allowed: ${allowedPrefixes.join(", ")}` });
+    }
+
+    const { exec } = await import("child_process");
+    exec(command, { cwd: wsDir, timeout: 15000, maxBuffer: 512 * 1024 }, (error, stdout, stderr) => {
+      res.json({
+        command,
+        exitCode: error ? (typeof error.code === "number" ? error.code : 1) : 0,
+        stdout: stdout || "",
+        stderr: stderr || (error && !stderr ? error.message : "")
+      });
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message });
+  }
 });
 
 

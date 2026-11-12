@@ -126,6 +126,11 @@ export default function StockSimulatorPanel({
   const [enableTrailingStop, setEnableTrailingStop] = useState<boolean>(true);
   const [selectedTimeframe, setSelectedTimeframe] = useState<'1m' | '5m' | '15m' | '1h' | '4h' | '1d'>('1d');
   const [selectedProductType, setSelectedProductType] = useState<'CNC' | 'MIS'>('CNC');
+  const lastHydratedSimIdRef = React.useRef<string | null>(null);
+  const selectedSimulationIdRef = React.useRef<string>('');
+  useEffect(() => {
+    selectedSimulationIdRef.current = selectedSimulationId;
+  }, [selectedSimulationId]);
   const [tradeLedgerFilter, setTradeLedgerFilter] = useState<'ALL' | 'EXITS' | 'ENTRIES'>('ALL');
   const [selectedLedgerDate, setSelectedLedgerDate] = useState<string>('ALL');
 
@@ -286,25 +291,26 @@ export default function StockSimulatorPanel({
             });
           setSimulationsList(list);
 
-          // Update active simulation selection if current selection is invalid or stale
-          setSelectedSimulationId(prev => {
-            let next = prev;
-            const basePrev = prev.includes('__') ? prev.split('__').pop()! : prev;
-            // Match exact ID or tenant-scoped alias (e.g. prev="my_sim" matches "user__my_sim")
-            const matching = list.find(s => s.id === prev || (prev && prev !== 'default' && (s.id.endsWith(`__${prev}`) || s.id === prev || s.id === basePrev || s.id.endsWith(`__${basePrev}`))));
-            if (matching) {
-              next = matching.id;
-            } else {
-              next = list[0]?.id || '';
-              if (next) {
-                try { localStorage.setItem('sutharlabs_active_simulation_id', next); } catch {}
-              }
-            }
+          const prev = selectedSimulationIdRef.current || '';
+          const basePrev = prev.includes('__') ? prev.split('__').pop()! : prev;
+          const matching = list.find(s => s.id === prev || (prev && prev !== 'default' && (s.id.endsWith(`__${prev}`) || s.id === prev || s.id === basePrev || s.id.endsWith(`__${basePrev}`))));
+          const next = matching ? matching.id : (list[0]?.id || '');
+
+          if (next && next !== prev) {
+            selectedSimulationIdRef.current = next;
+            setSelectedSimulationId(next);
+            try { localStorage.setItem('sutharlabs_active_simulation_id', next); } catch {}
+          }
+
+          // Hydrate config controls ONLY when switching simulations or on initial load (never overwrite unsaved edits during 30s background polls)
+          if (next && lastHydratedSimIdRef.current !== next) {
             const activeEntry = list.find(s => s.id === next);
             if (activeEntry) {
+              lastHydratedSimIdRef.current = next;
               if (activeEntry.strategyId) setSelectedStrategyId(activeEntry.strategyId);
               if (activeEntry.timeframe) setSelectedTimeframe(activeEntry.timeframe as any);
               else if ((activeEntry as any).interval) setSelectedTimeframe((activeEntry as any).interval as any);
+              if (activeEntry.productType) setSelectedProductType(activeEntry.productType);
               if (activeEntry.capitalAllocationPct) setAllocationPct(activeEntry.capitalAllocationPct);
               else if ((activeEntry as any).allocationPct) setAllocationPct((activeEntry as any).allocationPct);
               if (activeEntry.trailingStopPct !== undefined) {
@@ -313,8 +319,7 @@ export default function StockSimulatorPanel({
               }
               if (activeEntry.market) setSelectedMarket(activeEntry.market);
             }
-            return next;
-          });
+          }
         }
       }
     } catch (err) {
@@ -496,6 +501,8 @@ export default function StockSimulatorPanel({
   }, [fetchPortfolioAndHistory, fetchSimulationsList, selectedSimulationId]);
 
   const handleSelectSimulation = (simId: string) => {
+    selectedSimulationIdRef.current = simId;
+    lastHydratedSimIdRef.current = simId;
     setSelectedSimulationId(simId);
     try {
       localStorage.setItem('sutharlabs_active_simulation_id', simId);
@@ -878,6 +885,11 @@ export default function StockSimulatorPanel({
         const errJson = await res.json().catch(() => ({}));
         throw new Error(errJson.error || `Failed to save configuration (${res.status})`);
       }
+      const savedData = await res.json().catch(() => null);
+      if (savedData?.simulation) {
+        setSimulationsList(prev => prev.map(s => s.id === simId || s.id === savedData.simulation.id ? { ...s, ...savedData.simulation } : s));
+      }
+      lastHydratedSimIdRef.current = simId;
       setSavedConfigSuccess(true);
       setTimeout(() => setSavedConfigSuccess(false), 2500);
       await fetchSimulationsList();

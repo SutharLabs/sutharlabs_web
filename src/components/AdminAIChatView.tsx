@@ -162,10 +162,15 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
 }) => {
   const isLight = theme === 'light';
 
+  const defaultAgent = useMemo(
+    () => AGENT_PERSONAS.find(a => a.id === 'research-synthesizer') || AGENT_PERSONAS[0],
+    []
+  );
+
   // AI Fleet State
   const [availableModels, setAvailableModels] = useState<OllamaModelTag[]>([]);
-  const [selectedModel, setSelectedModel] = useState<string>('qwen2.5:1.5b');
-  const [selectedAgent, setSelectedAgent] = useState<AIAgentPersona>(AGENT_PERSONAS[0]);
+  const [selectedModel, setSelectedModel] = useState<string>(defaultAgent.recommendedModel || 'qwen2.5-coder:3b');
+  const [selectedAgent, setSelectedAgent] = useState<AIAgentPersona>(defaultAgent);
   const [fleetHealth, setFleetHealth] = useState<{ status: string; node: string; engine: string; memory: string } | null>(null);
 
   // Multi-Session Chat State with localStorage persistence (OpenCode-style)
@@ -191,7 +196,7 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
       updatedAt: Date.now(),
       messages: legacyMsgs,
       model: 'qwen2.5-coder:3b',
-      agentId: AGENT_PERSONAS[0].id
+      agentId: defaultAgent.id
     }];
   });
 
@@ -242,9 +247,9 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
       updatedAt: Date.now(),
       messages: [],
       model: 'qwen2.5-coder:3b',
-      agentId: AGENT_PERSONAS[0].id
+      agentId: defaultAgent.id
     };
-  }, [sessions, activeSessionId]);
+  }, [sessions, activeSessionId, defaultAgent]);
 
   const messages = activeSession.messages;
 
@@ -837,6 +842,23 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
   const [codingPrompt, setCodingPrompt] = useState<string>('');
   const [openCodeMode, setOpenCodeMode] = useState<'native' | 'remote'>('native');
   const [copiedCodeSuccess, setCopiedCodeSuccess] = useState<boolean>(false);
+  const [bridgeStatus, setBridgeStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [bridgeReason, setBridgeReason] = useState<string>('');
+
+  // OpenCode Native Studio: Persistent Workspaces & File Management State
+  const [openCodeWorkspaces, setOpenCodeWorkspaces] = useState<{ id: string; name: string; template: string; fileCount: number; updatedAt: string }[]>([]);
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>('default-sovereign-api');
+  const [isCreatingWorkspace, setIsCreatingWorkspace] = useState<boolean>(false);
+  const [newWorkspaceName, setNewWorkspaceName] = useState<string>('');
+  const [newWorkspaceTemplate, setNewWorkspaceTemplate] = useState<'node-express-ts' | 'react-ts' | 'python-fastapi' | 'blank'>('node-express-ts');
+  const [isCreatingFile, setIsCreatingFile] = useState<boolean>(false);
+  const [newFileName, setNewFileName] = useState<string>('');
+  const [renamingFile, setRenamingFile] = useState<string | null>(null);
+  const [renameTargetName, setRenameTargetName] = useState<string>('');
+  const [dirtyFiles, setDirtyFiles] = useState<Record<string, boolean>>({});
+  const [isSavingFile, setIsSavingFile] = useState<boolean>(false);
+  const [terminalCommand, setTerminalCommand] = useState<string>('');
+  const [isRunningExec, setIsRunningExec] = useState<boolean>(false);
 
   // UI Helpers
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
@@ -889,10 +911,11 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
     }
     init();
 
-    // 2. Discover active OpenCode URL
+    // 2. Discover active OpenCode URL & reachability
     async function discoverOpencode() {
       const isHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
       setIsSecureContext(isHttps);
+      setBridgeStatus('checking');
 
       try {
         const res = await fetch('/api/ai/opencode-info');
@@ -905,13 +928,66 @@ export const AdminAIChatView: React.FC<AdminAIChatViewProps> = ({
           if (info.directUrl) {
             setDirectVmUrl(info.directUrl);
           }
+          setBridgeStatus(info.status === 'online' ? 'online' : 'offline');
+          setBridgeReason(info.reason || 'Remote tunnel unreachable.');
+        } else {
+          setBridgeStatus('offline');
+          setBridgeReason(`Discovery endpoint returned HTTP ${res.status}`);
         }
-      } catch (err) {
+      } catch (err: any) {
         console.warn('OpenCode discovery failed, using fallback:', err);
+        setBridgeStatus('offline');
+        setBridgeReason(err?.message || 'Failed to probe OpenCode bridge.');
       }
     }
     discoverOpencode();
   }, [userToken]);
+
+  // OpenCode Native Studio: Load workspaces & files when entering OpenCode Studio
+  const loadOpenCodeWorkspaces = async (selectId?: string) => {
+    try {
+      const res = await fetch('/api/ai/opencode/workspaces', {
+        headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      const list = data.workspaces || [];
+      setOpenCodeWorkspaces(list);
+      const targetId = selectId || (list.some((w: any) => w.id === activeWorkspaceId) ? activeWorkspaceId : list[0]?.id);
+      if (targetId) {
+        setActiveWorkspaceId(targetId);
+        await loadOpenCodeWorkspaceFiles(targetId);
+      }
+    } catch (err: any) {
+      setOpenCodeTerminalLogs(prev => [...prev, `[Workspace Error] ${err.message}`]);
+    }
+  };
+
+  const loadOpenCodeWorkspaceFiles = async (wsId: string) => {
+    try {
+      const res = await fetch(`/api/ai/opencode/workspaces/${encodeURIComponent(wsId)}/files`, {
+        headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
+      });
+      if (!res.ok) return;
+      const data = await res.json();
+      if (Array.isArray(data.files) && data.files.length > 0) {
+        setOpenCodeFiles(data.files);
+        setActiveFileIndex(0);
+        setDirtyFiles({});
+      } else {
+        setOpenCodeFiles([]);
+        setActiveFileIndex(0);
+      }
+    } catch (err: any) {
+      setOpenCodeTerminalLogs(prev => [...prev, `[Files Error] ${err.message}`]);
+    }
+  };
+
+  useEffect(() => {
+    if (studioMode === 'opencode' && openCodeMode === 'native') {
+      loadOpenCodeWorkspaces();
+    }
+  }, [studioMode, openCodeMode, userToken]);
 
   // Auto-scroll chat without layout thrashing during streaming
   useEffect(() => {
@@ -1672,18 +1748,218 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
     URL.revokeObjectURL(url);
   };
 
+  const handleCreateWorkspace = async () => {
+    const trimmed = newWorkspaceName.trim();
+    if (!trimmed) return;
+    try {
+      const res = await fetch('/api/ai/opencode/workspaces', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userToken ? { Authorization: `Bearer ${userToken}` } : {})
+        },
+        body: JSON.stringify({ name: trimmed, template: newWorkspaceTemplate })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create workspace');
+      setNewWorkspaceName('');
+      setIsCreatingWorkspace(false);
+      setOpenCodeTerminalLogs(prev => [...prev, `[Workspace] Created "${data.workspace.name}" (${newWorkspaceTemplate}).`]);
+      await loadOpenCodeWorkspaces(data.workspace.id);
+    } catch (err: any) {
+      setOpenCodeTerminalLogs(prev => [...prev, `[Workspace Error] ${err.message}`]);
+    }
+  };
+
+  const handleDeleteWorkspace = (wsId: string, wsName: string) => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Delete OpenCode Workspace',
+      message: `Are you sure you want to permanently delete workspace "${wsName}" and all of its files?`,
+      subtext: 'This action cannot be undone.',
+      confirmLabel: 'Delete Workspace',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+      onConfirm: async () => {
+        setModalConfig(null);
+        try {
+          const res = await fetch(`/api/ai/opencode/workspaces/${encodeURIComponent(wsId)}`, {
+            method: 'DELETE',
+            headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
+          });
+          if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.error || 'Failed to delete workspace');
+          }
+          setOpenCodeTerminalLogs(prev => [...prev, `[Workspace] Deleted "${wsName}".`]);
+          await loadOpenCodeWorkspaces();
+        } catch (err: any) {
+          setOpenCodeTerminalLogs(prev => [...prev, `[Workspace Error] ${err.message}`]);
+        }
+      }
+    });
+  };
+
+  const handleSaveWorkspaceFile = async (fileObj?: { name: string; content: string }) => {
+    const targetFile = fileObj || openCodeFiles[activeFileIndex];
+    if (!targetFile || !activeWorkspaceId) return;
+    setIsSavingFile(true);
+    try {
+      const res = await fetch(`/api/ai/opencode/workspaces/${encodeURIComponent(activeWorkspaceId)}/file`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userToken ? { Authorization: `Bearer ${userToken}` } : {})
+        },
+        body: JSON.stringify({ filePath: targetFile.name, content: targetFile.content })
+      });
+      if (!res.ok) throw new Error('Failed to save file');
+      setDirtyFiles(prev => ({ ...prev, [targetFile.name]: false }));
+      setOpenCodeTerminalLogs(prev => [...prev, `[Saved] ${targetFile.name} persisted to workspace "${activeWorkspaceId}".`]);
+    } catch (err: any) {
+      setOpenCodeTerminalLogs(prev => [...prev, `[Save Error] ${err.message}`]);
+    } finally {
+      setIsSavingFile(false);
+    }
+  };
+
+  const handleCreateWorkspaceFile = async () => {
+    const trimmed = newFileName.trim().replace(/^\/+/, '');
+    if (!trimmed || !activeWorkspaceId) return;
+    try {
+      const res = await fetch(`/api/ai/opencode/workspaces/${encodeURIComponent(activeWorkspaceId)}/file`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userToken ? { Authorization: `Bearer ${userToken}` } : {})
+        },
+        body: JSON.stringify({ filePath: trimmed, content: `// ${trimmed}\n` })
+      });
+      if (!res.ok) throw new Error('Failed to create file');
+      setNewFileName('');
+      setIsCreatingFile(false);
+      await loadOpenCodeWorkspaceFiles(activeWorkspaceId);
+      setOpenCodeTerminalLogs(prev => [...prev, `[File] Created ${trimmed}`]);
+    } catch (err: any) {
+      setOpenCodeTerminalLogs(prev => [...prev, `[File Error] ${err.message}`]);
+    }
+  };
+
+  const handleRenameWorkspaceFile = async (oldPath: string) => {
+    const newPath = renameTargetName.trim().replace(/^\/+/, '');
+    if (!newPath || newPath === oldPath || !activeWorkspaceId) {
+      setRenamingFile(null);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/ai/opencode/workspaces/${encodeURIComponent(activeWorkspaceId)}/rename`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userToken ? { Authorization: `Bearer ${userToken}` } : {})
+        },
+        body: JSON.stringify({ oldPath, newPath })
+      });
+      if (!res.ok) throw new Error('Failed to rename file');
+      setRenamingFile(null);
+      setRenameTargetName('');
+      await loadOpenCodeWorkspaceFiles(activeWorkspaceId);
+      setOpenCodeTerminalLogs(prev => [...prev, `[File] Renamed ${oldPath} → ${newPath}`]);
+    } catch (err: any) {
+      setOpenCodeTerminalLogs(prev => [...prev, `[Rename Error] ${err.message}`]);
+    }
+  };
+
+  const handleDeleteWorkspaceFile = (filePath: string) => {
+    setModalConfig({
+      isOpen: true,
+      title: 'Delete Workspace File',
+      message: `Delete "${filePath}" from workspace "${activeWorkspaceId}"?`,
+      confirmLabel: 'Delete File',
+      cancelLabel: 'Cancel',
+      variant: 'danger',
+      onConfirm: async () => {
+        setModalConfig(null);
+        try {
+          const res = await fetch(`/api/ai/opencode/workspaces/${encodeURIComponent(activeWorkspaceId)}/file?filePath=${encodeURIComponent(filePath)}`, {
+            method: 'DELETE',
+            headers: userToken ? { Authorization: `Bearer ${userToken}` } : {}
+          });
+          if (!res.ok) throw new Error('Failed to delete file');
+          await loadOpenCodeWorkspaceFiles(activeWorkspaceId);
+          setOpenCodeTerminalLogs(prev => [...prev, `[File] Deleted ${filePath}`]);
+        } catch (err: any) {
+          setOpenCodeTerminalLogs(prev => [...prev, `[Delete Error] ${err.message}`]);
+        }
+      }
+    });
+  };
+
+  const handleRunWorkspaceCommand = async (cmdOverride?: string) => {
+    const cmd = (cmdOverride || terminalCommand).trim();
+    if (!cmd || !activeWorkspaceId || isRunningExec) return;
+    setIsRunningExec(true);
+    setOpenCodeTerminalLogs(prev => [...prev, `$ ${cmd}`]);
+    try {
+      const res = await fetch(`/api/ai/opencode/workspaces/${encodeURIComponent(activeWorkspaceId)}/exec`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(userToken ? { Authorization: `Bearer ${userToken}` } : {})
+        },
+        body: JSON.stringify({ command: cmd })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Command failed');
+      const lines: string[] = [];
+      if (data.stdout) lines.push(...data.stdout.trimEnd().split('\n'));
+      if (data.stderr) lines.push(...data.stderr.trimEnd().split('\n').map((l: string) => `[stderr] ${l}`));
+      lines.push(`[exit ${data.exitCode}]`);
+      setOpenCodeTerminalLogs(prev => [...prev, ...lines]);
+    } catch (err: any) {
+      setOpenCodeTerminalLogs(prev => [...prev, `[Exec Error] ${err.message}`]);
+    } finally {
+      setIsRunningExec(false);
+      if (!cmdOverride) setTerminalCommand('');
+    }
+  };
+
+  const handleExportWorkspaceZip = async () => {
+    try {
+      const zip = new JSZip();
+      for (const f of openCodeFiles) {
+        zip.file(f.name, f.content);
+      }
+      const blob = await zip.generateAsync({ type: 'blob' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${activeWorkspaceId || 'opencode-workspace'}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      setOpenCodeTerminalLogs(prev => [...prev, `[Export] Downloaded ${activeWorkspaceId}.zip (${openCodeFiles.length} files).`]);
+    } catch (err: any) {
+      setOpenCodeTerminalLogs(prev => [...prev, `[Export Error] ${err.message}`]);
+    }
+  };
+
   const handleTriggerAgentCoding = async (actionPrompt?: string) => {
     const promptToRun = actionPrompt || codingPrompt;
     if (!promptToRun.trim() || isAgentCoding) return;
-    setIsAgentCoding(true);
     const currentFile = openCodeFiles[activeFileIndex];
+    if (!currentFile) return;
+
+    setIsAgentCoding(true);
     setOpenCodeTerminalLogs(prev => [
       ...prev,
       `[Agent Task] ${promptToRun}`,
-      `[Inference] Dispatching code synthesis to Qwen 2.5 Coder on VM 2...`
+      `[Inference] Dispatching workspace-aware synthesis to Qwen 2.5 Coder on VM 2...`
     ]);
 
     try {
+      const workspaceTree = openCodeFiles.map(f => `- ${f.name} (${f.lang}, ${f.content.split('\n').length} lines)`).join('\n');
       const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: {
@@ -1696,11 +1972,11 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
           messages: [
             {
               role: 'system',
-              content: 'You are OpenCode autonomous coding agent. Provide clean, production-grade code modifications or analysis. Return valid code snippets directly.'
+              content: 'You are OpenCode autonomous coding agent. Provide clean, production-grade code modifications or analysis. Return valid code snippets inside a fenced code block.'
             },
             {
               role: 'user',
-              content: `File: ${currentFile.name} (${currentFile.lang})\n\nExisting Code:\n\`\`\`${currentFile.lang}\n${currentFile.content}\n\`\`\`\n\nTask: ${promptToRun}`
+              content: `Workspace: ${activeWorkspaceId}\nFiles:\n${workspaceTree}\n\nActive File: ${currentFile.name} (${currentFile.lang})\n\nExisting Code:\n\`\`\`${currentFile.lang}\n${currentFile.content}\n\`\`\`\n\nTask: ${promptToRun}`
             }
           ]
         })
@@ -1711,13 +1987,14 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
         const reply = data.message?.content || data.response || 'Code completed.';
         setOpenCodeTerminalLogs(prev => [
           ...prev,
-          `[Agent Output] Synthesized ${reply.length} bytes of code suggestions.`,
-          `[Status] Code updated.`
+          `[Agent Output] Synthesized ${reply.length} bytes of code suggestions.`
         ]);
         const codeMatch = reply.match(/```(?:\w+)?\n([\s\S]*?)```/);
         if (codeMatch && codeMatch[1]) {
-          setOpenCodeFiles(prev => prev.map((f, idx) => idx === activeFileIndex ? { ...f, content: codeMatch[1] } : f));
-          setOpenCodeTerminalLogs(prev => [...prev, `[Auto-Apply] Updated ${currentFile.name} with synthesized code block.`]);
+          const updatedContent = codeMatch[1];
+          setOpenCodeFiles(prev => prev.map((f, idx) => idx === activeFileIndex ? { ...f, content: updatedContent } : f));
+          setOpenCodeTerminalLogs(prev => [...prev, `[Auto-Apply] Updated ${currentFile.name} and saving to workspace...`]);
+          await handleSaveWorkspaceFile({ name: currentFile.name, content: updatedContent });
         }
       } else {
         setOpenCodeTerminalLogs(prev => [...prev, `[Agent Error] Failed to get response from coding node.`]);
@@ -1946,67 +2223,6 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                   </span>
                   <ExternalLink className="w-3 h-3 opacity-60 shrink-0" />
                 </button>
-
-                {/* Copilot-Style Mode Switcher: Chat | Plan | Agent | Autonomous */}
-                <div className={`flex rounded-lg p-0.5 border text-xs font-mono font-bold shrink-0 ${
-                  isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#18181c] border-[#3a494b]/40'
-                }`}>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentMode('chat')}
-                    className={`h-7 px-2.5 rounded-md flex items-center gap-1 transition-all cursor-pointer select-none ${
-                      currentMode === 'chat'
-                        ? isLight ? 'bg-white text-sky-700 shadow-xs border border-slate-300' : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/40 shadow-sm'
-                        : 'text-on-surface-variant hover:text-on-surface'
-                    }`}
-                    title="Chat Mode: Fast conversational assistant & artifact generator"
-                  >
-                    <MessageSquare className="w-3 h-3 text-[#00dbe7] shrink-0" />
-                    <span>Chat</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setCurrentMode('plan')}
-                    className={`h-7 px-2.5 rounded-md flex items-center gap-1 transition-all cursor-pointer select-none ${
-                      currentMode === 'plan'
-                        ? isLight ? 'bg-amber-50 text-amber-800 border border-amber-300 shadow-xs' : 'bg-amber-400/20 text-amber-300 border border-amber-400/50 shadow-sm'
-                        : 'text-on-surface-variant hover:text-on-surface'
-                    }`}
-                    title="Plan Mode: Structured milestones & executable roadmap with Start Implementation button"
-                  >
-                    <FileCode className="w-3 h-3 text-amber-400 shrink-0" />
-                    <span>Plan</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setCurrentMode('agent')}
-                    className={`h-7 px-2.5 rounded-md flex items-center gap-1 transition-all cursor-pointer select-none ${
-                      currentMode === 'agent'
-                        ? isLight ? 'bg-purple-50 text-purple-800 border border-purple-300 shadow-xs' : 'bg-purple-500/20 text-purple-300 border border-purple-500/50 shadow-sm'
-                        : 'text-on-surface-variant hover:text-on-surface'
-                    }`}
-                    title="Agent Mode: Multi-step task execution with MCP tool calls"
-                  >
-                    <Bot className="w-3 h-3 text-purple-400 shrink-0" />
-                    <span>Agent</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setCurrentMode('autonomous')}
-                    className={`h-7 px-2.5 rounded-md flex items-center gap-1 transition-all cursor-pointer select-none ${
-                      currentMode === 'autonomous'
-                        ? isLight ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 shadow-xs' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 shadow-sm'
-                        : 'text-on-surface-variant hover:text-on-surface'
-                    }`}
-                    title="Autonomous Mode: Automated closed-loop execution with self-evaluation"
-                  >
-                    <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
-                    <span>Auto</span>
-                  </button>
-                </div>
 
                 {/* MCP Server Infrastructure Indicator Button */}
                 <button
@@ -2278,61 +2494,8 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                   </div>
                 </div>
 
-                {/* Row 2: Mobile Mode Selector & MCP Quick Trigger */}
-                <div className="flex items-center justify-between gap-1.5 w-full">
-                  <div className={`flex rounded-lg p-0.5 border text-[11px] font-mono font-bold flex-1 justify-between ${
-                    isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#18181c] border-[#3a494b]/40'
-                  }`}>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentMode('chat')}
-                      className={`h-6 px-2 rounded flex items-center justify-center gap-1 flex-1 cursor-pointer ${
-                        currentMode === 'chat'
-                          ? isLight ? 'bg-white text-sky-700 shadow-xs border border-slate-300 font-bold' : 'bg-[#00dbe7]/15 text-[#00dbe7] border border-[#00dbe7]/40 font-bold'
-                          : 'text-on-surface-variant'
-                      }`}
-                    >
-                      <MessageSquare className="w-3 h-3 text-[#00dbe7] shrink-0" />
-                      <span>Chat</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentMode('plan')}
-                      className={`h-6 px-2 rounded flex items-center justify-center gap-1 flex-1 cursor-pointer ${
-                        currentMode === 'plan'
-                          ? isLight ? 'bg-amber-50 text-amber-800 border border-amber-300 font-bold' : 'bg-amber-400/20 text-amber-300 border border-amber-400/50 font-bold'
-                          : 'text-on-surface-variant'
-                      }`}
-                    >
-                      <FileCode className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span>Plan</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentMode('agent')}
-                      className={`h-6 px-2 rounded flex items-center justify-center gap-1 flex-1 cursor-pointer ${
-                        currentMode === 'agent'
-                          ? isLight ? 'bg-purple-50 text-purple-800 border border-purple-300 font-bold' : 'bg-purple-500/20 text-purple-300 border border-purple-500/50 font-bold'
-                          : 'text-on-surface-variant'
-                      }`}
-                    >
-                      <Bot className="w-3 h-3 text-purple-400 shrink-0" />
-                      <span>Agent</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentMode('autonomous')}
-                      className={`h-6 px-2 rounded flex items-center justify-center gap-1 flex-1 cursor-pointer ${
-                        currentMode === 'autonomous'
-                          ? isLight ? 'bg-emerald-50 text-emerald-800 border border-emerald-300 font-bold' : 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/50 font-bold'
-                          : 'text-on-surface-variant'
-                      }`}
-                    >
-                      <Sparkles className="w-3 h-3 text-emerald-400 shrink-0" />
-                      <span>Auto</span>
-                    </button>
-                  </div>
-
+                {/* Row 2: Mobile MCP Quick Trigger */}
+                <div className="flex items-center justify-end gap-1.5 w-full">
                   <button
                     type="button"
                     onClick={() => setIsMcpModalOpen(true)}
@@ -3984,216 +4147,487 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
               </div>
 
               {openCodeMode === 'native' && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    const active = openCodeFiles[activeFileIndex];
-                    if (active) {
-                      navigator.clipboard.writeText(active.content);
-                      setCopiedCodeSuccess(true);
-                      setTimeout(() => setCopiedCodeSuccess(false), 2000);
-                    }
-                  }}
-                  className={`h-7 px-2.5 rounded-lg text-xs font-mono border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
-                    isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
-                  }`}
-                >
-                  {copiedCodeSuccess ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
-                  <span>{copiedCodeSuccess ? 'Copied' : 'Copy Code'}</span>
-                </button>
+                <div className="flex items-center gap-1.5 flex-nowrap">
+                  <button
+                    type="button"
+                    onClick={() => handleSaveWorkspaceFile()}
+                    disabled={isSavingFile || !openCodeFiles[activeFileIndex]}
+                    className={`h-7 px-2.5 rounded-lg text-xs font-mono border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-40 ${
+                      dirtyFiles[openCodeFiles[activeFileIndex]?.name || '']
+                        ? isLight ? 'bg-sky-500 text-white border-sky-600 font-bold' : 'bg-[#00dbe7]/20 text-[#00dbe7] border-[#00dbe7]/50 font-bold'
+                        : isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                    }`}
+                    title="Save active file to persistent workspace"
+                  >
+                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
+                    <span>{isSavingFile ? 'Saving...' : 'Save'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExportWorkspaceZip}
+                    disabled={openCodeFiles.length === 0}
+                    className={`h-7 px-2.5 rounded-lg text-xs font-mono border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs disabled:opacity-40 ${
+                      isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                    }`}
+                    title="Download entire workspace as ZIP"
+                  >
+                    <Download className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden sm:inline">Export ZIP</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const active = openCodeFiles[activeFileIndex];
+                      if (active) {
+                        navigator.clipboard.writeText(active.content);
+                        setCopiedCodeSuccess(true);
+                        setTimeout(() => setCopiedCodeSuccess(false), 2000);
+                      }
+                    }}
+                    className={`h-7 px-2.5 rounded-lg text-xs font-mono border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                      isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                    }`}
+                  >
+                    {copiedCodeSuccess ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <Copy className="w-3.5 h-3.5 shrink-0" />}
+                    <span className="hidden sm:inline">{copiedCodeSuccess ? 'Copied' : 'Copy'}</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>
 
           {openCodeMode === 'native' ? (
             /* NATIVE EMBEDDED OPENCODE STUDIO */
-            <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
-              {/* File Explorer Sidebar */}
-              <div className={`w-full md:w-56 shrink-0 border-r flex flex-col transition-colors border-inherit ${
-                isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-[#121215] border-outline/10'
+            <div className="flex-1 flex flex-col overflow-hidden relative">
+              {/* Workspace Management Bar */}
+              <div className={`px-3 py-2 border-b flex items-center justify-between gap-2 text-xs font-mono flex-wrap shrink-0 ${
+                isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-[#121215] border-[#3a494b]/40 text-[#e5e1e4]'
               }`}>
-                <div className="p-2.5 px-3 border-b flex items-center justify-between text-xs font-mono font-bold text-on-surface border-inherit">
-                  <div className="flex items-center gap-1.5">
-                    <Folder className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                    <span>Workspace Files</span>
-                  </div>
-                  <span className="text-[10px] text-on-surface-variant">{openCodeFiles.length} files</span>
-                </div>
-                <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
-                  {openCodeFiles.map((file, idx) => (
-                    <button
-                      key={file.name}
-                      type="button"
-                      onClick={() => setActiveFileIndex(idx)}
-                      className={`w-full px-2.5 py-1.5 rounded-lg text-left text-xs font-mono flex items-center justify-between gap-2 cursor-pointer transition-colors ${
-                        activeFileIndex === idx
-                          ? isLight ? 'bg-white text-slate-900 font-bold border border-slate-300 shadow-xs' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
-                          : isLight ? 'hover:bg-slate-200/50 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant hover:text-on-surface'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2 truncate">
-                        <FileCode className="w-3.5 h-3.5 shrink-0 text-sky-400" />
-                        <span className="truncate">{file.name}</span>
-                      </div>
-                      <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-black/5 dark:bg-white/5 text-on-surface-variant shrink-0">{file.lang}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] uppercase tracking-wider font-bold text-on-surface-variant">Workspace:</span>
+                  <select
+                    value={activeWorkspaceId}
+                    onChange={(e) => {
+                      const nextWs = e.target.value;
+                      setActiveWorkspaceId(nextWs);
+                      loadOpenCodeWorkspaceFiles(nextWs);
+                    }}
+                    className={`h-7 px-2 rounded-lg border text-xs font-mono font-bold outline-hidden cursor-pointer ${
+                      isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#18181c] border-[#3a494b]/50 text-[#e5e1e4]'
+                    }`}
+                  >
+                    {openCodeWorkspaces.length === 0 ? (
+                      <option value={activeWorkspaceId}>{activeWorkspaceId}</option>
+                    ) : (
+                      openCodeWorkspaces.map(ws => (
+                        <option key={ws.id} value={ws.id}>
+                          {ws.name} ({ws.fileCount} files)
+                        </option>
+                      ))
+                    )}
+                  </select>
 
-              {/* Code Editor (Center Pane) */}
-              <div className="flex-1 flex flex-col min-w-0 border-r border-inherit">
-                {/* Editor Tab Bar */}
-                <div className={`p-2 px-3 border-b flex items-center justify-between text-xs font-mono shrink-0 border-inherit ${
-                  isLight ? 'bg-white' : 'bg-[#151518]'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    <Code2 className="w-4 h-4 text-[#00dbe7] shrink-0" />
-                    <span className="font-bold text-on-surface">{openCodeFiles[activeFileIndex]?.name}</span>
-                    <span className="text-[10px] text-on-surface-variant hidden sm:inline">
-                      ({openCodeFiles[activeFileIndex]?.content.split('\n').length} lines)
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsCreatingWorkspace(v => !v)}
+                    className={`h-7 px-2.5 rounded-lg border text-[11px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-all ${
+                      isLight
+                        ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-xs'
+                        : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/40'
+                    }`}
+                  >
+                    <Plus className="w-3.5 h-3.5 shrink-0" />
+                    <span>New Workspace</span>
+                  </button>
+
+                  {openCodeWorkspaces.length > 1 && (
                     <button
                       type="button"
                       onClick={() => {
-                        setOpenCodeTerminalLogs(prev => [
-                          ...prev,
-                          `[Exec] Running syntax verification for ${openCodeFiles[activeFileIndex]?.name}...`,
-                          `[TypeScript] 0 diagnostics errors found. Build target: ES2022.`,
-                          `[Output] Compiled successfully.`
-                        ]);
+                        const currentWs = openCodeWorkspaces.find(w => w.id === activeWorkspaceId);
+                        handleDeleteWorkspace(activeWorkspaceId, currentWs?.name || activeWorkspaceId);
                       }}
-                      className="h-7 px-2.5 rounded text-[11px] font-mono border flex items-center gap-1 bg-emerald-500/10 text-emerald-400 border-emerald-500/30 cursor-pointer"
+                      className={`h-7 px-2 rounded-lg border text-[11px] font-mono font-bold flex items-center gap-1 cursor-pointer transition-all ${
+                        isLight
+                          ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300'
+                          : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30'
+                      }`}
+                      title="Delete current workspace"
                     >
-                      <Play className="w-3 h-3 shrink-0" />
-                      <span>Run Test</span>
+                      <Trash2 className="w-3.5 h-3.5 shrink-0" />
                     </button>
-                  </div>
+                  )}
                 </div>
 
-                {/* Editor Textarea with Line Numbers */}
-                <div className="flex-1 flex min-h-[300px] overflow-hidden relative font-mono text-xs">
-                  {/* Line numbers */}
-                  <div className={`w-10 sm:w-12 py-3 px-1 text-right select-none text-[11px] font-mono shrink-0 border-r ${
-                    isLight ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-[#101013] text-white/30 border-outline/10'
-                  }`}>
-                    {(openCodeFiles[activeFileIndex]?.content || '').split('\n').map((_, i) => (
-                      <div key={i} className="leading-5">{i + 1}</div>
-                    ))}
-                  </div>
-                  {/* Editable Code Box */}
-                  <textarea
-                    value={openCodeFiles[activeFileIndex]?.content || ''}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      setOpenCodeFiles(prev => prev.map((f, idx) => idx === activeFileIndex ? { ...f, content: val } : f));
-                    }}
-                    className={`flex-1 p-3 font-mono text-xs sm:text-[13px] leading-5 resize-none border-none outline-hidden overflow-auto ${
-                      isLight ? 'bg-white text-slate-900' : 'bg-[#131316] text-[#e5e1e4]'
-                    }`}
-                    spellCheck={false}
-                  />
-                </div>
-              </div>
-
-              {/* Right Pane: AI Coding Agent & Console Output */}
-              <div className={`w-full md:w-80 shrink-0 flex flex-col border-t md:border-t-0 md:border-l border-inherit ${
-                isLight ? 'bg-slate-50/70 border-slate-200' : 'bg-[#131316] border-outline/10'
-              }`}>
-                {/* Agent Control Header */}
-                <div className="p-3 border-b flex items-center justify-between text-xs font-mono font-bold text-on-surface border-inherit">
-                  <div className="flex items-center gap-1.5">
-                    <Bot className="w-4 h-4 text-purple-400 shrink-0" />
-                    <span>Qwen Coder Assistant</span>
-                  </div>
-                  <span className="text-[10px] text-emerald-400 font-normal">Active</span>
-                </div>
-
-                {/* Quick AI Action Badges */}
-                <div className="p-2.5 border-b flex flex-wrap gap-1.5 border-inherit">
-                  <button
-                    type="button"
-                    onClick={() => handleTriggerAgentCoding('Explain how this file works and its architecture.')}
-                    disabled={isAgentCoding}
-                    className="px-2 py-1 rounded text-[10px] font-mono border bg-white/5 hover:bg-white/10 border-white/10 cursor-pointer disabled:opacity-40"
-                  >
-                    📖 Explain File
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleTriggerAgentCoding('Refactor this file for optimal performance, clean types, and robust error handling.')}
-                    disabled={isAgentCoding}
-                    className="px-2 py-1 rounded text-[10px] font-mono border bg-white/5 hover:bg-white/10 border-white/10 cursor-pointer disabled:opacity-40"
-                  >
-                    ⚡ Refactor Code
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleTriggerAgentCoding('Generate comprehensive Jest/Vitest unit tests for this code.')}
-                    disabled={isAgentCoding}
-                    className="px-2 py-1 rounded text-[10px] font-mono border bg-white/5 hover:bg-white/10 border-white/10 cursor-pointer disabled:opacity-40"
-                  >
-                    🧪 Write Unit Tests
-                  </button>
-                </div>
-
-                {/* Agent Custom Prompt Input */}
-                <div className="p-2.5 border-b border-inherit">
-                  <div className="flex items-center gap-1.5">
+                {isCreatingWorkspace && (
+                  <div className="flex items-center gap-2 flex-wrap w-full sm:w-auto pt-1 sm:pt-0">
                     <input
                       type="text"
-                      value={codingPrompt}
-                      onChange={(e) => setCodingPrompt(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleTriggerAgentCoding(); }}
-                      placeholder="Ask coding agent to modify code..."
-                      disabled={isAgentCoding}
-                      className={`flex-1 h-8 px-2.5 rounded-lg text-xs font-mono border outline-hidden ${
-                        isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#101013] border-white/10 text-white'
+                      value={newWorkspaceName}
+                      onChange={(e) => setNewWorkspaceName(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleCreateWorkspace(); }}
+                      placeholder="Workspace name (e.g. billing-api)"
+                      className={`h-7 px-2.5 rounded-lg border text-xs font-mono outline-hidden ${
+                        isLight ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400' : 'bg-[#18181c] border-[#3a494b]/50 text-[#e5e1e4] placeholder-gray-500'
                       }`}
                     />
+                    <select
+                      value={newWorkspaceTemplate}
+                      onChange={(e) => setNewWorkspaceTemplate(e.target.value as any)}
+                      className={`h-7 px-2 rounded-lg border text-xs font-mono outline-hidden ${
+                        isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#18181c] border-[#3a494b]/50 text-[#e5e1e4]'
+                      }`}
+                    >
+                      <option value="node-express-ts">Node + Express TS</option>
+                      <option value="react-ts">React + TypeScript</option>
+                      <option value="python-fastapi">Python FastAPI</option>
+                      <option value="blank">Blank Workspace</option>
+                    </select>
                     <button
                       type="button"
-                      onClick={() => handleTriggerAgentCoding()}
-                      disabled={!codingPrompt.trim() || isAgentCoding}
-                      className="h-8 px-3 rounded-lg text-xs font-mono font-bold bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40 cursor-pointer disabled:opacity-40"
+                      onClick={handleCreateWorkspace}
+                      disabled={!newWorkspaceName.trim()}
+                      className={`h-7 px-2.5 rounded-lg text-[11px] font-mono font-bold cursor-pointer disabled:opacity-40 ${
+                        isLight ? 'bg-emerald-600 text-white' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40'
+                      }`}
                     >
-                      {isAgentCoding ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
+                      Create
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingWorkspace(false)}
+                      className="h-7 px-2 rounded-lg text-[11px] font-mono text-on-surface-variant hover:text-on-surface cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+                {/* File Explorer Sidebar */}
+                <div className={`w-full md:w-60 shrink-0 border-r flex flex-col transition-colors border-inherit ${
+                  isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-[#121215] border-outline/10'
+                }`}>
+                  <div className="p-2.5 px-3 border-b flex items-center justify-between text-xs font-mono font-bold text-on-surface border-inherit">
+                    <div className="flex items-center gap-1.5">
+                      <Folder className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                      <span>Files ({openCodeFiles.length})</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingFile(v => !v)}
+                      className={`h-6 px-2 rounded border text-[10px] font-mono font-bold flex items-center gap-1 cursor-pointer ${
+                        isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-white/5 hover:bg-white/10 text-[#00dbe7] border-white/10'
+                      }`}
+                      title="Create new file in workspace"
+                    >
+                      <Plus className="w-3 h-3 shrink-0" />
+                      <span>File</span>
+                    </button>
+                  </div>
+
+                  {isCreatingFile && (
+                    <div className="p-2 border-b border-inherit flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={newFileName}
+                        onChange={(e) => setNewFileName(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleCreateWorkspaceFile(); }}
+                        placeholder="src/utils.ts"
+                        className={`flex-1 min-w-0 h-7 px-2 rounded text-[11px] font-mono border outline-hidden ${
+                          isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#18181c] border-[#3a494b]/50 text-[#e5e1e4]'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleCreateWorkspaceFile}
+                        className="h-7 px-2 rounded text-[10px] font-mono font-bold bg-sky-500 text-white cursor-pointer shrink-0"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="flex-1 overflow-y-auto p-1.5 space-y-1">
+                    {openCodeFiles.map((file, idx) => (
+                      <div key={file.name} className="group flex items-center gap-1">
+                        {renamingFile === file.name ? (
+                          <div className="flex-1 flex items-center gap-1 p-1">
+                            <input
+                              type="text"
+                              value={renameTargetName}
+                              onChange={(e) => setRenameTargetName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleRenameWorkspaceFile(file.name);
+                                if (e.key === 'Escape') setRenamingFile(null);
+                              }}
+                              className={`flex-1 min-w-0 h-6 px-1.5 rounded text-[11px] font-mono border ${
+                                isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#18181c] border-[#3a494b]/50 text-[#e5e1e4]'
+                              }`}
+                              autoFocus
+                            />
+                            <button
+                              type="button"
+                              onClick={() => handleRenameWorkspaceFile(file.name)}
+                              className="h-6 px-1.5 rounded text-[10px] bg-emerald-500 text-white cursor-pointer"
+                            >
+                              OK
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => setActiveFileIndex(idx)}
+                              className={`flex-1 min-w-0 px-2.5 py-1.5 rounded-lg text-left text-xs font-mono flex items-center justify-between gap-1.5 cursor-pointer transition-colors ${
+                                activeFileIndex === idx
+                                  ? isLight ? 'bg-white text-slate-900 font-bold border border-slate-300 shadow-xs' : 'bg-[#00dbe7]/15 text-[#00dbe7] font-bold border border-[#00dbe7]/30'
+                                  : isLight ? 'hover:bg-slate-200/50 text-slate-700' : 'hover:bg-white/5 text-on-surface-variant hover:text-on-surface'
+                              }`}
+                            >
+                              <div className="flex items-center gap-1.5 truncate">
+                                <FileCode className="w-3.5 h-3.5 shrink-0 text-sky-400" />
+                                <span className="truncate">{file.name}</span>
+                                {dirtyFiles[file.name] && <span className="text-amber-400 font-bold">*</span>}
+                              </div>
+                            </button>
+                            <div className="hidden group-hover:flex items-center gap-0.5 shrink-0 pr-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRenamingFile(file.name);
+                                  setRenameTargetName(file.name);
+                                }}
+                                className="p-1 rounded hover:bg-white/10 text-on-surface-variant hover:text-on-surface cursor-pointer text-[10px]"
+                                title="Rename file"
+                              >
+                                <Sliders className="w-3 h-3 shrink-0" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteWorkspaceFile(file.name)}
+                                className="p-1 rounded hover:bg-rose-500/20 text-rose-400 cursor-pointer"
+                                title="Delete file"
+                              >
+                                <Trash2 className="w-3 h-3 shrink-0" />
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </div>
 
-                {/* Terminal Console Output */}
-                <div className="flex-1 flex flex-col min-h-[160px] p-2 font-mono text-[11px] overflow-hidden">
-                  <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1 flex items-center justify-between">
-                    <span>Terminal / Agent Output</span>
+                {/* Code Editor (Center Pane) */}
+                <div className="flex-1 flex flex-col min-w-0 border-r border-inherit">
+                  {/* Editor Tab Bar */}
+                  <div className={`p-2 px-3 border-b flex items-center justify-between text-xs font-mono shrink-0 border-inherit ${
+                    isLight ? 'bg-white' : 'bg-[#151518]'
+                  }`}>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Code2 className="w-4 h-4 text-[#00dbe7] shrink-0" />
+                      <span className="font-bold text-on-surface truncate">{openCodeFiles[activeFileIndex]?.name || 'No file selected'}</span>
+                      {openCodeFiles[activeFileIndex] && (
+                        <span className="text-[10px] text-on-surface-variant hidden sm:inline shrink-0">
+                          ({openCodeFiles[activeFileIndex]?.content.split('\n').length} lines)
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        disabled={!openCodeFiles[activeFileIndex] || isRunningExec}
+                        onClick={() => {
+                          const file = openCodeFiles[activeFileIndex];
+                          if (!file) return;
+                          const cmd = file.lang === 'python'
+                            ? `python3 -m py_compile ${file.name}`
+                            : (file.lang === 'javascript' || file.lang === 'typescript')
+                            ? `node --check ${file.name}`
+                            : `ls -la ${file.name}`;
+                          handleRunWorkspaceCommand(cmd);
+                        }}
+                        className={`h-7 px-2.5 rounded text-[11px] font-mono border flex items-center gap-1 cursor-pointer disabled:opacity-40 ${
+                          isLight
+                            ? 'bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-300 font-bold'
+                            : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border-emerald-500/30 font-bold'
+                        }`}
+                      >
+                        <Play className="w-3 h-3 shrink-0" />
+                        <span>Run Check</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Editor Textarea with Line Numbers */}
+                  <div className="flex-1 flex min-h-[300px] overflow-hidden relative font-mono text-xs">
+                    {/* Line numbers */}
+                    <div className={`w-10 sm:w-12 py-3 px-1 text-right select-none text-[11px] font-mono shrink-0 border-r ${
+                      isLight ? 'bg-slate-100 text-slate-400 border-slate-200' : 'bg-[#101013] text-white/30 border-outline/10'
+                    }`}>
+                      {(openCodeFiles[activeFileIndex]?.content || '').split('\n').map((_, i) => (
+                        <div key={i} className="leading-5">{i + 1}</div>
+                      ))}
+                    </div>
+                    {/* Editable Code Box */}
+                    <textarea
+                      value={openCodeFiles[activeFileIndex]?.content || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const activeName = openCodeFiles[activeFileIndex]?.name;
+                        setOpenCodeFiles(prev => prev.map((f, idx) => idx === activeFileIndex ? { ...f, content: val } : f));
+                        if (activeName) setDirtyFiles(prev => ({ ...prev, [activeName]: true }));
+                      }}
+                      onKeyDown={(e) => {
+                        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                          e.preventDefault();
+                          handleSaveWorkspaceFile();
+                        }
+                      }}
+                      className={`flex-1 p-3 font-mono text-xs sm:text-[13px] leading-5 resize-none border-none outline-hidden overflow-auto ${
+                        isLight ? 'bg-white text-slate-900' : 'bg-[#131316] text-[#e5e1e4]'
+                      }`}
+                      spellCheck={false}
+                    />
+                  </div>
+                </div>
+
+                {/* Right Pane: AI Coding Agent & Console Output */}
+                <div className={`w-full md:w-80 shrink-0 flex flex-col border-t md:border-t-0 md:border-l border-inherit ${
+                  isLight ? 'bg-slate-50/70 border-slate-200' : 'bg-[#131316] border-outline/10'
+                }`}>
+                  {/* Agent Control Header */}
+                  <div className="p-3 border-b flex items-center justify-between text-xs font-mono font-bold text-on-surface border-inherit">
+                    <div className="flex items-center gap-1.5">
+                      <Bot className="w-4 h-4 text-purple-400 shrink-0" />
+                      <span>Qwen Coder Assistant</span>
+                    </div>
+                    <span className="text-[10px] text-emerald-400 font-normal">Workspace Aware</span>
+                  </div>
+
+                  {/* Quick AI Action Badges */}
+                  <div className="p-2.5 border-b flex flex-wrap gap-1.5 border-inherit">
                     <button
                       type="button"
-                      onClick={() => setOpenCodeTerminalLogs(['[Terminal] Logs cleared.'])}
-                      className="hover:underline text-[9px] cursor-pointer"
+                      onClick={() => handleTriggerAgentCoding('Explain how this file fits into the workspace architecture.')}
+                      disabled={isAgentCoding || !openCodeFiles[activeFileIndex]}
+                      className={`px-2 py-1 rounded text-[10px] font-mono border cursor-pointer disabled:opacity-40 ${
+                        isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-white/5 hover:bg-white/10 border-white/10'
+                      }`}
                     >
-                      Clear
+                      📖 Explain File
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerAgentCoding('Refactor this file for optimal performance, clean types, and robust error handling.')}
+                      disabled={isAgentCoding || !openCodeFiles[activeFileIndex]}
+                      className={`px-2 py-1 rounded text-[10px] font-mono border cursor-pointer disabled:opacity-40 ${
+                        isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-white/5 hover:bg-white/10 border-white/10'
+                      }`}
+                    >
+                      ⚡ Refactor Code
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleTriggerAgentCoding('Generate comprehensive Jest/Vitest unit tests for this code.')}
+                      disabled={isAgentCoding || !openCodeFiles[activeFileIndex]}
+                      className={`px-2 py-1 rounded text-[10px] font-mono border cursor-pointer disabled:opacity-40 ${
+                        isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-white/5 hover:bg-white/10 border-white/10'
+                      }`}
+                    >
+                      🧪 Write Unit Tests
                     </button>
                   </div>
-                  <div className={`flex-1 overflow-y-auto p-2 rounded-lg border font-mono text-[10px] leading-relaxed select-text ${
-                    isLight ? 'bg-slate-900 text-emerald-400 border-slate-700' : 'bg-[#0a0a0c] text-emerald-400 border-white/10'
-                  }`}>
-                    {openCodeTerminalLogs.map((log, i) => (
-                      <div key={i} className="py-0.5">{log}</div>
-                    ))}
+
+                  {/* Agent Custom Prompt Input */}
+                  <div className="p-2.5 border-b border-inherit">
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        value={codingPrompt}
+                        onChange={(e) => setCodingPrompt(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleTriggerAgentCoding(); }}
+                        placeholder="Ask coding agent to modify code..."
+                        disabled={isAgentCoding}
+                        className={`flex-1 h-8 px-2.5 rounded-lg text-xs font-mono border outline-hidden ${
+                          isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#101013] border-white/10 text-white'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleTriggerAgentCoding()}
+                        disabled={!codingPrompt.trim() || isAgentCoding}
+                        className="h-8 px-3 rounded-lg text-xs font-mono font-bold bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40 cursor-pointer disabled:opacity-40 shrink-0"
+                      >
+                        {isAgentCoding ? <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" /> : <Send className="w-3.5 h-3.5 shrink-0" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Terminal Console Output & Interactive Runner */}
+                  <div className="flex-1 flex flex-col min-h-[180px] p-2 font-mono text-[11px] overflow-hidden gap-1.5">
+                    <div className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider flex items-center justify-between">
+                      <span>Workspace Terminal</span>
+                      <button
+                        type="button"
+                        onClick={() => setOpenCodeTerminalLogs(['[Terminal] Logs cleared.'])}
+                        className="hover:underline text-[9px] cursor-pointer"
+                      >
+                        Clear
+                      </button>
+                    </div>
+                    <div className={`flex-1 overflow-y-auto p-2 rounded-lg border font-mono text-[10px] leading-relaxed select-text ${
+                      isLight ? 'bg-slate-900 text-emerald-400 border-slate-700' : 'bg-[#0a0a0c] text-emerald-400 border-white/10'
+                    }`}>
+                      {openCodeTerminalLogs.map((log, i) => (
+                        <div key={i} className="py-0.5 whitespace-pre-wrap break-words">{log}</div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={terminalCommand}
+                        onChange={(e) => setTerminalCommand(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleRunWorkspaceCommand(); }}
+                        placeholder="ls, node --check index.ts, npm test..."
+                        disabled={isRunningExec}
+                        className={`flex-1 h-7 px-2 rounded text-[11px] font-mono border outline-hidden ${
+                          isLight ? 'bg-white border-slate-300 text-slate-900 placeholder-slate-400' : 'bg-[#101013] border-white/10 text-[#e5e1e4] placeholder-gray-500'
+                        }`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleRunWorkspaceCommand()}
+                        disabled={!terminalCommand.trim() || isRunningExec}
+                        className={`h-7 px-2.5 rounded text-[10px] font-mono font-bold cursor-pointer disabled:opacity-40 shrink-0 ${
+                          isLight ? 'bg-slate-800 text-white' : 'bg-white/10 text-[#00dbe7] border border-white/10'
+                        }`}
+                      >
+                        Run
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            /* REMOTE BRIDGE VIEW WITH SETTINGS */
+            /* REMOTE BRIDGE VIEW WITH LIVE PROBE & FALLBACK */
             <div className="flex-1 flex flex-col p-3 sm:p-5 gap-3.5 overflow-hidden">
               <div className={`px-4 py-2.5 rounded-xl border flex items-center justify-between gap-3 text-xs font-mono transition-colors shadow-xs flex-wrap ${
                 isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-[#151518] border-[#3a494b]/40 text-[#e5e1e4]'
               }`}>
                 <div className="flex items-center gap-2.5 flex-wrap">
-                  <span className="text-on-surface-variant">Active Bridge:</span>
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                    bridgeStatus === 'online'
+                      ? 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30'
+                      : bridgeStatus === 'checking'
+                      ? 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                      : 'bg-rose-500/15 text-rose-400 border-rose-500/30'
+                  }`}>
+                    {bridgeStatus === 'online' ? 'Bridge Online' : bridgeStatus === 'checking' ? 'Probing...' : 'Bridge Offline'}
+                  </span>
                   <code className={`px-1.5 py-0.5 rounded text-[10px] border flex items-center gap-1 font-mono ${
                     isLight ? 'bg-slate-100 text-slate-800 border-slate-300' : 'bg-white/5 text-[#00dbe7] border-white/10'
                   }`}>
@@ -4223,8 +4657,10 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                       type="text"
                       value={customUrlInput}
                       onChange={(e) => setCustomUrlInput(e.target.value)}
-                      placeholder="https://... or http://132.226.190.125/"
-                      className="flex-1 h-8 px-3 rounded-lg border text-xs font-mono bg-transparent"
+                      placeholder="https://... or http://132.226.190.125:4096/"
+                      className={`flex-1 h-8 px-3 rounded-lg border text-xs font-mono ${
+                        isLight ? 'bg-white border-slate-300 text-slate-900' : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4]'
+                      }`}
                     />
                   </div>
                   <button
@@ -4234,6 +4670,7 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                         setOpencodeUrl(customUrlInput.trim());
                         localStorage.setItem('sutharlabs_opencode_url', customUrlInput.trim());
                         setIsEditingUrl(false);
+                        setBridgeStatus('online');
                         setIframeKey((k) => k + 1);
                       }
                     }}
@@ -4244,15 +4681,56 @@ Proceed to execute Milestone 1 and synthesize production-ready code.`;
                 </div>
               )}
 
-              <div className="flex-1 min-h-[500px] rounded-2xl border overflow-hidden relative shadow-xl">
-                <iframe
-                  key={iframeKey}
-                  src={opencodeUrl}
-                  title="OpenCode AI Coding Agent Studio"
-                  className="w-full h-full border-0 absolute inset-0"
-                  allow="clipboard-read; clipboard-write;"
-                />
-              </div>
+              {bridgeStatus === 'offline' ? (
+                <div className={`flex-1 min-h-[400px] rounded-2xl border flex flex-col items-center justify-center p-6 text-center gap-4 ${
+                  isLight ? 'bg-slate-50 border-slate-200 text-slate-800' : 'bg-[#131316] border-[#3a494b]/50 text-[#e5e1e4]'
+                }`}>
+                  <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/30 flex items-center justify-center shrink-0">
+                    <Server className="w-6 h-6 text-rose-400 shrink-0" />
+                  </div>
+                  <div className="max-w-lg space-y-1.5">
+                    <h3 className="text-base font-bold font-sans">OpenCode Remote Bridge Unreachable</h3>
+                    <p className="text-xs font-mono text-on-surface-variant leading-relaxed">
+                      {bridgeReason || 'The Cloudflare quick-tunnel URL for VM 2 OpenCode (port 4096) has expired or timed out.'}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2.5 flex-wrap justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setOpenCodeMode('native')}
+                      className={`h-9 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 cursor-pointer ${
+                        isLight ? 'bg-sky-500 hover:bg-sky-600 text-white shadow-sm' : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border border-[#00dbe7]/40'
+                      }`}
+                    >
+                      <Code2 className="w-4 h-4 shrink-0" />
+                      <span>Use Native Studio</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCustomUrlInput(opencodeUrl);
+                        setIsEditingUrl(true);
+                      }}
+                      className={`h-9 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider border flex items-center gap-1.5 cursor-pointer ${
+                        isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                      }`}
+                    >
+                      <Settings className="w-4 h-4 shrink-0" />
+                      <span>Configure Custom Tunnel</span>
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex-1 min-h-[500px] rounded-2xl border overflow-hidden relative shadow-xl">
+                  <iframe
+                    key={iframeKey}
+                    src={opencodeUrl}
+                    title="OpenCode AI Coding Agent Studio"
+                    className="w-full h-full border-0 absolute inset-0"
+                    allow="clipboard-read; clipboard-write;"
+                  />
+                </div>
+              )}
             </div>
           )}
         </div>
