@@ -1,7 +1,7 @@
 # Graph Report - website  (2026-11-12)
 
 ## Corpus Check
-- 233 files · ~512,844 words
+- 233 files · ~512,859 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `200eed05`
+- Built from commit: `2c4d3140`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -120,8 +120,8 @@
 1. `react` - 96 edges
 2. `lucide-react` - 73 edges
 3. `registerRoutes()` - 46 edges
-4. `TerminalLog` - 44 edges
-5. `startServer()` - 44 edges
+4. `startServer()` - 44 edges
+5. `TerminalLog` - 44 edges
 6. `getPrismaClient()` - 39 edges
 7. `startServer()` - 35 edges
 8. `registerRoutes()` - 30 edges
@@ -129,16 +129,16 @@
 10. `AccountingStorage` - 27 edges
 
 ## Surprising Connections (you probably didn't know these)
+- `startServer()` --indirect_call--> `requireAdmin()`  [INFERRED]
+  server.ts → src/middleware/auth.ts
 - `startServer()` --indirect_call--> `errorHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
 - `startServer()` --indirect_call--> `notFoundHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
-- `startServer()` --indirect_call--> `requireAdmin()`  [INFERRED]
-  server.ts → src/middleware/auth.ts
 - `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
   server.ts → src/middleware/auth.ts
-- `startServer()` --calls--> `PluginEngine`  [EXTRACTED]
-  server.ts → src/plugins/PluginEngine.ts
+- `startServer()` --calls--> `generateToken()`  [EXTRACTED]
+  server.ts → api/_utils.ts
 
 ## Import Cycles
 - 2-file cycle: `src/components/LandingPage.tsx -> src/components/ProjectBrowserMockup.tsx -> src/components/LandingPage.tsx`
@@ -492,16 +492,16 @@ Nodes (16): DocNexusView(), DocNexusViewProps, CommandPaletteModal(), DocNexusSt
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `react` to `ConfirmModal.tsx`, `src/types.ts`, `indicatorEngine.ts`, `dependencies`, `patterns/types.ts`, `StudioCastCompositor`, `src/types.ts`, `GSTInvoice`, `StockTrackerView.tsx`, `server.js`, `LandingPage.tsx`, `gstEngine.ts`, `backtest/engine.ts`, `DocNexusStudio`, `react`, `StockStrategyMarketplace.tsx`, `react`, `SpeechStudioView.tsx`, `DocNexus/types.ts`, `Accounting/types.ts`, `package.json`, `lucide-react`, `WorkspacePluginStore.tsx`, `ResumeEngine.tsx`, `ImageStudioView.tsx`, `StockSimulatorPanel.tsx`, `DocNexusDocument`, `MotionStudioView.tsx`, `clientRegistry.ts`, `OcrReceiptModal.tsx`, `ToolsStudioView.tsx`, `FlowDesignerView.tsx`, `DocNexusStudio.tsx`?**
-  _High betweenness centrality (0.247) - this node is a cross-community bridge._
+  _High betweenness centrality (0.263) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `registerRoutes()` (e.g. with `server.js` and `authenticateToken()`) actually correct?**
   _`registerRoutes()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Should `ConfirmModal.tsx` be split into smaller, more focused modules?**
   _Cohesion score 0.11428571428571428 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `react` to `ConfirmModal.tsx`, `src/types.ts`, `indicatorEngine.ts`, `dependencies`, `react`, `patterns/types.ts`, `StudioCastCompositor`, `src/types.ts`, `StockTrackerView.tsx`, `server.js`, `LandingPage.tsx`, `backtest/engine.ts`, `DocNexusStudio`, `StockStrategyMarketplace.tsx`, `SpeechStudioView.tsx`, `DocNexus/types.ts`, `package.json`, `lucide-react`, `WorkspacePluginStore.tsx`, `ResumeEngine.tsx`, `ImageStudioView.tsx`, `StockSimulatorPanel.tsx`, `DocNexusDocument`, `MotionStudioView.tsx`, `clientRegistry.ts`, `OcrReceiptModal.tsx`, `ToolsStudioView.tsx`, `FlowDesignerView.tsx`, `DocNexusStudio.tsx`?**
-  _High betweenness centrality (0.127) - this node is a cross-community bridge._
+  _High betweenness centrality (0.160) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `startServer()` (e.g. with `authenticateToken()` and `requireAdmin()`) actually correct?**
   _`startServer()` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **Should `src/types.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.09243697478991597 - nodes in this community are weakly interconnected._
 - **Why does `express` connect `express` to `ref_fs`, `dependencies`, `StockTracker/routes.ts`, `server.ts`, `SpeechStudio/routes.ts`, `DocNexus/storage.ts`, `StudioCastCompositor`, `auth.ts`, `server.js`, `package.json`, `gstEngine.ts`?**
-  _High betweenness centrality (0.061) - this node is a cross-community bridge._
+  _High betweenness centrality (0.065) - this node is a cross-community bridge._

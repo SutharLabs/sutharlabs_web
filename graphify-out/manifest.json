@@ -6,9 +6,9 @@
     "semantic_hash": "6eab2f1626c4f1fbdd66aa25ee74fd00"
   },
   "api/server.ts": {
-    "mtime": 1794408457.0036147,
-    "seen": 1794408948.4865603,
-    "ast_hash": "699be123b30116a617623e73f0621616",
+    "mtime": 1794459637.9585903,
+    "seen": 1794459767.5731053,
+    "ast_hash": "8be722a17d9cfa27b687d83e0464dae6",
     "semantic_hash": ""
   },
   "metadata.json": {
@@ -56,9 +56,9 @@
     "semantic_hash": ""
   },
   "server.ts": {
-    "mtime": 1794425987.434208,
-    "seen": 1794453722.6114845,
-    "ast_hash": "e83049c86c58925f894afd808275409e",
+    "mtime": 1794459663.7524116,
+    "seen": 1794459767.5731852,
+    "ast_hash": "2b40841a9fe80af1329e6be32e3e5104",
     "semantic_hash": ""
   },
   "src/App.tsx": {
@@ -1100,14 +1100,14 @@
     "semantic_hash": ""
   },
   "src/components/AdminAIChatView.tsx": {
-    "mtime": 1794457705.5274673,
-    "seen": 1794457980.691947,
+    "mtime": 1794458048.854185,
+    "seen": 1794459767.573204,
     "ast_hash": "f435712e36d6e913486ac07edbf7c30e",
     "semantic_hash": ""
   },
   "src/services/aiChatService.ts": {
-    "mtime": 1794457646.3724809,
-    "seen": 1794457980.6933177,
+    "mtime": 1794458049.4298272,
+    "seen": 1794459767.5739872,
     "ast_hash": "8c6ca4fcb22ba3adffb5c6bd9ed7d41a",
     "semantic_hash": ""
   },
@@ -1322,8 +1322,8 @@
     "semantic_hash": ""
   },
   "docs/llm/inference_node_setup_and_benchmarks.md": {
-    "mtime": 1794457770.373147,
-    "seen": 1794457980.6936162,
+    "mtime": 1794458045.2292554,
+    "seen": 1794459767.5742264,
     "ast_hash": "dba6f4e0f695eb9b1bea6b6e27feacad",
     "semantic_hash": ""
   },
@@ -1952,8 +1952,8 @@
     "semantic_hash": ""
   },
   "src/services/contextualRagService.ts": {
-    "mtime": 1794457735.2812083,
-    "seen": 1794457980.6933298,
+    "mtime": 1794458050.5443914,
+    "seen": 1794459767.5739992,
     "ast_hash": "c4ca88e51c45be19c11b26a69d05a824",
     "semantic_hash": ""
   },
@@ -1964,8 +1964,8 @@
     "semantic_hash": ""
   },
   "src/components/AIEcosystemStudioView.tsx": {
-    "mtime": 1794457722.4579754,
-    "seen": 1794457980.691937,
+    "mtime": 1794458047.4896364,
+    "seen": 1794459767.5731945,
     "ast_hash": "1008f0fddf8b866e0a17e240ad231320",
     "semantic_hash": ""
   },
@@ -1976,8 +1976,8 @@
     "semantic_hash": ""
   },
   "docs/llm/gemma_4_e2b_e4b_architecture_and_benchmarks.md": {
-    "mtime": 1794457849.5844526,
-    "seen": 1794457980.6936045,
+    "mtime": 1794458044.4442196,
+    "seen": 1794459767.5742218,
     "ast_hash": "bb9371254208261dea9492f8bd7759cc",
     "semantic_hash": ""
   },

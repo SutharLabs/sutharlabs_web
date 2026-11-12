@@ -4793,9 +4793,10 @@ app.post("/api/ai/chat", authenticateToken, requireAdmin, async (req: any, res: 
 
   // SOTA CPU Optimization for Oracle Always Free ARM64 (2 OCPU / 12GB RAM)
   const is7B = typeof model === "string" && model.includes(":7b");
+  const isGemma4 = typeof model === "string" && model.includes("gemma4");
   const is3B = typeof model === "string" && model.includes(":3b");
-  const defaultCtx = is7B ? 2048 : (is3B ? 4096 : 4096);
-  const defaultPredict = is7B ? 1024 : 2048;
+  const defaultCtx = (is7B || isGemma4) ? 2048 : (is3B ? 4096 : 4096);
+  const defaultPredict = is7B ? 768 : (isGemma4 ? 768 : 1024);
 
   const payload = {
     model,
