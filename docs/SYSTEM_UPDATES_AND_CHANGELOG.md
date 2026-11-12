@@ -16,6 +16,9 @@ This milestone completes critical production enhancements across the platform:
 5. **PostgreSQL Multi-Tenant Scoped Database Voice Hydration**: Guarantees raw PCM/WAV reference audio samples are reliably fetched from isolated PostgreSQL tenant stores during synthesis requests.
 6. **EdgeRock-4B & llama.cpp Integration Feasibility**: Comprehensive architectural audit of EdgeRock-4B (Rock Matrix/HKUST/CMU), mapping all 546 GGUF tensors, identifying the 24 Gated DeltaNet layers and 8 Rock Memory Anchors (RMA) layers, and detailing the exact code path for adding native RMA support to `llama.cpp`.
 7. **AI Studio Streaming Completion & Hang Elimination**: Resolves infinite SSE heartbeat loops on `parsed.done === true`, adds auto-closing socket logic on the backend, decouples system error strings from LLM conversation prompts, and preserves partial generation upon Stop button clicks.
+8. **Frontier SSE Router & Resilient Stream Resumption Engine**: Transitions SutharLabs AI Studio to a decoupled SSE Router matching OpenAI, Anthropic, and Gemini architectures. Features in-memory session ring buffers on VM 3, sub-5ms handshakes with anti-buffering TCP padding, 2.5s keep-alive heartbeats, zero-data-loss stream resumption (`GET /api/ai/chat/stream/:id?offset=X`) defeating Vercel 60s timeouts, and explicit server-side cancellation (`POST /api/ai/chat/stream/:id/abort`).
+9. **Google Gemma 4 Edge Models (E2B & E4B) Integration**: Replaces deprecated Gemma 2 (2B) weights on Oracle VM 2 with modern Gemma 4 Edge models (`gemma4:e2b` and `gemma4:e4b`) featuring Per-Layer Embeddings (PLE), native multimodal vision/audio encoders, and 128K context windows. Purges obsolete Gemma 2 files from disk.
+10. **Show-o Local Neural Engine Observability & Cloud Fallback**: Replaces confusing template SVGs when the local Show-o daemon on VM 2 is offline with clear diagnostic alerts and 1-click fallback to high-speed cloud generative engines (Pollinations, Flux, Stability).
 
 ---
 
@@ -38,6 +41,44 @@ This milestone completes critical production enhancements across the platform:
   * Backend auto-close: `server.ts` monitors chunks for `"done":true`, terminates the keep-alive timer, and invokes `res.end()` immediately.
   * Sanitized `apiMessages` in `AdminAIChatView.tsx` and `server.ts` to exclude past UI error alerts (`⚠️ **Inference Error**...`).
   * Instant partial text persistence on Stop button click or <kbd>Esc</kbd> press.
+
+---
+
+## 1.2 Frontier SSE Router & Resilient Stream Resumption Engine
+
+* **Technical Document**: [`docs/llm/frontier_sse_router_and_resilient_streaming.md`](file:///d:/Code/SutharLabs/website/docs/llm/frontier_sse_router_and_resilient_streaming.md)
+* **Components Impacted**: [`server.ts`](file:///d:/Code/SutharLabs/website/server.ts), [`src/services/aiChatService.ts`](file:///d:/Code/SutharLabs/website/src/services/aiChatService.ts), [`src/components/AdminAIChatView.tsx`](file:///d:/Code/SutharLabs/website/src/components/AdminAIChatView.tsx), [`api/server.ts`](file:///d:/Code/SutharLabs/website/api/server.ts)
+* **Problem Solved**: Vercel hard 60s serverless timeout aborting long CPU inferences (`⚠️ Inference Error: network error`), coupled TCP lifecycles, ghost inference tasks on VM 2 upon Stop button click, and perpetual `"streaming tokens..."` client hangs.
+* **Architectural Innovations**:
+  * **Decoupled In-Memory Session Registry**: Active generation sessions are held in `aiStreamingSessions` on VM 3 with a 15-minute TTL. Upstream inference continues independently of downstream client connection state.
+  * **Sub-5ms Initial Handshake**: `POST /api/ai/chat` emits 200 OK SSE headers, 1KB anti-buffering TCP comment padding, and a `session` descriptor with a unique `streamId` within 5ms.
+  * **Proactive Keep-Alive Heartbeats**: Periodic `: ping\n\n` comments are sent every 2.5 seconds with explicit `.flush()`, preventing intermediate proxy idle timeouts during 40-second prompt evaluation phases on CPU.
+  * **Zero-Data-Loss Stream Resumption (`GET /api/ai/chat/stream/:id?offset=X`)**: If a Vercel 60s window closes or client network drops, `aiChatService.ts` automatically connects to the resume route with the highest sequence number received, seamlessly fast-forwarding missed tokens with zero data loss.
+  * **Explicit Server-Side Abort Engine (`POST /api/ai/chat/stream/:id/abort`)**: Clicking Stop halts the upstream Ollama request on VM 2 via `AbortController`, releases the heavy concurrency slot in `unifiedInferenceQueue`, broadcasts a terminal abort event, and cleanly closes subscriber sockets.
+  * **Low-Level Engine Fixes**: Fixed Node.js `res.on('close')` subscriber retention bug (replacing incorrect `req.on('close')`), and fixed Node 20 `fetch` streaming `Uint8Array` stringification using persistent UTF-8 `TextDecoder`.
+
+---
+
+## 1.3 Google Gemma 4 Edge (E2B & E4B) Architecture & Sovereign Deployment
+
+* **Technical Document**: [`docs/llm/gemma_4_e2b_e4b_architecture_and_benchmarks.md`](file:///d:/Code/SutharLabs/website/docs/llm/gemma_4_e2b_e4b_architecture_and_benchmarks.md)
+* **Host**: Oracle Cloud VM 2 (`132.226.190.125`)
+* **Highlights**:
+  * Integrated Google DeepMind's Gemma 4 Edge models: `gemma4:e2b` (4.6 GB, 2.3B effective parameters) and `gemma4:e4b` (6.6 GB, 4.4B effective parameters).
+  * **Per-Layer Embeddings (PLE)**: Dynamic layer-specific embedding projections allowing 2B/4B models to achieve reasoning performance competitive with classical 7B models.
+  * **Multimodal Subsystems**: Native 150M SigLIP vision projection tensor and 16 kHz Universal Speech Audio Encoder.
+  * **Expanded Context**: 128K context window ($131,072\text{ tokens}$), up from legacy Gemma 2's 8K limit.
+  * **Legacy Deprecation**: Verified complete removal of obsolete Gemma 2 2B weights from disk on VM 2, conserving disk space.
+
+---
+
+## 1.4 Show-o Neural Daemon Diagnostics & 1-Click Cloud Fallback
+
+* **Components Impacted**: [`src/components/AdminAIChatView.tsx`](file:///d:/Code/SutharLabs/website/src/components/AdminAIChatView.tsx), [`src/services/aiChatService.ts`](file:///d:/Code/SutharLabs/website/src/services/aiChatService.ts)
+* **Problem Solved**: Local inference queries to Show-o (1.3B) returned a static geometric SVG template circle when the local neural daemon on VM 2 was not running, misleading users into thinking image generation succeeded.
+* **Resolution**:
+  * Replaced static SVG placeholder generation with an explicit diagnostic error: `⚠️ Local Show-o Daemon Offline: The NUS/ByteDance Show-o service is not currently active on VM 2.`
+  * Provided actionable 1-click fallback buttons in the UI to seamlessly switch to cloud-backed generative engines (Pollinations, Flux, Stability) without losing the user's prompt.
 
 ---
 
