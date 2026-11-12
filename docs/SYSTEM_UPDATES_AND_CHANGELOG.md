@@ -19,6 +19,10 @@ This milestone completes critical production enhancements across the platform:
 8. **Frontier SSE Router & Resilient Stream Resumption Engine**: Transitions SutharLabs AI Studio to a decoupled SSE Router matching OpenAI, Anthropic, and Gemini architectures. Features in-memory session ring buffers on VM 3, sub-5ms handshakes with anti-buffering TCP padding, 2.5s keep-alive heartbeats, zero-data-loss stream resumption (`GET /api/ai/chat/stream/:id?offset=X`) defeating Vercel 60s timeouts, and explicit server-side cancellation (`POST /api/ai/chat/stream/:id/abort`).
 9. **Google Gemma 4 Edge Models (E2B & E4B) Integration**: Replaces deprecated Gemma 2 (2B) weights on Oracle VM 2 with modern Gemma 4 Edge models (`gemma4:e2b` and `gemma4:e4b`) featuring Per-Layer Embeddings (PLE), native multimodal vision/audio encoders, and 128K context windows. Purges obsolete Gemma 2 files from disk.
 10. **Show-o Local Neural Engine Observability & Cloud Fallback**: Replaces confusing template SVGs when the local Show-o daemon on VM 2 is offline with clear diagnostic alerts and 1-click fallback to high-speed cloud generative engines (Pollinations, Flux, Stability).
+11. **AI Studio Default Research Agent & Mode Selector Cleanup**: Removed the desktop/mobile `Chat | Plan | Agent | Auto` mode selector from the top of the chat screen (preserving slash commands) and set `research-synthesizer` as the default AI Studio agent.
+12. **OpenCode Native Studio Persistent Workspace IDE**: Added full backend-persisted workspace management (`data/opencode-workspaces/<id>/`) with templates (`node-express-ts`, `react-ts`, `python-fastapi`, `blank`), file CRUD/rename, ZIP export, workspace-aware AI coding agent, and allowlisted terminal execution.
+13. **OpenCode Remote Bridge Auto-Discovery & Cookie Auto-Auth**: Fixed Remote Bridge timeouts by adding live `/opencode-url` auto-discovery on VM 2 (`/home/ubuntu/start-opencode-tunnel.sh` → `/tmp/opencode_url.json`), `HEAD` probe health reporting, and an admin-authenticated `/_sl_bridge_auth` signed cookie flow so the embedded OpenCode UI authenticates automatically without exposing Basic Auth publicly.
+14. **Stock Tracker Simulator Config & Trade Type Persistence**: Fixed `fetchSimulationsList` polling overwriting unsaved/active simulator form state and omitting `productType` (`CNC` Delivery vs `MIS` Intraday).
 
 ---
 
@@ -56,6 +60,35 @@ This milestone completes critical production enhancements across the platform:
   * **Zero-Data-Loss Stream Resumption (`GET /api/ai/chat/stream/:id?offset=X`)**: If a Vercel 60s window closes or client network drops, `aiChatService.ts` automatically connects to the resume route with the highest sequence number received, seamlessly fast-forwarding missed tokens with zero data loss.
   * **Explicit Server-Side Abort Engine (`POST /api/ai/chat/stream/:id/abort`)**: Clicking Stop halts the upstream Ollama request on VM 2 via `AbortController`, releases the heavy concurrency slot in `unifiedInferenceQueue`, broadcasts a terminal abort event, and cleanly closes subscriber sockets.
   * **Low-Level Engine Fixes**: Fixed Node.js `res.on('close')` subscriber retention bug (replacing incorrect `req.on('close')`), and fixed Node 20 `fetch` streaming `Uint8Array` stringification using persistent UTF-8 `TextDecoder`.
+
+---
+
+## 1.2a AI Studio UX, OpenCode Native Studio & Remote Bridge Auto-Auth
+
+* **Components Impacted**: [`src/components/AdminAIChatView.tsx`](file:///d:/Code/SutharLabs/website/src/components/AdminAIChatView.tsx), [`server.ts`](file:///d:/Code/SutharLabs/website/server.ts), VM 2 Nginx & PM2 (`132.226.190.125`)
+* **Runbook**: [`docs/llm/opencode_and_prompt_tuning.md`](file:///d:/Code/SutharLabs/website/docs/llm/opencode_and_prompt_tuning.md)
+* **Chat Header & Default Agent**:
+  * Removed Desktop and Mobile `Chat | Plan | Agent | Auto` mode selectors from the chat header while keeping `/plan`, `/agent`, `/auto` slash commands intact.
+  * Set `research-synthesizer` (`Research & Intelligence Agent`) as the default agent on initial load and new/fallback sessions.
+* **OpenCode Native Studio Persistent Workspaces**:
+  * Added authenticated workspace endpoints in `server.ts` backed by `data/opencode-workspaces/<workspaceId>/` with path-traversal protection and auto-scaffolding of `default-sovereign-api`:
+    * `GET /api/ai/opencode/workspaces`, `POST /api/ai/opencode/workspaces`, `DELETE /api/ai/opencode/workspaces/:id`
+    * `GET /api/ai/opencode/workspaces/:id/files`, `PUT /api/ai/opencode/workspaces/:id/file`, `POST /api/ai/opencode/workspaces/:id/rename`, `DELETE /api/ai/opencode/workspaces/:id/file`
+    * `POST /api/ai/opencode/workspaces/:id/exec` (allowlisted checks/runners with 15s timeout)
+  * Added workspace switcher, template creator, delete confirmation (`<ConfirmModal />`), ZIP export (`JSZip`), file CRUD, `Ctrl+S` save, and interactive terminal runner in `AdminAIChatView.tsx`.
+* **Remote Bridge Auto-Discovery & Zero-Prompt Cookie Auto-Auth**:
+  * VM 2 runs `/home/ubuntu/start-opencode-tunnel.sh` under PM2 (`cloudflared-opencode`), writing the live `*.trycloudflare.com` URL to `/tmp/opencode_url.json` (served by Nginx at `/opencode-url`).
+  * `resolveOpenCodeBridgeInfo()` in `server.ts` checks `process.env.OPENCODE_PUBLIC_URL` first, falls back to `http://132.226.190.125/opencode-url`, and runs a live `HEAD` probe before reporting `status: "online" | "offline"`.
+  * VM 2 Nginx `/_sl_bridge_auth?token=...` validates `ORACLE_AI_SECRET`, sets `sl_oc_auth` (`HttpOnly; SameSite=None; Secure`), and redirects `302` to `https://$http_host/`, where Nginx injects the Basic Auth header (`$oc_upstream_auth`). Direct unauthenticated access still receives `401 Unauthorized`.
+  * Admin-authenticated `GET /api/ai/opencode-bridge-session` provides `launchUrl` to `AdminAIChatView.tsx`, replacing stale `*.trycloudflare.com` values cached in `localStorage`.
+
+---
+
+## 1.2b Stock Tracker Simulator Config & Trade Type Persistence
+
+* **Components Impacted**: [`src/components/StockSimulatorPanel.tsx`](file:///d:/Code/SutharLabs/website/src/components/StockSimulatorPanel.tsx)
+* **Root Cause Fixed**: `fetchSimulationsList` ran every 30s via polling `setInterval`, unconditionally overwriting active form dropdowns and omitting `activeEntry.productType` (`CNC` Delivery vs `MIS` Intraday).
+* **Resolution**: Added `lastHydratedSimIdRef` and `selectedSimulationIdRef` so form state (including `selectedProductType`) hydrates only on initial load or simulation switch, and optimistically merges `savedData.simulation` into `simulationsList` on **Save Config**.
 
 ---
 
