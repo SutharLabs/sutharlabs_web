@@ -119,6 +119,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [isNewMenuOpen, setIsNewMenuOpen] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
 
   // Filter & Search state
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -467,6 +468,57 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
     }
   }, [viewMode]);
 
+  // Auto-fill & Auto-login credentials for embedded File Browser iframe
+  const handleFileBrowserIframeLoad = () => {
+    try {
+      const iframe = iframeRef.current;
+      if (!iframe) return;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      const userInput = doc.querySelector('input[type="text"], input[name="username"]') as HTMLInputElement;
+      const passInput = doc.querySelector('input[type="password"], input[name="password"]') as HTMLInputElement;
+      if (userInput && passInput) {
+        if (!userInput.value) {
+          userInput.value = 'admin';
+          userInput.dispatchEvent(new Event('input', { bubbles: true }));
+          userInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+        if (!passInput.value) {
+          passInput.value = 'SutharLabs2026!';
+          passInput.dispatchEvent(new Event('input', { bubbles: true }));
+          passInput.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    } catch {
+      // Ignored if cross-origin sandboxed
+    }
+  };
+
+  const triggerFileBrowserAutoLogin = () => {
+    try {
+      const iframe = iframeRef.current;
+      if (!iframe) return;
+      const doc = iframe.contentDocument || iframe.contentWindow?.document;
+      if (!doc) return;
+      const userInput = doc.querySelector('input[type="text"], input[name="username"]') as HTMLInputElement;
+      const passInput = doc.querySelector('input[type="password"], input[name="password"]') as HTMLInputElement;
+      const submitBtn = doc.querySelector('input[type="submit"], button[type="submit"]') as HTMLElement;
+      if (userInput && passInput) {
+        userInput.value = 'admin';
+        userInput.dispatchEvent(new Event('input', { bubbles: true }));
+        userInput.dispatchEvent(new Event('change', { bubbles: true }));
+        passInput.value = 'SutharLabs2026!';
+        passInput.dispatchEvent(new Event('input', { bubbles: true }));
+        passInput.dispatchEvent(new Event('change', { bubbles: true }));
+        if (submitBtn) {
+          submitBtn.click();
+        }
+      }
+    } catch (err) {
+      console.warn('Auto-login trigger error:', err);
+    }
+  };
+
   // Navigate between files in preview modal (Google Drive style)
   const handlePrevPreview = () => {
     if (!previewFile) return;
@@ -624,26 +676,60 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
       {/* ========================================================================= */}
       {viewMode === 'filebrowser' ? (
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
-          <div className={`px-4 py-2.5 border-b flex items-center justify-between text-xs font-mono shrink-0 flex-wrap gap-2 ${
+          <div className={`px-3.5 sm:px-4 py-2.5 border-b flex items-center justify-between text-xs font-mono shrink-0 flex-wrap gap-2 ${
             isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-[#18181c]/60 border-[#3a494b]/30 text-gray-300'
           }`}>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className={`w-2 h-2 rounded-full ${fileBrowserStatus === 'online' ? 'bg-emerald-500 animate-pulse' : fileBrowserStatus === 'checking' ? 'bg-amber-400 animate-ping' : 'bg-rose-500'}`} />
               <span className="font-semibold">File Browser (v2.63)</span>
-              <span className="text-[10px] text-on-surface-variant hidden sm:inline">• Go Container on Oracle Always Free VM 1 (Port 8080)</span>
+              
+              {/* Credentials Pill with 1-Click Copy */}
+              <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-md border text-[11px] font-mono ${
+                isLight ? 'bg-white border-slate-200 text-slate-700 shadow-2xs' : 'bg-white/5 border-white/10 text-gray-300'
+              }`}>
+                <Key className="w-3 h-3 text-sky-500 shrink-0" />
+                <span className="text-on-surface-variant">User:</span>
+                <code className={`font-bold ${isLight ? 'text-sky-700' : 'text-[#00dbe7]'}`}>admin</code>
+                <span className="text-on-surface-variant">• Pass:</span>
+                <code className={`font-bold ${isLight ? 'text-sky-700' : 'text-[#00dbe7]'}`}>SutharLabs2026!</code>
+                <button
+                  type="button"
+                  onClick={() => copyToClipboard('SutharLabs2026!', 'fb_pass')}
+                  title="Copy password"
+                  className="hover:text-sky-500 cursor-pointer ml-0.5"
+                >
+                  {copiedKey === 'fb_pass' ? <Check className="w-3 h-3 text-emerald-500 shrink-0" /> : <Copy className="w-3 h-3 shrink-0" />}
+                </button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
+
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+              {/* 1-Click Auto-Fill & Login */}
+              <button
+                type="button"
+                onClick={triggerFileBrowserAutoLogin}
+                className={`h-7 px-2.5 rounded text-[11px] font-mono border transition-all flex items-center gap-1 cursor-pointer font-bold select-none ${
+                  isLight
+                    ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-2xs'
+                    : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/40 shadow-2xs'
+                }`}
+              >
+                <Key className="w-3 h-3 shrink-0" />
+                <span>Auto-Fill & Login</span>
+              </button>
+
               <button
                 type="button"
                 onClick={() => setFileBrowserIframeKey(k => k + 1)}
                 title="Reload File Browser"
-                className={`h-7 px-2.5 rounded text-[11px] font-mono border transition-all flex items-center gap-1 cursor-pointer ${
+                className={`h-7 px-2 rounded text-[11px] font-mono border transition-all flex items-center gap-1 cursor-pointer ${
                   isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-white/10 text-on-surface border-white/10'
                 }`}
               >
                 <RefreshCw className="w-3 h-3 shrink-0" />
-                <span>Reload</span>
+                <span className="hidden sm:inline">Reload</span>
               </button>
+
               <button
                 type="button"
                 onClick={() => setViewMode('drive')}
@@ -651,15 +737,16 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                   isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-white/10 text-[#00dbe7] border-[#00dbe7]/30'
                 }`}
               >
-                Use Native Cloud Drive
+                Native Drive
               </button>
+
               <a
                 href="/filebrowser/login"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-sky-500 hover:underline flex items-center gap-1 font-bold text-xs"
               >
-                <span>External Tab</span>
+                <span>External</span>
                 <ExternalLink className="w-3.5 h-3.5 shrink-0" />
               </a>
             </div>
@@ -714,8 +801,10 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
             </div>
           ) : (
             <iframe
+              ref={iframeRef}
               key={fileBrowserIframeKey}
               src="/filebrowser/login"
+              onLoad={handleFileBrowserIframeLoad}
               title="File Browser"
               className="w-full flex-1 border-0"
               sandbox="allow-same-origin allow-scripts allow-forms allow-downloads allow-popups"
@@ -742,44 +831,65 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
           </div>
         )}
 
-        {/* Popular Drive Navigation & Standard + New Buttons */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+        {/* Popular Drive Navigation & Standard Action Buttons */}
+        <div className="space-y-3">
           
-          {/* Action buttons: New Upload + New Folder */}
-          <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              className={`h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-md select-none ${
-                isLight
-                  ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-sky-500/20'
-                  : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border border-[#00dbe7]/50 hover:border-[#00dbe7] shadow-[#00dbe7]/10'
-              }`}
-            >
-              <Plus className="w-4 h-4 shrink-0" />
-              <span>Upload</span>
-            </button>
+          {/* Top Row: Action Buttons (Upload + New Folder) + Storage Capacity Pill */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
+            {/* Standard Toolbar Buttons: h-8 px-3 rounded-lg text-xs font-mono font-bold */}
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex-1 sm:flex-initial h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs select-none ${
+                  isLight
+                    ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-sky-500/10'
+                    : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border border-[#00dbe7]/50 shadow-[#00dbe7]/10'
+                }`}
+              >
+                <Plus className="w-3.5 h-3.5 shrink-0" />
+                <span>Upload</span>
+              </button>
 
-            <button
-              type="button"
-              onClick={() => { setNewFolderName(''); setShowNewFolderModal(true); }}
-              className={`h-9 sm:h-10 px-3 sm:px-3.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer border shadow-sm select-none ${
-                isLight
-                  ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-                  : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
-              }`}
-            >
-              <FolderPlus className="w-4 h-4 shrink-0 text-sky-500" />
-              <span>New Folder</span>
-            </button>
+              <button
+                type="button"
+                onClick={() => { setNewFolderName(''); setShowNewFolderModal(true); }}
+                className={`flex-1 sm:flex-initial h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center justify-center gap-1.5 cursor-pointer border shadow-xs select-none ${
+                  isLight
+                    ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                    : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
+                }`}
+              >
+                <FolderPlus className="w-3.5 h-3.5 shrink-0 text-sky-500" />
+                <span>New Folder</span>
+              </button>
+            </div>
+
+            {/* Storage Capacity Pill */}
+            <div className={`p-1.5 px-3 rounded-xl border text-xs font-mono flex items-center justify-between sm:justify-start gap-2.5 w-full sm:w-auto shrink-0 ${
+              isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-surface-container-low/40 border-outline/15 text-gray-300'
+            }`}>
+              <div className="flex items-center gap-1.5">
+                <HardDrive className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                <span className="font-bold">{formatBytes(usedBytes)}</span>
+                <span className="text-[10px] text-on-surface-variant">of 50 GB used</span>
+              </div>
+              <div className="w-24 sm:w-28 h-1 bg-surface-container-highest rounded-full overflow-hidden shrink-0">
+                <div 
+                  className={`h-full transition-all duration-300 ${percentUsed > 85 ? 'bg-rose-500' : 'bg-sky-500'}`}
+                  style={{ width: `${Math.max(5, percentUsed)}%` }}
+                />
+              </div>
+            </div>
           </div>
 
-          {/* Drive Navigation Tabs: My Drive | Recent | Starred | Storage */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
+          {/* Drive Navigation Tabs: My Drive | Recent | Starred */}
+          {/* On mobile: 3 equal flex-1 buttons spanning 100% of screen with ZERO overflow */}
+          <div className="flex items-center gap-1.5 w-full sm:w-auto sm:inline-flex p-0.5 rounded-xl border bg-surface-container-low/20 border-outline/10">
             <button
               type="button"
               onClick={() => setActiveTab('my-drive')}
-              className={`h-8 px-3 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
+              className={`flex-1 sm:flex-initial h-8 px-2.5 sm:px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all min-w-0 ${
                 activeTab === 'my-drive'
                   ? isLight
                     ? 'bg-sky-50 text-sky-700 border border-sky-300 shadow-xs'
@@ -790,13 +900,13 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
               }`}
             >
               <HardDrive className="w-3.5 h-3.5 shrink-0" />
-              <span>My Drive</span>
+              <span className="truncate">Drive</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('recent')}
-              className={`h-8 px-3 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
+              className={`flex-1 sm:flex-initial h-8 px-2.5 sm:px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all min-w-0 ${
                 activeTab === 'recent'
                   ? isLight
                     ? 'bg-sky-50 text-sky-700 border border-sky-300 shadow-xs'
@@ -807,13 +917,13 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
               }`}
             >
               <Clock className="w-3.5 h-3.5 shrink-0" />
-              <span>Recent (24h)</span>
+              <span className="truncate">Recent</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveTab('starred')}
-              className={`h-8 px-3 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 cursor-pointer transition-all shrink-0 ${
+              className={`flex-1 sm:flex-initial h-8 px-2.5 sm:px-3 rounded-lg text-xs font-mono font-bold flex items-center justify-center gap-1.5 cursor-pointer transition-all min-w-0 ${
                 activeTab === 'starred'
                   ? isLight
                     ? 'bg-amber-50 text-amber-700 border border-amber-300 shadow-xs'
@@ -824,27 +934,8 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
               }`}
             >
               <Star className="w-3.5 h-3.5 shrink-0" />
-              <span>Starred ({starredIds.size})</span>
+              <span className="truncate">Starred{starredIds.size > 0 ? ` (${starredIds.size})` : ''}</span>
             </button>
-          </div>
-
-          {/* Storage Capacity Pill */}
-          <div className={`p-2 px-3 rounded-xl border text-xs font-mono flex items-center gap-2.5 shrink-0 ${
-            isLight ? 'bg-slate-50 border-slate-200 text-slate-700' : 'bg-surface-container-low/40 border-outline/15 text-gray-300'
-          }`}>
-            <HardDrive className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-bold">{formatBytes(usedBytes)}</span>
-                <span className="text-[10px] text-on-surface-variant">of 50 GB used</span>
-              </div>
-              <div className="w-28 h-1 bg-surface-container-highest rounded-full overflow-hidden mt-0.5">
-                <div 
-                  className={`h-full transition-all duration-300 ${percentUsed > 85 ? 'bg-rose-500' : 'bg-sky-500'}`}
-                  style={{ width: `${Math.max(5, percentUsed)}%` }}
-                />
-              </div>
-            </div>
           </div>
         </div>
 
@@ -1071,11 +1162,11 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         )}
 
         {/* Search Bar & Filter Toolbar */}
-        <div className={`p-3 sm:p-4 rounded-xl border transition-colors flex items-center justify-between gap-3 flex-wrap ${
+        <div className={`p-3 sm:p-4 rounded-xl border transition-colors flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-3 ${
           isLight ? 'bg-white border-slate-200 shadow-xs' : 'bg-surface-container-low/40 border-outline/15'
         }`}>
           {/* Search Box: "Search in Drive" */}
-          <div className="relative flex-1 min-w-[200px]">
+          <div className="relative w-full md:flex-1 md:min-w-[200px]">
             <Search className="w-4 h-4 text-on-surface-variant absolute left-3 top-1/2 -translate-y-1/2 shrink-0" />
             <input
               type="text"
@@ -1090,12 +1181,12 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
             />
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          <div className="flex items-center gap-2 w-full md:w-auto shrink-0 min-w-0">
             {/* Category Filter */}
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
+              className={`flex-1 md:flex-initial h-8 px-2 sm:px-2.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer truncate min-w-0 ${
                 isLight ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-[#201f21] border-[#3a494b]/40 text-[#e5e1e4]'
               }`}
             >
@@ -1109,7 +1200,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as any)}
-              className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer ${
+              className={`flex-1 md:flex-initial h-8 px-2 sm:px-2.5 rounded-lg text-xs font-mono border transition-colors cursor-pointer truncate min-w-0 ${
                 isLight ? 'bg-slate-100 border-slate-300 text-slate-800' : 'bg-[#201f21] border-[#3a494b]/40 text-[#e5e1e4]'
               }`}
             >
@@ -1118,8 +1209,8 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
               <option value="name">Name</option>
             </select>
 
-            {/* Layout Toggle: List vs Grid */}
-            <div className={`flex rounded-lg p-0.5 border text-xs ${
+            {/* Layout Toggle: List vs Grid (shrink-0 prevents right edge cut-off on mobile) */}
+            <div className={`flex rounded-lg p-0.5 border text-xs shrink-0 ${
               isLight ? 'bg-slate-100 border-slate-300' : 'bg-[#201f21] border-[#3a494b]/40'
             }`}>
               <button
