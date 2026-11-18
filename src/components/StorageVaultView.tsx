@@ -35,7 +35,9 @@ import {
   ChevronLeft,
   ChevronRight,
   Maximize2,
-  FileCheck
+  FileCheck,
+  Folder,
+  FolderInput
 } from 'lucide-react';
 import { VaultFileItem, VaultStatsResponse, TerminalLog } from '../types';
 import { 
@@ -44,7 +46,11 @@ import {
   uploadVaultFile, 
   deleteVaultFile, 
   getVaultDownloadUrl, 
-  formatBytes 
+  formatBytes,
+  fetchVaultFolders,
+  createVaultFolder,
+  deleteVaultFolder,
+  updateVaultFile
 } from '../services/vaultStorageService';
 import ConfirmModal, { ModalVariant } from './ConfirmModal';
 
@@ -78,6 +84,17 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   const [viewMode, setViewMode] = useState<'drive' | 'filebrowser'>('drive');
   const [activeTab, setActiveTab] = useState<'my-drive' | 'recent' | 'starred' | 'trash'>('my-drive');
   const [layoutMode, setLayoutMode] = useState<'list' | 'grid'>('list');
+
+  // Folder Organisation state
+  const [folders, setFolders] = useState<string[]>([]);
+  const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+  const [showNewFolderModal, setShowNewFolderModal] = useState<boolean>(false);
+  const [newFolderName, setNewFolderName] = useState<string>('');
+  const [isCreatingFolder, setIsCreatingFolder] = useState<boolean>(false);
+  const [moveModalFile, setMoveModalFile] = useState<VaultFileItem | null>(null);
+  const [targetMoveFolder, setTargetMoveFolder] = useState<string>('');
+  const [isMovingFile, setIsMovingFile] = useState<boolean>(false);
+  const [fileBrowserIframeKey, setFileBrowserIframeKey] = useState<number>(0);
 
   // Data state
   const [stats, setStats] = useState<VaultStatsResponse | null>(null);
@@ -151,14 +168,24 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
     setError(null);
 
     try {
-      const [statsData, filesData] = await Promise.all([
+      const [statsData, filesData, foldersData] = await Promise.all([
         fetchVaultStats(userToken),
-        fetchVaultFiles(userToken)
+        fetchVaultFiles(userToken),
+        fetchVaultFolders(userToken).catch(() => [])
       ]);
       setStats(statsData);
       setFiles(filesData);
+
+      const folderSet = new Set<string>(foldersData || []);
+      filesData.forEach(f => {
+        if (f.folder && f.folder.trim()) {
+          folderSet.add(f.folder.trim());
+        }
+      });
+      setFolders(Array.from(folderSet).sort());
+
       if (isRefresh) {
-        addLog('DRIVE', 'Drive files and storage capacity synchronized.', 'SUCCESS');
+        addLog('DRIVE', 'Drive files, folders, and storage capacity synchronized.', 'SUCCESS');
       }
     } catch (err: any) {
       console.error('Failed to load drive data:', err);
@@ -173,6 +200,87 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   useEffect(() => {
     loadVaultData();
   }, [loadVaultData]);
+
+  const handleCreateFolder = async () => {
+    const trimmed = newFolderName.trim().replace(/[^a-zA-Z0-9 _-]/g, '');
+    if (!trimmed) return;
+    setIsCreatingFolder(true);
+    try {
+      await createVaultFolder(trimmed, userToken);
+      setFolders(prev => Array.from(new Set([...prev, trimmed])).sort());
+      addLog('DRIVE', `Created folder "${trimmed}".`, 'SUCCESS');
+      setNewFolderName('');
+      setShowNewFolderModal(false);
+    } catch (err: any) {
+      console.error('Failed to create folder:', err);
+      setModalConfig({
+        isOpen: true,
+        title: 'Folder Creation Failed',
+        message: err.message || 'Could not create folder in Cloud Drive.',
+        variant: 'danger',
+        isAlert: true,
+        confirmLabel: 'Dismiss',
+        onConfirm: () => setModalConfig(null)
+      });
+    } finally {
+      setIsCreatingFolder(false);
+    }
+  };
+
+  const promptDeleteFolder = (folderName: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const count = files.filter(f => f.folder === folderName).length;
+    setModalConfig({
+      isOpen: true,
+      title: 'Delete Folder',
+      message: `Delete folder "${folderName}"?`,
+      subtext: count > 0 
+        ? `${count} file(s) currently inside this folder will be moved back to My Drive root. No files will be permanently deleted.` 
+        : 'This folder is empty.',
+      confirmLabel: 'Delete Folder',
+      cancelLabel: 'Cancel',
+      variant: 'warning',
+      onConfirm: async () => {
+        setModalConfig(null);
+        try {
+          await deleteVaultFolder(folderName, userToken);
+          setFolders(prev => prev.filter(f => f !== folderName));
+          if (currentFolder === folderName) {
+            setCurrentFolder(null);
+          }
+          await loadVaultData(true);
+          addLog('DRIVE', `Deleted folder "${folderName}".`, 'SUCCESS');
+        } catch (err: any) {
+          console.error('Failed to delete folder:', err);
+        }
+      }
+    });
+  };
+
+  const handleMoveFile = async () => {
+    if (!moveModalFile) return;
+    setIsMovingFile(true);
+    try {
+      const dest = targetMoveFolder.trim();
+      await updateVaultFile(moveModalFile.id, { folder: dest }, userToken);
+      addLog('DRIVE', `Moved "${moveModalFile.originalName}" to ${dest ? `folder "${dest}"` : 'My Drive Root'}.`, 'SUCCESS');
+      setMoveModalFile(null);
+      await loadVaultData(true);
+    } catch (err: any) {
+      console.error('Failed to move file:', err);
+      setModalConfig({
+        isOpen: true,
+        title: 'Move Failed',
+        message: err.message || 'Could not move file to selected folder.',
+        variant: 'danger',
+        isAlert: true,
+        confirmLabel: 'Dismiss',
+        onConfirm: () => setModalConfig(null)
+      });
+    } finally {
+      setIsMovingFile(false);
+    }
+  };
 
   const toggleStar = (id: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
@@ -215,10 +323,12 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
     setIsUploading(true);
     setUploadProgress(0);
     try {
-      addLog('DRIVE', `Starting upload for "${selectedFile.name}" (${formatBytes(selectedFile.size)})...`, 'INFO');
+      const targetFolder = currentFolder || '';
+      addLog('DRIVE', `Starting upload for "${selectedFile.name}" (${formatBytes(selectedFile.size)})${targetFolder ? ` to folder "${targetFolder}"` : ''}...`, 'INFO');
       const uploaded = await uploadVaultFile(
         selectedFile,
         selectedCategory,
+        targetFolder,
         userToken,
         (percent) => setUploadProgress(percent)
       );
@@ -379,7 +489,8 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
       .filter((file) => {
         const matchesSearch = 
           file.originalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          file.checksum.toLowerCase().includes(searchQuery.toLowerCase());
+          file.checksum.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (file.folder && file.folder.toLowerCase().includes(searchQuery.toLowerCase()));
         const matchesCategory = categoryFilter === 'ALL' || file.category === categoryFilter;
         
         let matchesTab = true;
@@ -389,6 +500,15 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
           const uploadTime = new Date(file.uploadedAt).getTime();
           const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
           matchesTab = uploadTime >= oneDayAgo;
+        } else if (activeTab === 'my-drive') {
+          // If search is empty, filter by folder hierarchy
+          if (!searchQuery.trim()) {
+            if (currentFolder === null) {
+              matchesTab = !file.folder || file.folder.trim() === '';
+            } else {
+              matchesTab = file.folder === currentFolder;
+            }
+          }
         }
 
         return matchesSearch && matchesCategory && matchesTab;
@@ -408,7 +528,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         }
         return 0;
       });
-  }, [files, searchQuery, categoryFilter, activeTab, starredIds, sortBy, sortOrder]);
+  }, [files, searchQuery, categoryFilter, activeTab, starredIds, currentFolder, sortBy, sortOrder]);
 
   const usedBytes = stats?.totalVaultBytes || files.reduce((acc, f) => acc + f.size, 0);
   const totalCapacityBytes = stats?.disk.totalBytes || (50 * 1024 * 1024 * 1024);
@@ -515,6 +635,17 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => setFileBrowserIframeKey(k => k + 1)}
+                title="Reload File Browser"
+                className={`h-7 px-2.5 rounded text-[11px] font-mono border transition-all flex items-center gap-1 cursor-pointer ${
+                  isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-white/10 text-on-surface border-white/10'
+                }`}
+              >
+                <RefreshCw className="w-3 h-3 shrink-0" />
+                <span>Reload</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => setViewMode('drive')}
                 className={`h-7 px-2.5 rounded text-[11px] font-mono border transition-all cursor-pointer ${
                   isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-white/10 text-[#00dbe7] border-[#00dbe7]/30'
@@ -583,6 +714,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
             </div>
           ) : (
             <iframe
+              key={fileBrowserIframeKey}
               src="/filebrowser/login"
               title="File Browser"
               className="w-full flex-1 border-0"
@@ -592,7 +724,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         </div>
       ) : (
         /* VIEW MODE 2: SUTHARLABS NATIVE CLOUD DRIVE */
-        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-6 space-y-4 sm:space-y-5 max-w-full">
         
         {/* Error Alert Banner */}
         {error && (
@@ -610,22 +742,35 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
           </div>
         )}
 
-        {/* Popular Drive Navigation & Standard + New Dropdown */}
+        {/* Popular Drive Navigation & Standard + New Buttons */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           
-          {/* + New Button with Upload Trigger */}
-          <div className="relative inline-block text-left shrink-0">
+          {/* Action buttons: New Upload + New Folder */}
+          <div className="flex items-center gap-2 shrink-0">
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              className={`h-10 px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-2 cursor-pointer shadow-md select-none ${
+              className={`h-9 sm:h-10 px-3.5 sm:px-4 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 sm:gap-2 cursor-pointer shadow-md select-none ${
                 isLight
                   ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-sky-500/20'
                   : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border border-[#00dbe7]/50 hover:border-[#00dbe7] shadow-[#00dbe7]/10'
               }`}
             >
               <Plus className="w-4 h-4 shrink-0" />
-              <span>New Upload</span>
+              <span>Upload</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setNewFolderName(''); setShowNewFolderModal(true); }}
+              className={`h-9 sm:h-10 px-3 sm:px-3.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider transition-all flex items-center gap-1.5 cursor-pointer border shadow-sm select-none ${
+                isLight
+                  ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                  : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
+              }`}
+            >
+              <FolderPlus className="w-4 h-4 shrink-0 text-sky-500" />
+              <span>New Folder</span>
             </button>
           </div>
 
@@ -720,7 +865,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                     {selectedFile.name}
                   </div>
                   <div className="text-xs text-on-surface-variant font-mono mt-0.5">
-                    {formatBytes(selectedFile.size)} • Destination: <span className="text-sky-500 font-bold">{selectedCategory}</span>
+                    {formatBytes(selectedFile.size)} • Destination: <span className="text-sky-500 font-bold">{selectedCategory}</span> • Folder: <span className="text-sky-500 font-bold">{currentFolder || 'Root'}</span>
                   </div>
                 </div>
               </div>
@@ -831,6 +976,96 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
               >
                 Select Files to Upload
               </button>
+            </div>
+          </div>
+        )}
+
+        {/* Breadcrumb Trail when inside folder */}
+        {activeTab === 'my-drive' && currentFolder && (
+          <div className={`p-2.5 sm:p-3 rounded-xl border flex items-center justify-between gap-2 text-xs font-mono transition-colors ${
+            isLight ? 'bg-sky-50/70 border-sky-200 text-slate-700' : 'bg-[#00dbe7]/5 border-[#00dbe7]/20 text-[#e5e1e4]'
+          }`}>
+            <div className="flex items-center gap-1.5 flex-wrap min-w-0">
+              <button
+                type="button"
+                onClick={() => setCurrentFolder(null)}
+                className="hover:underline flex items-center gap-1 font-bold text-sky-500 cursor-pointer"
+              >
+                <HardDrive className="w-3.5 h-3.5 shrink-0" />
+                <span>My Drive</span>
+              </button>
+              <ChevronRight className="w-3.5 h-3.5 text-on-surface-variant shrink-0" />
+              <div className="flex items-center gap-1.5 font-bold text-on-surface truncate">
+                <Folder className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                <span className="truncate">{currentFolder}</span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => setCurrentFolder(null)}
+              className={`h-7 px-2.5 rounded-lg text-[11px] font-mono border transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-white/10 text-on-surface border-white/10'
+              }`}
+            >
+              <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
+              <span>Up to Root</span>
+            </button>
+          </div>
+        )}
+
+        {/* Folders Section when in My Drive root and not searching */}
+        {activeTab === 'my-drive' && currentFolder === null && !searchQuery.trim() && folders.length > 0 && (
+          <div className="space-y-2.5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
+                <Folder className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                <span>Folders ({folders.length})</span>
+              </span>
+              <button
+                type="button"
+                onClick={() => { setNewFolderName(''); setShowNewFolderModal(true); }}
+                className="text-[11px] font-mono text-sky-500 hover:underline flex items-center gap-1 cursor-pointer font-bold"
+              >
+                <Plus className="w-3 h-3 shrink-0" />
+                <span>New Folder</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+              {folders.map((folder) => {
+                const folderFileCount = files.filter(f => f.folder === folder).length;
+                return (
+                  <div
+                    key={folder}
+                    onClick={() => setCurrentFolder(folder)}
+                    className={`p-3 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-all group ${
+                      isLight
+                        ? 'bg-white border-slate-200 hover:border-sky-300 hover:shadow-xs shadow-xs text-slate-800'
+                        : 'bg-surface-container-low/40 border-outline/15 hover:border-[#00dbe7]/40 hover:bg-white/[0.03] text-[#e5e1e4]'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Folder className="w-4 h-4 text-sky-500 shrink-0 group-hover:scale-110 transition-transform" />
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold truncate group-hover:text-sky-500 transition-colors" title={folder}>
+                          {folder}
+                        </div>
+                        <div className="text-[10px] text-on-surface-variant font-mono">
+                          {folderFileCount} {folderFileCount === 1 ? 'file' : 'files'}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(e) => promptDeleteFolder(folder, e)}
+                      title="Delete folder"
+                      className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-rose-500/10 text-rose-400 cursor-pointer transition-opacity shrink-0"
+                    >
+                      <Trash2 className="w-3 h-3 shrink-0" />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
@@ -983,6 +1218,17 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                     </button>
                     <button
                       type="button"
+                      onClick={() => {
+                        setMoveModalFile(file);
+                        setTargetMoveFolder(file.folder || '');
+                      }}
+                      title="Move to Folder"
+                      className="p-1 rounded hover:bg-white/10 cursor-pointer text-on-surface-variant hover:text-sky-500"
+                    >
+                      <FolderInput className="w-3.5 h-3.5 shrink-0" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => shareFileLink(file)}
                       title="Share link"
                       className="p-1 rounded hover:bg-white/10 cursor-pointer"
@@ -1020,8 +1266,8 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
             {/* Mobile Touch Cards View (sm:hidden) */}
             <div className="sm:hidden divide-y divide-outline/10">
               {filteredFiles.map((file) => (
-                <div key={file.id} className="p-3.5 flex flex-col gap-2.5">
-                  <div className="flex items-start justify-between gap-2">
+                <div key={file.id} className="p-3 flex flex-col gap-2 max-w-full overflow-hidden">
+                  <div className="flex items-start justify-between gap-2 min-w-0">
                     <div 
                       onClick={() => setPreviewFile(file)}
                       className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group"
@@ -1031,14 +1277,20 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                       }`}>
                         {getFileIcon(file.mimeType, file.originalName)}
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-xs text-on-surface truncate font-sans group-hover:text-sky-500 transition-colors">
+                      <div className="min-w-0 flex-1 overflow-hidden">
+                        <div className="font-semibold text-xs text-on-surface truncate font-sans group-hover:text-sky-500 transition-colors" title={file.originalName}>
                           {file.originalName}
                         </div>
-                        <div className="text-[10px] text-on-surface-variant font-mono mt-0.5 flex items-center gap-2">
+                        <div className="text-[10px] text-on-surface-variant font-mono mt-0.5 flex items-center gap-1.5 truncate">
                           <span>{formatBytes(file.size)}</span>
                           <span>•</span>
                           <span>{file.category || 'General'}</span>
+                          {file.folder && (
+                            <>
+                              <span>•</span>
+                              <span className="text-sky-500 font-bold truncate">{file.folder}</span>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1051,43 +1303,59 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                     </button>
                   </div>
 
-                  <div className="flex items-center justify-between text-[10px] font-mono text-on-surface-variant pt-1 border-t border-outline/10">
-                    <span>{new Date(file.uploadedAt).toLocaleDateString()}</span>
-                    <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center justify-between text-[10px] font-mono text-on-surface-variant pt-1.5 border-t border-outline/10 gap-2 min-w-0">
+                    <span className="shrink-0">{new Date(file.uploadedAt).toLocaleDateString()}</span>
+                    <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
                         onClick={() => setPreviewFile(file)}
-                        className={`h-7 px-2 rounded text-[10px] font-mono border flex items-center gap-1 cursor-pointer ${
-                          isLight ? 'bg-sky-50 text-sky-700 border-sky-300' : 'bg-sky-500/10 text-sky-400 border-sky-500/30'
+                        title="Preview"
+                        className={`h-7 w-7 rounded border flex items-center justify-center cursor-pointer transition-colors ${
+                          isLight ? 'bg-sky-50 text-sky-700 border-sky-300 hover:bg-sky-100' : 'bg-sky-500/10 text-sky-400 border-sky-500/30 hover:bg-sky-500/20'
                         }`}
                       >
-                        <Eye className="w-3 h-3 shrink-0" />
-                        <span>Preview</span>
+                        <Eye className="w-3.5 h-3.5 shrink-0" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMoveModalFile(file);
+                          setTargetMoveFolder(file.folder || '');
+                        }}
+                        title="Move to Folder"
+                        className={`h-7 w-7 rounded border flex items-center justify-center cursor-pointer transition-colors ${
+                          isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-white/5 hover:bg-white/10 text-on-surface border-white/10'
+                        }`}
+                      >
+                        <FolderInput className="w-3.5 h-3.5 shrink-0" />
                       </button>
                       <a
                         href={getVaultDownloadUrl(file.id, userToken)}
                         download={file.originalName}
-                        className={`h-7 px-2 rounded text-[10px] font-mono border flex items-center gap-1 cursor-pointer ${
-                          isLight ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-white/5 text-on-surface border-white/10'
+                        title="Download"
+                        className={`h-7 w-7 rounded border flex items-center justify-center cursor-pointer transition-colors ${
+                          isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-white/5 hover:bg-white/10 text-on-surface border-white/10'
                         }`}
                       >
-                        <Download className="w-3 h-3 shrink-0" />
+                        <Download className="w-3.5 h-3.5 shrink-0" />
                       </a>
                       <button
                         type="button"
                         onClick={() => shareFileLink(file)}
-                        className={`h-7 w-7 rounded border flex items-center justify-center cursor-pointer ${
-                          isLight ? 'bg-slate-100 text-slate-700 border-slate-300' : 'bg-white/5 text-on-surface border-white/10'
+                        title="Share link"
+                        className={`h-7 w-7 rounded border flex items-center justify-center cursor-pointer transition-colors ${
+                          isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-white/5 hover:bg-white/10 text-on-surface border-white/10'
                         }`}
                       >
-                        {shareFeedback === file.id ? <Check className="w-3 h-3 text-emerald-400 shrink-0" /> : <Share2 className="w-3 h-3 shrink-0" />}
+                        {shareFeedback === file.id ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <Share2 className="w-3.5 h-3.5 shrink-0" />}
                       </button>
                       <button
                         type="button"
                         onClick={() => promptDeleteFile(file)}
-                        className="h-7 w-7 rounded border flex items-center justify-center bg-rose-500/10 border-rose-500/30 text-rose-400 cursor-pointer"
+                        title="Delete"
+                        className="h-7 w-7 rounded border flex items-center justify-center bg-rose-500/10 hover:bg-rose-500/20 border-rose-500/30 text-rose-400 cursor-pointer transition-colors"
                       >
-                        <Trash2 className="w-3 h-3 shrink-0" />
+                        <Trash2 className="w-3.5 h-3.5 shrink-0" />
                       </button>
                     </div>
                   </div>
@@ -1203,6 +1471,23 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                           >
                             <Eye className="w-3 h-3 shrink-0" />
                             <span className="hidden sm:inline">Preview</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setMoveModalFile(file);
+                              setTargetMoveFolder(file.folder || '');
+                            }}
+                            title="Move to Folder"
+                            className={`h-7 px-2 rounded text-[10px] font-mono border transition-all flex items-center gap-1 cursor-pointer select-none shadow-xs ${
+                              isLight
+                                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                            }`}
+                          >
+                            <FolderInput className="w-3 h-3 shrink-0" />
+                            <span className="hidden lg:inline">Move</span>
                           </button>
 
                           <button
@@ -1550,17 +1835,177 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         </div>
       )}
 
-      {/* Floating Action Button (FAB) for Mobile Quick Upload */}
-      <div className="sm:hidden fixed bottom-6 right-6 z-40">
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          aria-label="New Upload"
-          className="w-14 h-14 rounded-full bg-sky-500 text-white shadow-2xl flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+      {/* Modal 1: Create New Folder Modal */}
+      {showNewFolderModal && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setShowNewFolderModal(false)}
         >
-          <Plus className="w-7 h-7 shrink-0" />
-        </button>
-      </div>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className={`relative w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden transition-all animate-in zoom-in-95 duration-150 ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]'
+            }`}
+          >
+            <div className="h-1 w-full bg-[#00dbe7] shrink-0" />
+            <div className="p-5 sm:p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${
+                  isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-primary/10 border-primary/25 text-[#00dbe7]'
+                }`}>
+                  <FolderPlus className="w-5 h-5 shrink-0" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-on-surface font-sans">New Folder</h3>
+                  <p className="text-xs text-on-surface-variant font-mono mt-0.5">Organize your files in Cloud Drive</p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono text-on-surface-variant font-medium">Folder Name</label>
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="e.g. Invoices, Projects, Backups"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateFolder();
+                    if (e.key === 'Escape') setShowNewFolderModal(false);
+                  }}
+                  className={`w-full h-9 px-3 rounded-lg text-xs font-mono border transition-colors outline-hidden ${
+                    isLight
+                      ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-sky-500'
+                      : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] placeholder:text-gray-500 focus:border-[#00dbe7]'
+                  }`}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowNewFolderModal(false)}
+                  className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border ${
+                    isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateFolder}
+                  disabled={!newFolderName.trim() || isCreatingFolder}
+                  className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isLight
+                      ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                      : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border-[#00dbe7]/50'
+                  }`}
+                >
+                  {isCreatingFolder ? <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" /> : <FolderPlus className="w-3.5 h-3.5 shrink-0" />}
+                  <span>Create</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 2: Move File to Folder Modal */}
+      {moveModalFile && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setMoveModalFile(null)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className={`relative w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden transition-all animate-in zoom-in-95 duration-150 ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]'
+            }`}
+          >
+            <div className="h-1 w-full bg-[#00dbe7] shrink-0" />
+            <div className="p-5 sm:p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${
+                  isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-primary/10 border-primary/25 text-[#00dbe7]'
+                }`}>
+                  <FolderInput className="w-5 h-5 shrink-0" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-on-surface font-sans truncate">Move File</h3>
+                  <p className="text-xs text-on-surface-variant font-mono mt-0.5 truncate" title={moveModalFile.originalName}>
+                    "{moveModalFile.originalName}"
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono text-on-surface-variant font-medium">Select Destination</label>
+                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                  <div
+                    onClick={() => setTargetMoveFolder('')}
+                    className={`p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
+                      targetMoveFolder === ''
+                        ? isLight
+                          ? 'bg-sky-50 border-sky-300 text-sky-700 font-bold'
+                          : 'bg-[#00dbe7]/15 border-[#00dbe7]/40 text-[#00dbe7] font-bold'
+                        : isLight
+                          ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                          : 'bg-white/5 border-white/10 hover:bg-white/10 text-on-surface'
+                    }`}
+                  >
+                    <HardDrive className="w-4 h-4 shrink-0" />
+                    <span className="text-xs font-mono">My Drive (Root)</span>
+                  </div>
+
+                  {folders.map(folder => (
+                    <div
+                      key={folder}
+                      onClick={() => setTargetMoveFolder(folder)}
+                      className={`p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
+                        targetMoveFolder === folder
+                          ? isLight
+                            ? 'bg-sky-50 border-sky-300 text-sky-700 font-bold'
+                            : 'bg-[#00dbe7]/15 border-[#00dbe7]/40 text-[#00dbe7] font-bold'
+                          : isLight
+                            ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                            : 'bg-white/5 border-white/10 hover:bg-white/10 text-on-surface'
+                      }`}
+                    >
+                      <Folder className="w-4 h-4 shrink-0 text-sky-500" />
+                      <span className="text-xs font-mono truncate">{folder}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setMoveModalFile(null)}
+                  className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border ${
+                    isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleMoveFile}
+                  disabled={isMovingFile}
+                  className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isLight
+                      ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                      : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border-[#00dbe7]/50'
+                  }`}
+                >
+                  {isMovingFile ? <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" /> : <FolderInput className="w-3.5 h-3.5 shrink-0" />}
+                  <span>Move</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Confirmation & Alert Modal */}
       {modalConfig && (

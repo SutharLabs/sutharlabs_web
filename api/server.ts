@@ -35,6 +35,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const search = urlObj.searchParams.toString();
     targetPath = `/storage/${storagePath}${search ? '?' + search : ''}`;
     req.url = targetPath;
+  } else if (req.query && req.query.filebrowserPath !== undefined) {
+    const fbPath = Array.isArray(req.query.filebrowserPath) ? req.query.filebrowserPath[0] : req.query.filebrowserPath;
+    const urlObj = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    urlObj.searchParams.delete('filebrowserPath');
+    const search = urlObj.searchParams.toString();
+    targetPath = `/filebrowser${fbPath ? '/' + fbPath : ''}${search ? '?' + search : ''}`;
+    req.url = targetPath;
   } else if (req.url && req.url.startsWith('/api/server')) {
     targetPath = req.url.replace('/api/server', '/api');
     req.url = targetPath;
@@ -123,6 +130,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }
       });
       res.setHeader('x-backend-provider', 'oracle-vm');
+      if (targetPath.startsWith('/filebrowser')) {
+        res.setHeader('x-frame-options', 'SAMEORIGIN');
+      }
       res.status(proxyRes.status);
 
       const resContentType = proxyRes.headers.get('content-type') || '';

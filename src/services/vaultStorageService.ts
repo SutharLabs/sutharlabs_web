@@ -33,6 +33,7 @@ export async function fetchVaultFiles(token?: string): Promise<VaultFileItem[]> 
 export async function uploadVaultFile(
   file: File, 
   category: string = 'General', 
+  folder: string = '',
   token?: string,
   onProgress?: (percent: number) => void
 ): Promise<VaultFileItem> {
@@ -40,9 +41,9 @@ export async function uploadVaultFile(
   // Uploads are processed with 3x parallel streams for saturating mobile 5G bandwidth
   const CHUNK_SIZE = Math.floor(2.5 * 1024 * 1024); // 2.5 MB chunks
   if (file.size > CHUNK_SIZE) {
-    return uploadChunkedFile(file, category, token, onProgress);
+    return uploadChunkedFile(file, category, folder, token, onProgress);
   }
-  return uploadSingleFile(file, category, token, onProgress);
+  return uploadSingleFile(file, category, folder, token, onProgress);
 }
 
 /**
@@ -51,6 +52,7 @@ export async function uploadVaultFile(
 async function uploadSingleFile(
   file: File,
   category: string = 'General',
+  folder: string = '',
   token?: string,
   onProgress?: (percent: number) => void
 ): Promise<VaultFileItem> {
@@ -59,6 +61,9 @@ async function uploadSingleFile(
     const formData = new FormData();
     formData.append('file', file);
     formData.append('category', category);
+    if (folder) {
+      formData.append('folder', folder);
+    }
 
     xhr.open('POST', '/api/vault/upload', true);
     if (token) {
@@ -108,6 +113,7 @@ async function uploadSingleFile(
 async function uploadChunkedFile(
   file: File,
   category: string = 'General',
+  folder: string = '',
   token?: string,
   onProgress?: (percent: number) => void
 ): Promise<VaultFileItem> {
@@ -156,6 +162,7 @@ async function uploadChunkedFile(
             fileType: file.type || 'application/octet-stream',
             totalSize: file.size,
             category,
+            folder,
             token,
             onChunkProgress: (bytesInChunk) => {
               loadedBytes[chunkIndex] = Math.min(bytesInChunk, chunkTotalBytes);
@@ -193,6 +200,7 @@ async function uploadChunkedFile(
     fileType: file.type || 'application/octet-stream',
     totalSize: file.size,
     category,
+    folder,
     token
   });
 
@@ -210,6 +218,7 @@ async function completeChunkedUpload(params: {
   fileType: string;
   totalSize: number;
   category: string;
+  folder?: string;
   token?: string;
 }): Promise<VaultFileItem> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -260,6 +269,7 @@ function uploadSingleChunk(params: {
   fileType: string;
   totalSize: number;
   category: string;
+  folder?: string;
   token?: string;
   onChunkProgress?: (bytesLoaded: number) => void;
 }): Promise<{ success: boolean; file?: VaultFileItem; [key: string]: any }> {
@@ -274,6 +284,9 @@ function uploadSingleChunk(params: {
     formData.append('fileType', params.fileType);
     formData.append('totalSize', String(params.totalSize));
     formData.append('category', params.category);
+    if (params.folder) {
+      formData.append('folder', params.folder);
+    }
 
     xhr.open('POST', '/api/vault/upload-chunk', true);
     if (params.token) {
@@ -313,6 +326,72 @@ function uploadSingleChunk(params: {
     xhr.timeout = 90000; // 90 seconds timeout per chunk
     xhr.send(formData);
   });
+}
+
+export async function fetchVaultFolders(token?: string): Promise<string[]> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/vault/folders', { headers });
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to fetch vault folders (HTTP ${res.status})`);
+  }
+  const data = await res.json();
+  return data.folders || [];
+}
+
+export async function createVaultFolder(name: string, token?: string): Promise<{ success: boolean; folder: string }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/vault/folders', {
+    method: 'POST',
+    headers,
+    body: JSON.stringify({ name })
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Failed to create folder (HTTP ${res.status})`);
+  }
+  return data;
+}
+
+export async function deleteVaultFolder(name: string, token?: string): Promise<void> {
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`/api/vault/folders/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+    headers
+  });
+
+  if (!res.ok) {
+    const errorData = await res.json().catch(() => ({}));
+    throw new Error(errorData.error || `Failed to delete folder (HTTP ${res.status})`);
+  }
+}
+
+export async function updateVaultFile(
+  id: string, 
+  updates: { folder?: string; category?: string; originalName?: string },
+  token?: string
+): Promise<VaultFileItem> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(`/api/vault/files/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify(updates)
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Failed to update file metadata (HTTP ${res.status})`);
+  }
+  return data.file;
 }
 
 export async function deleteVaultFile(id: string, token?: string): Promise<void> {

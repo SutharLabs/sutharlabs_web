@@ -4105,6 +4105,7 @@ app.post("/api/vault/upload", authenticateToken, requireAdmin, (req: any, res: a
     formData.append("file", blob, req.file.originalname);
 
     if (req.body.category) formData.append("category", req.body.category);
+    if (req.body.folder) formData.append("folder", req.body.folder);
 
 
 
@@ -4209,7 +4210,7 @@ app.post("/api/vault/upload-chunk", authenticateToken, requireAdmin, (req: any, 
 
 // POST /api/vault/complete-chunk-upload - High-speed parallel chunk assembly and line-rate VCN transmission to VM 1
 app.post("/api/vault/complete-chunk-upload", authenticateToken, requireAdmin, async (req: any, res: any) => {
-  const { uploadId, totalChunks, fileName, fileType, category } = req.body;
+  const { uploadId, totalChunks, fileName, fileType, category, folder } = req.body;
 
   if (!uploadId || !totalChunks) {
     return res.status(400).json({ error: "Missing uploadId or totalChunks for assembly." });
@@ -4264,6 +4265,7 @@ app.post("/api/vault/complete-chunk-upload", authenticateToken, requireAdmin, as
     const formData = new FormData();
     formData.append("file", fileBlob, fileName || "uploaded_file");
     if (category) formData.append("category", category);
+    if (folder) formData.append("folder", folder);
 
     let response: any;
     try {
@@ -4370,6 +4372,70 @@ app.get("/api/vault/download/:id", async (req: any, res: any) => {
 
 
 
+// GET /api/vault/folders - List all folders in vault
+app.get("/api/vault/folders", authenticateToken, requireAdmin, async (_req: any, res: any) => {
+  try {
+    const response = await fetch(`${ORACLE_VAULT_URL}/api/folders`, {
+      headers: { "x-vault-token": ORACLE_VAULT_SECRET }
+    });
+    const data = await response.json();
+    res.json(data);
+  } catch (err: any) {
+    res.status(502).json({ error: "Failed to list vault folders from Oracle VM", details: err.message });
+  }
+});
+
+// POST /api/vault/folders - Create new folder in vault
+app.post("/api/vault/folders", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const response = await fetch(`${ORACLE_VAULT_URL}/api/folders`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-vault-token": ORACLE_VAULT_SECRET
+      },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err: any) {
+    res.status(502).json({ error: "Failed to create vault folder on Oracle VM", details: err.message });
+  }
+});
+
+// DELETE /api/vault/folders/:name - Delete folder from vault
+app.delete("/api/vault/folders/:name", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const response = await fetch(`${ORACLE_VAULT_URL}/api/folders/${encodeURIComponent(req.params.name)}`, {
+      method: "DELETE",
+      headers: { "x-vault-token": ORACLE_VAULT_SECRET }
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err: any) {
+    res.status(502).json({ error: "Failed to delete vault folder on Oracle VM", details: err.message });
+  }
+});
+
+// PATCH /api/vault/files/:id - Update file metadata (folder, category, rename)
+app.patch("/api/vault/files/:id", authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const fileId = req.params.id;
+    const response = await fetch(`${ORACLE_VAULT_URL}/api/files/${encodeURIComponent(fileId)}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-vault-token": ORACLE_VAULT_SECRET
+      },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err: any) {
+    res.status(502).json({ error: "Failed to update vault file on Oracle VM", details: err.message });
+  }
+});
+
 // DELETE /api/vault/files/:id - Delete file from vault
 
 app.delete("/api/vault/files/:id", authenticateToken, requireAdmin, async (req: any, res: any) => {
@@ -4426,6 +4492,8 @@ app.use("/filebrowser", async (req: any, res: any) => {
         res.setHeader(key, val);
       }
     });
+    res.removeHeader("x-frame-options");
+    res.setHeader("X-Frame-Options", "SAMEORIGIN");
     res.status(proxyRes.status);
     if (proxyRes.body) {
       const { Readable } = await import("stream");

@@ -48,6 +48,7 @@ export interface VaultFileItem {
   checksum: string;
   uploadedAt: string;
   category?: string;
+  folder?: string;
 }
 
 export interface VaultDiskStats {
