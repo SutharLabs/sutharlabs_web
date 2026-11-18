@@ -4470,9 +4470,22 @@ app.delete("/api/vault/files/:id", authenticateToken, requireAdmin, async (req: 
 app.use("/filebrowser", async (req: any, res: any) => {
   try {
     const targetUrl = `${ORACLE_VAULT_URL}/filebrowser${req.url}`;
+    const hopByHopHeaders = new Set([
+      "connection",
+      "keep-alive",
+      "proxy-authenticate",
+      "proxy-authorization",
+      "te",
+      "trailer",
+      "transfer-encoding",
+      "upgrade",
+      "host",
+      "content-length"
+    ]);
     const headers: Record<string, string> = {};
     for (const [k, v] of Object.entries(req.headers)) {
-      if (k.toLowerCase() !== "host") {
+      const lower = k.toLowerCase();
+      if (!hopByHopHeaders.has(lower)) {
         headers[k] = Array.isArray(v) ? v.join(", ") : String(v);
       }
     }
@@ -4504,7 +4517,8 @@ app.use("/filebrowser", async (req: any, res: any) => {
       res.end();
     }
   } catch (err: any) {
-    res.status(502).json({ error: "File Browser gateway error", details: err.message });
+    console.error("[FileBrowser Proxy Error]", err?.message || err, err?.cause);
+    res.status(502).json({ error: "File Browser gateway error", details: err.message, cause: err?.cause?.message });
   }
 });
 
