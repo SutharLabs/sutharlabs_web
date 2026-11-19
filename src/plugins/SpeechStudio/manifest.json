@@ -1,12 +1,12 @@
 {
   "id": "speech-studio",
-  "name": "Speech Studio (Production Enterprise Edition)",
-  "version": "1.0.0",
+  "name": "Speech Studio",
+  "version": "0.3.3",
   "category": "AI & Multimedia",
   "type": "Native",
-  "description": "Production-grade Neural Text-to-Speech & Zero-Shot Voice Cloning engine. Features Kokoro-82M SOTA voices, Piper ultra-low latency models, F5-TTS flow matching, and voice blending.",
+  "description": "Multilingual Neural Text-to-Speech synthesizer supporting Hindi (हिंदी) and English with voice modulation, waveform telemetry, and tiered rate-limiting.",
   "iconSymbol": "record_voice_over",
   "main": "index.ts",
   "minEngineVersion": "0.1.0",
-  "packagedAt": "2026-11-09T14:20:55.313Z"
+  "packagedAt": "2026-11-19T06:54:37.107Z"
 }

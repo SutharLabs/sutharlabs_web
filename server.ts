@@ -4405,10 +4405,16 @@ app.post("/api/vault/folders", authenticateToken, requireAdmin, async (req: any,
   }
 });
 
-// DELETE /api/vault/folders/:name - Delete folder from vault
-app.delete("/api/vault/folders/:name", authenticateToken, requireAdmin, async (req: any, res: any) => {
+// DELETE /api/vault/folders - Delete folder and all its subfolders from vault
+app.all(["/api/vault/folders", "/api/vault/folders/*", "/api/vault/folders/:name"], authenticateToken, requireAdmin, async (req: any, res: any, next: any) => {
+  if (req.method !== "DELETE") return next();
   try {
-    const response = await fetch(`${ORACLE_VAULT_URL}/api/folders/${encodeURIComponent(req.params.name)}`, {
+    const rawParam = req.params.name ? `${req.params.name}${req.params[0] ? '/' + req.params[0] : ''}` : (req.params[0] || req.query.name || '');
+    const folderName = decodeURIComponent(rawParam).trim();
+    if (!folderName) {
+      return res.status(400).json({ error: "Folder name is required." });
+    }
+    const response = await fetch(`${ORACLE_VAULT_URL}/api/folders/${encodeURIComponent(folderName)}?name=${encodeURIComponent(folderName)}`, {
       method: "DELETE",
       headers: { "x-vault-token": ORACLE_VAULT_SECRET }
     });

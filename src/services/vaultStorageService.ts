@@ -362,7 +362,7 @@ export async function deleteVaultFolder(name: string, token?: string): Promise<v
   const headers: Record<string, string> = {};
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`/api/vault/folders/${encodeURIComponent(name)}`, {
+  const res = await fetch(`/api/vault/folders/${encodeURIComponent(name)}?name=${encodeURIComponent(name)}`, {
     method: 'DELETE',
     headers
   });

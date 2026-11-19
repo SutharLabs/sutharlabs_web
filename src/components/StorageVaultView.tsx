@@ -70,6 +70,31 @@ const CATEGORIES = [
   'Database Dumps'
 ];
 
+/**
+ * Extracts and deduplicates all ancestor and intermediate folder paths
+ * e.g. ["Documents/Projects/2026"] -> ["Documents", "Documents/Projects", "Documents/Projects/2026"]
+ */
+const extractAllFolderPaths = (paths: string[]): string[] => {
+  const set = new Set<string>();
+  paths.forEach(p => {
+    if (!p || typeof p !== 'string') return;
+    const clean = p.trim().replace(/^\/+|\/+$/g, '');
+    if (!clean) return;
+    const segments = clean.split('/').filter(Boolean);
+    let current = '';
+    for (const seg of segments) {
+      current = current ? `${current}/${seg}` : seg;
+      set.add(current);
+    }
+  });
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+};
+
+const getParentFolder = (folderPath: string | null): string | null => {
+  if (!folderPath || !folderPath.includes('/')) return null;
+  return folderPath.substring(0, folderPath.lastIndexOf('/'));
+};
+
 export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   onAddLog,
   userToken,
@@ -88,6 +113,15 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   // Folder Organisation state
   const [folders, setFolders] = useState<string[]>([]);
   const [currentFolder, setCurrentFolder] = useState<string | null>(null);
+
+  // Direct child folders at current level
+  const currentLevelFolders = useMemo(() => {
+    if (currentFolder === null) {
+      return folders.filter(f => !f.includes('/'));
+    }
+    const prefix = currentFolder + '/';
+    return folders.filter(f => f.startsWith(prefix) && !f.slice(prefix.length).includes('/'));
+  }, [folders, currentFolder]);
   const [showNewFolderModal, setShowNewFolderModal] = useState<boolean>(false);
   const [newFolderName, setNewFolderName] = useState<string>('');
   const [isCreatingFolder, setIsCreatingFolder] = useState<boolean>(false);
@@ -179,13 +213,13 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
       setStats(statsData);
       setFiles(filesData);
 
-      const folderSet = new Set<string>(foldersData || []);
+      const rawPaths = [...(foldersData || [])];
       filesData.forEach(f => {
         if (f.folder && f.folder.trim()) {
-          folderSet.add(f.folder.trim());
+          rawPaths.push(f.folder.trim());
         }
       });
-      setFolders(Array.from(folderSet).sort());
+      setFolders(extractAllFolderPaths(rawPaths));
 
       if (isRefresh) {
         addLog('DRIVE', 'Drive files, folders, and storage capacity synchronized.', 'SUCCESS');
@@ -205,13 +239,14 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   }, [loadVaultData]);
 
   const handleCreateFolder = async () => {
-    const trimmed = newFolderName.trim().replace(/[^a-zA-Z0-9 _-]/g, '');
-    if (!trimmed) return;
+    const raw = newFolderName.trim().replace(/[/\\:*?"<>|]/g, '');
+    if (!raw) return;
+    const fullPath = currentFolder ? `${currentFolder}/${raw}` : raw;
     setIsCreatingFolder(true);
     try {
-      await createVaultFolder(trimmed, userToken);
-      setFolders(prev => Array.from(new Set([...prev, trimmed])).sort());
-      addLog('DRIVE', `Created folder "${trimmed}".`, 'SUCCESS');
+      await createVaultFolder(fullPath, userToken);
+      setFolders(prev => extractAllFolderPaths([...prev, fullPath]));
+      addLog('DRIVE', `Created folder "${fullPath}".`, 'SUCCESS');
       setNewFolderName('');
       setShowNewFolderModal(false);
     } catch (err: any) {
@@ -232,13 +267,17 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
 
   const promptDeleteFolder = (folderName: string, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
-    const count = files.filter(f => f.folder === folderName).length;
+    const affectedFiles = files.filter(f => f.folder === folderName || f.folder?.startsWith(folderName + '/'));
+    const subCount = folders.filter(f => f.startsWith(folderName + '/')).length;
+    const parent = getParentFolder(folderName);
+    const baseName = folderName.split('/').pop() || folderName;
+
     setModalConfig({
       isOpen: true,
       title: 'Delete Folder',
-      message: `Delete folder "${folderName}"?`,
-      subtext: count > 0 
-        ? `${count} file(s) currently inside this folder will be moved back to My Drive root. No files will be permanently deleted.` 
+      message: `Delete folder "${baseName}"?`,
+      subtext: (affectedFiles.length > 0 || subCount > 0)
+        ? `Contains ${affectedFiles.length} file(s) and ${subCount} subfolder(s). Files will be preserved in ${parent ? `"${parent}"` : 'My Drive Root'}.` 
         : 'This folder is empty.',
       confirmLabel: 'Delete Folder',
       cancelLabel: 'Cancel',
@@ -247,9 +286,9 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         setModalConfig(null);
         try {
           await deleteVaultFolder(folderName, userToken);
-          setFolders(prev => prev.filter(f => f !== folderName));
-          if (currentFolder === folderName) {
-            setCurrentFolder(null);
+          setFolders(prev => prev.filter(f => f !== folderName && !f.startsWith(folderName + '/')));
+          if (currentFolder === folderName || currentFolder?.startsWith(folderName + '/')) {
+            setCurrentFolder(parent);
           }
           await loadVaultData(true);
           addLog('DRIVE', `Deleted folder "${folderName}".`, 'SUCCESS');
@@ -1276,46 +1315,90 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
           </div>
         )}
 
-        {/* Breadcrumb Trail when inside folder */}
-        {activeTab === 'my-drive' && currentFolder && (
-          <div className={`p-2.5 sm:p-3 rounded-xl border flex items-center justify-between gap-2 text-xs font-mono transition-colors ${
-            isLight ? 'bg-sky-50/70 border-sky-200 text-slate-700' : 'bg-[#00dbe7]/5 border-[#00dbe7]/20 text-[#e5e1e4]'
+        {/* Breadcrumb Trail when in My Drive */}
+        {activeTab === 'my-drive' && (
+          <div className={`p-2 sm:p-2.5 rounded-xl border flex items-center justify-between gap-2 text-xs font-mono transition-colors ${
+            isLight ? 'bg-white border-slate-200 shadow-2xs text-slate-700' : 'bg-surface-container-low/40 border-outline/15 text-[#e5e1e4]'
           }`}>
             <div className="flex items-center gap-1.5 flex-wrap min-w-0">
               <button
                 type="button"
                 onClick={() => setCurrentFolder(null)}
-                className="hover:underline flex items-center gap-1 font-bold text-sky-500 cursor-pointer"
+                className={`hover:underline flex items-center gap-1.5 font-bold cursor-pointer transition-colors ${
+                  currentFolder === null ? (isLight ? 'text-sky-600' : 'text-[#00dbe7]') : 'text-on-surface-variant hover:text-on-surface'
+                }`}
               >
                 <HardDrive className="w-3.5 h-3.5 shrink-0" />
                 <span>My Drive</span>
               </button>
-              <ChevronRight className="w-3.5 h-3.5 text-on-surface-variant shrink-0" />
-              <div className="flex items-center gap-1.5 font-bold text-on-surface truncate">
-                <Folder className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                <span className="truncate">{currentFolder}</span>
-              </div>
+
+              {currentFolder && (
+                <>
+                  {currentFolder.split('/').map((seg, idx, arr) => {
+                    const isLast = idx === arr.length - 1;
+                    const pathSoFar = arr.slice(0, idx + 1).join('/');
+                    return (
+                      <React.Fragment key={pathSoFar}>
+                        <ChevronRight className="w-3.5 h-3.5 text-on-surface-variant/60 shrink-0 select-none" />
+                        {isLast ? (
+                          <div className="flex items-center gap-1.5 font-bold text-on-surface truncate">
+                            <Folder className="w-3.5 h-3.5 text-sky-500 shrink-0" />
+                            <span className="truncate">{seg}</span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setCurrentFolder(pathSoFar)}
+                            className="hover:underline flex items-center gap-1 text-on-surface-variant hover:text-on-surface cursor-pointer truncate"
+                          >
+                            <span>{seg}</span>
+                          </button>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </>
+              )}
             </div>
-            <button
-              type="button"
-              onClick={() => setCurrentFolder(null)}
-              className={`h-7 px-2.5 rounded-lg text-[11px] font-mono border transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-white/10 text-on-surface border-white/10'
-              }`}
-            >
-              <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
-              <span>Up to Root</span>
-            </button>
+
+            <div className="flex items-center gap-1.5 shrink-0">
+              {currentFolder && (
+                <button
+                  type="button"
+                  onClick={() => setCurrentFolder(getParentFolder(currentFolder))}
+                  title="Up 1 level"
+                  className={`h-7 px-2.5 rounded-lg text-[11px] font-mono border transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                    isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-white/10 text-on-surface border-white/10'
+                  }`}
+                >
+                  <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden sm:inline">Up 1 Level</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => { setNewFolderName(''); setShowNewFolderModal(true); }}
+                className={`h-7 px-2.5 rounded-lg text-[11px] font-mono border transition-all cursor-pointer flex items-center gap-1 shrink-0 font-bold ${
+                  isLight
+                    ? 'bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-300'
+                    : 'bg-[#00dbe7]/10 hover:bg-[#00dbe7]/20 text-[#00dbe7] border-[#00dbe7]/30'
+                }`}
+              >
+                <FolderPlus className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">{currentFolder ? 'New Subfolder' : 'New Folder'}</span>
+                <span className="sm:hidden">Folder</span>
+              </button>
+            </div>
           </div>
         )}
 
-        {/* Folders Section when in My Drive root and not searching */}
-        {activeTab === 'my-drive' && currentFolder === null && !searchQuery.trim() && folders.length > 0 && (
+        {/* Folders Section: Show direct child folders for the current location */}
+        {activeTab === 'my-drive' && !searchQuery.trim() && currentLevelFolders.length > 0 && (
           <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <span className="text-xs font-mono font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
                 <Folder className="w-3.5 h-3.5 text-sky-500 shrink-0" />
-                <span>Folders ({folders.length})</span>
+                <span>{currentFolder ? 'Subfolders' : 'Folders'} ({currentLevelFolders.length})</span>
               </span>
               <button
                 type="button"
@@ -1323,13 +1406,15 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                 className="text-[11px] font-mono text-sky-500 hover:underline flex items-center gap-1 cursor-pointer font-bold"
               >
                 <Plus className="w-3 h-3 shrink-0" />
-                <span>New Folder</span>
+                <span>New {currentFolder ? 'Subfolder' : 'Folder'}</span>
               </button>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
-              {folders.map((folder) => {
+              {currentLevelFolders.map((folder) => {
                 const folderFileCount = files.filter(f => f.folder === folder).length;
+                const directSubfolders = folders.filter(f => f.startsWith(folder + '/') && !f.slice(folder.length + 1).includes('/')).length;
+                const baseName = folder.split('/').pop() || folder;
                 return (
                   <div
                     key={folder}
@@ -1344,17 +1429,17 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                       <Folder className="w-4 h-4 text-sky-500 shrink-0 group-hover:scale-110 transition-transform" />
                       <div className="min-w-0">
                         <div className="text-xs font-bold truncate group-hover:text-sky-500 transition-colors" title={folder}>
-                          {folder}
+                          {baseName}
                         </div>
                         <div className="text-[10px] text-on-surface-variant font-mono">
-                          {folderFileCount} {folderFileCount === 1 ? 'file' : 'files'}
+                          {folderFileCount} {folderFileCount === 1 ? 'file' : 'files'}{directSubfolders > 0 ? `, ${directSubfolders} sub` : ''}
                         </div>
                       </div>
                     </div>
                     <button
                       type="button"
                       onClick={(e) => promptDeleteFolder(folder, e)}
-                      title="Delete folder"
+                      title={`Delete "${baseName}"`}
                       className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-rose-500/10 text-rose-400 cursor-pointer transition-opacity shrink-0"
                     >
                       <Trash2 className="w-3 h-3 shrink-0" />
@@ -1453,6 +1538,48 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
           <div className="p-12 text-center text-xs font-mono text-on-surface-variant flex flex-col items-center gap-3">
             <RefreshCw className="w-6 h-6 animate-spin text-sky-500 shrink-0" />
             <span>Loading files from Cloud Drive...</span>
+          </div>
+        ) : (activeTab === 'my-drive' && currentFolder !== null && !searchQuery.trim() && currentLevelFolders.length === 0 && filteredFiles.length === 0) ? (
+          <div className={`p-8 sm:p-12 rounded-2xl border text-center transition-colors ${
+            isLight ? 'bg-slate-50/60 border-slate-200 text-slate-700' : 'bg-surface-container-low/20 border-outline/10 text-gray-400'
+          }`}>
+            <div className={`w-12 h-12 rounded-xl flex items-center justify-center mx-auto mb-3 border ${
+              isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-primary/10 border-primary/25 text-[#00dbe7]'
+            }`}>
+              <Folder className="w-6 h-6 shrink-0" />
+            </div>
+            <h4 className="text-sm font-bold text-on-surface">This folder is empty</h4>
+            <p className="text-xs text-on-surface-variant font-mono mt-1 mb-4">
+              Upload files directly into &quot;{currentFolder.split('/').pop()}&quot; or create a subfolder.
+            </p>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => { setNewFolderName(''); setShowNewFolderModal(true); }}
+                className={`h-8 px-3 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer flex items-center gap-1.5 ${
+                  isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                }`}
+              >
+                <FolderPlus className="w-3.5 h-3.5 shrink-0 text-sky-500" />
+                <span>New Subfolder</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border shadow-xs transition-all cursor-pointer flex items-center gap-1.5 ${
+                  isLight ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600' : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/50'
+                }`}
+              >
+                <Upload className="w-3.5 h-3.5 shrink-0" />
+                <span>Upload Here</span>
+              </button>
+            </div>
+          </div>
+        ) : (!searchQuery.trim() && categoryFilter === 'ALL' && activeTab === 'my-drive' && currentLevelFolders.length > 0 && filteredFiles.length === 0) ? (
+          <div className="p-8 text-center text-xs font-mono text-on-surface-variant flex flex-col items-center gap-2 border border-dashed rounded-xl">
+            <Folder className="w-6 h-6 text-sky-500/50 shrink-0" />
+            <span className="text-on-surface font-semibold">No direct files in this folder</span>
+            <span>Files will appear here when uploaded or moved from other locations.</span>
           </div>
         ) : filteredFiles.length === 0 ? (
           <div className="p-12 text-center text-xs font-mono text-on-surface-variant flex flex-col items-center gap-2">
@@ -2294,7 +2421,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         </div>
       )}
 
-      {/* Modal 1: Create New Folder Modal */}
+      {/* Modal 1: Create New Folder / Subfolder Modal */}
       {showNewFolderModal && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150"
@@ -2315,8 +2442,12 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                   <FolderPlus className="w-5 h-5 shrink-0" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-on-surface font-sans">New Folder</h3>
-                  <p className="text-xs text-on-surface-variant font-mono mt-0.5">Organize your files in Cloud Drive</p>
+                  <h3 className="text-base font-bold text-on-surface font-sans">
+                    {currentFolder ? 'New Subfolder' : 'New Folder'}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant font-mono mt-0.5">
+                    {currentFolder ? `Create inside "${currentFolder}"` : 'Organize your files in Cloud Drive'}
+                  </p>
                 </div>
               </div>
 
@@ -2325,7 +2456,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                 <input
                   type="text"
                   autoFocus
-                  placeholder="e.g. Invoices, Projects, Backups"
+                  placeholder={currentFolder ? "e.g. Subfolder name" : "e.g. Invoices, Projects, Backups"}
                   value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   onKeyDown={(e) => {
@@ -2401,7 +2532,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
 
               <div className="space-y-1.5">
                 <label className="text-xs font-mono text-on-surface-variant font-medium">Select Destination</label>
-                <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
                   <div
                     onClick={() => setTargetMoveFolder('')}
                     className={`p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
@@ -2416,26 +2547,48 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                   >
                     <HardDrive className="w-4 h-4 shrink-0" />
                     <span className="text-xs font-mono">My Drive (Root)</span>
+                    {moveModalFiles.length > 0 && moveModalFiles.every(f => !f.folder) && (
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-white/10 text-on-surface-variant ml-auto shrink-0">
+                        Current
+                      </span>
+                    )}
                   </div>
 
-                  {folders.map(folder => (
-                    <div
-                      key={folder}
-                      onClick={() => setTargetMoveFolder(folder)}
-                      className={`p-2.5 rounded-xl border flex items-center gap-2.5 cursor-pointer transition-all ${
-                        targetMoveFolder === folder
-                          ? isLight
-                            ? 'bg-sky-50 border-sky-300 text-sky-700 font-bold'
-                            : 'bg-[#00dbe7]/15 border-[#00dbe7]/40 text-[#00dbe7] font-bold'
-                          : isLight
-                            ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
-                            : 'bg-white/5 border-white/10 hover:bg-white/10 text-on-surface'
-                      }`}
-                    >
-                      <Folder className="w-4 h-4 shrink-0 text-sky-500" />
-                      <span className="text-xs font-mono truncate">{folder}</span>
-                    </div>
-                  ))}
+                  {folders.map(folder => {
+                    const depth = folder.split('/').length - 1;
+                    const baseName = folder.split('/').pop() || folder;
+                    const isCurrent = moveModalFiles.length > 0 && moveModalFiles.every(f => (f.folder || '') === folder);
+                    return (
+                      <div
+                        key={folder}
+                        onClick={() => setTargetMoveFolder(folder)}
+                        style={{ paddingLeft: `${12 + depth * 16}px` }}
+                        className={`p-2.5 rounded-xl border flex items-center gap-2 cursor-pointer transition-all ${
+                          targetMoveFolder === folder
+                            ? isLight
+                              ? 'bg-sky-50 border-sky-300 text-sky-700 font-bold'
+                              : 'bg-[#00dbe7]/15 border-[#00dbe7]/40 text-[#00dbe7] font-bold'
+                            : isLight
+                              ? 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                              : 'bg-white/5 border-white/10 hover:bg-white/10 text-on-surface'
+                        }`}
+                      >
+                        {depth > 0 && <span className="text-on-surface-variant font-mono text-xs select-none">└─</span>}
+                        <Folder className="w-4 h-4 shrink-0 text-sky-500" />
+                        <span className="text-xs font-mono truncate">{baseName}</span>
+                        {depth > 0 && (
+                          <span className="text-[10px] text-on-surface-variant font-mono ml-auto truncate pl-2 opacity-70">
+                            {folder}
+                          </span>
+                        )}
+                        {isCurrent && (
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-200 dark:bg-white/10 text-on-surface-variant ml-auto shrink-0">
+                            Current
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
 
