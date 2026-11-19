@@ -144,6 +144,10 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   const [editingFolderName, setEditingFolderName] = useState<string>('');
   const [isRenamingFolder, setIsRenamingFolder] = useState<boolean>(false);
 
+  // Drag-and-drop move state
+  const [draggedFileIds, setDraggedFileIds] = useState<string[]>([]);
+  const [dragOverFolder, setDragOverFolder] = useState<string | null>(null);
+
   // Data state
   const [stats, setStats] = useState<VaultStatsResponse | null>(null);
   const [files, setFiles] = useState<VaultFileItem[]>([]);
@@ -397,21 +401,25 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
     }
   };
 
-  const handleMoveFile = async () => {
-    if (moveModalFiles.length === 0) return;
+  const handleMoveFilesToFolder = async (targetFolder: string, fileIds?: string[]) => {
+    const ids = fileIds && fileIds.length > 0 ? fileIds : moveModalFiles.map(f => f.id);
+    if (ids.length === 0) return;
+    const dest = targetFolder.trim();
     setIsMovingFile(true);
     try {
-      const dest = targetMoveFolder.trim();
       await Promise.all(
-        moveModalFiles.map(file => updateVaultFile(file.id, { folder: dest }, userToken))
+        ids.map(id => updateVaultFile(id, { folder: dest }, userToken))
       );
-      if (moveModalFiles.length === 1) {
-        addLog('DRIVE', `Moved "${moveModalFiles[0].originalName}" to ${dest ? `folder "${dest}"` : 'My Drive Root'}.`, 'SUCCESS');
+      if (ids.length === 1) {
+        const targetItem = files.find(f => f.id === ids[0]);
+        addLog('DRIVE', `Moved "${targetItem?.originalName || 'file'}" to ${dest ? `folder "${dest}"` : 'My Drive Root'}.`, 'SUCCESS');
       } else {
-        addLog('DRIVE', `Moved ${moveModalFiles.length} files to ${dest ? `folder "${dest}"` : 'My Drive Root'}.`, 'SUCCESS');
+        addLog('DRIVE', `Moved ${ids.length} files to ${dest ? `folder "${dest}"` : 'My Drive Root'}.`, 'SUCCESS');
       }
       setMoveModalFiles([]);
       clearSelection();
+      setDraggedFileIds([]);
+      setDragOverFolder(null);
       await loadVaultData(true);
     } catch (err: any) {
       console.error('Failed to move file(s):', err);
@@ -426,7 +434,12 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
       });
     } finally {
       setIsMovingFile(false);
+      setDragOverFolder(null);
     }
+  };
+
+  const handleMoveFile = async () => {
+    await handleMoveFilesToFolder(targetMoveFolder);
   };
 
   const toggleSelectFile = (id: string, e?: React.MouseEvent | React.ChangeEvent) => {
@@ -553,6 +566,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     setIsDragging(false);
+    if (draggedFileIds.length > 0) return;
     if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
       setSelectedFile(e.dataTransfer.files[0]);
     }
@@ -1422,8 +1436,28 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
               <button
                 type="button"
                 onClick={() => setCurrentFolder(null)}
-                className={`hover:underline flex items-center gap-1.5 font-bold cursor-pointer transition-colors ${
-                  currentFolder === null ? (isLight ? 'text-sky-600' : 'text-[#00dbe7]') : 'text-on-surface-variant hover:text-on-surface'
+                onDragOver={(e) => {
+                  if (draggedFileIds.length > 0) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = 'move';
+                    setDragOverFolder('__ROOT__');
+                  }
+                }}
+                onDragLeave={() => {
+                  if (dragOverFolder === '__ROOT__') setDragOverFolder(null);
+                }}
+                onDrop={(e) => {
+                  if (draggedFileIds.length > 0) {
+                    e.preventDefault();
+                    handleMoveFilesToFolder('', draggedFileIds);
+                  }
+                }}
+                className={`hover:underline flex items-center gap-1.5 font-bold cursor-pointer transition-all ${
+                  dragOverFolder === '__ROOT__'
+                    ? 'ring-2 ring-sky-400 bg-sky-500/20 px-2 py-0.5 rounded-md text-sky-500'
+                    : currentFolder === null 
+                      ? (isLight ? 'text-sky-600' : 'text-[#00dbe7]') 
+                      : 'text-on-surface-variant hover:text-on-surface'
                 }`}
               >
                 <HardDrive className="w-3.5 h-3.5 shrink-0" />
@@ -1439,7 +1473,14 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                       <React.Fragment key={pathSoFar}>
                         <ChevronRight className="w-3.5 h-3.5 text-on-surface-variant/60 shrink-0 select-none" />
                         {isLast ? (
-                          <div className="flex items-center gap-1.5 font-bold text-on-surface truncate">
+                          <div 
+                            className="flex items-center gap-1.5 font-bold text-on-surface truncate cursor-pointer select-none"
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              startRenameFolder(currentFolder, e);
+                            }}
+                            title={`${seg} (Double-click to rename)`}
+                          >
                             <Folder className="w-3.5 h-3.5 text-sky-500 shrink-0" />
                             <span className="truncate">{seg}</span>
                           </div>
@@ -1447,7 +1488,27 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                           <button
                             type="button"
                             onClick={() => setCurrentFolder(pathSoFar)}
-                            className="hover:underline flex items-center gap-1 text-on-surface-variant hover:text-on-surface cursor-pointer truncate"
+                            onDragOver={(e) => {
+                              if (draggedFileIds.length > 0) {
+                                e.preventDefault();
+                                e.dataTransfer.dropEffect = 'move';
+                                setDragOverFolder(pathSoFar);
+                              }
+                            }}
+                            onDragLeave={() => {
+                              if (dragOverFolder === pathSoFar) setDragOverFolder(null);
+                            }}
+                            onDrop={(e) => {
+                              if (draggedFileIds.length > 0) {
+                                e.preventDefault();
+                                handleMoveFilesToFolder(pathSoFar, draggedFileIds);
+                              }
+                            }}
+                            className={`hover:underline flex items-center gap-1 cursor-pointer truncate transition-all ${
+                              dragOverFolder === pathSoFar
+                                ? 'ring-2 ring-sky-400 bg-sky-500/20 px-2 py-0.5 rounded-md text-sky-500'
+                                : 'text-on-surface-variant hover:text-on-surface'
+                            }`}
                           >
                             <span>{seg}</span>
                           </button>
@@ -1530,15 +1591,40 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                   <div
                     key={folder}
                     onClick={() => setCurrentFolder(folder)}
+                    onDragOver={(e) => {
+                      if (draggedFileIds.length > 0) {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = 'move';
+                        setDragOverFolder(folder);
+                      }
+                    }}
+                    onDragLeave={() => {
+                      if (dragOverFolder === folder) setDragOverFolder(null);
+                    }}
+                    onDrop={(e) => {
+                      if (draggedFileIds.length > 0) {
+                        e.preventDefault();
+                        handleMoveFilesToFolder(folder, draggedFileIds);
+                      }
+                    }}
                     className={`p-3 rounded-xl border flex items-center justify-between gap-2 cursor-pointer transition-all group ${
-                      isLight
-                        ? 'bg-white border-slate-200 hover:border-sky-300 hover:shadow-xs shadow-xs text-slate-800'
-                        : 'bg-surface-container-low/40 border-outline/15 hover:border-[#00dbe7]/40 hover:bg-white/[0.03] text-[#e5e1e4]'
+                      dragOverFolder === folder
+                        ? 'ring-2 ring-sky-400 bg-sky-500/20 border-sky-400 scale-[1.02] shadow-md'
+                        : isLight
+                          ? 'bg-white border-slate-200 hover:border-sky-300 hover:shadow-xs shadow-xs text-slate-800'
+                          : 'bg-surface-container-low/40 border-outline/15 hover:border-[#00dbe7]/40 hover:bg-white/[0.03] text-[#e5e1e4]'
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div 
+                      className="flex items-center gap-2 min-w-0 flex-1 select-none"
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        startRenameFolder(folder, e);
+                      }}
+                      title={`${folder} (Double-click to rename)`}
+                    >
                       <Folder className="w-4 h-4 text-sky-500 shrink-0 group-hover:scale-110 transition-transform" />
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <div className="text-xs font-bold truncate group-hover:text-sky-500 transition-colors" title={folder}>
                           {baseName}
                         </div>
@@ -1714,14 +1800,27 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
             {filteredFiles.map((file) => (
               <div
                 key={file.id}
+                draggable={true}
+                onDragStart={(e) => {
+                  const idsToDrag = selectedFileIds.has(file.id) ? Array.from(selectedFileIds) : [file.id];
+                  setDraggedFileIds(idsToDrag);
+                  e.dataTransfer.setData('application/json', JSON.stringify({ type: 'vault-files', ids: idsToDrag }));
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragEnd={() => {
+                  setDraggedFileIds([]);
+                  setDragOverFolder(null);
+                }}
                 className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
-                  selectedFileIds.has(file.id)
-                    ? isLight
-                      ? 'bg-sky-50/60 border-sky-400 ring-2 ring-sky-300 shadow-md'
-                      : 'bg-[#00dbe7]/10 border-[#00dbe7] ring-1 ring-[#00dbe7]/50 shadow-md'
-                    : isLight 
-                      ? 'bg-white border-slate-200 shadow-xs hover:shadow-md hover:border-sky-300' 
-                      : 'bg-surface-container-low/40 border-outline/15 hover:border-[#00dbe7]/40 hover:bg-white/[0.03]'
+                  draggedFileIds.includes(file.id)
+                    ? 'opacity-40 scale-95 border-dashed border-sky-400'
+                    : selectedFileIds.has(file.id)
+                      ? isLight
+                        ? 'bg-sky-50/60 border-sky-400 ring-2 ring-sky-300 shadow-md'
+                        : 'bg-[#00dbe7]/10 border-[#00dbe7] ring-1 ring-[#00dbe7]/50 shadow-md'
+                      : isLight 
+                        ? 'bg-white border-slate-200 shadow-xs hover:shadow-md hover:border-sky-300' 
+                        : 'bg-surface-container-low/40 border-outline/15 hover:border-[#00dbe7]/40 hover:bg-white/[0.03]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -1744,7 +1843,14 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                         {getFileIcon(file.mimeType, file.originalName)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <div className="font-semibold text-xs text-on-surface truncate font-sans group-hover:text-sky-500 transition-colors" title={file.originalName}>
+                        <div 
+                          className="font-semibold text-xs text-on-surface truncate font-sans group-hover:text-sky-500 transition-colors select-none" 
+                          title={`${file.originalName} (Double-click to rename)`}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            startRenameFile(file, e);
+                          }}
+                        >
                           {file.originalName}
                         </div>
                         <div className="text-[10px] text-on-surface-variant font-mono mt-0.5">
@@ -1853,6 +1959,10 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                     </div>
                     <div 
                       onClick={() => setPreviewFile(file)}
+                      onDoubleClick={(e) => {
+                        e.stopPropagation();
+                        startRenameFile(file, e);
+                      }}
                       className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group"
                     >
                       <div className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 ${
@@ -1861,7 +1971,10 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                         {getFileIcon(file.mimeType, file.originalName)}
                       </div>
                       <div className="min-w-0 flex-1 overflow-hidden">
-                        <div className="font-semibold text-xs text-on-surface truncate font-sans group-hover:text-sky-500 transition-colors" title={file.originalName}>
+                        <div 
+                          className="font-semibold text-xs text-on-surface truncate font-sans group-hover:text-sky-500 transition-colors select-none" 
+                          title={`${file.originalName} (Double-click to rename)`}
+                        >
                           {file.originalName}
                         </div>
                         <div className="text-[10px] text-on-surface-variant font-mono mt-0.5 flex items-center gap-1.5 truncate">
@@ -1985,14 +2098,27 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                   {filteredFiles.map((file) => (
                     <tr 
                       key={file.id} 
+                      draggable={true}
+                      onDragStart={(e) => {
+                        const idsToDrag = selectedFileIds.has(file.id) ? Array.from(selectedFileIds) : [file.id];
+                        setDraggedFileIds(idsToDrag);
+                        e.dataTransfer.setData('application/json', JSON.stringify({ type: 'vault-files', ids: idsToDrag }));
+                        e.dataTransfer.effectAllowed = 'move';
+                      }}
+                      onDragEnd={() => {
+                        setDraggedFileIds([]);
+                        setDragOverFolder(null);
+                      }}
                       className={`transition-colors ${
-                        selectedFileIds.has(file.id)
-                          ? isLight
-                            ? 'bg-sky-50/80 hover:bg-sky-100/80'
-                            : 'bg-[#00dbe7]/10 hover:bg-[#00dbe7]/15'
-                          : isLight
-                            ? 'hover:bg-slate-50'
-                            : 'hover:bg-white/[0.02]'
+                        draggedFileIds.includes(file.id)
+                          ? 'opacity-40 bg-sky-500/10'
+                          : selectedFileIds.has(file.id)
+                            ? isLight
+                              ? 'bg-sky-50/80 hover:bg-sky-100/80'
+                              : 'bg-[#00dbe7]/10 hover:bg-[#00dbe7]/15'
+                            : isLight
+                              ? 'hover:bg-slate-50'
+                              : 'hover:bg-white/[0.02]'
                       }`}
                     >
                       {/* Checkbox */}
@@ -2027,8 +2153,12 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                           </div>
                           <span 
                             onClick={() => setPreviewFile(file)}
-                            className="truncate max-w-[180px] sm:max-w-xs cursor-pointer hover:text-sky-500 transition-colors" 
-                            title={file.originalName}
+                            onDoubleClick={(e) => {
+                              e.stopPropagation();
+                              startRenameFile(file, e);
+                            }}
+                            className="truncate max-w-[180px] sm:max-w-xs cursor-pointer hover:text-sky-500 transition-colors select-none" 
+                            title={`${file.originalName} (Double-click to rename)`}
                           >
                             {file.originalName}
                           </span>
@@ -2077,21 +2207,20 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                         {new Date(file.uploadedAt).toLocaleDateString()}
                       </td>
 
-                      {/* Actions */}
+                      {/* Actions (Icon-only to prevent table horizontal scrolling) */}
                       <td className="py-3 px-3 sm:px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
+                        <div className="flex items-center justify-center gap-1 shrink-0">
                           <button
                             type="button"
                             onClick={() => setPreviewFile(file)}
-                            title="Preview File"
-                            className={`h-7 px-2 rounded text-[10px] font-mono border transition-all flex items-center gap-1 cursor-pointer select-none shadow-xs ${
+                            title="Preview file"
+                            className={`w-7 h-7 rounded-lg border flex items-center justify-center cursor-pointer transition-colors shadow-xs ${
                               isLight
                                 ? 'bg-sky-50 hover:bg-sky-100 text-sky-700 border-sky-300'
                                 : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/40'
                             }`}
                           >
-                            <Eye className="w-3 h-3 shrink-0" />
-                            <span className="hidden sm:inline">Preview</span>
+                            <Eye className="w-3.5 h-3.5 shrink-0" />
                           </button>
 
                           <button
@@ -2100,43 +2229,40 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                               setMoveModalFiles([file]);
                               setTargetMoveFolder(file.folder || '');
                             }}
-                            title="Move to Folder"
-                            className={`h-7 px-2 rounded text-[10px] font-mono border transition-all flex items-center gap-1 cursor-pointer select-none shadow-xs ${
+                            title="Move to folder"
+                            className={`w-7 h-7 rounded-lg border flex items-center justify-center cursor-pointer transition-colors shadow-xs ${
                               isLight
-                                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-                                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 hover:text-sky-600'
+                                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
                             }`}
                           >
-                            <FolderInput className="w-3 h-3 shrink-0" />
-                            <span className="hidden lg:inline">Move</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => shareFileLink(file)}
-                            title="Share Link"
-                            className={`h-7 px-2 rounded text-[10px] font-mono border transition-all flex items-center gap-1 cursor-pointer select-none shadow-xs ${
-                              isLight
-                                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-                                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
-                            }`}
-                          >
-                            {shareFeedback === file.id ? <Check className="w-3 h-3 text-emerald-400 shrink-0" /> : <Share2 className="w-3 h-3 shrink-0" />}
-                            <span className="hidden sm:inline">Share</span>
+                            <FolderInput className="w-3.5 h-3.5 shrink-0" />
                           </button>
 
                           <button
                             type="button"
                             onClick={(e) => startRenameFile(file, e)}
-                            title="Rename file"
-                            className={`h-7 px-2 rounded text-[10px] font-mono border transition-all flex items-center gap-1 cursor-pointer select-none shadow-xs ${
+                            title="Rename file (or double-click name)"
+                            className={`w-7 h-7 rounded-lg border flex items-center justify-center cursor-pointer transition-colors shadow-xs ${
                               isLight
-                                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
-                                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-sky-400'
+                                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 hover:text-sky-600'
+                                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
                             }`}
                           >
-                            <Pencil className="w-3 h-3 shrink-0" />
-                            <span className="hidden md:inline">Rename</span>
+                            <Pencil className="w-3.5 h-3.5 shrink-0" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => shareFileLink(file)}
+                            title="Share link"
+                            className={`w-7 h-7 rounded-lg border flex items-center justify-center cursor-pointer transition-colors shadow-xs ${
+                              isLight
+                                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 hover:text-sky-600'
+                                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
+                            }`}
+                          >
+                            {shareFeedback === file.id ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <Share2 className="w-3.5 h-3.5 shrink-0" />}
                           </button>
 
                           <a
@@ -2144,28 +2270,27 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                             download={file.originalName}
                             target="_blank"
                             rel="noopener noreferrer"
-                            title="Download"
-                            className={`h-7 px-2 rounded text-[10px] font-mono border transition-all flex items-center gap-1 cursor-pointer select-none shadow-xs ${
+                            title="Download file"
+                            className={`w-7 h-7 rounded-lg border flex items-center justify-center cursor-pointer transition-colors shadow-xs ${
                               isLight
-                                ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
-                                : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/40'
+                                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300 hover:text-sky-600'
+                                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-[#00dbe7]'
                             }`}
                           >
-                            <Download className="w-3 h-3 shrink-0" />
-                            <span className="hidden sm:inline">Download</span>
+                            <Download className="w-3.5 h-3.5 shrink-0" />
                           </a>
 
                           <button
                             type="button"
                             onClick={() => promptDeleteFile(file)}
-                            title="Delete"
-                            className={`h-7 w-7 rounded flex items-center justify-center border transition-all cursor-pointer ${
+                            title="Delete file"
+                            className={`w-7 h-7 rounded-lg flex items-center justify-center border transition-all cursor-pointer shadow-xs ${
                               isLight
                                 ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300'
                                 : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30'
                             }`}
                           >
-                            <Trash2 className="w-3 h-3 shrink-0" />
+                            <Trash2 className="w-3.5 h-3.5 shrink-0" />
                           </button>
                         </div>
                       </td>
