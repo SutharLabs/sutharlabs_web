@@ -91,9 +91,10 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   const [showNewFolderModal, setShowNewFolderModal] = useState<boolean>(false);
   const [newFolderName, setNewFolderName] = useState<string>('');
   const [isCreatingFolder, setIsCreatingFolder] = useState<boolean>(false);
-  const [moveModalFile, setMoveModalFile] = useState<VaultFileItem | null>(null);
+  const [moveModalFiles, setMoveModalFiles] = useState<VaultFileItem[]>([]);
   const [targetMoveFolder, setTargetMoveFolder] = useState<string>('');
   const [isMovingFile, setIsMovingFile] = useState<boolean>(false);
+  const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
   const [fileBrowserIframeKey, setFileBrowserIframeKey] = useState<number>(0);
 
   // Data state
@@ -259,20 +260,27 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   };
 
   const handleMoveFile = async () => {
-    if (!moveModalFile) return;
+    if (moveModalFiles.length === 0) return;
     setIsMovingFile(true);
     try {
       const dest = targetMoveFolder.trim();
-      await updateVaultFile(moveModalFile.id, { folder: dest }, userToken);
-      addLog('DRIVE', `Moved "${moveModalFile.originalName}" to ${dest ? `folder "${dest}"` : 'My Drive Root'}.`, 'SUCCESS');
-      setMoveModalFile(null);
+      await Promise.all(
+        moveModalFiles.map(file => updateVaultFile(file.id, { folder: dest }, userToken))
+      );
+      if (moveModalFiles.length === 1) {
+        addLog('DRIVE', `Moved "${moveModalFiles[0].originalName}" to ${dest ? `folder "${dest}"` : 'My Drive Root'}.`, 'SUCCESS');
+      } else {
+        addLog('DRIVE', `Moved ${moveModalFiles.length} files to ${dest ? `folder "${dest}"` : 'My Drive Root'}.`, 'SUCCESS');
+      }
+      setMoveModalFiles([]);
+      clearSelection();
       await loadVaultData(true);
     } catch (err: any) {
-      console.error('Failed to move file:', err);
+      console.error('Failed to move file(s):', err);
       setModalConfig({
         isOpen: true,
         title: 'Move Failed',
-        message: err.message || 'Could not move file to selected folder.',
+        message: err.message || 'Could not move file(s) to selected folder.',
         variant: 'danger',
         isAlert: true,
         confirmLabel: 'Dismiss',
@@ -281,6 +289,100 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
     } finally {
       setIsMovingFile(false);
     }
+  };
+
+  const toggleSelectFile = (id: string, e?: React.MouseEvent | React.ChangeEvent) => {
+    if (e && 'stopPropagation' in e) e.stopPropagation();
+    setSelectedFileIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAll = (filesToSelect: VaultFileItem[]) => {
+    const allSelected = filesToSelect.length > 0 && filesToSelect.every(f => selectedFileIds.has(f.id));
+    setSelectedFileIds(prev => {
+      const next = new Set(prev);
+      if (allSelected) {
+        filesToSelect.forEach(f => next.delete(f.id));
+      } else {
+        filesToSelect.forEach(f => next.add(f.id));
+      }
+      return next;
+    });
+  };
+
+  const clearSelection = () => {
+    setSelectedFileIds(new Set());
+  };
+
+  const promptDeleteBatch = (selectedFiles: VaultFileItem[]) => {
+    const totalBytes = selectedFiles.reduce((acc, f) => acc + f.size, 0);
+    setModalConfig({
+      isOpen: true,
+      title: `Delete ${selectedFiles.length} ${selectedFiles.length === 1 ? 'File' : 'Files'}`,
+      message: `Permanently delete ${selectedFiles.length} selected ${selectedFiles.length === 1 ? 'file' : 'files'}?`,
+      subtext: `Total size: ${formatBytes(totalBytes)}. Standby and primary vault nodes will purge these items.`,
+      confirmLabel: `Delete (${selectedFiles.length})`,
+      cancelLabel: 'Keep Files',
+      variant: 'danger',
+      onConfirm: async () => {
+        setModalConfig(null);
+        try {
+          addLog('DRIVE', `Deleting ${selectedFiles.length} files...`, 'INFO');
+          await Promise.all(selectedFiles.map(f => deleteVaultFile(f.id, userToken)));
+          addLog('DRIVE', `Successfully deleted ${selectedFiles.length} files.`, 'SUCCESS');
+          clearSelection();
+          await loadVaultData(true);
+        } catch (err: any) {
+          console.error('Batch delete failed:', err);
+          setModalConfig({
+            isOpen: true,
+            title: 'Delete Incomplete',
+            message: err.message || 'One or more files could not be deleted.',
+            variant: 'danger',
+            isAlert: true,
+            confirmLabel: 'Dismiss',
+            onConfirm: () => setModalConfig(null)
+          });
+        }
+      }
+    });
+  };
+
+  const handleBatchDownload = (selectedFiles: VaultFileItem[]) => {
+    selectedFiles.forEach((file, index) => {
+      setTimeout(() => {
+        const link = document.createElement('a');
+        link.href = getVaultDownloadUrl(file.id, userToken);
+        link.download = file.originalName;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }, index * 250);
+    });
+    addLog('DRIVE', `Triggered batch download for ${selectedFiles.length} files.`, 'INFO');
+  };
+
+  const handleBatchStar = (selectedFiles: VaultFileItem[]) => {
+    const allStarred = selectedFiles.length > 0 && selectedFiles.every(f => starredIds.has(f.id));
+    setStarredIds(prev => {
+      const next = new Set(prev);
+      if (allStarred) {
+        selectedFiles.forEach(f => next.delete(f.id));
+      } else {
+        selectedFiles.forEach(f => next.add(f.id));
+      }
+      try {
+        localStorage.setItem('sutharlabs_drive_starred', JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+    addLog('DRIVE', `${allStarred ? 'Unstarred' : 'Starred'} ${selectedFiles.length} files.`, 'INFO');
   };
 
   const toggleStar = (id: string, e?: React.MouseEvent) => {
@@ -372,6 +474,14 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         try {
           addLog('DRIVE', `Deleting "${file.originalName}"...`, 'INFO');
           await deleteVaultFile(file.id, userToken);
+          setSelectedFileIds(prev => {
+            if (prev.has(file.id)) {
+              const next = new Set(prev);
+              next.delete(file.id);
+              return next;
+            }
+            return prev;
+          });
           addLog('DRIVE', `Deleted "${file.originalName}".`, 'SUCCESS');
           await loadVaultData(true);
         } catch (err: any) {
@@ -581,6 +691,51 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         return 0;
       });
   }, [files, searchQuery, categoryFilter, activeTab, starredIds, currentFolder, sortBy, sortOrder]);
+
+  const selectedFilesList = useMemo(() => {
+    return files.filter(f => selectedFileIds.has(f.id));
+  }, [files, selectedFileIds]);
+
+  const allSelectedStarred = useMemo(() => {
+    return selectedFilesList.length > 0 && selectedFilesList.every(f => starredIds.has(f.id));
+  }, [selectedFilesList, starredIds]);
+
+  const selectAllCheckboxRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (selectAllCheckboxRef.current) {
+      const numSelectedInView = filteredFiles.filter(f => selectedFileIds.has(f.id)).length;
+      selectAllCheckboxRef.current.indeterminate = numSelectedInView > 0 && numSelectedInView < filteredFiles.length;
+    }
+  }, [selectedFileIds, filteredFiles]);
+
+  useEffect(() => {
+    if (selectedFileIds.size > 0) {
+      const validIds = new Set(files.map(f => f.id));
+      setSelectedFileIds(prev => {
+        let hasChanges = false;
+        const next = new Set<string>();
+        prev.forEach(id => {
+          if (validIds.has(id)) {
+            next.add(id);
+          } else {
+            hasChanges = true;
+          }
+        });
+        return hasChanges ? next : prev;
+      });
+    }
+  }, [files]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedFileIds.size > 0 && !modalConfig && moveModalFiles.length === 0 && !previewFile && !showNewFolderModal) {
+        clearSelection();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedFileIds, modalConfig, moveModalFiles, previewFile, showNewFolderModal]);
 
   const usedBytes = stats?.totalVaultBytes || files.reduce((acc, f) => acc + f.size, 0);
   const totalCapacityBytes = stats?.disk.totalBytes || (50 * 1024 * 1024 * 1024);
@@ -1262,27 +1417,41 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
               <div
                 key={file.id}
                 className={`p-3.5 rounded-xl border flex flex-col justify-between space-y-3 transition-all ${
-                  isLight 
-                    ? 'bg-white border-slate-200 shadow-xs hover:shadow-md hover:border-sky-300' 
-                    : 'bg-surface-container-low/40 border-outline/15 hover:border-[#00dbe7]/40 hover:bg-white/[0.03]'
+                  selectedFileIds.has(file.id)
+                    ? isLight
+                      ? 'bg-sky-50/60 border-sky-400 ring-2 ring-sky-300 shadow-md'
+                      : 'bg-[#00dbe7]/10 border-[#00dbe7] ring-1 ring-[#00dbe7]/50 shadow-md'
+                    : isLight 
+                      ? 'bg-white border-slate-200 shadow-xs hover:shadow-md hover:border-sky-300' 
+                      : 'bg-surface-container-low/40 border-outline/15 hover:border-[#00dbe7]/40 hover:bg-white/[0.03]'
                 }`}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <div 
-                    onClick={() => setPreviewFile(file)}
-                    className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group"
-                  >
-                    <div className={`w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
-                      isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/10'
-                    }`}>
-                      {getFileIcon(file.mimeType, file.originalName)}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="font-semibold text-xs text-on-surface truncate font-sans group-hover:text-sky-500 transition-colors" title={file.originalName}>
-                        {file.originalName}
+                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                    <input
+                      type="checkbox"
+                      checked={selectedFileIds.has(file.id)}
+                      onChange={(e) => toggleSelectFile(file.id, e)}
+                      onClick={(e) => e.stopPropagation()}
+                      aria-label={`Select ${file.originalName}`}
+                      className="w-4 h-4 rounded border-slate-300 dark:border-[#3a494b] text-sky-500 focus:ring-sky-500 cursor-pointer accent-sky-500 shrink-0"
+                    />
+                    <div 
+                      onClick={() => setPreviewFile(file)}
+                      className="flex items-center gap-2 min-w-0 flex-1 cursor-pointer group"
+                    >
+                      <div className={`w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 transition-transform group-hover:scale-105 ${
+                        isLight ? 'bg-slate-100 border-slate-200' : 'bg-white/5 border-white/10'
+                      }`}>
+                        {getFileIcon(file.mimeType, file.originalName)}
                       </div>
-                      <div className="text-[10px] text-on-surface-variant font-mono mt-0.5">
-                        {formatBytes(file.size)}
+                      <div className="min-w-0 flex-1">
+                        <div className="font-semibold text-xs text-on-surface truncate font-sans group-hover:text-sky-500 transition-colors" title={file.originalName}>
+                          {file.originalName}
+                        </div>
+                        <div className="text-[10px] text-on-surface-variant font-mono mt-0.5">
+                          {formatBytes(file.size)}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1310,7 +1479,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                     <button
                       type="button"
                       onClick={() => {
-                        setMoveModalFile(file);
+                        setMoveModalFiles([file]);
                         setTargetMoveFolder(file.folder || '');
                       }}
                       title="Move to Folder"
@@ -1357,8 +1526,25 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
             {/* Mobile Touch Cards View (sm:hidden) */}
             <div className="sm:hidden divide-y divide-outline/10">
               {filteredFiles.map((file) => (
-                <div key={file.id} className="p-3 flex flex-col gap-2 max-w-full overflow-hidden">
-                  <div className="flex items-start justify-between gap-2 min-w-0">
+                <div 
+                  key={file.id} 
+                  className={`p-3 flex flex-col gap-2 max-w-full overflow-hidden transition-colors ${
+                    selectedFileIds.has(file.id)
+                      ? isLight ? 'bg-sky-50/70' : 'bg-[#00dbe7]/10'
+                      : ''
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-2.5 min-w-0">
+                    <div className="flex items-center gap-2 shrink-0 pt-1">
+                      <input
+                        type="checkbox"
+                        checked={selectedFileIds.has(file.id)}
+                        onChange={(e) => toggleSelectFile(file.id, e)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Select ${file.originalName}`}
+                        className="w-4 h-4 rounded border-slate-300 dark:border-[#3a494b] text-sky-500 focus:ring-sky-500 cursor-pointer accent-sky-500 shrink-0"
+                      />
+                    </div>
                     <div 
                       onClick={() => setPreviewFile(file)}
                       className="flex items-center gap-2.5 min-w-0 flex-1 cursor-pointer group"
@@ -1410,7 +1596,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                       <button
                         type="button"
                         onClick={() => {
-                          setMoveModalFile(file);
+                          setMoveModalFiles([file]);
                           setTargetMoveFolder(file.folder || '');
                         }}
                         title="Move to Folder"
@@ -1461,6 +1647,16 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                   <tr className={`border-b text-[11px] font-bold uppercase tracking-wider text-on-surface-variant ${
                     isLight ? 'bg-slate-50 border-slate-200' : 'bg-white/5 border-outline/15'
                   }`}>
+                    <th className="py-3 px-3 sm:px-4 w-10 text-center">
+                      <input
+                        ref={selectAllCheckboxRef}
+                        type="checkbox"
+                        checked={filteredFiles.length > 0 && filteredFiles.every(f => selectedFileIds.has(f.id))}
+                        onChange={() => handleSelectAll(filteredFiles)}
+                        aria-label="Select all files"
+                        className="w-4 h-4 rounded border-slate-300 dark:border-[#3a494b] text-sky-500 focus:ring-sky-500 cursor-pointer accent-sky-500"
+                      />
+                    </th>
                     <th className="py-3 px-3 sm:px-4">Name</th>
                     <th className="py-3 px-3 sm:px-4 hidden md:table-cell">Category</th>
                     <th className="py-3 px-3 sm:px-4 text-right">Size</th>
@@ -1474,9 +1670,27 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                     <tr 
                       key={file.id} 
                       className={`transition-colors ${
-                        isLight ? 'hover:bg-slate-50' : 'hover:bg-white/[0.02]'
+                        selectedFileIds.has(file.id)
+                          ? isLight
+                            ? 'bg-sky-50/80 hover:bg-sky-100/80'
+                            : 'bg-[#00dbe7]/10 hover:bg-[#00dbe7]/15'
+                          : isLight
+                            ? 'hover:bg-slate-50'
+                            : 'hover:bg-white/[0.02]'
                       }`}
                     >
+                      {/* Checkbox */}
+                      <td className="py-3 px-3 sm:px-4 w-10 text-center">
+                        <input
+                          type="checkbox"
+                          checked={selectedFileIds.has(file.id)}
+                          onChange={(e) => toggleSelectFile(file.id, e)}
+                          onClick={(e) => e.stopPropagation()}
+                          aria-label={`Select ${file.originalName}`}
+                          className="w-4 h-4 rounded border-slate-300 dark:border-[#3a494b] text-sky-500 focus:ring-sky-500 cursor-pointer accent-sky-500"
+                        />
+                      </td>
+
                       {/* Name */}
                       <td className="py-3 px-3 sm:px-4 font-semibold text-on-surface">
                         <div className="flex items-center gap-2.5">
@@ -1567,7 +1781,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                           <button
                             type="button"
                             onClick={() => {
-                              setMoveModalFile(file);
+                              setMoveModalFiles([file]);
                               setTargetMoveFolder(file.folder || '');
                             }}
                             title="Move to Folder"
@@ -1636,17 +1850,121 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
       </div>
       )}
 
-      {/* Floating Action Button (FAB) for Mobile Quick Upload */}
-      <div className="sm:hidden fixed bottom-6 right-6 z-40">
-        <button
-          type="button"
-          onClick={() => fileInputRef.current?.click()}
-          aria-label="New Upload"
-          className="w-14 h-14 rounded-full bg-sky-500 text-white shadow-2xl flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
-        >
-          <Plus className="w-7 h-7 shrink-0" />
-        </button>
-      </div>
+      {/* Floating Action Button (FAB) for Mobile Quick Upload - hidden when multi-select bar is active */}
+      {selectedFileIds.size === 0 && (
+        <div className="sm:hidden fixed bottom-6 right-6 z-40">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            aria-label="New Upload"
+            className="w-14 h-14 rounded-full bg-sky-500 text-white shadow-2xl flex items-center justify-center cursor-pointer active:scale-95 transition-transform"
+          >
+            <Plus className="w-7 h-7 shrink-0" />
+          </button>
+        </div>
+      )}
+
+      {/* Floating Batch Action Bar (Google Drive / macOS style) */}
+      {selectedFileIds.size > 0 && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-[calc(100%-1.5rem)] max-w-2xl px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl border shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-5 duration-200 flex items-center justify-between gap-2.5 sm:gap-3 transition-colors bg-white/95 border-slate-300 text-slate-800 dark:bg-[#18181c]/95 dark:border-[#3a494b]/60 dark:text-[#e5e1e4]">
+          {/* Left: Close button + Selection Summary */}
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <button
+              type="button"
+              onClick={clearSelection}
+              title="Clear selection (Esc)"
+              className={`p-1.5 rounded-lg border cursor-pointer transition-colors shrink-0 ${
+                isLight ? 'bg-slate-100 hover:bg-slate-200 border-slate-300 text-slate-700' : 'bg-white/5 hover:bg-white/10 border-white/10 text-on-surface'
+              }`}
+            >
+              <X className="w-4 h-4 shrink-0" />
+            </button>
+            <div className="min-w-0">
+              <div className="text-xs font-bold font-sans text-on-surface truncate">
+                {selectedFileIds.size} of {filteredFiles.length} selected
+              </div>
+              <div className="text-[10px] font-mono text-on-surface-variant truncate">
+                {formatBytes(selectedFilesList.reduce((acc, f) => acc + f.size, 0))} total
+              </div>
+            </div>
+          </div>
+
+          {/* Right: Batch Actions */}
+          <div className="flex items-center gap-1.5 shrink-0 flex-nowrap">
+            <button
+              type="button"
+              onClick={() => handleSelectAll(filteredFiles)}
+              className={`h-8 px-2 sm:px-2.5 rounded-lg text-[10px] sm:text-xs font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer select-none flex items-center gap-1 ${
+                isLight
+                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300'
+                  : 'bg-white/5 hover:bg-white/10 text-on-surface border-white/10'
+              }`}
+            >
+              <span className="hidden sm:inline">{selectedFileIds.size === filteredFiles.length ? 'Deselect All' : 'Select All'}</span>
+              <span className="sm:hidden">{selectedFileIds.size === filteredFiles.length ? 'None' : 'All'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setMoveModalFiles(selectedFilesList);
+                setTargetMoveFolder('');
+              }}
+              title="Move selected files"
+              className={`h-8 px-2 sm:px-2.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                isLight
+                  ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                  : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+              }`}
+            >
+              <FolderInput className="w-3.5 h-3.5 shrink-0 text-sky-500" />
+              <span className="hidden sm:inline">Move</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleBatchStar(selectedFilesList)}
+              title={allSelectedStarred ? 'Unstar all selected' : 'Star all selected'}
+              className={`h-8 px-2 sm:px-2.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                isLight
+                  ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                  : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+              }`}
+            >
+              <Star className={`w-3.5 h-3.5 shrink-0 ${allSelectedStarred ? 'text-amber-400 fill-amber-400' : 'text-on-surface-variant'}`} />
+              <span className="hidden sm:inline">{allSelectedStarred ? 'Unstar' : 'Star'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => handleBatchDownload(selectedFilesList)}
+              title="Download selected files"
+              className={`h-8 px-2 sm:px-2.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                isLight
+                  ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                  : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/50'
+              }`}
+            >
+              <Download className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">Download</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => promptDeleteBatch(selectedFilesList)}
+              title="Delete selected files"
+              className={`h-8 px-2 sm:px-2.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider border transition-all cursor-pointer select-none flex items-center gap-1.5 ${
+                isLight
+                  ? 'bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-300'
+                  : 'bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border-rose-500/30'
+              }`}
+            >
+              <Trash2 className="w-3.5 h-3.5 shrink-0" />
+              <span className="hidden sm:inline">Delete</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================================= */}
       {/* GOOGLE DRIVE / DROPBOX STANDARD IN-BROWSER FILE PREVIEW MODAL */}
@@ -2001,11 +2319,11 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         </div>
       )}
 
-      {/* Modal 2: Move File to Folder Modal */}
-      {moveModalFile && (
+      {/* Modal 2: Move File(s) to Folder Modal */}
+      {moveModalFiles.length > 0 && (
         <div 
           className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150"
-          onClick={() => setMoveModalFile(null)}
+          onClick={() => setMoveModalFiles([])}
         >
           <div 
             onClick={(e) => e.stopPropagation()}
@@ -2022,9 +2340,11 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                   <FolderInput className="w-5 h-5 shrink-0" />
                 </div>
                 <div className="min-w-0">
-                  <h3 className="text-base font-bold text-on-surface font-sans truncate">Move File</h3>
-                  <p className="text-xs text-on-surface-variant font-mono mt-0.5 truncate" title={moveModalFile.originalName}>
-                    "{moveModalFile.originalName}"
+                  <h3 className="text-base font-bold text-on-surface font-sans truncate">
+                    {moveModalFiles.length === 1 ? 'Move File' : `Move ${moveModalFiles.length} Files`}
+                  </h3>
+                  <p className="text-xs text-on-surface-variant font-mono mt-0.5 truncate" title={moveModalFiles.length === 1 ? moveModalFiles[0].originalName : `${moveModalFiles.length} files selected`}>
+                    {moveModalFiles.length === 1 ? `"${moveModalFiles[0].originalName}"` : `${moveModalFiles.length} files selected`}
                   </p>
                 </div>
               </div>
@@ -2072,7 +2392,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
               <div className="flex items-center justify-end gap-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => setMoveModalFile(null)}
+                  onClick={() => setMoveModalFiles([])}
                   className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border ${
                     isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
                   }`}
@@ -2090,7 +2410,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                   }`}
                 >
                   {isMovingFile ? <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" /> : <FolderInput className="w-3.5 h-3.5 shrink-0" />}
-                  <span>Move</span>
+                  <span>{moveModalFiles.length === 1 ? 'Move' : `Move (${moveModalFiles.length})`}</span>
                 </button>
               </div>
             </div>

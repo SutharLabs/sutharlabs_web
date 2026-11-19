@@ -1076,9 +1076,9 @@
     "semantic_hash": ""
   },
   "src/components/StorageVaultView.tsx": {
-    "mtime": 1795016809.2074933,
-    "seen": 1795016851.1476293,
-    "ast_hash": "37d4cc8ca58e12cdea2aff3795a04008",
+    "mtime": 1795067360.2119937,
+    "seen": 1795067435.3990915,
+    "ast_hash": "c0b58cc5e5d364cacbef3da9a9ce2186",
     "semantic_hash": ""
   },
   "src/services/vaultStorageService.ts": {
