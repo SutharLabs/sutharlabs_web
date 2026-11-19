@@ -1,7 +1,7 @@
 # Graph Report - website  (2026-11-19)
 
 ## Corpus Check
-- 233 files · ~522,115 words
+- 233 files · ~522,285 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 8 file(s) not represented in the graph (top: (none) 3, .example 1, .prisma 1)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `bb26b28b`
+- Built from commit: `2c8b5ce5`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -132,12 +132,12 @@
 10. `AccountingStorage` - 27 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `startServer()` --indirect_call--> `requireAdmin()`  [INFERRED]
-  server.ts → src/middleware/auth.ts
 - `startServer()` --indirect_call--> `errorHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
 - `startServer()` --indirect_call--> `notFoundHandler()`  [INFERRED]
   server.ts → src/middleware/errorHandler.ts
+- `startServer()` --indirect_call--> `requireAdmin()`  [INFERRED]
+  server.ts → src/middleware/auth.ts
 - `startServer()` --indirect_call--> `authenticateToken()`  [INFERRED]
   server.ts → src/middleware/auth.ts
 - `main()` --calls--> `getPrismaClient()`  [EXTRACTED]
@@ -503,16 +503,16 @@ Nodes (15): CanvasStudio(), CanvasStudioProps, COLOR_PRESETS, DEFAULT_SCENE, Ins
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `react` connect `App.tsx` to `WorkspacePluginStore.tsx`, `src/types.ts`, `indicatorEngine.ts`, `dependencies`, `patterns/types.ts`, `StudioCastCompositor`, `src/types.ts`, `OcrReceiptModal.tsx`, `GSTInvoice`, `StockTrackerView.tsx`, `server.js`, `lucide-react`, `gstEngine.ts`, `ConfirmModal.tsx`, `DocNexusStudio`, `backtest/engine.ts`, `react`, `BugReportModal.tsx`, `clientRegistry.ts`, `SpeechStudioView.tsx`, `Accounting/types.ts`, `package.json`, `DocNexusStudio.tsx`, `lucide-react`, `ResumeEngine.tsx`, `ImageStudioView.tsx`, `StockSimulatorPanel.tsx`, `LandingPage.tsx`, `OpenLocalWorkspaceModal.tsx`, `BackgroundRemoverTool.tsx`, `SlideDeckStudio.tsx`, `DocNexus/types.ts`?**
-  _High betweenness centrality (0.254) - this node is a cross-community bridge._
+  _High betweenness centrality (0.240) - this node is a cross-community bridge._
 - **Are the 5 inferred relationships involving `startServer()` (e.g. with `authenticateToken()` and `requireAdmin()`) actually correct?**
   _`startServer()` has 5 INFERRED edges - model-reasoned connections that need verification._
 - **Should `src/types.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.08558558558558559 - nodes in this community are weakly interconnected._
 - **Why does `lucide-react` connect `lucide-react` to `WorkspacePluginStore.tsx`, `src/types.ts`, `indicatorEngine.ts`, `dependencies`, `App.tsx`, `patterns/types.ts`, `StudioCastCompositor`, `src/types.ts`, `OcrReceiptModal.tsx`, `StockTrackerView.tsx`, `server.js`, `ConfirmModal.tsx`, `DocNexusStudio`, `backtest/engine.ts`, `BugReportModal.tsx`, `clientRegistry.ts`, `SpeechStudioView.tsx`, `package.json`, `DocNexusStudio.tsx`, `lucide-react`, `ResumeEngine.tsx`, `ImageStudioView.tsx`, `StockSimulatorPanel.tsx`, `LandingPage.tsx`, `OpenLocalWorkspaceModal.tsx`, `BackgroundRemoverTool.tsx`, `SlideDeckStudio.tsx`, `DocNexus/types.ts`?**
-  _High betweenness centrality (0.156) - this node is a cross-community bridge._
+  _High betweenness centrality (0.140) - this node is a cross-community bridge._
 - **Are the 3 inferred relationships involving `registerRoutes()` (e.g. with `server.js` and `authenticateToken()`) actually correct?**
   _`registerRoutes()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **Should `indicatorEngine.ts` be split into smaller, more focused modules?**
   _Cohesion score 0.1310483870967742 - nodes in this community are weakly interconnected._
 - **Why does `express` connect `express` to `StockTracker/routes.ts`, `server.ts`, `_utils.ts`, `SpeechStudio/routes.ts`, `DocNexus/storage.ts`, `StudioCastCompositor`, `auth.ts`, `server.js`, `package.json`, `gstEngine.ts`, `serverRegistry.ts`?**
-  _High betweenness centrality (0.052) - this node is a cross-community bridge._
+  _High betweenness centrality (0.065) - this node is a cross-community bridge._

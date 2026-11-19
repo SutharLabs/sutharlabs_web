@@ -96,6 +96,7 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   const [isMovingFile, setIsMovingFile] = useState<boolean>(false);
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
   const [fileBrowserIframeKey, setFileBrowserIframeKey] = useState<number>(0);
+  const [isLoggingInFb, setIsLoggingInFb] = useState<boolean>(false);
 
   // Data state
   const [stats, setStats] = useState<VaultStatsResponse | null>(null);
@@ -580,52 +581,100 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
 
   // Auto-fill & Auto-login credentials for embedded File Browser iframe
   const handleFileBrowserIframeLoad = () => {
-    try {
-      const iframe = iframeRef.current;
-      if (!iframe) return;
-      const doc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!doc) return;
-      const userInput = doc.querySelector('input[type="text"], input[name="username"]') as HTMLInputElement;
-      const passInput = doc.querySelector('input[type="password"], input[name="password"]') as HTMLInputElement;
-      if (userInput && passInput) {
-        if (!userInput.value) {
-          userInput.value = 'admin';
-          userInput.dispatchEvent(new Event('input', { bubbles: true }));
-          userInput.dispatchEvent(new Event('change', { bubbles: true }));
+    let attempts = 0;
+    const interval = setInterval(() => {
+      attempts++;
+      try {
+        const iframe = iframeRef.current;
+        if (!iframe) {
+          clearInterval(interval);
+          return;
         }
-        if (!passInput.value) {
-          passInput.value = 'SutharLabs2026!';
-          passInput.dispatchEvent(new Event('input', { bubbles: true }));
-          passInput.dispatchEvent(new Event('change', { bubbles: true }));
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!doc) return;
+        const userInput = doc.querySelector('input[type="text"], input[name="username"]') as HTMLInputElement;
+        const passInput = doc.querySelector('input[type="password"], input[name="password"]') as HTMLInputElement;
+        if (userInput && passInput) {
+          if (!userInput.value) {
+            userInput.value = 'admin';
+            userInput.dispatchEvent(new Event('input', { bubbles: true }));
+            userInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          if (!passInput.value) {
+            passInput.value = 'SutharLabs2026!';
+            passInput.dispatchEvent(new Event('input', { bubbles: true }));
+            passInput.dispatchEvent(new Event('change', { bubbles: true }));
+          }
+          clearInterval(interval);
         }
+      } catch {
+        clearInterval(interval);
       }
-    } catch {
-      // Ignored if cross-origin sandboxed
-    }
+      if (attempts >= 15) {
+        clearInterval(interval);
+      }
+    }, 200);
   };
 
-  const triggerFileBrowserAutoLogin = () => {
+  const triggerFileBrowserAutoLogin = async () => {
+    setIsLoggingInFb(true);
+    try {
+      // 1. Direct API authentication against File Browser to receive JWT token
+      const res = await fetch('/filebrowser/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'admin', password: 'SutharLabs2026!' })
+      });
+      if (res.ok) {
+        const token = (await res.text()).trim();
+        if (token && token.length > 20) {
+          try {
+            localStorage.setItem('jwt', token);
+          } catch {}
+          const iframe = iframeRef.current;
+          if (iframe) {
+            try {
+              iframe.contentWindow?.localStorage?.setItem('jwt', token);
+            } catch {}
+            // Navigate directly to file explorer with active JWT session
+            iframe.src = '/filebrowser/files/';
+            setFileBrowserStatus('online');
+            addLog('DRIVE', 'File Browser session authenticated successfully.', 'SUCCESS');
+            setIsLoggingInFb(false);
+            return;
+          }
+        }
+      }
+    } catch (apiErr) {
+      console.warn('Direct API login attempt failed:', apiErr);
+    }
+
+    // 2. DOM fallback: Fill inputs inside iframe if DOM is accessible
     try {
       const iframe = iframeRef.current;
-      if (!iframe) return;
-      const doc = iframe.contentDocument || iframe.contentWindow?.document;
-      if (!doc) return;
-      const userInput = doc.querySelector('input[type="text"], input[name="username"]') as HTMLInputElement;
-      const passInput = doc.querySelector('input[type="password"], input[name="password"]') as HTMLInputElement;
-      const submitBtn = doc.querySelector('input[type="submit"], button[type="submit"]') as HTMLElement;
-      if (userInput && passInput) {
-        userInput.value = 'admin';
-        userInput.dispatchEvent(new Event('input', { bubbles: true }));
-        userInput.dispatchEvent(new Event('change', { bubbles: true }));
-        passInput.value = 'SutharLabs2026!';
-        passInput.dispatchEvent(new Event('input', { bubbles: true }));
-        passInput.dispatchEvent(new Event('change', { bubbles: true }));
-        if (submitBtn) {
-          submitBtn.click();
+      if (iframe) {
+        const doc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (doc) {
+          const userInput = doc.querySelector('input[type="text"], input[name="username"]') as HTMLInputElement;
+          const passInput = doc.querySelector('input[type="password"], input[name="password"]') as HTMLInputElement;
+          const submitBtn = doc.querySelector('input[type="submit"], button[type="submit"]') as HTMLElement;
+          if (userInput && passInput) {
+            userInput.value = 'admin';
+            userInput.dispatchEvent(new Event('input', { bubbles: true }));
+            userInput.dispatchEvent(new Event('change', { bubbles: true }));
+            passInput.value = 'SutharLabs2026!';
+            passInput.dispatchEvent(new Event('input', { bubbles: true }));
+            passInput.dispatchEvent(new Event('change', { bubbles: true }));
+            if (submitBtn) {
+              submitBtn.click();
+            }
+          }
         }
       }
     } catch (err) {
       console.warn('Auto-login trigger error:', err);
+    } finally {
+      setIsLoggingInFb(false);
     }
   };
 
@@ -863,14 +912,15 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
               <button
                 type="button"
                 onClick={triggerFileBrowserAutoLogin}
-                className={`h-7 px-2.5 rounded text-[11px] font-mono border transition-all flex items-center gap-1 cursor-pointer font-bold select-none ${
+                disabled={isLoggingInFb}
+                className={`h-7 px-2.5 rounded text-[11px] font-mono border transition-all flex items-center gap-1 cursor-pointer font-bold select-none disabled:opacity-60 disabled:cursor-not-allowed ${
                   isLight
                     ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600 shadow-2xs'
                     : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] border-[#00dbe7]/40 shadow-2xs'
                 }`}
               >
-                <Key className="w-3 h-3 shrink-0" />
-                <span>Auto-Fill & Login</span>
+                {isLoggingInFb ? <RefreshCw className="w-3 h-3 animate-spin shrink-0" /> : <Key className="w-3 h-3 shrink-0" />}
+                <span>{isLoggingInFb ? 'Logging in...' : 'Auto-Fill & Login'}</span>
               </button>
 
               <button
