@@ -125,19 +125,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       // Relay response headers (excluding hop-by-hop headers)
       proxyRes.headers.forEach((val, key) => {
         const lower = key.toLowerCase();
-        if (!['content-encoding', 'transfer-encoding', 'connection'].includes(lower)) {
+        if (!['content-encoding', 'transfer-encoding', 'connection', 'set-cookie'].includes(lower)) {
           res.setHeader(key, val);
         }
       });
+      // Multi-cookie preservation
+      const setCookies = (proxyRes.headers as any).getSetCookie ? (proxyRes.headers as any).getSetCookie() : [];
+      if (setCookies && setCookies.length > 0) {
+        res.setHeader('set-cookie', setCookies);
+      }
       res.setHeader('x-backend-provider', 'oracle-vm');
       if (targetPath.startsWith('/filebrowser')) {
+        res.removeHeader('x-frame-options');
         res.setHeader('x-frame-options', 'SAMEORIGIN');
+        res.removeHeader('content-security-policy');
       }
       res.status(proxyRes.status);
 
       const resContentType = proxyRes.headers.get('content-type') || '';
       const isSseStream = resContentType.includes('text/event-stream');
-      const isVaultDownload = targetPath.startsWith('/api/vault/download') || targetPath.startsWith('/filebrowser');
+      const isVaultDownload = targetPath.startsWith('/api/vault/download') || (targetPath.startsWith('/filebrowser') && !resContentType.includes('json'));
 
       // Only stream for genuine continuous streams (SSE AI chat) and heavy file downloads (Vault).
       // Standard JSON endpoints (synthesize, clone-voice, complete-chunk-upload, OCR) must NOT be piped

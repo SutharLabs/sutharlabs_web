@@ -1,4 +1,6 @@
 import express from "express";
+import http from "http";
+import https from "https";
 
 import multer from "multer";
 
@@ -4467,9 +4469,12 @@ app.delete("/api/vault/files/:id", authenticateToken, requireAdmin, async (req: 
 // ==========================================
 // FILE BROWSER PROXY (filebrowser/filebrowser on VM 1)
 // ==========================================
-app.use("/filebrowser", async (req: any, res: any) => {
+app.use("/filebrowser", (req: any, res: any) => {
   try {
-    const targetUrl = `${ORACLE_VAULT_URL}/filebrowser${req.url}`;
+    const rawUrl = req.url || "/";
+    const path = rawUrl.startsWith("/") ? rawUrl : `/${rawUrl}`;
+    const targetUrl = new URL(`${ORACLE_VAULT_URL}/filebrowser${path}`);
+
     const hopByHopHeaders = new Set([
       "connection",
       "keep-alive",
@@ -4479,46 +4484,95 @@ app.use("/filebrowser", async (req: any, res: any) => {
       "trailer",
       "transfer-encoding",
       "upgrade",
-      "host",
-      "content-length"
+      "host"
     ]);
-    const headers: Record<string, string> = {};
+
+    const forwardHeaders: Record<string, string | string[]> = {};
     for (const [k, v] of Object.entries(req.headers)) {
       const lower = k.toLowerCase();
-      if (!hopByHopHeaders.has(lower)) {
-        headers[k] = Array.isArray(v) ? v.join(", ") : String(v);
+      if (!hopByHopHeaders.has(lower) && v !== undefined) {
+        forwardHeaders[lower] = v as any;
       }
     }
-    const fetchOptions: any = {
-      method: req.method === "HEAD" ? "GET" : req.method,
-      headers,
-    };
-    if (["POST", "PUT", "PATCH"].includes(req.method)) {
-      fetchOptions.body = req;
-      fetchOptions.duplex = "half";
+    forwardHeaders["host"] = targetUrl.host;
+    forwardHeaders["x-forwarded-host"] = req.headers["host"] || "www.sutharlabs.com";
+    forwardHeaders["x-forwarded-proto"] = req.headers["x-forwarded-proto"] || "https";
+
+    let bodyData: Buffer | null = null;
+    if (["POST", "PUT", "PATCH", "DELETE"].includes(req.method)) {
+      if (Buffer.isBuffer(req.body)) {
+        bodyData = req.body;
+      } else if (typeof req.body === "string") {
+        bodyData = Buffer.from(req.body);
+      } else if (req.body && typeof req.body === "object" && Object.keys(req.body).length > 0) {
+        bodyData = Buffer.from(JSON.stringify(req.body));
+        if (!forwardHeaders["content-type"]) {
+          forwardHeaders["content-type"] = "application/json";
+        }
+      }
+      if (bodyData) {
+        forwardHeaders["content-length"] = bodyData.length.toString();
+      }
     }
 
-    const proxyRes = await fetch(targetUrl, fetchOptions);
-    proxyRes.headers.forEach((val, key) => {
-      const lower = key.toLowerCase();
-      if (!["content-encoding", "transfer-encoding", "connection"].includes(lower)) {
-        res.setHeader(key, val);
+    const requestModule = targetUrl.protocol === "https:" ? https : http;
+    const proxyReq = requestModule.request({
+      protocol: targetUrl.protocol,
+      hostname: targetUrl.hostname,
+      port: targetUrl.port || (targetUrl.protocol === "https:" ? 443 : 80),
+      path: `${targetUrl.pathname}${targetUrl.search}`,
+      method: req.method === "HEAD" ? "GET" : req.method,
+      headers: forwardHeaders
+    }, (proxyRes) => {
+      res.status(proxyRes.statusCode || 200);
+
+      for (const [key, val] of Object.entries(proxyRes.headers)) {
+        const lower = key.toLowerCase();
+        if (!["transfer-encoding", "connection"].includes(lower) && val !== undefined) {
+          res.setHeader(key, val);
+        }
+      }
+
+      // Safeguard internal IP redirects
+      if (proxyRes.headers.location) {
+        let loc = proxyRes.headers.location;
+        if (loc.startsWith("http://10.0.0.169") || loc.startsWith("http://137.23.61.191")) {
+          try {
+            const locUrl = new URL(loc);
+            loc = `${locUrl.pathname}${locUrl.search}${locUrl.hash}`;
+          } catch {}
+        }
+        res.setHeader("location", loc);
+      }
+
+      // Ensure iframe embedding on same origin
+      res.removeHeader("x-frame-options");
+      res.setHeader("X-Frame-Options", "SAMEORIGIN");
+      res.removeHeader("content-security-policy");
+
+      proxyRes.pipe(res);
+    });
+
+    proxyReq.on("error", (err: any) => {
+      console.error("[FileBrowser Proxy Error]", err?.message || err);
+      if (!res.headersSent) {
+        res.status(502).json({ error: "File Browser gateway error", details: err.message });
       }
     });
-    res.removeHeader("x-frame-options");
-    res.setHeader("X-Frame-Options", "SAMEORIGIN");
-    res.status(proxyRes.status);
-    if (proxyRes.body) {
-      const { Readable } = await import("stream");
-      const { pipeline } = await import("stream/promises");
-      const nodeStream = Readable.fromWeb(proxyRes.body as any);
-      await pipeline(nodeStream, res);
+
+    if (bodyData) {
+      proxyReq.write(bodyData);
+      proxyReq.end();
+    } else if (!req.readableEnded) {
+      req.pipe(proxyReq);
     } else {
-      res.end();
+      proxyReq.end();
     }
   } catch (err: any) {
-    console.error("[FileBrowser Proxy Error]", err?.message || err, err?.cause);
-    res.status(502).json({ error: "File Browser gateway error", details: err.message, cause: err?.cause?.message });
+    console.error("[FileBrowser Proxy Error]", err?.message || err);
+    if (!res.headersSent) {
+      res.status(502).json({ error: "File Browser gateway error", details: err.message });
+    }
   }
 });
 
