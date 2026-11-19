@@ -373,6 +373,31 @@ export async function deleteVaultFolder(name: string, token?: string): Promise<v
   }
 }
 
+export async function renameVaultFolder(
+  oldName: string, 
+  newName: string, 
+  token?: string
+): Promise<{ success: boolean; oldName: string; newName: string }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch('/api/vault/folders/rename', {
+    method: 'PATCH',
+    headers,
+    body: JSON.stringify({ oldName, newName })
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || `Failed to rename folder (HTTP ${res.status})`);
+  }
+  return data;
+}
+
+export async function renameVaultFile(id: string, newName: string, token?: string): Promise<VaultFileItem> {
+  return updateVaultFile(id, { originalName: newName }, token);
+}
+
 export async function updateVaultFile(
   id: string, 
   updates: { folder?: string; category?: string; originalName?: string },

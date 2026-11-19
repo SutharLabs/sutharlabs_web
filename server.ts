@@ -4405,11 +4405,29 @@ app.post("/api/vault/folders", authenticateToken, requireAdmin, async (req: any,
   }
 });
 
-// DELETE /api/vault/folders - Delete folder and all its subfolders from vault
-app.all(["/api/vault/folders", "/api/vault/folders/*", "/api/vault/folders/:name"], authenticateToken, requireAdmin, async (req: any, res: any, next: any) => {
-  if (req.method !== "DELETE") return next();
+// PATCH /api/vault/folders/rename - Rename folder and all nested subfolders & files
+app.patch("/api/vault/folders/rename", authenticateToken, requireAdmin, async (req: any, res: any) => {
   try {
-    const rawParam = req.params.name ? `${req.params.name}${req.params[0] ? '/' + req.params[0] : ''}` : (req.params[0] || req.query.name || '');
+    const response = await fetch(`${ORACLE_VAULT_URL}/api/folders/rename`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        "x-vault-token": ORACLE_VAULT_SECRET
+      },
+      body: JSON.stringify(req.body)
+    });
+    const data = await response.json();
+    res.status(response.status).json(data);
+  } catch (err: any) {
+    res.status(502).json({ error: "Failed to rename vault folder on Oracle VM", details: err.message });
+  }
+});
+
+// DELETE /api/vault/folders - Delete folder and all its subfolders from vault
+app.delete(/^\/api\/vault\/folders(\/.*)?$/, authenticateToken, requireAdmin, async (req: any, res: any) => {
+  try {
+    const urlSubPath = (req.params[0] || '').replace(/^\/+/, '');
+    const rawParam = urlSubPath || req.query.name || (req.body && req.body.name) || '';
     const folderName = decodeURIComponent(rawParam).trim();
     if (!folderName) {
       return res.status(400).json({ error: "Folder name is required." });

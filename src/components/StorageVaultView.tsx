@@ -37,7 +37,8 @@ import {
   Maximize2,
   FileCheck,
   Folder,
-  FolderInput
+  FolderInput,
+  Pencil
 } from 'lucide-react';
 import { VaultFileItem, VaultStatsResponse, TerminalLog } from '../types';
 import { 
@@ -50,6 +51,8 @@ import {
   fetchVaultFolders,
   createVaultFolder,
   deleteVaultFolder,
+  renameVaultFolder,
+  renameVaultFile,
   updateVaultFile
 } from '../services/vaultStorageService';
 import ConfirmModal, { ModalVariant } from './ConfirmModal';
@@ -131,6 +134,15 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
   const [selectedFileIds, setSelectedFileIds] = useState<Set<string>>(new Set());
   const [fileBrowserIframeKey, setFileBrowserIframeKey] = useState<number>(0);
   const [isLoggingInFb, setIsLoggingInFb] = useState<boolean>(false);
+
+  // Rename state
+  const [editingFile, setEditingFile] = useState<VaultFileItem | null>(null);
+  const [editingFileName, setEditingFileName] = useState<string>('');
+  const [isRenamingFile, setIsRenamingFile] = useState<boolean>(false);
+
+  const [editingFolder, setEditingFolder] = useState<string | null>(null);
+  const [editingFolderName, setEditingFolderName] = useState<string>('');
+  const [isRenamingFolder, setIsRenamingFolder] = useState<boolean>(false);
 
   // Data state
   const [stats, setStats] = useState<VaultStatsResponse | null>(null);
@@ -297,6 +309,92 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
         }
       }
     });
+  };
+
+  const startRenameFile = (file: VaultFileItem, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setEditingFile(file);
+    setEditingFileName(file.originalName);
+  };
+
+  const handleRenameFile = async () => {
+    if (!editingFile) return;
+    const trimmed = editingFileName.trim();
+    if (!trimmed || trimmed === editingFile.originalName) {
+      setEditingFile(null);
+      return;
+    }
+    setIsRenamingFile(true);
+    try {
+      const updated = await renameVaultFile(editingFile.id, trimmed, userToken);
+      setFiles(prev => prev.map(f => f.id === updated.id ? updated : f));
+      if (previewFile?.id === updated.id) {
+        setPreviewFile(updated);
+      }
+      addLog('DRIVE', `Renamed "${editingFile.originalName}" to "${updated.originalName}".`, 'SUCCESS');
+      setEditingFile(null);
+    } catch (err: any) {
+      console.error('Failed to rename file:', err);
+      setModalConfig({
+        isOpen: true,
+        title: 'Rename Failed',
+        message: err.message || 'Could not rename file in Cloud Drive.',
+        variant: 'danger',
+        isAlert: true,
+        confirmLabel: 'Dismiss',
+        onConfirm: () => setModalConfig(null)
+      });
+    } finally {
+      setIsRenamingFile(false);
+    }
+  };
+
+  const startRenameFolder = (folderPath: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    const baseName = folderPath.split('/').pop() || folderPath;
+    setEditingFolder(folderPath);
+    setEditingFolderName(baseName);
+  };
+
+  const handleRenameFolder = async () => {
+    if (!editingFolder) return;
+    const trimmed = editingFolderName.trim().replace(/[/\\:*?"<>|]/g, '');
+    const oldBase = editingFolder.split('/').pop() || editingFolder;
+    if (!trimmed || trimmed === oldBase) {
+      setEditingFolder(null);
+      return;
+    }
+    const parent = getParentFolder(editingFolder);
+    const newFullPath = parent ? `${parent}/${trimmed}` : trimmed;
+
+    setIsRenamingFolder(true);
+    try {
+      await renameVaultFolder(editingFolder, newFullPath, userToken);
+      addLog('DRIVE', `Renamed folder "${editingFolder}" to "${newFullPath}".`, 'SUCCESS');
+      
+      // Update currentFolder if inside or looking at the renamed folder
+      if (currentFolder === editingFolder) {
+        setCurrentFolder(newFullPath);
+      } else if (currentFolder?.startsWith(editingFolder + '/')) {
+        setCurrentFolder(newFullPath + '/' + currentFolder.slice(editingFolder.length + 1));
+      }
+      
+      setEditingFolder(null);
+      await loadVaultData(true);
+    } catch (err: any) {
+      console.error('Failed to rename folder:', err);
+      setModalConfig({
+        isOpen: true,
+        title: 'Rename Folder Failed',
+        message: err.message || 'Could not rename folder in Cloud Drive.',
+        variant: 'danger',
+        isAlert: true,
+        confirmLabel: 'Dismiss',
+        onConfirm: () => setModalConfig(null)
+      });
+    } finally {
+      setIsRenamingFolder(false);
+    }
   };
 
   const handleMoveFile = async () => {
@@ -1363,17 +1461,30 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
 
             <div className="flex items-center gap-1.5 shrink-0">
               {currentFolder && (
-                <button
-                  type="button"
-                  onClick={() => setCurrentFolder(getParentFolder(currentFolder))}
-                  title="Up 1 level"
-                  className={`h-7 px-2.5 rounded-lg text-[11px] font-mono border transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
-                    isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-white/10 text-on-surface border-white/10'
-                  }`}
-                >
-                  <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
-                  <span className="hidden sm:inline">Up 1 Level</span>
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => startRenameFolder(currentFolder)}
+                    title={`Rename "${currentFolder.split('/').pop()}"`}
+                    className={`h-7 px-2 rounded-lg text-[11px] font-mono border transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                      isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-white/10 text-on-surface border-white/10'
+                    }`}
+                  >
+                    <Pencil className="w-3 h-3 shrink-0" />
+                    <span className="hidden sm:inline">Rename</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCurrentFolder(getParentFolder(currentFolder))}
+                    title="Up 1 level"
+                    className={`h-7 px-2.5 rounded-lg text-[11px] font-mono border transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                      isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-white/10 text-on-surface border-white/10'
+                    }`}
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5 shrink-0" />
+                    <span className="hidden sm:inline">Up 1 Level</span>
+                  </button>
+                </>
               )}
               <button
                 type="button"
@@ -1436,14 +1547,24 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                         </div>
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={(e) => promptDeleteFolder(folder, e)}
-                      title={`Delete "${baseName}"`}
-                      className="p-1 rounded opacity-0 group-hover:opacity-100 hover:bg-rose-500/10 text-rose-400 cursor-pointer transition-opacity shrink-0"
-                    >
-                      <Trash2 className="w-3 h-3 shrink-0" />
-                    </button>
+                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => startRenameFolder(folder, e)}
+                        title={`Rename "${baseName}"`}
+                        className="p-1 rounded hover:bg-sky-500/10 text-sky-400 cursor-pointer"
+                      >
+                        <Pencil className="w-3 h-3 shrink-0" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={(e) => promptDeleteFolder(folder, e)}
+                        title={`Delete "${baseName}"`}
+                        className="p-1 rounded hover:bg-rose-500/10 text-rose-400 cursor-pointer"
+                      >
+                        <Trash2 className="w-3 h-3 shrink-0" />
+                      </button>
+                    </div>
                   </div>
                 );
               })}
@@ -1666,6 +1787,14 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                     </button>
                     <button
                       type="button"
+                      onClick={(e) => startRenameFile(file, e)}
+                      title="Rename file"
+                      className="p-1 rounded hover:bg-white/10 cursor-pointer text-on-surface-variant hover:text-sky-500"
+                    >
+                      <Pencil className="w-3.5 h-3.5 shrink-0" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => shareFileLink(file)}
                       title="Share link"
                       className="p-1 rounded hover:bg-white/10 cursor-pointer"
@@ -1793,6 +1922,16 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                       >
                         <Download className="w-3.5 h-3.5 shrink-0" />
                       </a>
+                      <button
+                        type="button"
+                        onClick={(e) => startRenameFile(file, e)}
+                        title="Rename file"
+                        className={`h-7 w-7 rounded border flex items-center justify-center cursor-pointer transition-colors ${
+                          isLight ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-300' : 'bg-white/5 hover:bg-white/10 text-on-surface border-white/10'
+                        }`}
+                      >
+                        <Pencil className="w-3.5 h-3.5 shrink-0" />
+                      </button>
                       <button
                         type="button"
                         onClick={() => shareFileLink(file)}
@@ -1984,6 +2123,20 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                           >
                             {shareFeedback === file.id ? <Check className="w-3 h-3 text-emerald-400 shrink-0" /> : <Share2 className="w-3 h-3 shrink-0" />}
                             <span className="hidden sm:inline">Share</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => startRenameFile(file, e)}
+                            title="Rename file"
+                            className={`h-7 px-2 rounded text-[10px] font-mono border transition-all flex items-center gap-1 cursor-pointer select-none shadow-xs ${
+                              isLight
+                                ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300'
+                                : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40 hover:text-sky-400'
+                            }`}
+                          >
+                            <Pencil className="w-3 h-3 shrink-0" />
+                            <span className="hidden md:inline">Rename</span>
                           </button>
 
                           <a
@@ -2224,6 +2377,19 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                 >
                   {shareFeedback === previewFile.id ? <Check className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <Share2 className="w-3.5 h-3.5 shrink-0" />}
                   <span className="hidden sm:inline">Share</span>
+                </button>
+
+                {/* Rename Button */}
+                <button
+                  type="button"
+                  onClick={(e) => startRenameFile(previewFile, e)}
+                  className={`h-8 px-2.5 rounded-lg text-xs font-mono border transition-all flex items-center gap-1.5 cursor-pointer shadow-xs ${
+                    isLight ? 'bg-white hover:bg-slate-100 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                  }`}
+                  title="Rename file"
+                >
+                  <Pencil className="w-3.5 h-3.5 shrink-0" />
+                  <span className="hidden sm:inline">Rename</span>
                 </button>
 
                 {/* Download Button */}
@@ -2614,6 +2780,161 @@ export const StorageVaultView: React.FC<StorageVaultViewProps> = ({
                 >
                   {isMovingFile ? <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" /> : <FolderInput className="w-3.5 h-3.5 shrink-0" />}
                   <span>{moveModalFiles.length === 1 ? 'Move' : `Move (${moveModalFiles.length})`}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 3: Rename File Modal */}
+      {editingFile && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setEditingFile(null)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className={`relative w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden transition-all animate-in zoom-in-95 duration-150 ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]'
+            }`}
+          >
+            <div className="h-1 w-full bg-[#00dbe7] shrink-0" />
+            <div className="p-5 sm:p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${
+                  isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-primary/10 border-primary/25 text-[#00dbe7]'
+                }`}>
+                  <Pencil className="w-5 h-5 shrink-0" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-on-surface font-sans">Rename File</h3>
+                  <p className="text-xs text-on-surface-variant font-mono mt-0.5 truncate" title={editingFile.originalName}>
+                    Current: {editingFile.originalName}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono text-on-surface-variant font-medium">New File Name</label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={editingFileName}
+                  onChange={(e) => setEditingFileName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRenameFile();
+                    if (e.key === 'Escape') setEditingFile(null);
+                  }}
+                  className={`w-full h-9 px-3 rounded-lg text-xs font-mono border transition-colors outline-hidden ${
+                    isLight
+                      ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-sky-500'
+                      : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] placeholder:text-gray-500 focus:border-[#00dbe7]'
+                  }`}
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingFile(null)}
+                  className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border ${
+                    isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRenameFile}
+                  disabled={!editingFileName.trim() || editingFileName.trim() === editingFile.originalName || isRenamingFile}
+                  className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isLight
+                      ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                      : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border-[#00dbe7]/50'
+                  }`}
+                >
+                  {isRenamingFile ? <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" /> : <Check className="w-3.5 h-3.5 shrink-0" />}
+                  <span>Save</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal 4: Rename Folder Modal */}
+      {editingFolder && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-150"
+          onClick={() => setEditingFolder(null)}
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className={`relative w-full max-w-md rounded-2xl border shadow-2xl overflow-hidden transition-all animate-in zoom-in-95 duration-150 ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-[#131315] border-[#3a494b]/50 text-[#e5e1e4]'
+            }`}
+          >
+            <div className="h-1 w-full bg-[#00dbe7] shrink-0" />
+            <div className="p-5 sm:p-6 space-y-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-11 h-11 rounded-xl border flex items-center justify-center shrink-0 ${
+                  isLight ? 'bg-sky-50 border-sky-200 text-sky-600' : 'bg-primary/10 border-primary/25 text-[#00dbe7]'
+                }`}>
+                  <Folder className="w-5 h-5 shrink-0 text-sky-500" />
+                </div>
+                <div className="min-w-0">
+                  <h3 className="text-base font-bold text-on-surface font-sans">Rename Folder</h3>
+                  <p className="text-xs text-on-surface-variant font-mono mt-0.5 truncate" title={editingFolder}>
+                    Path: {editingFolder}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-mono text-on-surface-variant font-medium">Folder Name</label>
+                <input
+                  type="text"
+                  autoFocus
+                  value={editingFolderName}
+                  onChange={(e) => setEditingFolderName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRenameFolder();
+                    if (e.key === 'Escape') setEditingFolder(null);
+                  }}
+                  className={`w-full h-9 px-3 rounded-lg text-xs font-mono border transition-colors outline-hidden ${
+                    isLight
+                      ? 'bg-white border-slate-300 text-slate-900 placeholder:text-slate-400 focus:border-sky-500'
+                      : 'bg-[#121215] border-[#3a494b]/50 text-[#e5e1e4] placeholder:text-gray-500 focus:border-[#00dbe7]'
+                  }`}
+                />
+                <p className="text-[11px] text-on-surface-variant font-mono">
+                  All subfolders and files inside this folder will stay preserved under the new name.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditingFolder(null)}
+                  className={`h-8 px-3.5 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border ${
+                    isLight ? 'bg-white hover:bg-slate-50 text-slate-700 border-slate-300' : 'bg-[#201f21] hover:bg-[#28272a] text-[#e5e1e4] border-[#3a494b]/40'
+                  }`}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRenameFolder}
+                  disabled={!editingFolderName.trim() || editingFolderName.trim() === (editingFolder.split('/').pop() || editingFolder) || isRenamingFolder}
+                  className={`h-8 px-4 rounded-lg text-xs font-mono font-bold uppercase tracking-wider transition-all cursor-pointer border shadow-sm flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed ${
+                    isLight
+                      ? 'bg-sky-500 hover:bg-sky-600 text-white border-sky-600'
+                      : 'bg-[#00dbe7]/15 hover:bg-[#00dbe7]/25 text-[#00dbe7] hover:text-white border-[#00dbe7]/50'
+                  }`}
+                >
+                  {isRenamingFolder ? <RefreshCw className="w-3.5 h-3.5 animate-spin shrink-0" /> : <Check className="w-3.5 h-3.5 shrink-0" />}
+                  <span>Save</span>
                 </button>
               </div>
             </div>
